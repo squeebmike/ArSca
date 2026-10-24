@@ -13,7 +13,7 @@ export function sportsListingMatches(listing,card,set,group){
  const inferredFootball=/football/i.test(set.displayName)&&!/\b(?:baseball|basketball|soccer|hockey|football|nfl)\b/i.test(title)&&/^[a-z]{2,}[-\d]/i.test(number)&&groupWords.length&&groupWords.every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title));
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
- if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings))return false;
+ if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings,card.section))return false;
  const numbering=cardParallelProgram(set,card);
  if(!card.parallelRule&&(numbering.printRun||numbering.maxPrintRun)&&!matchesSerialNumbering(listing.title,numbering))return false;
  if(/\b(?:break|digital|reprint|replica|custom|facsimile|proxy|lot|box|boxes|pack|packs|case|cases|sealed)\b|you pick|choose your|complete set|set of/.test(title))return false;
@@ -34,7 +34,7 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v6:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v7:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
@@ -79,7 +79,7 @@ async function lookup(b){
  if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Checking eBay…</span></span>';
  var target=b.parentElement.querySelector('[data-sports-result]');
  try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
-  if(!d.listing){target.textContent=compactTarget(target)?'No exact listing photo found. Open this finish for search links.':'No matching live listing found. The eBay search below may show other copies.';}
+  if(!d.listing){target.textContent=compactTarget(target)?'No exact listing photo found. Try the finish search below.':'No matching live listing found. The eBay search below may show other copies.';}
   else renderListing(target,d.listing);
  }catch(_){target.textContent='Listing lookup is temporarily unavailable. Open this finish for search links.';}
  b.textContent=compactTarget(target)?'Refresh listing':'Check eBay again';b.disabled=false;

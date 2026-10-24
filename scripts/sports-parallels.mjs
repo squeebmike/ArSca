@@ -1,5 +1,5 @@
 // Publisher parallel programs. Never copy a rainbow between releases/subsets.
-import {baseballChecklistInventoryMatches} from './topps/public-checklist-policy.mjs';
+import {baseballChecklistInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -26,6 +26,43 @@ const flagship23=()=>variants([
 ]);
 const insert23=()=>variants([['Blue',null],['Black',299],['Gold',75],['Red',10],['Platinum',1]]);
 const config={
+ '2023-topps-update':program('https://www.blowoutcards.net/images/ss/23tpupdateBB.pdf',flagship23(),{
+  ...Object.fromEntries(['action-stars','time-spanning-tandems','laid-out','2023-all-star-game','topps-black-gold','all-aces','1988-topps-baseball'].map(id=>[id,{variants:insert23()}])),
+  ...Object.fromEntries(['action-stars-autograph-parallel','laid-out-autograph-parallel','topps-black-gold-autograph-parallel','all-aces-autograph-parallel','oversized-topps-big-baseball-card-autograph-variation','mvp-medallion-cards-autograph-parallel','commemorative-postseason-trophy-medallion-cards-autograph-parallel'].map(id=>[id,{maxPrintRun:10}])),
+  'base-clear-variation':{printRun:10},
+  'baseball-stars-autographs':{variants:ink21},'baseball-stars-dual-autographs':{maxPrintRun:5},
+  'oversized-topps-big-baseball-card':{variants:variants([['Gold',50],['Red',10],['Platinum',1]])},
+  'mvp-medallion-cards':{variants:variants([['Black',299],['Gold',75],['Red',10],['Platinum',1]])},
+  'commemorative-postseason-trophy-medallion-cards':{variants:variants([['Gold',75],['Red',10],['Platinum',1]])},
+  'major-league-material-cards':{variants:ink21},
+  'all-star-stitches-cards':{variants:variants([['Silver',50],['Red',25],['Gold',1]])},
+  'all-star-stitches-dual-cards':{printRun:25},'all-star-stitches-triple-cards':{printRun:25},
+  'all-star-jumbo-patch-cards':{maxPrintRun:5,variants:variants([['Gold',1]])},
+  'topps-reverence-autograph-patch-cards':{printRun:10,variants:red5},
+  'mlb-first-stitch-autograph-patch-cards':{printRun:5,variants:variants([['Platinum',1]])},
+  'own-the-name-relics':{printRun:1},'cut-signatures':{printRun:1}
+ }),
+ '2024-topps-baseball-series-2':program('https://www.blowoutcards.net/images/ss/24tpser2BB.pdf',variants([
+  ['Rainbow Foil',null],['Gold Foil',null],['Gold',2024],
+  ['Blue Foilboard',999,['blue foilboard','blue foil','blue holofoil']],['Purple Foilboard',799,['purple foilboard','purple foil','purple holofoil']],
+  ['Green Foilboard',499,['green foilboard','green foil','green crackle']],['Aqua Foilboard',399,['aqua foilboard','aqua foil']],
+  ['Orange Foilboard',299,['orange foilboard','orange foil','orange crackle']],['Red Foilboard',199,['red foilboard','red foil','red crackle']],
+  ['Vintage Stock',99],['Independence Day',76],['Black',73],
+  ["Mother's Day Hot Pink",50,['mothers day','mother s day','pink']],["Father's Day Powder Blue",50,['fathers day','father s day','blue']],
+  ['Memorial Day Camo',25,['memorial day','camo']],['Printing Plates',1,['printing plate','printing plates']],['Platinum',1]
+ ]),{
+  // Clear /10 was announced for 100 subjects, but those subjects are absent
+  // from this imported final checklist. Do not assign it to every base card.
+  ...Object.fromEntries(['city-to-city','around-the-horn','covering-the-field','fantasy-favorites','2023-first-pitch','2023-play-ball','1989-topps-baseball','1989-topps-all-star-baseball','significant-statistics'].map(id=>[id,{variants:variants([['Blue',null],['Black',299],['Gold',50],['Red',10],['Platinum',1]])}])),
+  '40-70':{variants:variants([['Gold',50],['Red',10],['Platinum',1]])},
+  'baseball-stars-autographs':{variants:variants([['Black',99],['Gold',50],['Red',25],['Platinum',1]])},
+  'baseball-stars-dual-autographs':{maxPrintRun:10,variants:variants([['Platinum',1]])},
+  'baseball-stars-triple-autographs':{printRun:5,variants:variants([['Platinum',1]])},
+  '40-70-autographs':{printRun:10,variants:red5},'2023-dynamic-dual-autograph':{printRun:10,variants:variants([['Platinum',1]])},
+  'signature-tunes-dual-autographs':{printRun:25},
+  '2023-silver-slugger-award-winners-cards':{variants:variants([['Black',299],['Gold',75],['Red',10],['Platinum',1]])},
+  'in-the-name-relics':{printRun:1},'cut-signatures':{printRun:1}
+ }),
  '2023-topps-series-1':program('https://www.blowoutcards.net/images/ss/23tpser1BB.pdf',flagship23(),{
   ...Object.fromEntries(['one-two-punch','welcome-to-the-club','2022-greatest-hits','all-aces','1988-topps-baseball'].map(id=>[id,{variants:insert23()}])),
   // "The Real One" /88 was announced in solicitation. Do not add it without
@@ -124,8 +161,10 @@ export function matchesSerialNumbering(text,rule){
  if(rule.printRun||rule.maxPrintRun)return serials.length>0&&serials.every(s=>(rule.maxPrintRun?s.denominator>0&&s.denominator<=rule.maxPrintRun:s.denominator===(rule.serialDenominator||rule.printRun))&&(s.numerator===null||Math.abs(s.numerator)>=1&&Math.abs(s.numerator)<=Math.abs(s.denominator)));
  return serials.length===0;
 }
-export function matchesParallelPrinting(text,rule,siblings=[rule]){
- const folded=norm(text),marked=String(text||'');
+export function matchesParallelPrinting(text,rule,siblings=[rule],section=''){
+ let folded=norm(text);const marked=String(text||'');
+ // An insert title is identity, not finish evidence (e.g. Topps Black Gold).
+ for(const phrase of [norm(section),norm(section).replace(/^topps /,'')].filter(Boolean))folded=(' '+folded+' ').replace(' '+phrase+' ',' ').trim();
  const matched=siblings.flatMap(r=>r.aliases.map(a=>({id:r.id,phrase:norm(a).replace(/\brefractor\b/g,'').trim()||norm(a)})))
   .filter(a=>a.phrase&&(' '+folded+' ').includes(' '+a.phrase+' ')).sort((a,b)=>b.phrase.length-a.phrase.length);
  if(!matched.length||matched[0].id!==rule.id)return false;
@@ -143,20 +182,20 @@ export function numberedParallelCollection(set,groups,collections){
  const collection={id:'all-parallels',name:'Parallels & numbered cards by card',kind:'Variations',aggregate:true,parallelFamilies:true,cards};
  const result=[...collections.filter(g=>g.id!=='all-parallels'),collection];familyCollections.set(set,result);return result;
 }
-export function parallelPreviewTile({name,numbering,path,lookup,ownHtml='',escape:esc}){
- return '<li class="mp-parallel-card"><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+ownHtml+(ownHtml.includes('<img')?'':'<div class="mp-parallel-market"><div data-sports-result aria-live="polite"><span class="mp-parallel-placeholder">Matching photo &amp; price will load here.</span></div><button type="button" data-sports-lookup="'+esc(lookup)+'">Load photo &amp; price</button></div>')+'</li>';
+export function parallelPreviewTile({name,numbering,path,lookup,searchHref='',ownHtml='',escape:esc}){
+ return '<li class="mp-parallel-card"><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+ownHtml+(ownHtml.includes('<img')?'':'<div class="mp-parallel-market"><div data-sports-result aria-live="polite"><span class="mp-parallel-placeholder">Matching photo &amp; price will load here.</span></div><button type="button" data-sports-lookup="'+esc(lookup)+'">Load photo &amp; price</button>'+(searchHref?'<p class="mp-parallel-search"><a href="'+esc(searchHref)+'" target="_blank" rel="noopener sponsored">Search eBay for this finish</a></p>':'')+'</div>')+'</li>';
 }
 export function inlineParallelStock(items,card,set,deps){
  if(!Array.isArray(items)||!deps?.available)return '';
  const family=card.parallelRule?{...card,variant:'Base'}:card;
- const copy=items.find(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballChecklistInventoryMatches(i,family,set)&&(!card.parallelRule||matchesParallelPrinting([i.name,i.variant,i.treatment,i.serialNumber].filter(Boolean).join(' '),card.parallelRule,card.parallelSiblings)));
+ const copy=items.find(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballChecklistInventoryMatches(i,family,set)&&(!card.parallelRule||matchesParallelPrinting([i.name,i.variant,i.treatment,i.serialNumber].filter(Boolean).join(' '),card.parallelRule,card.parallelSiblings,card.section)));
  return copy?catalogStoreCopyHtml(copy,{escape:deps.escape,slug:deps.slug}):'';
 }
-export function cardParallelOptionsHtml(set,card,path,esc,{inventory,deps}={}){
+export function cardParallelOptionsHtml(set,card,path,esc,{inventory,deps,campaignId}={}){
  const p=cardParallelProgram(set,card);
  // Reuse this page's already loaded public inventory; never query per finish.
  const candidates=Array.isArray(inventory)?inventory.filter(i=>baseballChecklistInventoryMatches(i,{...card,variant:'Base'},set)):[];
- return p.variants.map(v=>parallelPreviewTile({name:v.name,numbering:v.displayRun||printRunLabel(v.printRun),path:path+'?parallel='+v.id,lookup:path+'?market=1&parallel='+v.id,ownHtml:inlineParallelStock(candidates,selectedParallelCard(set,card,v.id),set,deps),escape:esc})).join('');
+ return p.variants.map(v=>parallelPreviewTile({name:v.name,numbering:v.displayRun||printRunLabel(v.printRun),path:path+'?parallel='+v.id,lookup:path+'?market=1&parallel='+v.id,searchHref:ebayChecklistSearch(selectedParallelCard(set,card,v.id),set,campaignId),ownHtml:inlineParallelStock(candidates,selectedParallelCard(set,card,v.id),set,deps),escape:esc})).join('');
 }
 const parallelBaseStyle='<style>.mp-card-parallels{padding:10px 12px;border:1px solid var(--wo-border,#777);border-radius:10px;margin:8px 0 16px;background:var(--wo-surface,transparent);font:14px/1.45 system-ui}.mp-card-parallels>summary{font:700 14px/1.45 system-ui!important;min-height:44px;cursor:pointer;display:list-item!important}.mp-card-parallels ul{list-style:none;padding:0;margin:8px 0}.mp-card-parallels li a{display:flex!important;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:6px 0;border-bottom:1px solid var(--wo-border,#777);font:600 14px/1.45 system-ui!important}.mp-card-parallels li b{white-space:nowrap}.mp-card-parallels small{display:block;font:12px/1.45 system-ui}</style>';
 
@@ -171,7 +210,7 @@ export const parallelFamilyStyle=parallelBaseStyle+`<style>
 .mp-parallel-card [data-sports-result] strong,.mp-parallel-card .mp-store-copy strong{font:650 12px/1.4 system-ui!important}
 .mp-parallel-card [data-sports-result] strong{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .mp-parallel-card [data-sports-result] p{font:12px/1.45 system-ui!important;margin:8px 0}
-.mp-parallel-card .mp-store-copy{display:block!important;padding:0!important;border:0!important;font:12px/1.45 system-ui!important}
+.mp-card-parallels li .mp-parallel-search a{font:600 12px/1.4 system-ui!important;min-height:44px!important;display:flex!important;align-items:center}.mp-parallel-card .mp-store-copy{display:block!important;padding:0!important;border:0!important;font:12px/1.45 system-ui!important}
 .mp-parallel-placeholder{display:flex;min-height:180px;align-items:center;justify-content:center;text-align:center;font:12px/1.45 system-ui;color:var(--wo-muted,inherit);padding:8px}
 @media(min-width:768px){.mp-card-parallels ul.mp-parallel-gallery{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}}
 @media(max-width:767px){.mp-sports-browser{position:static!important}.mp-sports-links{scrollbar-width:none}.mp-sports-links::-webkit-scrollbar{display:none}}
