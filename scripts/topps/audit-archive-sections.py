@@ -19,7 +19,7 @@ def kind(name,category):
 out=[];audit=[]
 for source in sources:
  assert hashlib.sha256(Path(source['file']).read_bytes()).hexdigest()==source['hash'],source['id']
- if source['id'] in ['2025-topps-chrome-black-football','2026-topps-heritage-football','2025-topps-series-1-baseball']:
+ if source['id'] in ['2025-topps-chrome-black-football','2026-topps-heritage-football','2025-topps-series-1-baseball','2020-topps-baseball-series-1','2020-topps-baseball-series-2','2020-topps-updates-baseball','2021-topps-series-1-baseball','2021-topps-series-2-baseball','2021-topps-updates-baseball']:
   from pypdf import PdfReader
   from collections import defaultdict
   lines=[]
