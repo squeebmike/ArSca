@@ -32,6 +32,8 @@ export function listingMatchesRelease(title,set){
  const series=release.match(/\bseries (\d+)\b/);
  if(series&&!text.includes('series '+series[1]))return false;
  if(!release.includes('chrome')&&words.has('chrome'))return false;
+ // These are distinct releases, not interchangeable finishes of the parent.
+ for(const edition of ['sapphire','logofractor','sonic','ben baller','chrome black','chrome platinum','update'])if(text.includes(edition)&&!release.includes(edition))return false;
  return release.split(' ').filter(w=>w&&!['baseball','football','cards','s','series'].includes(w)&&!/^\d+$/.test(w)).every(w=>text.includes(w));
 }
 export function chooseArticleCards(cards,article){

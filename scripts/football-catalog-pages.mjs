@@ -1,4 +1,5 @@
 import {relatedParallelLinks} from './baseball-section-pages.mjs';
+import {parallelFamilyStyle} from './sports-parallels.mjs';
 import {newestReleases} from './release-order.mjs';
 import {footballOddsHtml} from './football-odds.mjs';
 import {sectionsForSet,baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
@@ -35,7 +36,7 @@ export async function handleFootballCatalog(request,env,url,deps) {
   const found=items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&(card?baseballInventoryMatches(i,card,set):set.cards.some(c=>baseballInventoryMatches(i,c,set))));
   return '<section id="set-stock" class="mp-stock-panel"><h2>Available at The Mana Pocket</h2><p>Store listings linked to these checklist entries may include parallels. Check each listing’s title, photos and finish before buying.</p>'+(found.length?'<div class="mp-stock-grid">'+found.map(i=>catalogStoreCopyHtml(i,deps)).join('')+'</div>':'<p>No exact matching copy is currently listed. <a href="/category/sports-cards">Browse our sports inventory</a>.</p>')+'</section>';
  };
- const crumbs='<div class="mp-crumb"><a href="/football">Football checklists</a> / <a href="'+setPath+'">'+esc(set.displayName)+'</a></div>';
+ const crumbs=parallelFamilyStyle+'<div class="mp-crumb"><a href="/football">Football checklists</a> / <a href="'+setPath+'">'+esc(set.displayName)+'</a></div>';
  if(url.pathname.startsWith(cardPathPrefix)) {
   const card=set.cards.find(c=>footballCardPath(set,c)===url.pathname);if(!card)return missing();
   const name=card.player+' #'+card.cardNumber+' — '+set.displayName;

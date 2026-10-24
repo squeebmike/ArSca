@@ -1,4 +1,5 @@
 import {archiveNonbaseSections} from './topps/archive-nonbase-sections.mjs';
+import {cardParallelProgram,selectedParallelCard,cardParallelOptionsHtml,parallelFamilyStyle,printRunLabel,cardNumberingLabel,matchesParallelPrinting} from './sports-parallels.mjs';
 import {holidayBaseballSections} from './topps/holiday-baseball-sections.mjs';
 import {sportsChecklistNavigation,sportsSectionCollections} from './sports-checklist-ui.mjs';
 import {sportsSectionFilters} from './sports-section-filters.mjs';
@@ -26,44 +27,51 @@ export function baseballSectionSitemapPaths(sets){return sets.flatMap(s=>[...spo
 export function relatedParallelLinks(set,card,esc){
  const identity=c=>(c.subjects?.length?c.subjects.map(s=>s.name):[c.player]).map(n=>String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')).sort().join('|');
  const matches=sectionsForSet(set).filter(g=>/parallel|variation/i.test(g.kind)&&!/auto|relic/i.test(g.kind+' '+g.name)).flatMap(g=>g.cards.filter(c=>String(c.cardNumber)===String(card.cardNumber)&&identity(c)===identity(card)).map(c=>({g,c})));
- if(!matches.length)return '';
- return '<details class="mp-card-parallels"><summary style="min-height:44px;cursor:pointer">Parallels &amp; variations ('+matches.length+')</summary><ul>'+matches.map(({g,c})=>'<li><a style="display:inline-flex;min-height:44px;align-items:center" href="'+cardPath(set,c)+'">'+esc(g.name)+'</a></li>').join('')+'</ul><small>Publisher checklist entries; open a variation to check copies for sale.</small></details>';
+ const program=cardParallelProgram(set,card),count=matches.length+program.variants.length;
+ if(!count)return '';
+ const runs=[...new Set([...program.variants.map(v=>v.displayRun||(v.printRun?printRunLabel(v.printRun):'')),...matches.map(({c})=>cardNumberingLabel(set,c))].filter(Boolean))];
+ return '<details class="mp-card-parallels"><summary style="font:700 14px/1.45 system-ui;min-height:44px;cursor:pointer">Parallels &amp; numbered versions ('+count+')'+(runs.length?'<small>'+runs.map(esc).join(' · ')+'</small>':'')+'</summary><ul>'+cardParallelOptionsHtml(set,card,cardPath(set,card),esc)+matches.map(({g,c})=>'<li><a href="'+cardPath(set,c)+'"><span>'+esc(g.name)+'</span>'+(cardNumberingLabel(set,c)?'<b>'+esc(cardNumberingLabel(set,c))+'</b>':'')+'</a></li>').join('')+'</ul><small>Publisher parallel program; this does not mean a copy is in stock. Select a finish to check matching copies.</small>'+(program.source?'<small><a href="'+esc(program.source)+'" target="_blank" rel="noopener">Topps parallel source</a></small>':'')+'</details>';
 }
 export function baseballSectionsNav(set,esc,current='base'){return sportsChecklistNavigation(set,sectionsForSet(set),esc,{sport:sportFor(set),current});}
 export function baseballShoppingHtml(items,card,set,env,deps,group,listings=[]){
  const {escape:esc}=deps;
- const copies=Array.isArray(items)?items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballInventoryMatches(i,card,set)):[];
+ const copies=Array.isArray(items)?items.filter(i=>Number.isFinite(i.price)&&i.price>0&&deps.available(i)&&baseballInventoryMatches(i,card.parallelRule?{...card,variant:'Base'}:card,set)&&(!card.parallelRule||matchesParallelPrinting([i.name,i.variant,i.treatment,i.serialNumber].filter(Boolean).join(' '),card.parallelRule,card.parallelSiblings))):[];
  const own=copies.slice(0,3).map(i=>catalogStoreCopyHtml(i,{escape:esc,slug:deps.slug})).join('');
  const external=ebayChecklistSearch(card,set,env.EBAY_PARTNER_CAMPAIGN_ID);
  const listing=group&&listings.find(l=>sportsListingMatches(l,card,set,group));
- return '<div class="mp-card-shopping">'+own+(external?'<div data-sports-result aria-live="polite">'+sportsListingHtml(listing,esc)+'</div>'+(!listing?'<button type="button" data-sports-lookup="'+esc(cardPath(set,card)+'?market=1')+'" style="min-height:44px;padding:10px;margin:10px 0;border:0;border-radius:8px;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111);font:700 15px system-ui;cursor:pointer">Find an eBay listing</button>':'')+'<p><a href="'+esc(external)+'" target="_blank" rel="noopener sponsored">Search eBay for this card</a></p>':'')+'</div>';
+ return '<div class="mp-card-shopping">'+own+(external?'<div data-sports-result aria-live="polite">'+sportsListingHtml(listing,esc)+'</div>'+(!listing?'<button type="button" data-sports-lookup="'+esc(cardPath(set,card)+'?market=1'+(card.parallelRule?'&parallel='+card.parallelRule.id:''))+'" style="min-height:44px;padding:10px;margin:10px 0;border:0;border-radius:8px;background:var(--wo-button,#8bd450);color:var(--wo-on-button,#111);font:700 15px system-ui;cursor:pointer">Find an eBay listing</button>':'')+'<p><a href="'+esc(external)+'" target="_blank" rel="noopener sponsored">Search eBay for this card</a></p>':'')+'</div>';
 }
 export async function handleBaseballSections(request,env,url,deps,sets,html,missing){
  if(checklistUrlCorrections[url.pathname])return new Response(null,{status:301,headers:{Location:checklistUrlCorrections[url.pathname],'Cache-Control':'public,max-age=86400'}});
  const set=sets.find(s=>url.pathname.startsWith(setPath(s)+'/'));if(!set)return null;
- const groups=sectionsForSet(set),group=[...groups,...sportsSectionCollections(groups)].find(g=>url.pathname===sectionPath(set,g));
- const cardGroup=groups.find(g=>g.cards.some(c=>cardPath(set,c)===url.pathname));
+ const groups=sectionsForSet(set),group=[...groups,...sportsSectionCollections(groups,set)].find(g=>url.pathname===sectionPath(set,g));
+ const baseCard=(url.searchParams.has('parallel')||url.searchParams.has('market'))?set.cards.find(c=>cardPath(set,c)===url.pathname):null;
+ const cardGroup=groups.find(g=>g.cards.some(c=>cardPath(set,c)===url.pathname))||(baseCard?{id:'base',name:'Base',kind:'Base',cards:set.cards}:null);
  if(!group&&!cardGroup)return url.pathname.startsWith(setPath(set)+'/sections/')?missing():null;
  const esc=deps.escape;
  const activeGroup=group||cardGroup;
+ const originalCard=cardGroup?.cards.find(c=>cardPath(set,c)===url.pathname);
+ const parallelId=url.searchParams.get('parallel');
+ const chosenCard=parallelId&&originalCard?selectedParallelCard(set,originalCard,parallelId):originalCard;
+ if(parallelId&&!chosenCard)return missing();
  if(url.searchParams.has('market')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
-  const card=cardGroup?.cards.find(c=>cardPath(set,c)===url.pathname);
+  const card=chosenCard;
   if(!card)return new Response('Unknown card',{status:404});
   try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card,wait:true});return Response.json({listing:listings.find(l=>sportsListingMatches(l,card,set,cardGroup))||null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
   catch{return Response.json({error:'Marketplace temporarily unavailable'},{status:503,headers:{'Cache-Control':'no-store'}});}
  }
- const listings=activeGroup.aggregate?[]:await sportsListings(env,deps.ctx,set,activeGroup,deps);
+ const listings=activeGroup.aggregate||baseCard&&!parallelId?[]:await sportsListings(env,deps.ctx,set,activeGroup,deps,parallelId?{card:chosenCard}:{});
  let inventory;try{inventory=await deps.listItems();}catch{inventory=null;}
  const nav='<div class="mp-crumb"><a href="/'+sportFor(set)+'">'+(sportFor(set)==='football'?'Football':'Baseball')+' checklists</a> / <a href="'+setPath(set)+'">'+esc(set.displayName)+'</a></div>'+baseballSectionsNav(set,esc,activeGroup.id);
  const availability=!Array.isArray(inventory)?'<p>Store availability is temporarily unavailable. Marketplace searches remain available.</p>':'<p>Store copies appear first. Matching card listings may have different parallel finishes; check the actual title, photos and condition.</p>';
  if(cardGroup){
-  const c=cardGroup.cards.find(c=>cardPath(set,c)===url.pathname),name=c.player+' #'+c.cardNumber+' — '+set.displayName+' '+cardGroup.name;
-  return html({title:name+' | The Mana Pocket',description:name+'. Official checklist reference and shopping links.',canonicalPath:cardPath(set,c),jsonLd:{'@context':'https://schema.org','@type':'WebPage',name,citation:set.sourceUrl},bodyHtml:checklistStyles+nav+'<h1>'+esc(name)+'</h1><p>'+esc(c.team)+' · '+esc(cardGroup.kind)+' · Check the listing’s exact finish and condition.</p>'+sportsMarketplaceNotice+availability+baseballShoppingHtml(inventory,c,set,env,deps,activeGroup,listings)+sportsLookupScript+'<p><a href="'+sectionPath(set,cardGroup)+'">Back to '+esc(cardGroup.name)+'</a> · <a href="'+esc(set.sourceUrl)+'">Official Topps checklist PDF</a></p>'});
+  const c=chosenCard,numbering=cardNumberingLabel(set,c),name=c.player+' #'+c.cardNumber+' — '+set.displayName+' '+cardGroup.name+(parallelId?' · '+c.variant:'')+(numbering?' '+numbering:'');
+  return html({title:name+' | The Mana Pocket',description:name+'. Official checklist reference and shopping links.',canonicalPath:cardPath(set,c),robotsNoindex:!!parallelId,jsonLd:{'@context':'https://schema.org','@type':'WebPage',name,citation:c.parallelSource||set.sourceUrl},bodyHtml:parallelFamilyStyle+checklistStyles+nav+'<h1>'+esc(name)+'</h1><p>'+esc(c.team)+' · '+esc(cardGroup.kind)+(numbering?' · Publisher numbering '+numbering:'')+' · Check the listing’s exact finish and condition.</p>'+relatedParallelLinks(set,originalCard,esc)+sportsMarketplaceNotice+availability+baseballShoppingHtml(inventory,c,set,env,deps,activeGroup,listings)+sportsLookupScript+'<p><a href="'+(baseCard?setPath(set):sectionPath(set,cardGroup))+'">Back to '+esc(cardGroup.name)+'</a> · <a href="'+esc(c.parallelSource||set.sourceUrl)+'">Publisher reference</a></p>'});
  }
  const filters=sportsSectionFilters(url,group,sectionPath(set,group),esc);if(!filters)return missing();
  const {cards,page,href}=filters;
  const name=set.displayName+' — '+group.name;
- const rows=cards.slice((page-1)*60,page*60).map(c=>'<article class="mp-card"><div class="mp-card-body"><h2 style="font-size:18px"><a href="'+cardPath(set,c)+'">'+esc(c.player)+' #'+esc(c.cardNumber)+'</a></h2><p>'+esc(c.team)+'</p>'+(group.aggregate?'<p>'+esc(c.section)+'</p>':'')+baseballShoppingHtml(inventory,c,set,env,deps,activeGroup,listings)+'</div></article>').join('');
- return html({title:name+' Checklist'+(page>1?' — Page '+page:'')+' | The Mana Pocket',description:'Browse the '+group.cards.length+' verified '+group.name+' checklist entries, matching store copies and eBay searches.',canonicalPath:filters.filtered?sectionPath(set,group):href(page),robotsNoindex:filters.filtered,jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name,citation:set.sourceUrl},bodyHtml:checklistStyles+nav+'<h1 style="font:750 clamp(23px,5vw,32px)/1.2 system-ui;margin:18px 0 10px">'+esc(name)+'</h1><p class="mp-meta">'+group.cards.length+' publisher checklist entries · Store copies first</p><p style="font:13px/1.4 system-ui">We may earn a commission from eBay links.</p><details class="mp-seller-notice"><summary>About this checklist &amp; affiliate listings</summary>'+sportsMarketplaceNotice+availability+'<p>Card identities follow the official publisher checklist. Check the seller’s exact finish, condition and serial numbering before buying.</p></details>'+collectionToolsHtml(group.cards.map(c=>({...c,name:c.player})),{scope:sportFor(set)+'/'+set.id,path:c=>cardPath(set,c)})+filters.form+'<p>'+cards.length+' matching entries.</p><div class="mp-grid mp-sports-card-grid">'+rows+'</div>'+filters.pagination+sportsLookupScript});
+ const rows=cards.slice((page-1)*60,page*60).map(c=>'<article class="mp-card"><div class="mp-card-body"><h2 style="font-size:18px"><a href="'+cardPath(set,c)+'">'+esc(c.player)+' #'+esc(c.cardNumber)+'</a></h2><p>'+esc(c.team)+'</p>'+(group.aggregate?'<p>'+esc(c.section)+(cardNumberingLabel(set,c)?' · '+esc(cardNumberingLabel(set,c)):'')+'</p>':'')+relatedParallelLinks(set,c,esc)+(group.parallelFamilies&&c.section==='Base'?'<p>Select a parallel above to see matching copies, prices and seller photos.</p>':baseballShoppingHtml(inventory,c,set,env,deps,activeGroup,listings))+'</div></article>').join('');
+ return html({title:name+' Checklist'+(page>1?' — Page '+page:'')+' | The Mana Pocket',description:'Browse the '+group.cards.length+' verified '+group.name+' checklist entries, matching store copies and eBay searches.',canonicalPath:filters.filtered?sectionPath(set,group):href(page),robotsNoindex:filters.filtered,jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name,citation:set.sourceUrl},bodyHtml:parallelFamilyStyle+checklistStyles+nav+'<h1 style="font:750 clamp(23px,5vw,32px)/1.2 system-ui;margin:18px 0 10px">'+esc(name)+'</h1><p class="mp-meta">'+group.cards.length+' publisher checklist entries · Store copies first</p><p style="font:13px/1.4 system-ui">We may earn a commission from eBay links.</p><details class="mp-seller-notice"><summary>About this checklist &amp; affiliate listings</summary>'+sportsMarketplaceNotice+availability+'<p>Card identities follow the official publisher checklist. Check the seller’s exact finish, condition and serial numbering before buying.</p></details>'+collectionToolsHtml(group.cards.map(c=>({...c,name:c.player})),{scope:sportFor(set)+'/'+set.id,path:c=>cardPath(set,c)})+filters.form+'<p>'+cards.length+' matching entries.</p><div class="mp-grid mp-sports-card-grid">'+rows+'</div>'+filters.pagination+sportsLookupScript});
 }

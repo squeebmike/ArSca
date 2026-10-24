@@ -53,7 +53,7 @@ assert.equal(sections.find(g=>g.id==='future-stars').cards.find(c=>c.cardNumber=
 assert.equal(sections.find(g=>g.id==='topps-chrome-expose').cards.at(-1).cardNumber,'TCE-30');
 assert.equal(new Set(sections.slice(0,6).flatMap(g=>g.cards.map(c=>c.id))).size,229);
 for(const path of baseballSectionSitemapPaths(baseballSets)){
- assert.ok(paths.includes(path));res=await get(path,{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'});body=await res.text();assert.equal(res.status,200);assert.ok(body.includes('campid=5339046175'));assert.ok(!body.includes('"offers"'));assert.equal(lastPage.canonicalPath,path);
+ assert.ok(paths.includes(path));res=await get(path,{EBAY_PARTNER_CAMPAIGN_ID:'5339046175'});body=await res.text();assert.equal(res.status,200);assert.ok(body.includes('campid=5339046175')||(path.endsWith('/sections/all-parallels')&&body.includes('?parallel=')));assert.ok(!body.includes('"offers"'));assert.equal(lastPage.canonicalPath,path);
 }
 const auto=sections[1].cards[0],autoPath=baseballCardPath(chrome,auto);
 deps.listItems=async()=>[{id:'auto-copy',categorySlug:'sports-cards',name:'Alec Burleson autograph',year:2023,set:chrome.displayName,player:auto.player,cardNumber:auto.cardNumber,subset:auto.section,variant:'Base',price:12,quantity:1},{id:'wrong-base',categorySlug:'sports-cards',name:'Wrong base',year:2023,set:chrome.displayName,player:auto.player,cardNumber:'1',subset:'Base',variant:'Base',price:1,quantity:1}];

@@ -125,7 +125,7 @@ for(const section of groups){
  const {relatedParallelLinks}=await import('../scripts/baseball-section-pages.mjs');
  const base=set.cards.find(c=>c.cardNumber==='1');
  const links=relatedParallelLinks(set,base,esc);
- assert.match(links,/Parallels &amp; variations/);
+ assert.match(links,/Parallels &amp; numbered versions/);
  assert.match(links,/Team Camo/);
  assert.equal(relatedParallelLinks(set,{...base,player:'Unrelated Player',subjects:[{name:'Unrelated Player'}]},esc),'');
  assert.equal(relatedParallelLinks(set,{...base,cardNumber:'NO-SUCH-NUMBER'},esc),'');

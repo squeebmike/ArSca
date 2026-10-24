@@ -1,11 +1,13 @@
 import {holidayBaseballRelease} from './holiday-baseball-release.mjs';
-export function sportsSectionCollections(groups){
+import {numberedParallelCollection} from './sports-parallels.mjs';
+export function sportsSectionCollections(groups,set=null){
  const definitions=[['all-non-base','All non-base cards','Non-base cards',()=>true],['all-autographs','All autographs','Autographs',g=>/auto/i.test(g.kind)],['all-inserts','All inserts & chase designs','Inserts',g=>!/auto|prospect|variation|parallel|relic/i.test(g.kind)],['all-parallels','All parallels & variations','Variations',g=>/variation|parallel/i.test(g.kind)],['all-relics','All relics','Relics',g=>/relic/i.test(g.kind)],['all-prospects','All prospects','Prospects',g=>/prospect/i.test(g.kind)]];
- return definitions.map(([id,name,kind,accept])=>({id,name,kind,aggregate:true,cards:groups.filter(accept).flatMap(g=>g.cards)})).filter(g=>g.cards.length);
+ const collections=definitions.map(([id,name,kind,accept])=>({id,name,kind,aggregate:true,cards:groups.filter(accept).flatMap(g=>g.cards)})).filter(g=>g.cards.length);
+ return set?numberedParallelCollection(set,groups,collections):collections;
 }
 export function sportsChecklistNavigation(set,groups,escape,{sport='baseball',current='base'}={}){
  const root='/'+sport+'/checklists/'+set.id;
- const choices=[...sportsSectionCollections(groups).map(g=>({id:g.id,label:g.name+' ('+g.cards.length+')',group:'Browse by card type',href:root+'/sections/'+g.id})),{id:'base',label:'Base checklist',group:'Base cards',href:root},
+ const choices=[...sportsSectionCollections(groups,set).map(g=>({id:g.id,label:g.name+' ('+g.cards.length+')',group:'Browse by card type',href:root+'/sections/'+g.id})),{id:'base',label:'Base checklist',group:'Base cards',href:root},
   ...groups.map(g=>({id:g.id,label:g.name+' ('+g.cards.length+')',group:/auto/i.test(g.kind)?'Autographs':/prospect/i.test(g.kind)?'Prospects':/variation|parallel/i.test(g.kind)?'Parallels & variations':/relic/i.test(g.kind)?'Relics':'Inserts & chase designs',href:root+'/sections/'+g.id})),
   {id:'parallels',label:'Parallels & variations',group:'Release information',href:root+'#parallel-guide'},
   {id:'odds',label:'Pack / box odds',group:'Release information',href:root+'#pack-odds'}];

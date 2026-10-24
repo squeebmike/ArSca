@@ -1,4 +1,5 @@
 import {manaLoaderStyle} from './mana-loader.mjs';
+import {matchesParallelPrinting} from './sports-parallels.mjs';
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {listingMatchesRelease,ebayAffiliateListingUrl} from './article-marketplace.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -12,6 +13,7 @@ export function sportsListingMatches(listing,card,set,group){
  const inferredFootball=/football/i.test(set.displayName)&&!/\b(?:baseball|basketball|soccer|hockey|football|nfl)\b/i.test(title)&&/^[a-z]{2,}[-\d]/i.test(number)&&groupWords.length&&groupWords.every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title));
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
+ if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings))return false;
  if(/\b(?:break|digital|reprint|replica|custom|facsimile|proxy|lot|box|boxes|pack|packs|case|cases|sealed)\b|you pick|choose your|complete set|set of/.test(title))return false;
  if(listing.endTime&&Date.parse(listing.endTime)<=Date.now())return false;
  const subjects=card.subjects?.length?card.subjects.map(s=>s.name):[card.player];
@@ -30,12 +32,12 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v4:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section');
+ const key='sports-checklist-listings-v5:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
   const needsSubset=!card||/^\d+$/.test(String(card.cardNumber));
-  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null].filter(Boolean).join(' ');
+  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card?.parallelRule?.name,card?.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean).join(' ');
   const result=await deps.searchEbay(query,campaign,signal);
   if(result.warning)throw new Error('Marketplace unavailable');
   const checkedAt=Date.now();
