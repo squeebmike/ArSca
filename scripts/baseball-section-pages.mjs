@@ -1,4 +1,5 @@
 import {archiveNonbaseSections} from './topps/archive-nonbase-sections.mjs';
+import {bowmanProspectSections} from './topps/bowman-prospect-sections.mjs';
 import {cardParallelProgram,selectedParallelCard,cardParallelOptionsHtml,parallelFamilyStyle,printRunLabel,cardNumberingLabel,matchesParallelPrinting,parallelPreviewTile,inlineParallelStock} from './sports-parallels.mjs';
 import {holidayBaseballSections} from './topps/holiday-baseball-sections.mjs';
 import {sportsChecklistNavigation,sportsSectionCollections} from './sports-checklist-ui.mjs';
@@ -17,7 +18,7 @@ const setPath=s=>'/'+sportFor(s)+'/checklists/'+s.id;
 const sectionPath=(s,g)=>setPath(s)+'/sections/'+g.id;
 const cardPath=(s,c)=>setPath(s)+'/cards/'+c.id;
 const sectionsBySet=new Map();
-for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections]){
+for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections,...bowmanProspectSections]){
  const groups=sectionsBySet.get(source.setId)||[];
  for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(group);
  sectionsBySet.set(source.setId,groups);

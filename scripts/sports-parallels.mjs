@@ -3,7 +3,7 @@ import {baseballChecklistInventoryMatches,ebayChecklistSearch} from './topps/pub
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
 const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\bfoil board\b/g,'foilboard').replace(/\brainbow foilboard\b/g,'rainbow foil').trim();
-const variants=rows=>rows.map(([name,printRun,aliases])=>({id:slug(name),name,printRun,aliases:aliases||[name]}));
+const variants=rows=>rows.map(([name,printRun,aliases])=>({id:slug(name),name,printRun,...(/ Border$/.test(name)?{searchTerm:name.replace(/ Border$/,'')}:{}),aliases:aliases||(/ Border$/.test(name)?[name,name.replace(/ Border$/,'')]:[name])}));
 const source21=n=>'https://www.blowoutcards.net/images/ss/21tp'+n+'BB.pdf';
 const insert21=variants([['Blue',null],['Black',299],['Platinum Anniversary',70],['Red',10],['Gold',1]]);
 const ink21=variants([['Black',199],['Gold',50],['Red',25],['Platinum',1]]);
@@ -28,7 +28,24 @@ const insert23=()=>variants([['Blue',null],['Black',299],['Gold',75],['Red',10],
 // Confirmed separately in the 2023 and 2024 Cosmic publisher spotlights.
 const cosmicTail=()=>variants([['Gold Interstellar Refractor',50],['Orange Galactic Refractor',25],['Black Eclipse Refractor',10],['Red Flare Refractor',5],['SuperFractor',1]]);
 const cosmicGreen=()=>variants([['Green Space Dust Refractor',75]]).concat(cosmicTail());
+const bowman23Paper=()=>variants([['Sky Blue Border',499],['Neon Green Border',399],['Fuchsia Border',299],['Purple Border',250],['Purple Pattern',199],['Pink Border',175],['Blue Border',150],['Blue Pattern',125],['Yellow Border',75],['Gold Border',50],['Orange Border',25],['Black Pattern',15],['Red Border',5],['Platinum Border',1],['Printing Plates',1,['printing plate','printing plates']]]);
+const bowman23Insert=()=>variants([['Atomic Refractor',150],['Aqua Refractor',125],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]]);
 const config={
+ '2023-bowman':program('https://ripped.topps.com/2023-bowman-baseball-checklist-spotlight/',bowman23Paper(),{
+  'paper-prospects':{variants:bowman23Paper()},
+  'chrome-prospects':{variants:variants([['Atomic Refractor',null],['Lunar Glow',null],['Refractor',499],['Speckle Refractor',299],['Purple Refractor',250],['Fuchsia Refractor',199],['Fuchsia Lunar Refractor',199],['Blue Refractor',150],['Blue Shimmer Refractor',150],['Aqua Lunar Refractor',125],['Aqua Shimmer Refractor',125],['Green Grass Refractor',99],['Yellow Refractor',75],['Yellow Lunar Refractor',75],['Gold Refractor',50],['Gold Shimmer Refractor',50],['Orange Refractor',25],['Orange Shimmer Refractor',25],['Rose Gold Refractor',10],['Rose Gold Lava Refractor',10],['Red Refractor',5],['Red Lava Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]])},
+  'chrome-prospects-special-die-cut-variation':{printRun:49},
+  ...Object.fromEntries(['bowman-scouts-top-100','modern-prospect','roy-favorites','sights-on-september'].map(id=>[id,{variants:bowman23Insert()}])),
+  ...Object.fromEntries(['bowman-spotlights','2023-bowman-invicta'].map(id=>[id,{variants:bowman23Insert().filter(v=>v.name!=='Aqua Refractor')}])),
+  'chrome-prospect-autographs':{variants:variants([['Refractor',499],['Speckle Refractor',299],['Purple Refractor',250],['Blue Refractor',150],['Blue Lunar Refractor',150],['Atomic Refractor',100],['Green Grass Refractor',99],['Yellow Refractor',75],['Gold Refractor',50],['Gold Shimmer Refractor',50],['Orange Refractor',25],['Orange Shimmer Refractor',25],['Red Refractor',5],['Red Lava Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]])},
+  'chrome-rookie-autographs':{variants:variants([['Refractor',499],['Blue Refractor',150],['Atomic Refractor',100],['Yellow Refractor',75],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1],['Printing Plates',1,['printing plate','printing plates']]])},
+  'bowman-scouts-top-100-autograph-parallel':{printRun:99,variants:variants([['Gold Refractor',50],['Red Refractor',5],['SuperFractor',1]])},
+  'modern-prospect-autographs':{printRun:99,variants:variants([['Red Refractor',5],['SuperFractor',1]])},
+  '2023-bowman-invicta-autograph-parallel':{printRun:99,variants:variants([['Gold Atomic Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])},
+  'sights-on-september-autograph-parallel':{variants:variants([['SuperFractor',1]])},
+  'dual-bowman-prospect-autographs':{printRun:25,variants:variants([['SuperFractor',1]])},
+  'roy-favorites-autographs':{printRun:150,variants:variants([['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]])}
+ }),
  '2026-topps-inception-football':program('https://ripped.topps.com/2026-topps-inception-football-collector-cards-guide/',variants([['Gold Electricity',50],['Hot Pink',35]]),{}),
  '2026-topps-series-1-baseball':program('https://ripped.topps.com/2026-topps-series-1-baseball-collectors-guide/',variants([
   ['Diamante Foil',null],['Holo Foil',null],['Pink Diamante Foil',null],['Rainbow Foil',null],['Sandglitter',null],['Silver Crackleboard Foil',null,['silver crackleboard','silver crackle foilboard']],['Spring Training',null],['Topps Foil Pattern',null],['Aqua Holo Foil',null],['Aqua Rainbow Foil',null],['Gold',2026],

@@ -1,18 +1,39 @@
 import assert from 'node:assert/strict';
 import {archiveNonbaseSections} from '../scripts/topps/archive-nonbase-sections.mjs';
+import {bowmanProspectSections} from '../scripts/topps/bowman-prospect-sections.mjs';
+import {baseballChecklistInventoryMatches} from '../scripts/topps/public-checklist-policy.mjs';
 import {sectionsForSet,baseballSectionSitemapPaths} from '../scripts/baseball-section-pages.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {footballSets} from '../scripts/topps/football-seed.mjs';
-import {sportsReferenceRows} from '../scripts/sports-player-team-search.mjs';
+import {sportsReferenceRows,sportsPlayerTeamSearch} from '../scripts/sports-player-team-search.mjs';
 const sets=[...baseballSets,...footballSets];let cards=0;
 for(const source of archiveNonbaseSections){assert.match(source.sourceSha256,/^[a-f0-9]{64}$/);assert.match(source.sourceUrl,/^https:\/\/(?:cdn.shopify.com|(?:www\.)?topps.com)\//);assert.ok(sets.some(s=>s.id===source.setId));}
 for(const set of sets){const groups=sectionsForSet(set);assert.ok(groups.length,set.id);assert.equal(new Set(groups.map(g=>g.id)).size,groups.length);const ids=new Set(set.cards.map(c=>c.id));for(const g of groups){assert.ok(g.cards.length);assert.equal(new Set(g.cards.map(c=>c.cardNumber)).size,g.cards.length);for(const c of g.cards){assert.ok(!ids.has(c.id),c.id);ids.add(c.id);cards++;assert.ok(c.cardNumber&&c.player&&c.subjects.length);assert.doesNotMatch(c.player+c.team,/�|Ã|Â/);assert.ok(c.subjects.every(s=>s.name));assert.equal(c.section,g.name);}}}
-assert.equal(cards,64951);assert.equal(sets.length,62);
+assert.equal(cards,66051);assert.equal(sets.length,62);
 const paths=baseballSectionSitemapPaths(sets);assert.equal(new Set(paths).size,paths.length);
 const refs=sportsReferenceRows();assert.equal(refs.length,sets.reduce((n,s)=>n+s.cards.length,0)+cards);
 const black=sets.find(s=>s.id==='2025-topps-chrome-black-football');assert.ok(sectionsForSet(black).some(g=>g.cards.some(c=>c.player==='A.J. Brown'&&c.cardNumber==='AU-ABR')));
 const draft=sets.find(s=>s.id==='2025-bowman-draft-baseball');assert.ok(sectionsForSet(draft).some(g=>g.cards.some(c=>c.team===''&&c.player==='Anthony Eyanson')),'unprinted teams stay blank');
-console.log('62 releases, 64,951 native non-base references, unique routes, source hashes, and player/team discovery checked');
+console.log('62 releases, 66,051 native non-base references, unique routes, source hashes, and player/team discovery checked');
+assert.equal(bowmanProspectSections.length,5);
+assert.equal(bowmanProspectSections.reduce((n,s)=>n+s.sections.length,0),7);
+assert.equal(bowmanProspectSections.reduce((n,s)=>n+s.sections.reduce((sum,g)=>sum+g.cards.length,0),0),1100);
+for(const source of bowmanProspectSections){
+ const release=sets.find(s=>s.id===source.setId);assert.equal(source.sourceSha256,release.sourceSha256);assert.equal(source.sourceUrl,release.sourceUrl);
+ for(const group of source.sections){assert.equal(group.kind,'Prospects');assert.ok(group.cards.every(c=>/^(?:BP|BCP|BDC)-\d+$/.test(c.cardNumber)));}
+}
+const spring=sets.find(s=>s.id==='2023-bowman'),springChrome=sectionsForSet(spring).find(g=>g.id==='chrome-prospects').cards[0],springPaper=sectionsForSet(spring).find(g=>g.id==='paper-prospects').cards[0];
+const single={id:'ours',categorySlug:'sports-cards',year:2023,set:'2023 Bowman Chrome',player:springChrome.player,cardNumber:springChrome.cardNumber,name:springChrome.player+' #'+springChrome.cardNumber,subset:'Base',variant:'Base',price:5,quantity:1};
+assert.ok(baseballChecklistInventoryMatches(single,springChrome,spring));
+assert.ok(!baseballChecklistInventoryMatches(single,springPaper,spring),'Chrome and paper prospect prefixes are distinct');
+for(const patch of [{year:2024},{cardNumber:'BCP-999'},{player:'Unrelated Player'},{subset:'Autographs'},{set:'2023 Topps Chrome'},{isSigned:true}])assert.ok(!baseballChecklistInventoryMatches({...single,...patch},springChrome,spring),JSON.stringify(patch));
+const draft25=sets.find(s=>s.id==='2025-bowman-draft-baseball'),draftChrome=sectionsForSet(draft25).find(g=>g.id==='chrome-draft-picks').cards[0];
+assert.ok(draftChrome.subjects.every(s=>s.team===''),'unprinted draft affiliations remain unknown');
+assert.ok(baseballChecklistInventoryMatches({...single,year:2025,set:'2025 Bowman Chrome Draft',player:draftChrome.player,cardNumber:draftChrome.cardNumber,name:draftChrome.player+' #'+draftChrome.cardNumber},draftChrome,draft25));
+assert.ok(!baseballChecklistInventoryMatches({...single,year:2025,set:'2025 Bowman Chrome Draft',player:draftChrome.player,cardNumber:'BD-1',name:draftChrome.player+' #BD-1'},draftChrome,draft25));
+const prospectResults=sportsPlayerTeamSearch(new URL('https://www.themanapocket.com/sports/checklists?type=prospects&set=2023-bowman'),s=>String(s));
+assert.match(prospectResults.bodyHtml,/320 matching checklist entries/);
+assert.ok(sportsReferenceRows().filter(r=>r.set.id==='2023-bowman'&&/^(?:BP|BCP)-\d+$/.test(r.card.cardNumber)).every(r=>r.type==='prospects'));
 
 for(const source of archiveNonbaseSections)for(const g of source.sections)if(g.cards.some(c=>/^\d+$/.test(c.cardNumber)))assert.ok(g.matchTerms?.length,'numeric non-base identity needs its printed subset');
 

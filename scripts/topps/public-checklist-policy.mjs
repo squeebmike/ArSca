@@ -49,8 +49,12 @@ export function baseballChecklistInventoryMatches(item,card,set){
   const section=norm(card.section),isBase=section==='base';
   const sectionAliases={teamofthefuture:["Team of the Future"],theenterprise:["The Enterprise"],chromealletch:['All Etch'],ohsnap:['Oh Snap'],bestof2023earlyformautographs:['of Autographs'],sterlingtek:['Tek'],starsofmlb:['Stars of MLB'],powerchords:['Power Chords'],prospectautographs:['Prospect Autograph'],rookieautographs:['Rookie Autograph'],autographcards:['Autograph','Autographs'],finestautographs:['Autograph','Autographs'],chromeprospects:['Chrome Prospects'],paperprospects:['Prospects','Paper Prospects'],topprospects:['Top Prospects']};
   const prefixedNumber=!isBase&&(/^[a-z0-9]+-/i.test(String(card.cardNumber||''))||(/^HC\d+$/i.test(String(card.cardNumber||''))&&/chrome/i.test(card.section)))&&num(item.cardNumber)===num(card.cardNumber);
+  const prospectPrefix={chromeprospects:'BCP-',paperprospects:'BP-',chromedraftpicks:'BDC-'}[section];
+  const exactProspectNumber=!!(prospectPrefix&&/Bowman/i.test(release)&&String(card.cardNumber).startsWith(prospectPrefix)&&prefixedNumber);
   if(!isBase&&!sectionAliases[section]&&!prefixedNumber&&!item.subset)return false;
-  if(item.subset&&norm(item.subset)!==section)return false;
+  // Intake's Base label is the printing tier. Verified BP/BCP/BDC identities
+  // locate that tier in its prospect section; explicit other subsets cannot.
+  if(item.subset&&norm(item.subset)!==section&&!(exactProspectNumber&&norm(item.subset)==='base'))return false;
   const description=[item.name,item.set,item.variant,item.treatment].join(' ');
   if(!/relic|patch/i.test(card.section)&&(item.isRelic||/relic|memorabilia/i.test(description)))return false;
   if(!/variation/i.test(card.section)&&/image variation|photo variation|short print|\b(?:sp|ssp)\b/i.test(description))return false;
@@ -61,6 +65,8 @@ export function baseballChecklistInventoryMatches(item,card,set){
   // number ranges plus the exact player identify the series without guessing.
   if(isBase&&new RegExp('^'+set.year+'toppsseries[12]$').test(sportsSetKey(parent)))setKeys.push(sportsSetKey(set.year+' Topps'));
   if(!isBase&&(item.subset||prefixedNumber))setKeys.push(sportsSetKey(parent));
+  if(exactProspectNumber&&section==='chromeprospects'&&!/chrome$/i.test(parent))setKeys.push(sportsSetKey(parent+' Chrome'));
+  if(exactProspectNumber&&section==='chromedraftpicks')setKeys.push(sportsSetKey(parent+' Chrome'),sportsSetKey(parent.replace(/Bowman Draft/i,'Bowman Chrome Draft')));
   if(/Topps Stadium Club/.test(parent))setKeys.push(...setKeys.map(k=>k.replace('toppsstadiumclub','stadiumclub')));
   if(!setKeys.includes(sportsSetKey(item.set)))return false;
   const setYear=String(item.set||'').match(/\b((?:19|20)\d{2})\b/)?.[1];
@@ -97,7 +103,7 @@ export function ebayChecklistSearch(card, set, campaignId) {
   // No tracking or attribution claim until the owner supplies their campaign ID.
   if (!/^\d+$/.test(String(campaignId || ''))) return null;
   const label=set.displayName || set.setName || '';
-  const words = [String(label).includes(String(set.year))?null:set.year,label,card.player,card.cardNumber,card.section,card.variant==='Base'?null:card.variant,card.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean);
+  const words = [String(label).includes(String(set.year))?null:set.year,label,card.player,card.cardNumber,card.section,card.variant==='Base'?null:card.parallelRule?.searchTerm||card.variant,card.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean);
   if (!card.player || !card.cardNumber || !set.year) return null;
   const url = new URL('https://www.ebay.com/sch/i.html');
   url.searchParams.set('_nkw', words.join(' '));

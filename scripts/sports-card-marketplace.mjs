@@ -34,12 +34,12 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v8:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v9:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
   const needsSubset=!card||/^\d+$/.test(String(card.cardNumber));
-  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card?.parallelRule?.name,card?.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean).join(' ');
+  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card?.parallelRule?.searchTerm||card?.parallelRule?.name,card?.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean).join(' ');
   const result=await deps.searchEbay(query,campaign,signal);
   if(result.warning)throw new Error('Marketplace unavailable');
   const checkedAt=Date.now();
