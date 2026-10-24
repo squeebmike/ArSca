@@ -29,7 +29,7 @@ export function sportsListingMatches(listing,card,set,group){
   const ordinary=title.replace(/\b(?:red sox|white sox|blue jays)\b/g,' ');
   const releaseWords=new Set(fold(set.displayName).split(/\W+/));
   const finishes=['refractor','prism','prizm','foil','gold','silver','bronze','blue','red','green','pink','purple','orange','yellow','black','white','aqua','fuchsia','rainbow','camo','sapphire','variation','parallel','sparkle','speckle','crackle','diamond','wave','lava','holiday','vintage','mirror','negative','acetate','clear','printing','plate','plates','superfractor','ssP','sp'].filter(w=>!releaseWords.has(w.toLowerCase()));
-  if(new RegExp('\\b(?:'+finishes.join('|')+')\\b','i').test(ordinary)||/\d\s*\/\s*\d|\/\s*\d|\b1\s+of\s+1\b/.test(ordinary))return false;
+  if(new RegExp('\\b(?:'+finishes.join('|')+')\\b','i').test(ordinary)||/\d\s*\/\s*\d|\/\s*\d|\b1\s+of\s+1\b|\b(?:team color border|true photo|funko|dugout peeks|walk this way)\b/.test(ordinary))return false;
  }
  if(card.parallelRule&&!matchesParallelPrinting(listing.title,card.parallelRule,card.parallelSiblings,card.section))return false;
  const numbering=cardParallelProgram(set,card);
@@ -57,12 +57,12 @@ export function sportsListingMatches(listing,card,set,group){
 export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=false}={}){
  const campaign=String(env.EBAY_PARTNER_CAMPAIGN_ID||'');
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
- const key='sports-checklist-listings-v14:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
+ const key='sports-checklist-listings-v15:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
   const needsSubset=!card||/^\d+$/.test(String(card.cardNumber));
-  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card?.parallelRule?.searchTerm||card?.parallelRule?.name,card?.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean).join(' ');
+  const query=[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card?.player,card?.cardNumber,group.id==='base'&&!card?.parallelRule?'Base':needsSubset?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card?.parallelRule?.searchTerm||card?.parallelRule?.name,card?.parallelRule?.printRun?'/'+(card.parallelRule.serialDenominator||card.parallelRule.printRun):null].filter(Boolean).join(' ');
   const eligible=listings=>(listings||[]).filter(l=>ebayAffiliateListingUrl(l.affiliateUrl,campaign)&&/^https:\/\/(?:[^/]+\.)?ebayimg\.com\//.test(l.imageUrl||''))
    .filter(l=>card?sportsListingMatches(l,card,set,group):group.cards.some(c=>sportsListingMatches(l,c,set,group)));
   const result=await deps.searchEbay(query,campaign,signal);
