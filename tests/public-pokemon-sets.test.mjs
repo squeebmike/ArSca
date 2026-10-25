@@ -115,3 +115,56 @@ try{
   assert.equal(pagingStore.has('public_pokemon:cards:v1:interrupted%20set'),false,'an interrupted refresh cannot replace a checklist with page one');
 }finally{globalThis.fetch=originalFetch;}
 console.log('Large Pokémon checklist paging and partial-cache checks passed');
+
+// Store report: ~40k PokemonPriceTracker credits a day. Crawlers walking the
+// public catalog re-downloaded every set after 12 hours. Now: a week's
+// cache, crawlers never trigger a refresh, and a daily credit cap.
+{
+  const mod = await import('../scripts/public-pokemon-sets.mjs');
+  const { loadPokemonSetCards: load, isCrawler, CARDS_FRESH_MS, PUBLIC_DAILY_CREDITS } = mod;
+  assert.equal(CARDS_FRESH_MS, 7 * 24 * 60 * 60 * 1000, 'a set is kept a week');
+  assert.equal(PUBLIC_DAILY_CREDITS, 2000);
+  const req = ua => new Request('https://www.themanapocket.com/pokemon', { headers: ua ? { 'User-Agent': ua } : {} });
+  assert.equal(isCrawler(req('Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)')), true);
+  assert.equal(isCrawler(req('Mozilla/5.0 (compatible; bingbot/2.0)')), true);
+  assert.equal(isCrawler(req('Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2)')), true);
+  assert.equal(isCrawler(req('')), true, 'no browser at all');
+  assert.equal(isCrawler(req('Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36')), false, 'a person');
+
+  const store = new Map();
+  const env2 = { POKEMONPRICE_API_KEY: 'k', LBA_KV: { get: async (k, t) => { const v = store.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => store.set(k, v) } };
+  const rows = n => Array.from({ length: n }, (_, i) => ({ id: 'c' + i, name: 'Card ' + i }));
+  let hits = 0;
+  try {
+    globalThis.fetch = async () => { hits++; return Response.json({ data: rows(150) }); };
+    const t0 = Date.parse('2026-10-25T12:00:00Z');
+    await load(env2, { name: 'Set A', cardCount: 150 }, t0, { refresh: false });
+    assert.equal(hits, 1, 'nothing saved yet: even a crawler gets the page built once');
+    await load(env2, { name: 'Set A', cardCount: 150 }, t0 + 3 * 86400e3, { refresh: true });
+    assert.equal(hits, 1, 'three days later a visitor still gets the saved copy');
+    const old = await load(env2, { name: 'Set A', cardCount: 150 }, t0 + 8 * 86400e3, { refresh: false });
+    assert.equal(hits, 1, 'past a week, a crawler still never spends credits');
+    assert.equal(old.cache, 'stale');
+    await load(env2, { name: 'Set A', cardCount: 150 }, t0 + 8 * 86400e3, { refresh: true });
+    assert.equal(hits, 2, 'a real visitor past a week refreshes it');
+    // The daily cap: credits are counted per card returned.
+    const day = new Date().toISOString().slice(0, 10);
+    assert.ok(Number(store.get('public_pokemon:spend:' + day)) >= 150);
+    store.set('public_pokemon:spend:' + day, String(PUBLIC_DAILY_CREDITS));
+    const capped = await load(env2, { name: 'Set A', cardCount: 150 }, Date.now() + 30 * 86400e3, { refresh: true });
+    assert.equal(hits, 2, 'over the daily cap: no call');
+    assert.equal(capped.cache, 'stale', 'the saved copy is served');
+    await assert.rejects(load(env2, { name: 'Never Seen', cardCount: 10 }, Date.now(), { refresh: true }), /budget/, 'nothing saved and over the cap: the page says try later');
+  } finally { globalThis.fetch = originalFetch; }
+}
+// Every public caller passes who is asking.
+{
+  const { readFileSync } = await import('node:fs');
+  const pages = readFileSync(new URL('../scripts/pokemon-catalog-pages.mjs', import.meta.url), 'utf8');
+  const worker = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
+  assert.ok(pages.includes('const refresh=!isCrawler(request);') && pages.includes('loadPokemonSetCards(env,set,Date.now(),{refresh})'));
+  assert.ok(worker.includes('return set?(await loadPokemonSetCards(env,set,Date.now(),{refresh})).data:[];'), 'articles');
+  assert.ok(worker.includes("loadPokemonSets(env,Date.now(),{refresh:!isPokemonCrawler(request)})"), 'pocket guides');
+  assert.equal((worker.match(/loadPokemonSetCards\(env,set\)/g) || []).length, 0);
+}
+console.log('Public Pokémon credit budget checks passed');
