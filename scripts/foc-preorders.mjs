@@ -3764,7 +3764,7 @@ async function adminPresaleStockFix(request,env,deps){
 // Worker's 6-hourly cron and on demand; every read pages past 1,000 rows.
 // ═══════════════════════════════════════════════════════
 const plural=(n,one,many)=>n+' '+(n===1?one:(many||one+'s'));
-export function stockHealthIssues({presale={early:[],doubles:[],review:[]},unheld=[],notReceived=[],overListed=[],staleHolds=[],zeroStock=[]}={}){
+export function stockHealthIssues({presale={early:[],doubles:[],review:[]},unheld=[],notReceived=[],overListed=[],staleHolds=[],zeroStock=[],staleSlabs=[]}={}){
   const issues=[];
   const add=(key,severity,title,fix,items)=>{if(items.length)issues.push({key,severity,title,fix,count:items.length,items:items.slice(0,40)});};
   const notOut=presale.early.filter(e=>!e.released),outAlready=presale.early.filter(e=>e.released);
@@ -3776,8 +3776,23 @@ export function stockHealthIssues({presale={early:[],doubles:[],review:[]},unhel
   add('over-listed','medium',plural(overListed.length,'eBay presale lists','eBay presales list')+' more copies than you ordered','FINAL FOC REVIEW → UPLOAD PRH CART, or AVAILABLE ON EBAY on the cover',overListed);
   add('review','medium',plural(presale.review.length,'presale to check','presales to check')+' by hand','FOC → 🩺 PRESALE STOCK CHECK',presale.review.map(r=>({name:r.name,note:r.reason})));
   add('stale-holds','low',plural(staleHolds.length,'preorder hold has','preorder holds have')+' waited 14+ days','FOC → 📌 ON HOLD -- remind the customer',staleHolds);
+  add('stale-slabs','medium',plural(staleSlabs.length,'slab hasn\'t','slabs haven\'t')+' had a graded price in 7+ days','Inventory → open it → GET PRICES (link its PriceCharting page if it has none)',staleSlabs);
   add('zero-stock','low',plural(zeroStock.length,'item shows','items show')+' in stock with 0 copies','Inventory → fix the count or mark it sold',zeroStock);
   return {issues,high:issues.filter(i=>i.severity==='high').reduce((a,i)=>a+i.count,0),total:issues.reduce((a,i)=>a+i.count,0)};
+}
+// Store ask: slabs that aren't getting graded prices. A slab is a grader +
+// grade, or a grade in the grade it was bought at / its name ("PSA 10",
+// "BGS 9.5" -- same reading as inventoryGradingInfo on the dashboard).
+const SLAB_GRADE_RE=/\b(PSA|BGS|BECKETT|CGC|SGC|TAG|HGA)\s*(?:GEM\s*(?:MINT|MT)\s*|MINT\s*|PRISTINE\s*)?(10|[1-9](?:\.5)?)(?![\d.])/i;
+export function isSlabRow(r={}){
+  if(/suppl|plush|figure|funko|apparel|toy/i.test(String(r.category||'')))return false;
+  if(String(r.grader||'').trim()&&String(r.grade||'').trim())return true;
+  return SLAB_GRADE_RE.test(String(r.selectedGrade||''))||SLAB_GRADE_RE.test(String(r.name||''));
+}
+export function staleSlabRows(rows=[],now=Date.now(),days=7){
+  const cut=now-days*864e5;
+  return (rows||[]).filter(isSlabRow).filter(r=>{const t=Date.parse(r.priceUpdatedAt||r.lastPriceUpdate||'');return !Number.isFinite(t)||t<cut;})
+    .map(r=>{const t=Date.parse(r.priceUpdatedAt||r.lastPriceUpdate||'');return {name:text(r.name,160)||'Slab',note:Number.isFinite(t)?'last priced '+new Date(t).toISOString().slice(0,10):'never priced',itemId:r.id};});
 }
 function pacificDay(now=Date.now(),addDays=0){
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles'}).format(new Date(now));
@@ -3817,10 +3832,11 @@ export async function collectStockHealth(db,storeId,now=Date.now()){
   const staleCut=now-14*864e5;
   const staleHolds=(recvRows||[]).filter(r=>r.source==='foc_hold'&&r.status==='in_stock'&&Date.parse(r.hold?.heldAt||r.created_at||'')<staleCut)
     .map(r=>({name:text(r.name,160),note:(r.pull?.subscriptionId&&!r.hold?.orderId?'for '+(r.pull.customerName||'a customer')+'\'s pull list since '+String(r.pull.heldAt||r.created_at).slice(0,10)+' -- ring it up or put it back on the shelf from ON HOLD':'for '+(r.hold?.customerName||'a customer')+' since '+String(r.hold?.heldAt||r.created_at).slice(0,10))}));
-  const {data:inStock}=await db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,name:data->>name,qty:data->>qty,quantity:data->>quantity,isBundle:data->>isBundle&limit=100000`);
+  const {data:inStock}=await db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,name:data->>name,qty:data->>qty,quantity:data->>quantity,isBundle:data->>isBundle,category:data->>category,grader:data->>grader,grade:data->>grade,selectedGrade:data->>selectedGrade,priceUpdatedAt:data->>priceUpdatedAt,lastPriceUpdate:data->>lastPriceUpdate&limit=100000`);
+  const staleSlabs=staleSlabRows(inStock,now);
   const zeroStock=(inStock||[]).filter(r=>!(Number(r.qty??r.quantity??1)>0)&&r.isBundle!=='true').map(r=>({name:text(r.name,160)||'Item',note:'qty '+(r.qty??r.quantity??0),itemId:r.id}));
   return {at:new Date(now).toISOString(),today,storeId,checked:{inStock:(inStock||[]).length,presales:presaleRows.length,preorders:(paidItems||[]).length,dueCovers:(due||[]).length},
-    ...stockHealthIssues({presale,unheld,notReceived,overListed,staleHolds,zeroStock})};
+    ...stockHealthIssues({presale,unheld,notReceived,overListed,staleHolds,zeroStock,staleSlabs})};
 }
 const STOCK_HEALTH_KV=storeId=>'stock-health:'+storeId;
 async function saveStockHealth(env,report){

@@ -615,7 +615,7 @@ async function loadCartForShipping(env, storeId, requestedItemsRaw) {
     // actually check out" can't drift apart again.
     if (['sold','archived','returned','deleted','sold_pending_pickup','sold_pending_shipment','hold','lost_damaged','presale','bundled'].includes(invStatus) || availableQty < qty || d.soldAt || d.archivedAt) return { error: json({ ok:false, error:`"${d.name || 'An item'}" in your cart just sold out` }, 409) };
     const checkoutBase = Number(d.priceOverride || 0) || marketRulePrice(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0, d.priceRule);
-    const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0) + (Number(d.signature_value || 0) || 0);
+    const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0, Number(d.autoFloor || 0) || 0) + (Number(d.signature_value || 0) || 0);
     if (unitPrice <= 0) return { error: json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409) };
     const category = String(d.category || d.type || '').toLowerCase();
     const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
@@ -941,7 +941,9 @@ function shapeStorefrontItem(row) {
   const primaryPhoto = storefrontCleanUrl(d.photoDataUrl || d.thumbnail?.url || d.thumbnail || d.image || d.img || d.imageUrl || d.image_url || d.photo);
   const storefrontPhotos = [primaryPhoto, ...(Array.isArray(d.photos) ? d.photos : []), ...(Array.isArray(d.images) ? d.images : [])]
     .map(storefrontCleanUrl).filter((photo, index, all) => photo && all.indexOf(photo) === index).slice(0, 12);
-  // Price rule: market price, unless there's a floor (minPrice) or a
+  // Price rule: market price, unless there's a floor (minPrice, or the
+  // automatic autoFloor: cost + minimum profit after eBay fees, stamped by
+  // the dashboard -- see computeAutoFloor there) or a
   // manually-entered override (priceOverride) from the dashboard's edit
   // screen -- whichever of those is higher than market wins. A signature is
   // a fixed dollar add-on tracked separately from market price (see
@@ -972,7 +974,7 @@ function shapeStorefrontItem(row) {
     // user-taken photo -- checked first, same precedence the dashboard's
     // own inventoryImageUrl() uses, so a self-taken photo with no
     // catalog-sourced image still shows up on the public storefront.
-    price: Math.max(rowBase, Number(d.minPrice || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontPhotos[0] || '',
+    price: Math.max(rowBase, Number(d.minPrice || 0) || 0, Number(d.autoFloor || 0) || 0) + rowSignatureValue, market: rowMarket, image: storefrontPhotos[0] || '',
     photos: storefrontPhotos,
     vendor: storefrontCleanText(d.vendor || '',80),
     description: storefrontDescriptionText(d.description || '',10000),
@@ -2972,7 +2974,7 @@ function categoryLandingHref(slug) { return `/category/${encodeURIComponent(slug
 // visibly sat in the live shop grid as a clickable card that 404'd the
 // instant it was clicked. See the /item/{id} route handler below for the
 // other half of that fix.
-const STOREFRONT_DATA_KEYS=["archivedAt", "brand", "cardNumber", "cardSubset", "category", "checklistSection", "collectorNumber", "collector_number", "comicMetadata", "condition", "configuration", "customUrl", "description", "dropship", "ean", "finish", "focComicDetail", "focReceivedAt", "game", "grade", "grader", "grading_company", "gtin", "image", "imageUrl", "image_url", "images", "img", "isSealed", "is_relic", "is_sealed", "is_signed", "isbn", "itemType", "item_type", "language", "lifecycle", "linkUrl", "manufacturer", "manufacturerPartNumber", "manufacturer_part_number", "market", "marketPrice", "minPrice", "mpn", "name", "number", "onlineListed", "photo", "photoDataUrl", "photos", "player", "priceOverride", "priceRule", "productType", "product_type", "qty", "quantity", "rarity", "rawMarketPrice", "reviews", "scryfallId", "scryfall_id", "series", "set", "setCode", "set_code", "showSoldOut", "signature_value", "signed_by", "sku", "soldAt", "sold_at", "source", "sport", "status", "subject", "subset", "supplierAvailability", "supplierCategoryPaths", "supplierSellingUnit", "supplierSku", "supplierSpecifications", "supplierUpc", "tcgPlayerId", "tcgplayerId", "tcgplayerProductId", "team", "thumbnail", "title", "treatment", "type", "upc", "variant", "vendor", "year"];
+const STOREFRONT_DATA_KEYS=["archivedAt", "brand", "cardNumber", "cardSubset", "category", "checklistSection", "collectorNumber", "collector_number", "comicMetadata", "condition", "configuration", "customUrl", "description", "dropship", "ean", "finish", "focComicDetail", "focReceivedAt", "game", "grade", "grader", "grading_company", "gtin", "image", "imageUrl", "image_url", "images", "img", "isSealed", "is_relic", "is_sealed", "is_signed", "isbn", "itemType", "item_type", "language", "lifecycle", "linkUrl", "manufacturer", "manufacturerPartNumber", "manufacturer_part_number", "market", "marketPrice", "autoFloor", "minPrice", "mpn", "name", "number", "onlineListed", "photo", "photoDataUrl", "photos", "player", "priceOverride", "priceRule", "productType", "product_type", "qty", "quantity", "rarity", "rawMarketPrice", "reviews", "scryfallId", "scryfall_id", "series", "set", "setCode", "set_code", "showSoldOut", "signature_value", "signed_by", "sku", "soldAt", "sold_at", "source", "sport", "status", "subject", "subset", "supplierAvailability", "supplierCategoryPaths", "supplierSellingUnit", "supplierSku", "supplierSpecifications", "supplierUpc", "tcgPlayerId", "tcgplayerId", "tcgplayerProductId", "team", "thumbnail", "title", "treatment", "type", "upc", "variant", "vendor", "year"];
 const STOREFRONT_SELECT='id,status,created_at,updated_at,'+STOREFRONT_DATA_KEYS.map(k=>'sf_'+k+':data->'+k).join(',')+',sf_raw_scryfallId:data->raw->scryfallId,sf_raw_tcgPlayerId:data->raw->tcgPlayerId,sf_raw_setCode:data->raw->setCode,sf_ref_scryfallId:data->externalRefs->scryfallId,sf_ref_tcgPlayerId:data->externalRefs->tcgPlayerId';
 function storefrontProjectedRow(row){if(row.data)return row;return {...row,data:{...Object.fromEntries(STOREFRONT_DATA_KEYS.map(k=>[k,row['sf_'+k]])),raw:{scryfallId:row.sf_raw_scryfallId,tcgPlayerId:row.sf_raw_tcgPlayerId,setCode:row.sf_raw_setCode},externalRefs:{scryfallId:row.sf_ref_scryfallId,tcgPlayerId:row.sf_ref_tcgPlayerId}}};}
 // The public catalog reads the storefront_inventory view

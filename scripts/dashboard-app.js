@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.24.1-ppt-short-pause';
+const APP_VERSION = '2026.10.25.1-slabs-and-floors';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -3163,6 +3163,8 @@ function getVendorConfig(){
       cardThemes: Array.isArray(saved.cardThemes) ? saved.cardThemes : [...DEFAULT_VENDOR_CONFIG.cardThemes],
       // Store-wide alert thresholds -- see getAlertSettings.
       alertSettings: { ...(saved.alertSettings || {}) },
+      // Automatic floor rules (eBay fees + minimum profit) -- see floorRules.
+      floorRules: { ...(saved.floorRules || {}) },
     };
   } catch(e) {
     return JSON.parse(JSON.stringify(DEFAULT_VENDOR_CONFIG));
@@ -4648,13 +4650,17 @@ function renderVendorConfigPanel(){
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-bottom:8px">
         Sell above market per category: market + the percent or the flat dollars, whichever is more, rounded up to the dollar (10% or $2: $8 market sells at $10, $50 sells at $55). Saved for the whole store, so every device uses it. New items in that category get the rule automatically; APPLY TO IN-STOCK prices what you already have (it asks before touching 🔒 locked prices), CLEAR puts in-stock items back to plain market. Prices keep following market on every price sync.
       </div>
-      <div class="tbl-wrap"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">% OVER MARKET</th><th style="text-align:right">OR FLAT $ OVER</th><th>IN STOCK</th></tr></thead><tbody>
+      ${floorRulesPanelHtml()}
+      <div class="tbl-wrap"><table><thead><tr><th>CATEGORY</th><th style="text-align:right">% OVER MARKET</th><th style="text-align:right">OR FLAT $ OVER</th><th style="text-align:right" title="Blank = store default">FLOOR: MIN PROFIT $</th><th style="text-align:right" title="Blank = store default">OR % OF COST</th><th>IN STOCK</th></tr></thead><tbody>
         ${getInventoryCategories().map(c => {
           const rule = cfg.categoryPriceCeilings?.[c] || {};
           const safe = String(c).replace(/'/g,"\\'");
+          const floorRule = floorRules().categories[c] || {};
           return `<tr><td>${escHtml(c)}</td>
             <td style="text-align:right"><input type="number" min="0" step="1" class="tsi" style="width:70px;text-align:right" value="${rule.pct || ''}" placeholder="0" onchange="setCategoryPriceCeilingRule('${safe}','pct',this.value)"></td>
             <td style="text-align:right"><input type="number" min="0" step="0.01" class="tsi" style="width:80px;text-align:right" value="${rule.flat || ''}" placeholder="0.00" onchange="setCategoryPriceCeilingRule('${safe}','flat',this.value)"></td>
+            <td style="text-align:right"><input type="number" min="0" step="0.01" class="tsi" style="width:80px;text-align:right" value="${floorRule.profit ?? ''}" placeholder="${floorRules().profit.toFixed(2)}" onchange="setCategoryFloorRule('${safe}','profit',this.value)"></td>
+            <td style="text-align:right"><input type="number" min="0" step="1" class="tsi" style="width:70px;text-align:right" value="${floorRule.profitPct ?? ''}" placeholder="${floorRules().profitPct || 0}" onchange="setCategoryFloorRule('${safe}','profitPct',this.value)"></td>
             <td style="white-space:nowrap">${(rule.pct || rule.flat) ? `<button class="ra" onclick="applyCategoryPriceRuleToStock('${safe}')">APPLY TO IN-STOCK</button>` : ''} <button class="ra" onclick="clearCategoryPriceRuleFromStock('${safe}')">CLEAR</button></td>
           </tr>`;
         }).join('')}
@@ -4852,6 +4858,128 @@ async function clearCategoryPriceRuleFromStock(category){
   }
   toast_dash(`${done} ${category} item${done === 1 ? '' : 's'} back to market price`);
   filterTable();
+}
+
+// ── AUTOMATIC FLOOR settings (Settings -> CATEGORY PRICE RULES) ──
+function floorRulesPanelHtml(){
+  const r = floorRules();
+  const num = (field, value, step, width) => `<input type="number" min="0" step="${step}" class="tsi" style="width:${width}px;text-align:right;margin:0 0 0 4px" value="${value}" onchange="setFloorRule('${field}',this.value)">`;
+  const example = cost => { const floor = ebayFloorPrice(cost, { profit:r.profit, profitPct:r.profitPct }, r); return `$${cost.toFixed(2)} cost → floor $${floor.toFixed(2)} (keeps $${ebayNetProfit(floor, cost, r).toFixed(2)} after eBay)`; };
+  const comic = `A $4.99 comic that cost $2.50 keeps $${ebayNetProfit(4.99, 2.5, r).toFixed(2)} after eBay; one that cost $4 keeps $${ebayNetProfit(4.99, 4, r).toFixed(2)}.`;
+  const held = r.on ? (all || []).filter(i => i.status === 'in_stock' && inventoryHeldAtFloor(i)).length : 0;
+  const stale = r.on ? floorStockPlan().length : 0;
+  return `<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--g);letter-spacing:.04em">AUTOMATIC FLOOR -- NEVER SELL AT A LOSS</div>
+      <label style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:flex;gap:6px;align-items:center"><input type="checkbox" ${r.on ? 'checked' : ''} onchange="setFloorRule('on',this.checked)"> ON</label>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin:6px 0 8px">Every item with a cost gets a floor: the lowest whole-dollar price that still covers its cost plus a minimum profit after eBay's cut. The shop, register, labels and eBay never go below it (an item's own floor wins if it's higher). The minimum profit is a name rule below if one matches, otherwise its category's (in the table), otherwise the store default.</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10px;color:var(--dim);align-items:center">
+      <label>eBay fee %${num('ebayPct', r.ebayPct, 0.01, 70)}</label>
+      <label>+ order fee $${num('orderFee', r.orderFee, 0.01, 60)}</label>
+      <label>over $10: $${num('orderFeeOver10', r.orderFeeOver10, 0.01, 60)}</label>
+      <label title="Mailer, sleeve, top loader, any postage you pay that the buyer doesn't">+ your cost per order $${num('perOrderCost', r.perOrderCost, 0.01, 60)}</label>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10px;color:var(--dim);align-items:center;margin-top:8px">
+      <label>STORE DEFAULT min profit $${num('profit', r.profit, 0.01, 70)}</label>
+      <label>or % of cost${num('profitPct', r.profitPct, 1, 60)}</label>
+      <span>(whichever is more)</span>
+    </div>
+    <div style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">NAME RULES (win over the category):
+      ${(r.names || []).map((n, idx) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">name has <input class="tsi" style="width:150px;margin:0" value="${escHtml(n.match || '')}" onchange="setFloorNameRule(${idx},'match',this.value)"> min profit $<input type="number" min="0" step="0.01" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.profit ?? ''}" onchange="setFloorNameRule(${idx},'profit',this.value)"> or %<input type="number" min="0" step="1" class="tsi" style="width:60px;margin:0;text-align:right" value="${n.profitPct || ''}" onchange="setFloorNameRule(${idx},'profitPct',this.value)"> <button class="ra" onclick="removeFloorNameRule(${idx})">x</button></div>`).join('')}
+      <button class="ra" style="margin-top:4px" onclick="addFloorNameRule()">+ NAME RULE</button>
+    </div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">${escHtml(example(2.5))} · ${escHtml(example(6))} · ${escHtml(example(45))}<br>${escHtml(comic)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="ra" onclick="applyFloorsToStock()">APPLY FLOORS TO IN-STOCK${stale ? ' (' + stale + ')' : ''}</button>
+      <button class="ra" onclick="toggleFloorHeldList()">HELD AT FLOOR (${held})</button>
+    </div>
+    <div id="floor-held-list" style="display:none;margin-top:8px"></div>
+  </div>`;
+}
+function saveFloorRules(next){
+  const cfg = getVendorConfig();
+  cfg.floorRules = next;
+  saveVendorConfig(cfg);
+}
+function setFloorRule(field, value){
+  const r = floorRules();
+  r[field] = field === 'on' ? !!value : Math.max(0, parseFloat(value) || 0);
+  saveFloorRules(r);
+  toast_dash('Floor rule saved -- new items use it. APPLY FLOORS TO IN-STOCK updates what you have.');
+}
+// Blank = use the store default (the field is removed, not set to 0).
+function setCategoryFloorRule(category, field, value){
+  const r = floorRules();
+  const rule = { ...(r.categories[category] || {}) };
+  if(String(value).trim() === '') delete rule[field];
+  else rule[field] = Math.max(0, parseFloat(value) || 0);
+  if(rule.profit == null && rule.profitPct == null) delete r.categories[category];
+  else r.categories[category] = rule;
+  saveFloorRules(r);
+  toast_dash(category + ' floor saved -- APPLY FLOORS TO IN-STOCK updates what you have.');
+}
+function setFloorNameRule(idx, field, value){
+  const r = floorRules();
+  const names = (r.names || []).map(n => ({ ...n }));
+  if(!names[idx]) return;
+  names[idx][field] = field === 'match' ? String(value || '').trim() : Math.max(0, parseFloat(value) || 0);
+  r.names = names;
+  saveFloorRules(r);
+}
+function addFloorNameRule(){
+  const match = prompt('Items whose name has (e.g. Secret Lair):', '');
+  if(!match || !match.trim()) return;
+  const profit = Math.max(0, parseFloat(prompt('Minimum profit after eBay fees ($):', '10')) || 0);
+  const r = floorRules();
+  r.names = [...(r.names || []), { match:match.trim(), profit, profitPct:0 }];
+  saveFloorRules(r);
+}
+function removeFloorNameRule(idx){
+  const r = floorRules();
+  r.names = (r.names || []).filter((_, i) => i !== idx);
+  saveFloorRules(r);
+}
+// In-stock items whose saved floor isn't what the rules say now.
+function floorStockPlan(){
+  const r = floorRules();
+  return (all || []).filter(i => i.status === 'in_stock' && !inventoryIsDropship(i))
+    .map(i => ({ item:i, floor:computeAutoFloor(i, r) }))
+    .filter(p => p.floor !== inventoryAutoFloor(p.item));
+}
+async function applyFloorsToStock(){
+  const plan = floorStockPlan();
+  if(!plan.length) { toast_dash('Every in-stock item already has the right floor'); return; }
+  const raised = plan.filter(p => p.floor > inventoryEffectiveBasePrice(p.item) && p.floor > inventoryListPrice(p.item));
+  if(!confirm(`Set the automatic floor on ${plan.length} in-stock item${plan.length === 1 ? '' : 's'}?\n\n${raised.length} of them sell below their floor right now and go up to it (so a sale doesn't lose money after eBay fees). The rest just get the floor saved for later.`)) return;
+  let done = 0, failed = 0;
+  for(const { item, floor } of plan){
+    const updates = { autoFloor:floor };
+    const price = inventoryListPrice({ ...item, ...updates });
+    if(price > 0) Object.assign(updates, { salePrice:price, listPrice:price, displayPrice:price });
+    try { await saveInventoryEdit(item, updates); Object.assign(item, updates); if(item.raw) Object.assign(item.raw, updates); done++; }
+    catch(e) { failed++; console.warn('applyFloorsToStock', item.id, e?.message); }
+    if(done && done % 25 === 0) toast_dash(`Floors set on ${done} of ${plan.length}…`);
+  }
+  toast_dash(`Floors set on ${done} item${done === 1 ? '' : 's'}${raised.length ? ` · ${raised.length} went up to their floor` : ''}${failed ? ` · ${failed} failed -- try again` : ''}`);
+  renderVendorConfigPanel();
+  filterTable();
+}
+function floorHeldListHtml(){
+  const r = floorRules();
+  const rows = (all || []).filter(i => i.status === 'in_stock' && inventoryHeldAtFloor(i))
+    .sort((a, b) => (inventoryFloorPrice(b) - inventoryEffectiveBasePrice(b)) - (inventoryFloorPrice(a) - inventoryEffectiveBasePrice(a)));
+  if(!rows.length) return '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Nothing is held at its floor -- every item\'s market price already clears cost after eBay fees.</div>';
+  return `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);margin-bottom:4px">Market (or your price) is under what you paid plus fees -- these sell at the floor instead.</div><div class="tbl-wrap"><table><thead><tr><th>ITEM</th><th style="text-align:right">COST</th><th style="text-align:right">WOULD BE</th><th style="text-align:right">FLOOR</th><th style="text-align:right">KEEPS</th></tr></thead><tbody>
+    ${rows.slice(0, 200).map(i => `<tr><td>${escHtml(i.name || 'Item')} <span style="color:var(--dim)">${escHtml(i.category || '')}</span></td><td style="text-align:right">$${inventoryCostBasis(i).toFixed(2)}</td><td style="text-align:right">$${inventoryEffectiveBasePrice(i).toFixed(2)}</td><td style="text-align:right;color:var(--gold)">$${inventoryFloorPrice(i).toFixed(2)}</td><td style="text-align:right">$${ebayNetProfit(inventoryFloorPrice(i), inventoryCostBasis(i), r).toFixed(2)}</td></tr>`).join('')}
+  </tbody></table></div>${rows.length > 200 ? `<div style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">+${rows.length - 200} more</div>` : ''}`;
+}
+function toggleFloorHeldList(){
+  const el = document.getElementById('floor-held-list');
+  if(!el) return;
+  const open = el.style.display === 'none';
+  el.style.display = open ? '' : 'none';
+  if(open) el.innerHTML = floorHeldListHtml();
 }
 
 // Store settings are shared by every device on the store. They used to be
@@ -9563,19 +9691,78 @@ function inventoryPokemonExactQuery(item = {}){
 // market prices -- none of them have a graded-tier price at all. A graded
 // item's "market price" needs to come from PriceCharting's graded-slab guide
 // values instead, or it silently gets compared against the wrong (raw) price.
+// Store report: "some slabs aren't reading they're slabs." A slab only
+// counted when both grader and grade were filled in, but a card bought at
+// its PSA 10 price kept that only as the grade it was priced at
+// (selectedGrade / activePriceBasis.grade), and some had "PSA 10" only in
+// the name -- Pikachu ex 219/191 and Meowth 106 were priced as raw cards.
+// The grade is read from those too. Supplies ("Slab Bumpers - PSA Card")
+// and merch never count.
+const SLAB_GRADE_RE = /\b(PSA|BGS|BECKETT|CGC|SGC|TAG|HGA)\s*(?:GEM\s*(?:MINT|MT)\s*|MINT\s*|PRISTINE\s*)?(10|[1-9](?:\.5)?)(?![\d.])/i;
+function parseSlabGradeText(text){
+  const m = String(text || '').match(SLAB_GRADE_RE);
+  if(!m) return null;
+  const company = m[1].toUpperCase();
+  return { grader:company === 'BECKETT' ? 'BGS' : company, grade:m[2] };
+}
 function inventoryGradingInfo(item = {}){
-  const grader = item.grader || item.grading_company || item.raw?.grader || item.raw?.grading_company || '';
-  const grade = item.grade || item.raw?.grade || '';
-  return { grader:String(grader || '').trim(), grade:String(grade || '').trim() };
+  const grader = String(item.grader || item.grading_company || item.raw?.grader || item.raw?.grading_company || '').trim();
+  const grade = String(item.grade || item.raw?.grade || '').trim();
+  if(grader && grade) return { grader, grade };
+  const category = String(item.category || item.raw?.category || '');
+  if(/suppl|plush|figure|funko|\bpop\b|toy|apparel|shirt|memorabilia|accessor/i.test(category)) return { grader, grade };
+  let basis = item.activePriceBasis || item.raw?.activePriceBasis;
+  if(typeof basis === 'string') { try { basis = JSON.parse(basis); } catch(e) { basis = null; } }
+  const parsed = parseSlabGradeText(item.selectedGrade || item.raw?.selectedGrade) || parseSlabGradeText(basis?.grade) || parseSlabGradeText(inventoryCardName(item));
+  return parsed ? { grader:grader || parsed.grader, grade:grade || parsed.grade } : { grader, grade };
+}
+// The card's name without its grade, for a PriceCharting search
+// ("Pikachu ex - 219/191 PSA 10" -> "Pikachu ex - 219/191").
+function slabSearchName(item = {}){
+  return String(inventoryCardName(item) || '').replace(new RegExp(SLAB_GRADE_RE.source, 'gi'), ' ').replace(/\s+/g, ' ').replace(/[\s\-–]+$/, '').trim();
 }
 function isGradedInventoryItem(item = {}){
   const { grader, grade } = inventoryGradingInfo(item);
   return !!(grader && grade);
 }
+// A slab's saved PriceCharting product (its id, or a pricecharting.com /
+// sportscardspro.com page link) -- the exact card, so its graded guide
+// values beat a name search. Magikarp CGC 10 (Japanese) had its page saved
+// but the name search never matched, so it stopped updating.
+function slabPcLinkForItem(item = {}){
+  const id = [item.pricechartingProductId, item.raw?.pricechartingProductId].map(v => String(v || '').trim()).find(v => /^\d+$/.test(v)) || '';
+  if(id) return { id, url:'' };
+  const url = String(item.providerUrl || item.raw?.providerUrl || '').trim();
+  if(!/^https?:\/\/(www\.)?(pricecharting|sportscardspro)\.com\/game\//i.test(url)) return { id:'', url:'' };
+  const shortId = url.match(/\/game\/(\d+)\/?(?:[?#].*)?$/);
+  return { id:shortId ? shortId[1] : '', url };
+}
+async function fetchPinnedSlabPrice(item, grader, grade){
+  const link = slabPcLinkForItem(item);
+  const pcId = await resolveSportsPcProductId(link).catch(() => '');
+  const bucket = pcGradeBucket(grader, grade);
+  if(!pcId || !bucket) return null;
+  try {
+    const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const price = Number(data?.product?.prices?.[bucket] || 0);
+    if(!res.ok || !data.ok || !(price > 0)) return null;
+    return {
+      price,
+      source:'PriceCharting graded (' + grader + ' ' + grade + ', pinned #' + pcId + ')',
+      lastUpdated:data.product?.lastUpdated || new Date().toISOString(),
+      productUrl:data.product?.url || link.url || '',
+      imageUrl:data.product?.imageUrl || '',
+      pricechartingProductId:pcId,
+    };
+  } catch(e) { return null; }
+}
 async function fetchGradedSlabPriceForItem(item = {}){
   const { grader, grade } = inventoryGradingInfo(item);
   if(!grader || !grade) return null;
-  const q = [inventoryCardName(item), inventorySetName(item)].filter(Boolean).join(' ').trim();
+  const pinned = await fetchPinnedSlabPrice(item, grader, grade);
+  if(pinned) return pinned;
+  const q = [slabSearchName(item), inventorySetName(item)].filter(Boolean).join(' ').trim();
   if(!q) return null;
   const params = new URLSearchParams({
     q, company:grader, grade,
@@ -13977,6 +14164,9 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   ['consignorName',''], ['consignmentId',''], ['signed_by',''],
   ['pokemonPriceTrackerLastUpdated',''],
   ['signature_value',0,'num'], ['minPrice',0,'num'], ['ceilingPrice',0,'num'],
+  // Automatic floor (cost + minimum profit after eBay fees) -- see
+  // computeAutoFloor. Listed here so it survives every later save.
+  ['autoFloor',0,'num'],
   // Category markup ({pct, flat}) this item is priced by -- see
   // inventoryPriceRule. Listed here so it survives every later save.
   ['priceRule',null,'raw'],
@@ -15631,6 +15821,63 @@ function inventoryImageSourceLabel(item={}){
 function inventoryCostBasis(item={}){ if(inventoryIsDropship(item)) return 0; return Number(item.cost ?? item.costBasis ?? item.raw?.cost ?? 0) || 0; }
 function inventoryMarketPrice(item={}){ return Number(item.market ?? item.marketPrice ?? item.rawMarketPrice ?? item.raw?.market ?? 0) || 0; }
 function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.minPrice ?? 0) || 0; }
+// Store ask: "I don't want to lose money ... all floors should be eBay fees
+// in mind." Every item with a cost gets an automatic floor: the lowest whole-
+// dollar price that still clears its cost plus a minimum profit after eBay
+// takes its cut (13.25% + $0.30 an order, $0.40 over $10), so a sale
+// anywhere never loses money. The minimum profit comes from the store's
+// rules (Settings -> CATEGORY PRICE RULES): a name rule ("Secret Lair" +$10)
+// first, then the category's, then the store default. Stamped on each item
+// as autoFloor (new items at creation, again whenever cost or category
+// changes, all of them via APPLY FLOORS) so the shop and checkout use the
+// same number. The item's own floor (minPrice) still wins if it's higher.
+const DEFAULT_FLOOR_RULES = { on:true, ebayPct:13.25, orderFee:0.30, orderFeeOver10:0.40, perOrderCost:0, profit:0.50, profitPct:0, categories:{}, names:[{ match:'Secret Lair', profit:10, profitPct:0 }] };
+function floorRules(){
+  const saved = getVendorConfig().floorRules || {};
+  return { ...DEFAULT_FLOOR_RULES, ...saved, categories:{ ...(saved.categories || {}) }, names:Array.isArray(saved.names) ? saved.names : DEFAULT_FLOOR_RULES.names };
+}
+// Which minimum profit applies to an item, and where it came from.
+function floorProfitRuleFor(item = {}, rules = floorRules()){
+  const name = String(inventoryCardName(item) || item.title || '').toLowerCase();
+  const byName = (rules.names || []).find(r => r && String(r.match || '').trim() && name.includes(String(r.match).trim().toLowerCase()));
+  if(byName) return { profit:Number(byName.profit || 0), profitPct:Number(byName.profitPct || 0), from:'name has "' + String(byName.match).trim() + '"' };
+  const category = String(item.category || item.raw?.category || '').trim();
+  const byCategory = rules.categories?.[category];
+  if(byCategory && (byCategory.profit != null || byCategory.profitPct != null)) return { profit:Number(byCategory.profit || 0), profitPct:Number(byCategory.profitPct || 0), from:category + ' rule' };
+  return { profit:Number(rules.profit || 0), profitPct:Number(rules.profitPct || 0), from:'store default' };
+}
+// The lowest price that clears cost + minimum profit after eBay fees:
+// price - price x fee% - order fee - your per-order cost = cost + profit.
+function ebayFloorPrice(cost, profitRule = {}, rules = floorRules()){
+  const c = Number(cost || 0);
+  if(!(c > 0)) return 0;
+  const pct = Math.min(0.9, Math.max(0, Number(rules.ebayPct || 0) / 100));
+  const profit = Math.max(Number(profitRule.profit || 0), c * Number(profitRule.profitPct || 0) / 100);
+  const solve = orderFee => (c + Number(orderFee || 0) + Number(rules.perOrderCost || 0) + profit) / (1 - pct);
+  let price = solve(rules.orderFee);
+  if(price > 10) price = solve(rules.orderFeeOver10);
+  return roundSellPrice(price);
+}
+// What a sale at this price leaves after eBay fees and cost.
+function ebayNetProfit(price, cost, rules = floorRules()){
+  const p = Number(price || 0);
+  if(!(p > 0)) return 0;
+  const fees = p * Number(rules.ebayPct || 0) / 100 + Number(p > 10 ? rules.orderFeeOver10 : rules.orderFee || 0) + Number(rules.perOrderCost || 0);
+  return Math.round((p - fees - Number(cost || 0)) * 100) / 100;
+}
+// The floor an item should carry now (0 = none: floors off, or no cost).
+function computeAutoFloor(item = {}, rules = floorRules()){
+  if(!rules.on || inventoryIsDropship(item)) return 0;
+  return ebayFloorPrice(inventoryCostBasis(item), floorProfitRuleFor(item, rules), rules);
+}
+function inventoryAutoFloor(item={}){ return Number(item.autoFloor ?? item.raw?.autoFloor ?? 0) || 0; }
+// The floor actually used: the higher of the item's own and the automatic.
+function inventoryFloorPrice(item={}){ return Math.max(inventoryMinPrice(item), inventoryAutoFloor(item)); }
+// True when the floor is what's setting this item's price.
+function inventoryHeldAtFloor(item={}){
+  const floor = inventoryFloorPrice(item);
+  return floor > 0 && floor > inventoryEffectiveBasePrice(item);
+}
 // The ceiling counterpart to inventoryMinPrice -- "never sell above this."
 // Auto-set per category at creation time (see createBuiltInInventoryItem /
 // categoryPriceCeilingRule), then freely editable per item afterward the
@@ -15698,7 +15945,8 @@ function inventoryEffectiveBasePrice(item={}){
 // set, same as the floor applies on top of an override.
 function inventoryListPrice(item={}){
   const base = inventoryEffectiveBasePrice(item);
-  const floor = inventoryMinPrice(item);
+  // The item's own floor or its automatic one (inventoryFloorPrice), whichever is higher.
+  const floor = Math.max(inventoryMinPrice(item), Number(item.autoFloor ?? item.raw?.autoFloor ?? 0) || 0);
   let price = floor > 0 ? Math.max(base, floor) : base;
   const ceiling = inventoryCeilingPrice(item);
   if(ceiling > 0) price = Math.min(price, ceiling);
@@ -15715,7 +15963,7 @@ function inventoryListPrice(item={}){
 function inventorySellSuggestedPrice(item={}){
   const basePrice = inventoryEffectiveBasePrice(item);
   const discounted = basePrice > 0 ? applyShowPriceRule(basePrice) : 0;
-  const floor = inventoryMinPrice(item);
+  const floor = Math.max(inventoryMinPrice(item), Number(item.autoFloor ?? item.raw?.autoFloor ?? 0) || 0);
   let floored = floor > 0 ? Math.max(discounted, floor) : discounted;
   const ceiling = inventoryCeilingPrice(item);
   if(ceiling > 0) floored = Math.min(floored, ceiling);
@@ -16569,7 +16817,7 @@ function slowMoverActionCellHtml(s){
 function suggestDeadStockAction(item){
   const qty = inventoryAvailableQuantity(item);
   const price = inventoryListPrice(item);
-  const floor = inventoryMinPrice(item);
+  const floor = inventoryFloorPrice(item);
   const days = inventoryDaysInStock(item) || 0;
   const whatnotCategories = ['Pokemon TCG','Magic: The Gathering','One Piece TCG','Yu-Gi-Oh!','Disney Lorcana','Sports'];
   // Comics aren't a Whatnot category above (no live-auction audience for
@@ -16827,7 +17075,7 @@ function renderTable(){
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
-      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}${inventoryPriceAgeLabel(i)?`<br><span class="inv-price-age" style="font-family:var(--font-mono);font-size:8px;color:${inventoryPriceAgeColor(i)}">${escHtml(inventoryPriceAgeLabel(i))}</span>`:''}</td>
+      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${inventoryHeldAtFloor(i)?`<span class="inv-warning-pill" style="color:var(--gold);border-color:var(--gold)" title="Held at its floor: under this it loses money after eBay fees (cost $${inventoryCostBasis(i).toFixed(2)})">FLOOR</span><br>`:''}${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}${inventoryPriceAgeLabel(i)?`<br><span class="inv-price-age" style="font-family:var(--font-mono);font-size:8px;color:${inventoryPriceAgeColor(i)}">${escHtml(inventoryPriceAgeLabel(i))}</span>`:''}</td>
       <td class="pp pd">${inventoryIsDropship(i)?'Not owned':money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${rowAvail.color}">${rowAvail.label}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
@@ -21231,7 +21479,9 @@ function computeEbayListingFields(item){
   // reached the aspects/description, never the #1 search-ranking field.
   const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,isComic ? withRatioWord(item.name) : item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
-  const price = Number(item.market || item.salePrice || 0);
+  // Never listed under the item's floor -- under it, the sale loses money
+  // after eBay fees (see computeAutoFloor).
+  const price = Math.max(Number(item.market || item.salePrice || 0), inventoryFloorPrice(item));
   // A presale item's real ship date is nowhere near "1 business day" --
   // {shippingLine} picks the sentence that actually matches this item's
   // status instead of a template needing two contradictory hardcoded
@@ -24059,6 +24309,7 @@ async function createBuiltInInventoryItem(item, updates, sourceLabel='built_in')
     onlineListed:(item?.onlineListed ?? updates?.onlineListed ?? true),
     ceilingPrice:(item?.ceilingPrice ?? updates?.ceilingPrice ?? 0),
     priceRule:(item?.priceRule ?? updates?.priceRule ?? autoPriceRule),
+    autoFloor:(item?.autoFloor ?? updates?.autoFloor ?? computeAutoFloor(resolvedForRule)),
   };
   if(data.name) data.name = comicName(data.name, data.category);
   if(data.title) data.title = comicName(data.title, data.category);
@@ -24090,6 +24341,11 @@ async function updateBuiltInInventoryItem(item, updates){
   const sb = getSupabaseClient();
   const session = getAuthSession();
   const storeId = getActiveStoreId();
+  // A new cost, category or name can mean a new floor.
+  if(updates && !('autoFloor' in updates) && ['cost','costBasis','category','name','dropship','ownershipType'].some(k => k in updates)) {
+    const floor = computeAutoFloor({ ...item, ...updates });
+    if(floor !== inventoryAutoFloor(item)) updates = { ...updates, autoFloor:floor };
+  }
   const nextData = builtInDataFromItem(item, updates);
   if(Number(nextData.qty || 0) < 0) throw new Error('Inventory quantity cannot be negative.');
   if(sb && session?.supabase && storeId) {
@@ -27821,8 +28077,8 @@ async function markDownSlowSeller(itemId){
   const pctRaw = prompt('Mark down "' + item.name + '" (now $' + price.toFixed(2) + ') by what percent?', '25');
   if(pctRaw == null) return false;
   const pct = Math.max(1, Math.min(90, parseFloat(pctRaw) || 0));
-  const { next, blockedByFloor } = slowSellerMarkdownPrice(price, pct, inventoryMinPrice(item));
-  if(blockedByFloor){ toast_dash('$' + next.toFixed(2) + ' is below this item\'s floor price -- lower the floor first'); return false; }
+  const { next, blockedByFloor } = slowSellerMarkdownPrice(price, pct, inventoryFloorPrice(item));
+  if(blockedByFloor){ toast_dash('$' + next.toFixed(2) + ' is below this item\'s floor ($' + inventoryFloorPrice(item).toFixed(2) + ' -- under that it loses money after eBay fees)'); return false; }
   try{
     item.raw = { ...(item.raw || {}), markdownFrom:price, markdownAt:new Date().toISOString() };
     await updateBuiltInInventoryItem(item, { priceOverride:next });
@@ -41099,6 +41355,9 @@ function showBuyTraySignal(id){
 }
 
 function buyItemToInventoryUpdates(item){
+  // Bought at a graded price (PSA 10 picked in Research): saved as a slab,
+  // so every price sync uses the graded value, never the raw one.
+  const slab = inventoryGradingInfo({ ...item, selectedGrade:item.activePriceBasis?.grade || item.selectedGrade || item.slabGrade || '' });
   const session = getActiveBuySession();
   const cost = buyItemOfferValue(item);
   const market = Number(item.market || item.priceUsed || 0);
@@ -41117,7 +41376,7 @@ function buyItemToInventoryUpdates(item){
     name:item.name,
     category,
     buySignal,
-    productType:(item.grade||item.grader||item.cert_number||item.isSlabbed)?'Graded':item.is_sealed?'Sealed':category==='Comic'?'Comic':category==='Collectibles'?'Collectible':'Single',
+    productType:(item.grade||item.grader||item.cert_number||item.isSlabbed||(slab.grader&&slab.grade))?'Graded':item.is_sealed?'Sealed':category==='Comic'?'Comic':category==='Collectibles'?'Collectible':'Single',
     set:item.set || item.product_line || '',
     variant:item.variant || '',
     year:item.year || '',
@@ -41160,8 +41419,8 @@ function buyItemToInventoryUpdates(item){
     // 'grader' (see readEditGradingFields), so even a buy-tray item that
     // had grading data set had it silently dropped right here on the way
     // into inventory, since nothing was ever writing 'grading_company'.
-    grader:item.grader || '',
-    grade:item.grade || '',
+    grader:slab.grader,
+    grade:slab.grade,
     cert_number:item.cert_number || '',
     // Explicit, rather than relying on createInventoryRecord's ...item spread
     // to carry these through -- that spread only sees this buy-tray item's

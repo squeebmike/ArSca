@@ -20,12 +20,14 @@ function extractFn(name, prefix = 'function ') {
 
 const consoleConst = dashboard.match(/const SPORTS_PC_CONSOLE = [^\n]+\n/)[0];
 const cacheConst = dashboard.match(/const _sportsPcUrlIdCache = [^\n]+\n/)[0];
+const slabGradeConst = dashboard.match(/const SLAB_GRADE_RE = [^\n]+\n/)[0];
 
 function load(fetchImpl, slab = null) {
   const calls = { fetch:[], slab:0, cardsight:0 };
   const fn = new Function('fetch', 'fetchGradedSlabPriceForItem', 'fetchCardSightRealPrice', [
     'const WORKER = "https://worker.test";',
-    consoleConst, cacheConst,
+    consoleConst, cacheConst, slabGradeConst,
+    extractFn('parseSlabGradeText'),
     extractFn('inventoryCardName'),
     extractFn('inventorySetName'),
     extractFn('inventoryCardNumber'),
