@@ -273,7 +273,7 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
 {
  const vm=await import('node:vm');const {sportsLookupScript,withSportsLookups}=await import('../scripts/sports-card-marketplace.mjs');
  const el=tag=>({tag,style:{},children:[],append(...c){this.children.push(...c);},replaceChildren(){this.children=[];},closest(){return {};}});
- const target=el('result'),button={disabled:false,isConnected:true,dataset:{sportsLookup:path+'?market=1&parallel=gold'},parentElement:{querySelector:()=>target}};
+ const target=el('result'),button={disabled:false,isConnected:true,dataset:{sportsLookup:path+'?market=1&parallel=gold'},parentElement:{querySelector:s=>s==='[data-sports-result]'?target:null}};
  let callback,fetches=0;
  class Observer{constructor(fn){callback=fn;}observe(){}unobserve(){}}
  const doc={hidden:false,addEventListener(){},querySelectorAll:()=>[button],createElement:el};
@@ -294,7 +294,7 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  const events={},observed=[];let mounted,callback,fetches=0;
  const el=tag=>({tag,isConnected:true,style:{},dataset:{},children:[],append(...children){for(const c of children){c.parentElement=this;this.children.push(c);}},replaceChildren(){this.children=[];},setAttribute(){},closest(){return {};},querySelector(){return this.children.find(c=>c.dataset?.sportsResult!==undefined)||null;}});
  const search={href:'https://www.ebay.com/sch/i.html?campid=5339046175'};
- const tile={dataset:{sportsPreview:path+'?market=1&parallel=gold'},querySelector:s=>s==='.mp-parallel-search'?search:mounted?.children[0]||null,insertBefore(market,before){assert.equal(before,search);mounted=market;}};
+ const tile={dataset:{sportsPreview:path+'?market=1&parallel=gold'},querySelector:s=>s==='.mp-parallel-search'?search:mounted?.children.find(c=>c.dataset?.sportsResult!==undefined)||null,insertBefore(market,before){assert.equal(before,search);mounted=market;}};
  const disclosure={open:false,matches:()=>true,querySelectorAll:()=>[tile]};
  const doc={hidden:false,addEventListener:(name,fn)=>{events[name]=fn;},querySelectorAll:s=>s.includes('[open]')?[disclosure]:[],createElement:el};
  class Observer{constructor(fn){callback=fn;}observe(b){observed.push(b);}unobserve(){}}
@@ -304,7 +304,7 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  const b=observed[0];assert.equal(b.dataset.sportsLookup,tile.dataset.sportsPreview);
  events.toggle({target:disclosure});assert.equal(observed.length,1,'reopening must reuse existing controls');
  callback([{target:b,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
- assert.equal(fetches,1);assert.match(mounted.children[0].textContent,/No exact listing or reference photo/);assert.ok(!b.disabled);assert.equal(search.href,'https://www.ebay.com/sch/i.html?campid=5339046175');
+ assert.equal(fetches,1);assert.match(mounted.children[2].textContent,/No exact eBay listing/);assert.ok(!b.disabled);assert.equal(search.href,'https://www.ebay.com/sch/i.html?campid=5339046175');
  const preview=withSportsLookups({bodyHtml:'<li data-sports-preview="/lookup"></li>'});assert.match(preview.bodyHtml,/data-mp-sports-lookup-runtime/);
 }
 console.log('Numbered card families, subset-specific print runs, strict serial/edition matching, affiliate URLs and stock isolation passed');

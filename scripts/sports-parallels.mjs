@@ -432,8 +432,8 @@ export function numberedParallelCollection(set,groups,collections){
 export function parallelPreviewTile({name,numbering,path,lookup,searchHref='',ownHtml='',escape:esc}){
  // Names, numbering and links stay crawlable. Mount the expensive image and
  // lookup controls only when this card's disclosure opens on the client.
- const needsPhoto=!ownHtml.includes('<img');
- return '<li class="mp-parallel-card"'+(needsPhoto?' data-sports-preview="'+esc(lookup)+'"':'')+'><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+ownHtml+(needsPhoto&&searchHref?'<p class="mp-parallel-search"><a href="'+esc(searchHref)+'" target="_blank" rel="noopener sponsored">Search eBay for this finish</a></p>':'')+'</li>';
+ const needsPhoto=!ownHtml.includes('<img'),photoLookup=needsPhoto?lookup:lookup.replace('market=1','reference=3');
+ return '<li class="mp-parallel-card" data-sports-preview="'+esc(photoLookup)+'"><a class="mp-parallel-finish" href="'+esc(path)+'"><span>'+esc(name)+'</span>'+(numbering?'<b>'+esc(numbering)+'</b>':'')+'</a>'+(ownHtml?'<div class="mp-own-copy"><small>Available at The Mana Pocket</small>'+ownHtml+'</div>':'')+(needsPhoto&&searchHref?'<p class="mp-parallel-search"><a href="'+esc(searchHref)+'" target="_blank" rel="noopener sponsored">Search eBay for this finish</a></p>':'')+'</li>';
 }
 export function inlineParallelStock(items,card,set,deps){
  if(!Array.isArray(items)||!deps?.available)return '';

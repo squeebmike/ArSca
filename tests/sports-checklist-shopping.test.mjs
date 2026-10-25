@@ -100,7 +100,7 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  await sportsListings(e,null,s,g,d,{card:gold,wait:true});assert.equal(calls,2,'cached lookups do not repeat either search');
 }
 
-// Main checklist photos fall back to eBay, without confusing base and parallels.
+// Legacy fallback responses remain compatible, but seller photos never replace references.
 {
  const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
  const {handleBaseballCatalog}=await import('../scripts/baseball-catalog-pages.mjs');
@@ -125,9 +125,11 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  const {sportsLookupScript}=await import('../scripts/sports-card-marketplace.mjs');
  vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>({ok:true,json:async()=>data})});
  observed([{target,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
- assert.equal(target.querySelector('img').getAttribute('src'),data.listing.image);
- assert.match(target.textContent,/eBay seller photo/);
- const offer=document.querySelector('details > p > a');assert.ok(offer);assert.equal(offer.getAttribute('rel'),'noopener sponsored');assert.match(offer.getAttribute('href'),/campid=5339046175/);
+ assert.equal(target.querySelector('img'),null,'a seller image cannot become the primary reference');
+ assert.match(target.textContent,/Reference photo unavailable/);
+ const referenceOnlyUrl=new URL(url);referenceOnlyUrl.searchParams.set('reference','3');
+ const referenceOnly=await handleBaseballCatalog(new Request(referenceOnlyUrl),e,referenceOnlyUrl,d);
+ assert.deepEqual(await referenceOnly.json(),{reference:null});assert.equal(searches,1,'reference-only lookup never starts an eBay search');
  assert.equal(document.querySelector('summary a'),null,'main card image keeps its expand/collapse action');
  // A provider-wide 429 must pause other cards too, not just this cache key.
  const paused=new Map([['sports-reference-provider-paused','1']]);let rejectedSearches=0;
