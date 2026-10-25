@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.25.4-reference-audit';
+const APP_VERSION = '2026.10.25.5-credit-log';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -243,13 +243,23 @@ async function storeWorkerFetch(path, options = {}){
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', 'Bearer ' + session.access_token);
   headers.set('X-Store-Id', getActiveStoreId());
-  const target = /^https?:\/\//i.test(path) ? path : WORKER + path;
+  let target = /^https?:\/\//i.test(path) ? path : WORKER + path;
+  if(/^\/pricing\/pokemon/.test(path)) target += (target.includes('?') ? '&' : '?') + 'ppt_src=' + encodeURIComponent(pptCallSource());
   const res = await fetch(target, { ...options, headers });
   // A Whatnot (or other recorded) sale of a consigned item marks it sold in
   // the Worker -- every caller of this route gets the list brought up to date.
   // Its eBay listing follows the sale too; say what eBay shows now.
   if((path === '/inventory/record-external-sale' || path === '/ebay/sync-item-quantities') && res.ok) res.clone().json().then(d => { if(d?.consigned) noteConsignedSales([d.consigned]); if(d?.ebay?.length) noteEbayQtyChanges(d.ebay); }).catch(() => {});
   return res;
+}
+
+// Who is spending PokemonPriceTracker credits (Settings -> CREDIT USE): the
+// daily sync, the PRICE SYNC window, or whichever tab is open.
+function pptCallSource(){
+  try { if(dailyPriceSyncRunning) return 'daily-sync'; } catch(e) {}
+  if(document.getElementById('price-sync-modal')?.classList.contains('on')) return 'price-sync';
+  const tab = String(document.querySelector('.tab-panel.on')?.id || '').replace(/^tab-/, '');
+  return tab ? 'tab:' + tab : 'dashboard';
 }
 
 function getAuthSession(){ try { return JSON.parse(localStorage.getItem(WALKOFF_AUTH_SESSION_KEY) || 'null'); } catch(e) { return null; } }
@@ -4169,7 +4179,52 @@ function renderPriceChartingDataPanel(){
         <button class="hbtn" onclick="clearPokemonSearchCache()">CLEAR POKEMON SEARCH CACHE</button>
         <button class="hbtn" onclick="clearPokemonExactCache()">CLEAR POKEMON EXACT CACHE</button>
       </div>
+    </div>
+    <div class="item-metric" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px">CREDIT USE - PokemonPriceTracker</span>
+        <button class="hbtn" onclick="loadPptUsageReport(0)">TODAY</button>
+        <button class="hbtn" onclick="loadPptUsageReport(24)">LAST 24 HRS</button>
+        <button class="hbtn" onclick="loadPptUsageReport(24 * 7)">LAST 7 DAYS</button>
+      </div>
+      <div id="ppt-usage-body" style="font-family:monospace;font-size:10px;color:var(--dim)">What spent the credits and when. TODAY starts when PokemonPriceTracker's daily credits reset (midnight UTC).</div>
     </div>`;
+}
+
+// Settings -> PRICING APIS -> CREDIT USE: the Worker logs every PPT call
+// (who asked, what, the credits PPT charged) -- see scripts/ppt-usage.mjs.
+const PPT_SOURCE_LABELS = { 'daily-sync':'Daily price sync (dashboard)', 'server-daily-sync':'Daily price sync (server)', 'price-sync':'PRICE SYNC window', 'website:sets':'Website set guide (set list)', 'website:set-cards':'Website set guide (card pages)', 'ebay-listing-details':'eBay listing details', dashboard:'Dashboard (other)' };
+function pptSourceText(source){
+  const s = String(source || '');
+  return PPT_SOURCE_LABELS[s] || (s.startsWith('tab:') ? s.slice(4).replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' tab' : s || 'Unknown');
+}
+async function loadPptUsageReport(hours = 0){
+  const body = document.getElementById('ppt-usage-body');
+  if(!body) return;
+  body.textContent = 'Loading credit log...';
+  let data = {};
+  try {
+    const res = await storeWorkerFetch('/pricing/ppt-usage' + (hours ? '?hours=' + hours : ''), { cache:'no-store' });
+    data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Credit log unavailable (' + res.status + ')');
+  } catch(e) { body.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; return; }
+  const sum = data.summary || {};
+  const n = v => Number(v || 0).toLocaleString();
+  const when = v => v ? new Date(v).toLocaleString([], { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
+  const total = Number(sum.credits || 0) || 1;
+  const sources = (sum.bySource || []).map(r => `<tr><td>${escHtml(pptSourceText(r.source))}</td><td style="text-align:right;color:var(--text)">${n(r.credits)}</td><td style="text-align:right">${Math.round(Number(r.credits || 0) / total * 100)}%</td><td style="text-align:right">${n(r.calls)}</td><td>${escHtml(when(r.last_at))}</td></tr>`).join('');
+  const peak = Math.max(1, ...(sum.byHour || []).map(r => Number(r.credits || 0)));
+  const hoursHtml = (sum.byHour || []).map(r => `<div style="display:flex;gap:8px;align-items:center"><span style="width:120px">${escHtml(r.hour)}</span><span style="display:inline-block;height:8px;background:var(--blue);width:${Math.max(2, Math.round(Number(r.credits || 0) / peak * 160))}px"></span><span style="color:var(--text)">${n(r.credits)}</span></div>`).join('');
+  const days = (sum.byDay || []).slice(0, 14).map(r => `<span style="margin-right:12px">${escHtml(String(r.day).slice(5))}: <b style="color:var(--text)">${n(r.credits)}</b></span>`).join('');
+  const recent = (sum.recent || []).map(r => `<tr><td>${escHtml(when(r.at))}</td><td>${escHtml(pptSourceText(r.source))}</td><td>${escHtml(r.route)}</td><td style="text-align:right;color:var(--text)">${n(r.credits)}</td><td style="text-align:right;color:${Number(r.status) >= 400 ? 'var(--red)' : 'var(--dim)'}">${escHtml(String(r.status || ''))}</td></tr>`).join('');
+  const table = (head, rows) => `<table style="width:100%;border-collapse:collapse;margin:4px 0 10px"><tr style="color:var(--blue)">${head.map(h => `<td>${h}</td>`).join('')}</tr>${rows}</table>`;
+  body.innerHTML = `
+    <div style="margin-bottom:8px;color:var(--text)"><b>${n(sum.credits)}</b> credits in <b>${n(sum.calls)}</b> calls since ${escHtml(when(data.since))}${hours ? '' : ' (PokemonPriceTracker reset)'}</div>
+    ${sources ? table(['Used by','Credits','Share','Calls','Last'], sources) : '<div style="margin-bottom:10px">No PokemonPriceTracker calls logged in this window.</div>'}
+    ${hoursHtml ? '<div style="color:var(--blue);margin-bottom:4px">BY HOUR (Pacific)</div>' + hoursHtml : ''}
+    ${days ? '<div style="color:var(--blue);margin:10px 0 4px">LAST 14 DAYS</div><div>' + days + '</div>' : ''}
+    ${recent ? '<div style="color:var(--blue);margin:10px 0 4px">LATEST CALLS</div>' + table(['When','Used by','What','Credits','Status'], recent) : ''}
+    <div style="margin-top:6px">Calls made outside this Worker with the same PPT key (another app or script) don't show here -- PokemonPriceTracker's own usage page counts those.</div>`;
 }
 
 const PRICING_QA_QUERIES =['pikachu sir','pikachu ex','pikachu 151','umbreon vmax evolving skies','charizard 199/165','wolverine 1','asm 300','zelda ocarina n64'];
@@ -10853,6 +10908,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
     const st = i.lifecycle || i.status || 'in_stock';
     return st !== 'sold' && st !== 'archived' && isPokemonInventorySyncItem(i) && (!options.restrictToIds || options.restrictToIds.has(i.id));
   });
+  if(dailyPriceSyncRunning) items = items.filter(i => !serverPriceCheckedToday(i));
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
   const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, reusedLookups:0, sealedChecked:items.filter(isPokemonSealedInventorySyncItem).length, sealedMatched:0, requests:[], issues:[] };
@@ -11230,7 +11286,44 @@ function mergePendingPriceSyncProposals(previous = [], fresh = []){
   return [...merged.values()].sort((a, b) => (b.isBig ? 1 : 0) - (a.isBig ? 1 : 0) || Math.abs(b.delta || 0) - Math.abs(a.delta || 0));
 }
 
+// The Worker's own daily Pokémon update (scripts/pokemon-daily-sync.mjs)
+// saves small changes itself; it already stamped priceSyncCheckedAt, so the
+// dashboard's daily run leaves those cards alone instead of paying twice.
+function serverPriceCheckedToday(item = {}){
+  const at = item.priceSyncCheckedAt || item.raw?.priceSyncCheckedAt;
+  return !!at && localDayKey(new Date(at)) === localDayKey(new Date());
+}
+// Its big changes come here for review, same as the dashboard's own.
+async function claimServerPriceSyncReview(){
+  if(getAccountContext().isDemo || !requireOwnerAdmin()) return 0;
+  let proposals = [];
+  try {
+    const res = await storeWorkerFetch('/price-sync/review', { cache:'no-store' });
+    proposals = (await res.json().catch(() => ({})))?.proposals || [];
+  } catch(e) { return 0; }
+  const fresh = proposals.map(p => {
+    const item = (all || []).find(i => i.id === p.itemId || i.supabaseRowId === p.itemId);
+    if(!item || !(Number(p.newPrice) > 0)) return null;
+    const oldPrice = Number(p.oldPrice) || 0, newPrice = Number(p.newPrice);
+    const delta = newPrice - oldPrice, direction = delta >= 0 ? 'up' : 'down';
+    const big = oldPrice > 0 ? isBigPriceChange(oldPrice, newPrice) : false;
+    return { item:{ ...item }, mode:'live', source:'PokemonPriceTracker (overnight check)', oldPrice, newPrice, rawNewPrice:newPrice,
+      delta, deltaPct:Number(p.deltaPct) || (oldPrice > 0 ? Math.abs(delta / oldPrice) * 100 : 100), isBig:big, direction,
+      label:big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
+      cacheAge:'server', lastUpdated:p.lastUpdated || p.at, matchStatus:'exact TCGplayer ID (server daily check)',
+      tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(item), prices:p.prices || null, variants:p.variants || null, selected:true };
+  }).filter(Boolean);
+  if(!fresh.length) return 0;
+  restorePendingPriceSyncProposals();
+  _priceSyncProposal = mergePendingPriceSyncProposals(_priceSyncProposal, fresh);
+  savePendingPriceSyncProposals();
+  updatePriceAlertBanner();
+  return fresh.length;
+}
+setTimeout(() => claimServerPriceSyncReview().catch(() => {}), 60 * 1000);
+
 function openPriceSyncModal(){
+  claimServerPriceSyncReview().then(n => { if(n && document.getElementById('price-sync-modal')?.classList.contains('on')) renderPriceSyncProposal(); }).catch(() => {});
   const dailyToggle = document.getElementById('price-sync-daily-toggle'); if(dailyToggle) dailyToggle.checked = dailyPriceSyncEnabled();
   const modal = document.getElementById('price-sync-modal');
   if(!modal) return;
@@ -11486,7 +11579,9 @@ async function runLivePokemonPriceSync(){
     const s = _priceSyncLastSummary || { checked:0, changed:0, unchanged:0, noMatch:0, noPrice:0, errors:0, issues:[] };
     // A complete run replaces the older Pokemon pending changes; pending
     // changes from the other syncs (MTG, comics...) are always kept.
-    _priceSyncProposal = mergePendingPriceSyncProposals((s.quotaBlocked || s.rateLimitBlocked) ? pendingBeforeRun : pendingBeforeRun.filter(p => priceSyncProposalGroup(p) !== 'pokemon'), freshProposal);
+    // The daily run skips cards the server checked overnight, so their
+    // waiting changes (cacheAge 'server') stay for review.
+    _priceSyncProposal = mergePendingPriceSyncProposals((s.quotaBlocked || s.rateLimitBlocked) ? pendingBeforeRun : pendingBeforeRun.filter(p => priceSyncProposalGroup(p) !== 'pokemon' || (dailyPriceSyncRunning && p.cacheAge === 'server')), freshProposal);
     savePendingPriceSyncProposals();
     const summaryText = (s.quotaBlocked
       ? 'Live sync paused after ' + s.processed + ' of ' + s.checked + ' Pokemon items because the daily provider quota was exhausted. '
