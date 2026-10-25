@@ -21,6 +21,7 @@
 // real visitor starts a refresh), and the public pages spend at most
 // PUBLIC_DAILY_CREDITS a day -- past that, the saved copy is served.
 
+import { logPptUsage, pptRouteLabel } from './ppt-usage.mjs';
 const PPT = 'https://www.pokemonpricetracker.com/api/v2';
 export const SETS_FRESH_MS = 24 * 60 * 60 * 1000;
 export const CARDS_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
@@ -74,7 +75,9 @@ async function upstream(env, path, params) {
   if (!res.ok) throw new Error(`PokemonPriceTracker ${res.status}`);
   const list = Array.isArray(body?.data) ? body.data : Array.isArray(body?.cards) ? body.cards : Array.isArray(body?.results) ? body.results : [];
   // A plain card query costs one credit per card returned.
+  const charged=Number(res.headers.get('X-API-Calls-Consumed'));
   await addSpend(env.LBA_KV,Date.now(),list.length);
+  await logPptUsage(env,{source:'website:'+(path==='/sets'?'sets':'set-cards'),route:pptRouteLabel(path,pageParams),credits:Number.isFinite(charged)&&charged>=0?charged:list.length,cards:list.length,status:res.status});
   // A provider that ignores offset must not fill the cache with repeated pages.
   if(page&&JSON.stringify(list)===previous)throw new Error('Pokémon checklist repeated a page');
   all.push(...list);

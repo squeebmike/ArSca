@@ -52,6 +52,8 @@ import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
+import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
+import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -1554,6 +1556,7 @@ async function cardLensResolveTcgplayer(card, env) {
     const response = await fetch(`https://www.pokemonpricetracker.com/api/v2/cards?${params.toString()}`, {
       headers:{ Authorization:`Bearer ${env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY}`, Accept:'application/json' },
     }).catch(() => null);
+    if (response) await logPptUsage(env, { source:'ebay-listing-details', route:pptRouteLabel('/cards', params), credits:response.ok ? pptCreditsFrom(response.headers, 20, params) : 0, status:response.status });
     if (response?.ok) {
       const body = await response.json().catch(() => ({}));
       const rows = Array.isArray(body?.data) ? body.data : body?.data ? [body.data] : Array.isArray(body?.cards) ? body.cards : [];
@@ -16230,6 +16233,38 @@ async function routeRequest(request, env, ctx) {
     const publicPokemon = await handlePublicPokemonRequest(request, env, url, json);
     if (publicPokemon) return publicPokemon;
 
+    // GET /pricing/ppt-usage -- the credit log (Settings -> PRICING APIS ->
+    // CREDIT USE). Default window: PokemonPriceTracker's own day, which
+    // resets at midnight UTC (5 PM Pacific in summer); ?hours=N for others.
+    if (url.pathname === '/pricing/ppt-usage' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const askedHours = Number(url.searchParams.get('hours')) || 0;
+      const hours = askedHours > 0 ? Math.min(24 * 30, Math.max(1, askedHours)) : 0;
+      const now = new Date();
+      const pptDayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const since = hours ? new Date(now.getTime() - hours * 3600 * 1000) : pptDayStart;
+      try {
+        const { data } = await supabaseAdminFetch(env, 'rpc/ppt_usage_summary', { method:'POST', body:JSON.stringify({ p_since:since.toISOString(), p_recent:40 }) });
+        return json({ ok:true, since:since.toISOString(), pptDayStart:pptDayStart.toISOString(), summary:data });
+      } catch (e) { return json({ ok:false, error:'Credit log unavailable: ' + e.message }, 502); }
+    }
+
+    // GET /price-sync/review -- the big changes the server's daily Pokémon
+    // update held back. Handed over once: the dashboard keeps them in its
+    // own PRICE SYNC list from there.
+    if (url.pathname === '/price-sync/review' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      if (!env.LBA_KV) return json({ ok:true, proposals:[] });
+      const kvKey = 'price-sync-review:' + storeId;
+      const proposals = await env.LBA_KV.get(kvKey, 'json').catch(() => null) || [];
+      if (proposals.length) await env.LBA_KV.delete(kvKey).catch(() => {});
+      return json({ ok:true, proposals });
+    }
+
     if (url.pathname.startsWith('/pricing/pokemonpricetracker/') || url.pathname.startsWith('/pricing/pokemon/')) {
       // Docs: docs/api/pokemon-price-tracker-openapi.json
       // Clean aliases: /pricing/pokemon/* → canonical /pricing/pokemonpricetracker/*
@@ -16351,6 +16386,12 @@ async function routeRequest(request, env, ctx) {
         : Array.isArray(data?.results) ? data.results
         : data?.card ? [data.card]
         : [];
+      // Credit log (Settings -> CREDIT USE): who asked (the dashboard tags
+      // each call with ppt_src), what, and what PPT charged.
+      {
+        const logging = logPptUsage(env, { storeId: pptStoreId, source: pptSourceLabel(url.searchParams.get('ppt_src'), 'dashboard'), route: pptRouteLabel(spec.upstream, params), credits: upstream.ok ? pptCreditsFrom(upstream.headers, cards.length, params) : Number(upstream.headers.get('X-API-Calls-Consumed')) || 0, cards: cards.length, status: upstream.status });
+        if (ctx?.waitUntil) ctx.waitUntil(logging); else await logging;
+      }
       if (!upstream.ok) {
         const providerMessage = errorMessageFromApi(data, 'PokemonPriceTracker API ' + upstream.status);
         const dailyRemainingRaw = upstream.headers.get('X-RateLimit-Daily-Remaining');
@@ -18750,7 +18791,11 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
+    // The hourly trigger only runs the Pokémon daily price update, a batch
+    // at a time (scripts/pokemon-daily-sync.mjs); everything else stays on
+    // the 6-hour trigger.
+    if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(runScheduledPokemonServerSync(env)); return; }
+    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
   },
 };
 
@@ -19175,6 +19220,47 @@ async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {
       catch (e) { await env.LBA_KV.delete(key).catch(() => {}); console.error('Stale web order reminder failed for store', storeId, e.message); }
     }
   } catch (e) { console.error('Stale web order reminder scan failed:', e.message); }
+}
+
+// Daily Pokémon price update, server side (scripts/pokemon-daily-sync.mjs):
+// each hour from 3 AM Pacific, a batch of in-stock cards per store until all
+// are checked for the day. Small changes are saved; big ones wait in KV for
+// PRICE SYNC (GET /price-sync/review).
+const POKEMON_SYNC_CRON = '17 * * * *';
+async function runScheduledPokemonServerSync(env) {
+  const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
+  if (!key || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3').catch(() => null) || 0);
+  if (quotaUntil && Date.now() < quotaUntil) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  for (const storeId of storeIds) {
+    const deps = {
+      db: (path, opts) => supabaseAdminFetch(env, path, opts),
+      kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
+      kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 14 * 86400 }),
+      ppt: async (path, paramsObj) => {
+        const params = new URLSearchParams(paramsObj);
+        const res = await fetch('https://www.pokemonpricetracker.com/api/v2' + path + '?' + params, { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } });
+        let data = null; try { data = await res.json(); } catch (_) {}
+        const cards = Array.isArray(data?.data) ? data.data : (data?.data && typeof data.data === 'object') ? [data.data] : [];
+        await logPptUsage(env, { storeId, source: 'server-daily-sync', route: pptRouteLabel(path, params), credits: res.ok ? pptCreditsFrom(res.headers, cards.length, params) : Number(res.headers.get('X-API-Calls-Consumed')) || 0, cards: cards.length, status: res.status });
+        return { ok: res.ok, status: res.status, card: cards[0] || null };
+      },
+    };
+    try {
+      const result = await runPokemonServerSync(storeId, deps);
+      if (result.checked) console.log('Pokemon server sync', storeId, JSON.stringify(result));
+      if (result.failed && !result.checked) break; // out of credits: every store would fail the same way
+    } catch (e) { console.error('Pokemon server sync failed for store', storeId, e.message); }
+  }
+}
+
+// The PPT credit log keeps 35 days (see ppt-usage.mjs).
+async function runScheduledPptUsageCleanup(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const cutoff = encodeURIComponent(new Date(Date.now() - 35 * 86400 * 1000).toISOString());
+  await supabaseAdminFetch(env, `ppt_usage_log?at=lt.${cutoff}`, { method:'DELETE', headers:{ Prefer:'return=minimal' } }).catch(() => {});
 }
 
 async function runScheduledPointsHoldSweep(env) {
