@@ -3,12 +3,12 @@ import {CardReferenceArchive,normalizeCloudReference,handleCloudReferenceRequest
 import {sportsReferenceImage} from '../scripts/sports-reference-images.mjs';
 import {dashboardCloudRequest,cloudRequest,uploadReferences,isDashboard} from '../extensions/pricecharting-collector/cloud.mjs';
 const consoleId='baseball-cards-2026-topps',image='https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg';
-const card={consoleId,title:'Ken Griffey Jr. #1',cardNumber:'1',image,url:'https://www.sportscardspro.com/game/'+consoleId+'/ken-griffey-jr-1',setName:'2026 Topps',player:'Ken Griffey Jr.'};
+const card={consoleId,title:'Aaron Judge #1',cardNumber:'1',image,url:'https://www.sportscardspro.com/game/'+consoleId+'/aaron-judge-1',setName:'2026 Topps',player:'Aaron Judge'};
 assert.ok(normalizeCloudReference(card));
 for(const row of [{...card,url:'https://evil.test/game/'+consoleId+'/x'},{...card,image:'https://evil.test/a.jpg'},{...card,cardNumber:'2'},{...card,consoleId:'other'}])assert.equal(normalizeCloudReference(row),null);
 assert.equal(normalizeCloudReference({...card,image:''}).image,'','missing images retain identities');
-function storage(){let values=new Map(),queue=Promise.resolve();return {get:async k=>structuredClone(values.get(k)),put:async(k,v)=>values.set(k,structuredClone(v)),list:async({prefix,limit,startAfter=''})=>new Map([...values].filter(([k])=>k.startsWith(prefix)&&k>startAfter).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)),transaction(callback){const run=queue.then(async()=>{const copy=new Map(values),tx={get:async k=>structuredClone(copy.get(k)),put:async(k,v)=>copy.set(k,structuredClone(v)),delete:async k=>copy.delete(k)};const result=await callback(tx);values=copy;return result;});queue=run.catch(()=>{});return run;}};}
-const instances=new Map();const binding={idFromName:id=>id,get:id=>{if(!instances.has(id))instances.set(id,new CardReferenceArchive({storage:storage()},{}));const object=instances.get(id);return {fetch:(input,options)=>object.fetch(new Request(input,options))};}};
+function storage(){let values=new Map(),queue=Promise.resolve();return {delete:async k=>values.delete(k),setAlarm:async()=>{},get:async k=>structuredClone(values.get(k)),put:async(k,v)=>values.set(k,structuredClone(v)),list:async({prefix,limit,startAfter=''})=>new Map([...values].filter(([k])=>k.startsWith(prefix)&&k>startAfter).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)),transaction(callback){const run=queue.then(async()=>{const copy=new Map(values),tx={get:async k=>structuredClone(copy.get(k)),put:async(k,v)=>copy.set(k,structuredClone(v)),delete:async k=>copy.delete(k)};const result=await callback(tx);values=copy;return result;});queue=run.catch(()=>{});return run;}};}
+const instances=new Map();const binding={idFromName:id=>id,get:id=>{if(!instances.has(id))instances.set(id,new CardReferenceArchive({storage:storage()},{REFERENCE_IMAGE_FETCH:async()=>new Response(null,{headers:{'Content-Type':'image/jpeg'}})}));const object=instances.get(id);return {fetch:(input,options)=>object.fetch(new Request(input,options))};}};
 const env={CARD_REFERENCE_ARCHIVE:binding},deps={storeId:'mana',json:(body,status=200,headers={})=>Response.json(body,{status,headers}),readJsonWithLimit:async r=>({data:await r.json()}),requireStoreUser:async(r,e,id,roles)=>r.headers.get('Authorization')==='Bearer owner'&&roles.join(',')==='owner,admin'?{}:{error:new Response('Denied',{status:403})}};
 const send=(cards,auth='owner')=>{const url=new URL('https://worker.example/reference-collector/batch');return handleCloudReferenceRequest(new Request(url,{method:'POST',headers:{Authorization:'Bearer '+auth},body:JSON.stringify({cards})}),env,url,deps);};
 assert.equal((await send([card],'shopper')).status,403);
@@ -17,20 +17,25 @@ let result=await(await send([card])).json();assert.equal(result.summary.cards,1)
 await Promise.all(Array.from({length:10},()=>send([card])));
 result=await(await send([{...card,image:''}])).json();assert.equal(result.summary.cards,1);assert.equal(result.summary.photos,1,'retry or missing-photo capture does not erase a good reference');
 const set={id:'2026-topps-series-1-baseball',displayName:'2026 Topps Series 1 Baseball',sport:'baseball',year:2026};
-let found=await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base'});
+assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}),null,'unchecked image URLs stay hidden');
+await instances.get('console:'+consoleId).alarm();
+let found=await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'});
 assert.equal(found.image,image,'website reads the uploaded cloud reference through the verified flagship alias');
 assert.equal(found.referenceOnly,true);
 assert.equal(await sportsReferenceImage(env,{},set,{player:'Different Player',cardNumber:'1',section:'Base'}),null,'same number never substitutes another player');
-const gold={...card,title:'Ken Griffey Jr. [Gold] #1',parallel:'Gold',run:'/50',url:card.url+'-gold',image:image.replace('card123','gold123')};
-await send([gold]);
-found=await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base',parallelRule:{name:'Gold',printRun:50}});assert.equal(found.image,gold.image);
-assert.equal(await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base',parallelRule:{name:'Gold',printRun:25}}),null,'numbered runs must agree');
+const gold={...card,title:'Aaron Judge [Gold Holo Foil] #1',parallel:'Gold Holo Foil',run:'/50',url:card.url+'-gold',image:image.replace('card123','gold123')};
+await send([gold]);await instances.get('console:'+consoleId).alarm();
+found=await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:50}});assert.equal(found.image,gold.image);
+assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:25}}),null,'numbered runs must agree');
 await send([{...gold,image}]);
-assert.equal(await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base',parallelRule:{name:'Gold',printRun:50}}),null,'a reused base photo is not a gold reference');
+assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:50}}),null,'a reused base photo is not a gold reference');
 const get=path=>{const url=new URL('https://worker.example/reference-collector/'+path);return handleCloudReferenceRequest(new Request(url,{headers:{Authorization:'Bearer owner'}}),env,url,deps);};
 assert.equal((await(await get('sets')).json()).sets.length,1);
 assert.equal((await(await get('cards?console='+consoleId)).json()).cards.length,2);
 assert.equal((await get('cards?console='+consoleId+'&cursor=../private')).status,400);
+const audit=instances.get('console:'+consoleId);await audit.fetch(new Request('https://archive.internal/audit-start',{method:'POST'}));
+let auditState;for(let n=0;n<10;n++){await audit.alarm();auditState=await(await audit.fetch(new Request('https://archive.internal/audit-status'))).json();if(!auditState.running)break;}
+assert.equal(auditState.phase,'complete');assert.equal(auditState.records,2);assert.equal(auditState.duplicateImages,1);assert.equal(auditState.eligible,0);assert.equal(auditState.held,2,'shared images remain held after archive-wide checks');
 // Simulate the extension bridge: the dashboard executes only the scoped
 // reference request and returns data, never an auth token.
 const local={},calls=[];let offline=false;

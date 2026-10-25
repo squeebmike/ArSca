@@ -1,13 +1,13 @@
+import {safeReferenceImage,matchReferenceImage} from './reference-match.mjs';
+export {safeReferenceImage,matchReferenceImage};
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 import {cloudReferenceFamily} from './cloud-card-references.mjs';
+import {referenceConsoles} from './reference-validation.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
 const slug=s=>fold(s).replaceAll(' ','-');
 const decode=s=>String(s||'').replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;/g,' ');
 const text=s=>decode(s.replace(/<[^>]+>/g,' ')).replace(/\s+/g,' ').trim();
-export function safeReferenceImage(value){
- try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='storage.googleapis.com'&&/^\/images\.pricecharting\.com\/[a-z0-9]+\/(?:60|240|300|400|1600)\.jpg$/.test(u.pathname)?u.href:null;}catch{return null;}
-}
 function consoleSlug(set){return (set.sport==='football'||/football/i.test(set.displayName)?'football':'baseball')+'-cards-'+slug(set.displayName.replace(/\b(?:baseball|football)\b/gi,''));}
 export function parseReferenceFamily(html,consoleId){
  if(html.length>2000000)throw Error('Reference response too large');
@@ -22,31 +22,9 @@ export function parseReferenceFamily(html,consoleId){
  }
  return rows;
 }
-function finishName(s){return fold(s).replace(/^platinum toile /,'toile ').replace(/ refractor$/,'');}
-export function matchReferenceImage(rows,set,card){
- const number=String(card.cardNumber),name=fold(card.player),rule=card.parallelRule;
- const matches=rows.filter(r=>{
-  if(!safeReferenceImage(r.image))return false;
-  const m=r.title.match(/^(.*?)\s*(?:\[([^\]]+)\])?\s*#([^\s]+)\s*$/);
-  if(!m||fold(m[1])!==name||m[3]!==number)return false;
-  // Ordinary base, image variations, autographs and inserts are distinct.
-  if(!rule){
-   if(!card.section||card.section==='Base')return !m[2]&&!r.run;
-   const section=fold(card.section).replace(/\b(?:base|cards?|variations?|parallels?)\b/g,' ').replace(/\s+/g,' ').trim();
-   return m[2]?finishName(section)===finishName(m[2]):/[a-z]/i.test(number);
-  }
-  if(!m[2]||![rule.name,...(rule.aliases||[])].some(n=>finishName(n)===finishName(m[2])))return false;
-  const denominator=r.run.match(/^\/(-?\d+)$/)?.[1];
-  if(rule.numberingUnknown)return true;
-  if(rule.printRun)return Number(denominator)===(rule.serialDenominator||rule.printRun);
-  return !denominator;
- });
- return matches.length===1?{...matches[0],source:'PriceCharting / SportsCardsPro',referenceOnly:true}:null;
-}
 export function savedReferenceImage(set,card){return matchReferenceImage(referenceImageSeeds[set.id]||[],set,card);}
 export async function sportsReferenceImage(env,ctx,set,card,deps={}){
- const consoles=[consoleSlug(set)];
- if(set.sport!=='football'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)consoles.push('baseball-cards-'+set.year+'-topps');
+ const consoles=referenceConsoles(set);
  for(const id of consoles){
   const cloud=await cloudReferenceFamily(env,id,String(card.cardNumber));
   // A shared photo across different finishes is not proof of the printing.

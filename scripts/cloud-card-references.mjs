@@ -1,5 +1,6 @@
 // Persistent public card identities/photo URLs, separate from expiring offers.
 // No image bytes, prices, inventory, or customer data are stored here.
+import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,REFERENCE_AUDIT_VERSION} from './reference-validation.mjs';
 export function normalizeCloudReference(row){
  if(!row||typeof row!=='object')return null;
  let u;try{u=new URL(row.url);}catch{return null;}
@@ -34,11 +35,17 @@ export class CardReferenceArchive {
      if(!old)meta.cards++;
      meta.photos+=(merged.image?1:0)-(old?.image?1:0);
      await tx.put(key,merged);
+     const imageId=referenceImageKey(merged.image),oldImageId=referenceImageKey(old?.image);
+     if(oldImageId&&oldImageId!==imageId)await tx.delete('usage:'+oldImageId+':'+slug);
+     if(imageId){await tx.put('usage:'+imageId+':'+slug,{title:merged.title,url:merged.url});await tx.put('image:'+imageId,{image:merged.image});}
+     await tx.put('validation:'+slug,referenceMetadataCheck(merged));
+     await tx.put('pending:'+slug,merged);
      if(old?.cardNumber&&old.cardNumber!==row.cardNumber)await tx.delete('family:'+old.cardNumber+':'+slug);
      if(row.cardNumber)await tx.put('family:'+row.cardNumber+':'+slug,merged);
     }
     meta.updatedAt=Date.now();await tx.put('meta',meta);return meta;
    });
+   await this.ctx.storage.setAlarm(Date.now()+1000);
    return reply({ok:true,accepted:rows.length,rejected:input.cards.length-rows.length,summary});
   }
   if(request.method==='POST'&&url.pathname==='/summary'){
@@ -52,19 +59,101 @@ export class CardReferenceArchive {
    const cursor=url.searchParams.get('cursor')||'';
    if(cursor&&!/^row:[a-z0-9-]{1,250}$/.test(cursor))return new Response('Invalid cursor',{status:400});
    const rows=await this.ctx.storage.list({prefix:'row:',limit:100,...(cursor?{startAfter:cursor}:{})});
-   return reply({cards:[...rows.values()],cursor:rows.size===100?[...rows.keys()].at(-1):null});
+   const cards=[];for(const [key,row]of rows)cards.push({...row,validation:await this.ctx.storage.get('validation:'+key.slice(4))||null});
+   return reply({cards,cursor:rows.size===100?[...rows.keys()].at(-1):null});
   }
+  if(request.method==='GET'&&url.pathname==='/samples'){
+   const samples=[],counts={};let cursor='',scanned=0;
+   for(let page=0;page<20;page++){
+    const rows=await this.ctx.storage.list({prefix:'row:',limit:200,...(cursor?{startAfter:cursor}:{})});if(!rows.size)break;
+    for(const [key,row]of rows){scanned++;if(!row.image)continue;const kind=referenceCategory(row);if((counts[kind]||0)>=3)continue;counts[kind]=(counts[kind]||0)+1;samples.push({...row,validation:await this.ctx.storage.get('validation:'+key.slice(4))||referenceMetadataCheck(row),health:await this.ctx.storage.get('health:'+referenceImageKey(row.image))||null});}
+    cursor=[...rows.keys()].at(-1);if(rows.size<200||samples.length>=15)break;
+   }
+   return reply({samples,scanned});
+  }
+  if(request.method==='POST'&&url.pathname==='/audit-start'){
+   const old=await this.ctx.storage.get('audit');if(old?.running)return reply(old);
+   const state={version:REFERENCE_AUDIT_VERSION,running:true,phase:'metadata',cursor:'',startedAt:Date.now(),records:0,photos:0,metadataMatched:0,metadataHeld:0,eligible:0,held:0,flags:{},imagesChecked:0,imagesOk:0,imagesFailed:0,duplicateImages:0,examples:[]};
+   await this.ctx.storage.put('audit',state);await this.ctx.storage.setAlarm(Date.now()+1000);return reply(state);
+  }
+  if(request.method==='GET'&&url.pathname==='/audit-status')return reply(await this.ctx.storage.get('audit')||{running:false,phase:'not_started'});
   if(request.method==='GET'&&url.pathname==='/family'){
    const number=url.searchParams.get('number')||'';if(!/^[a-z0-9.-]{1,40}$/i.test(number))return new Response('Invalid number',{status:400});
-   const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000});return reply({cards:[...rows.values()]});
+   const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000}),cards=[],audit=await this.ctx.storage.get('audit');
+   if(audit?.phase==='metadata')return reply({cards:[]});
+   for(const row of rows.values()){
+    const slug=new URL(row.url).pathname.split('/').pop(),check=await this.ctx.storage.get('validation:'+slug),id=referenceImageKey(row.image);
+    if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.length||check.matches.length!==1||!id)continue;
+    const health=await this.ctx.storage.get('health:'+id);if(!health?.ok||Date.now()-health.checkedAt>7*86400000)continue;
+    const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(usage.size!==1)continue;
+    cards.push({...row,validation:'automatically_matched',imageCheckedAt:health.checkedAt,visuallyReviewed:false});
+   }
+   return reply({cards});
   }
   return new Response('Not found',{status:404});
+ }
+ async alarm(){
+  const state=await this.ctx.storage.get('audit');
+  if(state?.running){
+   if(state.phase==='metadata'){
+    const rows=await this.ctx.storage.list({prefix:'row:',limit:200,...(state.cursor?{startAfter:state.cursor}:{})});
+    for(const [key,row]of rows){
+     const slug=key.slice(4),check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);
+     state.records++;if(row.image)state.photos++;if(check.metadataMatched)state.metadataMatched++;
+     if(check.flags.length){state.metadataHeld++;for(const flag of check.flags)state.flags[flag]=(state.flags[flag]||0)+1;if(state.examples.length<20)state.examples.push({title:row.title,url:row.url,flags:check.flags});}
+     const id=referenceImageKey(row.image);if(id){await this.ctx.storage.put('usage:'+id+':'+slug,{title:row.title,url:row.url});await this.ctx.storage.put('image:'+id,{image:row.image});}
+    }
+    state.cursor=[...rows.keys()].at(-1)||state.cursor;
+    if(rows.size<200){state.phase='images';state.cursor='';}
+   }else if(state.phase==='images'){
+    const rows=await this.ctx.storage.list({prefix:'image:',limit:8,...(state.cursor?{startAfter:state.cursor}:{})});
+    const entries=[...rows];for(let i=0;i<entries.length;i+=4)await Promise.all(entries.slice(i,i+4).map(async([key,row])=>{
+     const id=key.slice(6),prior=await this.ctx.storage.get('health:'+id);
+     const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(!usage.size){await this.ctx.storage.delete(key);return;}
+     const health=prior&&Date.now()-prior.checkedAt<86400000?prior:await checkReferenceImage(row.image,this.env.REFERENCE_IMAGE_FETCH||fetch);
+     await this.ctx.storage.put('health:'+id,health);state.imagesChecked++;if(health.ok)state.imagesOk++;else state.imagesFailed++;
+     if(usage.size>1)state.duplicateImages++;
+    }));
+    state.cursor=[...rows.keys()].at(-1)||state.cursor;
+    if(rows.size<8){state.phase='eligibility';state.cursor='';}
+   }else{
+    const rows=await this.ctx.storage.list({prefix:'row:',limit:200,...(state.cursor?{startAfter:state.cursor}:{})});
+    for(const [key,row]of rows){
+     const slug=key.slice(4),check=await this.ctx.storage.get('validation:'+slug)||referenceMetadataCheck(row),id=referenceImageKey(row.image);
+     if(id){const health=await this.ctx.storage.get('health:'+id),usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(!health?.ok)check.flags.push(health?.reason||'image_not_checked');if(usage.size>1)check.flags.push('shared_image_requires_review');check.imageCheckedAt=health?.checkedAt||null;}
+     check.flags=[...new Set(check.flags)];check.eligible=check.flags.length===0&&check.matches.length===1;await this.ctx.storage.put('validation:'+slug,check);if(check.eligible)state.eligible++;else state.held++;
+    }
+    state.cursor=[...rows.keys()].at(-1)||state.cursor;
+    if(rows.size<200){state.running=false;state.phase='complete';state.completedAt=Date.now();}
+   }
+   state.updatedAt=Date.now();await this.ctx.storage.put('audit',state);
+   await this.ctx.storage.setAlarm(Date.now()+1000);return;
+  }
+  // New uploads get the same checks after the initial audit, without rescanning
+  // the full catalog or querying Supabase. Public reads hold unchecked photos.
+  const pending=await this.ctx.storage.list({prefix:'pending:',limit:8});
+  for(const [key,row]of pending){const slug=key.slice(8),check=referenceMetadataCheck(row),id=referenceImageKey(row.image);await this.ctx.storage.put('validation:'+slug,check);if(id){const prior=await this.ctx.storage.get('health:'+id);if(!prior||Date.now()-prior.checkedAt>86400000)await this.ctx.storage.put('health:'+id,await checkReferenceImage(row.image,this.env.REFERENCE_IMAGE_FETCH||fetch));}await this.ctx.storage.delete(key);}
+  if(pending.size===8)await this.ctx.storage.setAlarm(Date.now()+1000);
  }
 }
 export async function handleCloudReferenceRequest(request,env,url,deps){
  if(!env.CARD_REFERENCE_ARCHIVE)return deps.json({error:'Cloud reference storage is unavailable'},503);
  const auth=await deps.requireStoreUser(request,env,deps.storeId,['owner','admin']);if(auth.error)return auth.error;
  const archive=(id,index=false)=>env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(index?'catalog':'console:'+id));
+ if(url.pathname==='/reference-collector/audit/start'&&request.method==='POST'){
+  const sets=(await(await archive('catalog',true).fetch('https://archive.internal/sets')).json()).sets;
+  for(const set of sets)await archive(set.consoleId).fetch('https://archive.internal/audit-start',{method:'POST'});
+  return deps.json({ok:true,sets:sets.length},200,{'Cache-Control':'no-store'});
+ }
+ if(url.pathname==='/reference-collector/audit/status'&&request.method==='GET'){
+  const sets=(await(await archive('catalog',true).fetch('https://archive.internal/sets')).json()).sets,results=[];
+  for(const set of sets){const status=await(await archive(set.consoleId).fetch('https://archive.internal/audit-status')).json();results.push({...set,audit:status});}
+  return deps.json({sets:results,running:results.some(s=>s.audit.running)},200,{'Cache-Control':'no-store'});
+ }
+ if(url.pathname==='/reference-collector/samples'&&request.method==='GET'){
+  const id=url.searchParams.get('console')||'';if(!/^[a-z0-9-]{1,160}$/.test(id))return deps.json({error:'Invalid source set'},400);
+  const data=await(await archive(id).fetch('https://archive.internal/samples')).json();return deps.json(data,200,{'Cache-Control':'no-store'});
+ }
  if(request.method==='GET'&&url.pathname==='/reference-collector/sets'){
   const r=await archive('catalog',true).fetch('https://archive.internal/sets');return deps.json(await r.json(),r.status,{'Cache-Control':'no-store'});
  }

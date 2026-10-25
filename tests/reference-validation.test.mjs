@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {referenceMetadataCheck,referenceConsoles,checkReferenceImage} from '../scripts/reference-validation.mjs';
+const base={consoleId:'baseball-cards-2026-topps',title:'Aaron Judge #1',player:'Aaron Judge',parallel:'',run:'',cardNumber:'1',image:'https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg',url:'https://www.sportscardspro.com/game/baseball-cards-2026-topps/aaron-judge-1'};
+assert.deepEqual(referenceMetadataCheck(base).flags,[]);assert.equal(referenceMetadataCheck(base).matches.length,1);
+assert.ok(referenceMetadataCheck({...base,player:'Different Player'}).flags.includes('player_conflict'));
+assert.ok(referenceMetadataCheck({...base,cardNumber:'2'}).flags.includes('card_number_conflict'));
+assert.ok(referenceMetadataCheck({...base,title:'Aaron Judge [Gold Holo Foil] #1',parallel:'Gold Holo Foil',run:'/25'}).flags.includes('no_exact_checklist_match'),'known /50 printing cannot become /25');
+assert.deepEqual(referenceMetadataCheck({...base,title:'Aaron Judge [Gold Holo Foil] #1',parallel:'Gold Holo Foil',run:'/50'}).flags,[]);
+assert.ok(referenceMetadataCheck({...base,image:''}).flags.includes('missing_photo'));
+assert.ok(referenceMetadataCheck({...base,consoleId:'unmapped-set'}).flags.includes('unmapped_source_set'));
+assert.ok(referenceConsoles({sport:'baseball',year:2026,displayName:'2026 Topps Update Series Baseball'}).includes('baseball-cards-2026-topps-update'));
+assert.ok((await checkReferenceImage(base.image,async()=>new Response(null,{headers:{'Content-Type':'image/jpeg'}}))).ok);
+assert.equal((await checkReferenceImage(base.image,async()=>new Response(null,{status:404}))).reason,'image_http_404');
+assert.equal((await checkReferenceImage(base.image,async()=>new Response('HTML',{headers:{'Content-Type':'text/html'}}))).reason,'not_an_image');
+let external=0;assert.equal((await checkReferenceImage('https://evil.test/photo.jpg',async()=>{external++;})).reason,'invalid_image_host');assert.equal(external,0,'no SSRF or arbitrary host probing');
+assert.equal(referenceMetadataCheck(base).visuallyReviewed,false,'metadata checks never claim visual authentication');
+console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

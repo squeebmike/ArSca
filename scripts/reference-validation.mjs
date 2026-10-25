@@ -1,0 +1,59 @@
+import {baseballSets} from './topps/baseball-seed.mjs';
+import {footballSets} from './topps/football-seed.mjs';
+import {sectionsForSet} from './baseball-section-pages.mjs';
+import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
+import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
+export const REFERENCE_AUDIT_VERSION='2026-10-25.1';
+const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const slug=s=>fold(s).replaceAll(' ','-');
+const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
+export function referenceConsoles(set){
+ const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
+ if(sport==='baseball'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
+ if(sport==='baseball'&&/topps update series/i.test(set.displayName))ids.push('baseball-cards-'+name.replace('-update-series','-update'));
+ return [...new Set(ids)];
+}
+function possibleSources(consoleId){
+ if(!sourceIndex){sourceIndex=new Map();for(const set of sets)for(const id of referenceConsoles(set)){if(!sourceIndex.has(id))sourceIndex.set(id,[]);sourceIndex.get(id).push({set,proposed:false});}}
+ return sourceIndex.get(consoleId)||[];
+}
+function cardIndex(set){
+ if(indexes.has(set))return indexes.get(set);
+ const index=new Map();
+ for(const card of [...set.cards,...sectionsForSet(set).flatMap(g=>g.cards)]){
+  const key=String(card.cardNumber)+'|'+fold(card.player);if(!index.has(key))index.set(key,[]);index.get(key).push(card);
+ }
+ indexes.set(set,index);return index;
+}
+export function referenceCategory(row){return /auto|signature/i.test(row.title)?'autograph':row.run?'numbered':row.parallel?'parallel':/#[a-z]+-/i.test(row.title)?'insert':'base';}
+export function referenceMetadataCheck(row){
+ const flags=[],parsed=String(row.title||'').match(/^(.*?)\s*(?:\[([^\]]+)\])?\s*#([^\s]+)\s*$/),matches=[];
+ if(!parsed)flags.push('missing_card_identity');
+ if(parsed&&String(row.cardNumber)!==parsed[3])flags.push('card_number_conflict');
+ if(parsed&&row.player&&fold(row.player)!==fold(parsed[1]))flags.push('player_conflict');
+ if(parsed&&fold(row.parallel)!==fold(parsed[2]))flags.push('finish_conflict');
+ if(row.run&&!/^\/-?[1-9]\d*$/.test(row.run))flags.push('unrecognized_numbering');
+ if(!row.image)flags.push('missing_photo');else if(!safeReferenceImage(row.image))flags.push('invalid_image_host');
+ let source;try{source=new URL(row.url);}catch{}
+ if(!source||source.protocol!=='https:'||!['www.pricecharting.com','www.sportscardspro.com'].includes(source.hostname)||source.pathname.split('/')[2]!==row.consoleId)flags.push('source_set_conflict');
+ const sources=possibleSources(row.consoleId);
+ if(!sources.length)flags.push('unmapped_source_set');
+ if(parsed&&sources.length){
+  for(const {set}of sources)for(const card of cardIndex(set).get(parsed[3]+'|'+fold(parsed[1]))||[]){
+   const variants=[card,...cardParallelProgram(set,card).variants.map(rule=>selectedParallelCard(set,card,rule.id))];
+   for(const candidate of variants)if(referenceIdentityMatches(row,candidate)){
+    const path='/'+(set.sport==='football'?'football':'baseball')+'/checklists/'+set.id+'/cards/'+card.id+(candidate.parallelRule?'?parallel='+encodeURIComponent(candidate.parallelRule.id):'');
+    if(!matches.some(m=>m.path===path))matches.push({setId:set.id,path,source:set.sourceUrl,parallel:candidate.parallelRule?.name||'',run:candidate.parallelRule?.printRun||null});
+   }
+  }
+  if(!matches.length)flags.push('no_exact_checklist_match');
+  else if(matches.length>1)flags.push('ambiguous_checklist_match');
+ }
+ return {version:REFERENCE_AUDIT_VERSION,category:referenceCategory(row),flags,matches:matches.slice(0,5),metadataMatched:matches.length===1,visuallyReviewed:false,checkedAt:Date.now()};
+}
+export function referenceImageKey(image){return String(image||'').match(/images\.pricecharting\.com\/([a-z0-9]+)\//)?.[1]||'';}
+export async function checkReferenceImage(image,fetcher=fetch){
+ if(!safeReferenceImage(image))return {ok:false,reason:'invalid_image_host',checkedAt:Date.now()};
+ try{const r=await fetcher(image,{method:'HEAD',redirect:'manual',signal:AbortSignal.timeout(7000)}),type=r.headers.get('Content-Type')||'';return {ok:r.ok&&/^image\//i.test(type),status:r.status,type,reason:!r.ok?'image_http_'+r.status:!/^image\//i.test(type)?'not_an_image':'',checkedAt:Date.now()};}
+ catch{return {ok:false,reason:'image_request_failed',checkedAt:Date.now()};}
+}
