@@ -11,11 +11,36 @@
 // Only set names from the cached set list are accepted, so the card route
 // can't be used to spend quota on arbitrary searches. When the provider
 // fails, the last good copy is served.
+//
+// Store report: "why are we blowing through Pokemon credits?" -- ~40k a
+// day. PPT charges a credit per card returned, and the public catalog
+// (/pokemon/sets/..., /pokemon/cards/..., in the sitemap) re-downloaded a
+// whole set whenever a crawler reached it after 12 hours: about the entire
+// ~23k-card catalog twice a day. These are reference prices, so a set is
+// now kept for a week, a crawler is always served the saved copy (only a
+// real visitor starts a refresh), and the public pages spend at most
+// PUBLIC_DAILY_CREDITS a day -- past that, the saved copy is served.
 
 const PPT = 'https://www.pokemonpricetracker.com/api/v2';
 export const SETS_FRESH_MS = 24 * 60 * 60 * 1000;
-export const CARDS_FRESH_MS = 12 * 60 * 60 * 1000;
-const KEEP_SECONDS = 14 * 24 * 60 * 60;
+export const CARDS_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
+export const PUBLIC_DAILY_CREDITS = 2000;
+const KEEP_SECONDS = 60 * 24 * 60 * 60;
+const spendKey = now => 'public_pokemon:spend:' + new Date(now).toISOString().slice(0, 10);
+// Search engines, link previews and scrapers.
+const CRAWLER_RE = /bot\b|bot\/|crawl|spider|slurp|bingpreview|facebookexternalhit|embedly|ahrefs|semrush|mj12|yandex|baidu|duckduck|petal|bytespider|gptbot|claude|ccbot|applebot|google-inspectiontool|headless|python-requests|curl\/|wget/i;
+export function isCrawler(request) {
+  const ua = String(request?.headers?.get?.('User-Agent') || '');
+  return !ua || CRAWLER_RE.test(ua);
+}
+async function spentToday(kv, now) {
+  return kv ? Number(await kv.get(spendKey(now)).catch(() => 0)) || 0 : 0;
+}
+async function addSpend(kv, now, credits) {
+  if (!kv || !(credits > 0)) return;
+  const total = (await spentToday(kv, now)) + credits;
+  await kv.put(spendKey(now), String(total), { expirationTtl: 3 * 24 * 60 * 60 }).catch(() => {});
+}
 const SETS_KEY = 'public_pokemon:sets:v1';
 const RETRY_KEY = 'public_pokemon:upstream_retry:v1';
 const cardsKey = name => 'public_pokemon:cards:v1:' + encodeURIComponent(name.toLowerCase()).slice(0, 400);
@@ -34,6 +59,7 @@ async function upstream(env, path, params) {
   if(Number(retry?.until)>Date.now())throw new Error('PokemonPriceTracker 429 (retry later)');
   const all=[];let offset=0,previous='';
   for(let page=0;page<20;page++){
+  if(await spentToday(env.LBA_KV,Date.now())>=PUBLIC_DAILY_CREDITS)throw new Error('Public Pokémon pages reached today\'s PokemonPriceTracker budget');
   const pageParams={...params};if(page)delete pageParams.fetchAllInSet;
   const res = await fetch(`${PPT}${path}?${new URLSearchParams({ language: 'english', ...pageParams, ...(page?{offset:String(offset)}:{}) })}`, {
     headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' },
@@ -47,6 +73,8 @@ async function upstream(env, path, params) {
   }
   if (!res.ok) throw new Error(`PokemonPriceTracker ${res.status}`);
   const list = Array.isArray(body?.data) ? body.data : Array.isArray(body?.cards) ? body.cards : Array.isArray(body?.results) ? body.results : [];
+  // A plain card query costs one credit per card returned.
+  await addSpend(env.LBA_KV,Date.now(),list.length);
   // A provider that ignores offset must not fill the cache with repeated pages.
   if(page&&JSON.stringify(list)===previous)throw new Error('Pokémon checklist repeated a page');
   all.push(...list);
@@ -58,9 +86,11 @@ async function upstream(env, path, params) {
 }
 
 // Fresh cache, else the provider, else a stale cache, else the error.
-async function cached(env, key, freshMs, load, now, usable=()=>true) {
+// refresh:false (a crawler) never spends credits when any copy is saved.
+async function cached(env, key, freshMs, load, now, usable=()=>true, { refresh = true } = {}) {
   const hit = await readCache(env.LBA_KV, key);
   if (hit && usable(hit) && now - Number(hit.cachedAt || 0) < freshMs) return { data: hit.data, cache: 'hit', complete:true };
+  if (hit && !refresh) return { data: hit.data, cache: 'stale', complete:usable(hit) };
   try {
     const data = await load();
     if (data.length) await writeCache(env.LBA_KV, key, data);
@@ -71,14 +101,14 @@ async function cached(env, key, freshMs, load, now, usable=()=>true) {
   }
 }
 
-export async function loadPokemonSets(env, now = Date.now()) {
-  return cached(env, SETS_KEY, SETS_FRESH_MS, () => upstream(env, '/sets', { sortBy: 'releaseDate', sortOrder: 'desc', limit: '400' }), now);
+export async function loadPokemonSets(env, now = Date.now(), options = {}) {
+  return cached(env, SETS_KEY, SETS_FRESH_MS, () => upstream(env, '/sets', { sortBy: 'releaseDate', sortOrder: 'desc', limit: '400' }), now, () => true, options);
 }
 
-export async function loadPokemonSetCards(env, set, now = Date.now()) {
+export async function loadPokemonSetCards(env, set, now = Date.now(), options = {}) {
   const name=String(set.name||set.id);
   return cached(env,cardsKey(name),CARDS_FRESH_MS,()=>upstream(env,'/cards',{set:name,limit:'200'}),now,
-    hit=>hit.paged===true || !(hit.data?.length===200&&Number(set.cardCount)>200));
+    hit=>hit.paged===true || !(hit.data?.length===200&&Number(set.cardCount)>200), options);
 }
 
 // The Set Guide embed on the live page calls the older paths below, signed
@@ -102,14 +132,15 @@ export async function handlePublicPokemonRequest(request, env, url, json, now = 
   if (request.method !== 'GET') return json({ ok: false, error: 'GET only' }, 405);
   const headers = { 'Cache-Control': 'public, max-age=900' };
   try {
-    const sets = await loadPokemonSets(env, now);
+    const refresh = !isCrawler(request);
+    const sets = await loadPokemonSets(env, now, { refresh });
     if (url.pathname === '/public/pokemon/sets') return json({ ok: true, data: sets.data, cache: sets.cache }, 200, headers);
 
     const wanted = String(url.searchParams.get('set') || '').trim().slice(0, 150);
     const set = sets.data.find(s => String(s.name || '').toLowerCase() === wanted.toLowerCase() || String(s.id || '') === wanted);
     if (!set) return json({ ok: false, error: 'Unknown set' }, 404);
     const name = String(set.name || set.id);
-    const cards = await loadPokemonSetCards(env,set,now);
+    const cards = await loadPokemonSetCards(env,set,now,{ refresh });
     return json({ ok: true, set: name, data: cards.data, cache: cards.cache, complete:cards.complete }, 200, headers);
   } catch (error) {
     return json({ ok: false, error: error.message }, 502);

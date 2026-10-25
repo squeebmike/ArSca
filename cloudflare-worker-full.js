@@ -51,7 +51,7 @@ import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './scripts/site-chrome.mjs';
-import {loadPokemonSets,loadPokemonSetCards} from './scripts/public-pokemon-sets.mjs';
+import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -8469,7 +8469,7 @@ async function routeRequest(request, env, ctx) {
     if(url.pathname==='/pocket-guides'||url.pathname.startsWith('/pocket-guides/')) {
       const response=await handlePocketGuides(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell,loadArticles:()=>fetchArticles(env,ctx),loadReleaseSets:async()=>{
         const loading=cachedPublicCatalog(env,ctx,'guide-release-dates-v2',async()=>{
-          const results=await Promise.allSettled([loadPokemonSets(env).then(r=>r.data), (async()=>{
+          const results=await Promise.allSettled([loadPokemonSets(env,Date.now(),{refresh:!isPokemonCrawler(request)}).then(r=>r.data), (async()=>{
             if(!env.MTG_CATALOG_R2)return [];
             const object=await env.MTG_CATALOG_R2.get('mtg/manifest.json');const manifest=object?await object.json():null;
             if(manifest?.status!=='ready')return [];
@@ -8793,9 +8793,10 @@ async function routeRequest(request, env, ctx) {
         searchEbay:(query,campaignId)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'FixedPrice',limit:8,signal:AbortSignal.timeout(6000)}),
         loadCards:async guide=>{
           if(guide.game==='pokemon'){
-            const {data:sets}=await loadPokemonSets(env);
+            const refresh=!isPokemonCrawler(request);
+            const {data:sets}=await loadPokemonSets(env,Date.now(),{refresh});
             const set=sets.find(s=>guide.sets.some(name=>String(name).toLowerCase()===String(s.name).toLowerCase()));
-            return set?(await loadPokemonSetCards(env,set)).data:[];
+            return set?(await loadPokemonSetCards(env,set,Date.now(),{refresh})).data:[];
           }
           const code=guide.codes[0];if(!/^[a-z0-9]{2,8}$/.test(code||''))return [];
           const params=new URLSearchParams({q:'set:'+code+' game:paper',order:'usd',dir:'desc',unique:'prints'});

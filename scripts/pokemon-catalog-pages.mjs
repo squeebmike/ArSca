@@ -1,6 +1,6 @@
 import {newestReleases} from './release-order.mjs';
 import {setPageHeader} from './collector-page-ui.mjs';
-import {loadPokemonSets,loadPokemonSetCards} from './public-pokemon-sets.mjs';
+import {loadPokemonSets,loadPokemonSetCards,isCrawler} from './public-pokemon-sets.mjs';
 import {catalogInventoryHtml,catalogSetInventoryHtml,catalogShoppingLinksHtml,marketplaceDisclosureHtml,catalogShoppingIndex} from './catalog-inventory.mjs';
 import {referenceHighlightsHtml} from './catalog-highlights.mjs';
 import {collectionToolsHtml} from './collection-tools.mjs';
@@ -14,14 +14,16 @@ export async function handlePokemonCatalog(request,env,url,deps) {
  const missing=()=>html({title:'Pokémon catalog page not found | The Mana Pocket',description:'Browse Pokémon sets and available store copies.',canonicalPath:url.pathname,bodyHtml:'<h1>Page not found</h1><p><a href="/pokemon">Browse Pokémon sets</a></p>'},404);
  let resolvedSet;
  try {
-  const {data:loadedSets}=await loadPokemonSets(env);
+  // A crawler is served the saved copy; only a real visitor refreshes (see public-pokemon-sets.mjs).
+  const refresh=!isCrawler(request);
+  const {data:loadedSets}=await loadPokemonSets(env,Date.now(),{refresh});
   const sets=newestReleases(loadedSets);
   if(url.pathname==='/sitemap-pokemon.xml')return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>'+origin+'/pokemon</loc></url>'+sets.map(s=>'<url><loc>'+origin+esc(pokemonSetPath(s,slug))+'</loc></url>').join('')+'</urlset>',{headers:{'Content-Type':'application/xml;charset=UTF-8','Cache-Control':'public, max-age=900'}});
   if(url.pathname==='/pokemon')return html({title:'Pokémon Sets and Card Catalog | The Mana Pocket',description:'Browse Pokémon sets, card checklists and reference prices. Find exact copies available at The Mana Pocket.',canonicalPath:'/pokemon',jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:'Pokémon sets'},bodyHtml:'<h1>Pokémon sets</h1><p>Set releases, newest to oldest.</p><p>Browse the checklist, open the card viewer, and find copies available from The Mana Pocket. Reference prices are separate from our store prices.</p><p><a href="/pokemon-new-releases">Interactive set viewer</a> · <a href="/category/pokemon">Shop Pokémon inventory</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">'+sets.map(s=>'<a class="mp-set-row" href="'+esc(pokemonSetPath(s,slug))+'"><span>'+esc(s.name)+'</span><span>'+Number(s.cardCount||0)+' cards'+(s.releaseDate?' · '+esc(String(s.releaseDate).slice(0,10)):'')+'</span></a>').join('')+'</div>'});
   const parts=url.pathname.split('/').filter(Boolean),isCard=parts[1]==='cards';
   if(!['sets','cards'].includes(parts[1]))return missing();
   const set=sets.find(s=>String(s.id)===parts[2]);if(!set)return missing();resolvedSet=set;
-  const {data:cards,complete}=await loadPokemonSetCards(env,set);
+  const {data:cards,complete}=await loadPokemonSetCards(env,set,Date.now(),{refresh});
   const inventory=await deps.listItems().catch(()=>null);
   const reference=c=>Number(c.prices?.market??c.marketPrice??0)>0?'Reference market price: $'+Number(c.prices?.market??c.marketPrice).toFixed(2)+' USD':'No current reference price';
   if(isCard){
