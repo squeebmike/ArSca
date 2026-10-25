@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.25.2-edition-toggle';
+const APP_VERSION = '2026.10.25.3-secret-lair-floor';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4873,7 +4873,7 @@ function floorRulesPanelHtml(){
       <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--g);letter-spacing:.04em">AUTOMATIC FLOOR -- NEVER SELL AT A LOSS</div>
       <label style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:flex;gap:6px;align-items:center"><input type="checkbox" ${r.on ? 'checked' : ''} onchange="setFloorRule('on',this.checked)"> ON</label>
     </div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin:6px 0 8px">Every item with a cost gets a floor: the lowest whole-dollar price that still covers its cost plus a minimum profit after eBay's cut. The shop, register, labels and eBay never go below it (an item's own floor wins if it's higher). The minimum profit is a name rule below if one matches, otherwise its category's (in the table), otherwise the store default.</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin:6px 0 8px">Every item with a cost gets a floor: the lowest whole-dollar price that still covers its cost plus a minimum profit after eBay's cut. The shop, register, labels and eBay never go below it (an item's own floor wins if it's higher). The minimum profit is a name rule below if one matches, otherwise its category's (in the table), otherwise the store default. A name rule with a fixed floor uses that price as-is, no eBay fees (for things you don't sell on eBay).</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10px;color:var(--dim);align-items:center">
       <label>eBay fee %${num('ebayPct', r.ebayPct, 0.01, 70)}</label>
       <label>+ order fee $${num('orderFee', r.orderFee, 0.01, 60)}</label>
@@ -4886,7 +4886,7 @@ function floorRulesPanelHtml(){
       <span>(whichever is more)</span>
     </div>
     <div style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">NAME RULES (win over the category):
-      ${(r.names || []).map((n, idx) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">name has <input class="tsi" style="width:150px;margin:0" value="${escHtml(n.match || '')}" onchange="setFloorNameRule(${idx},'match',this.value)"> min profit $<input type="number" min="0" step="0.01" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.profit ?? ''}" onchange="setFloorNameRule(${idx},'profit',this.value)"> or %<input type="number" min="0" step="1" class="tsi" style="width:60px;margin:0;text-align:right" value="${n.profitPct || ''}" onchange="setFloorNameRule(${idx},'profitPct',this.value)"> <button class="ra" onclick="removeFloorNameRule(${idx})">x</button></div>`).join('')}
+      ${(r.names || []).map((n, idx) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">name has <input class="tsi" style="width:150px;margin:0" value="${escHtml(n.match || '')}" onchange="setFloorNameRule(${idx},'match',this.value)"> min profit $<input type="number" min="0" step="0.01" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.profit || ''}" onchange="setFloorNameRule(${idx},'profit',this.value)"> or %<input type="number" min="0" step="1" class="tsi" style="width:60px;margin:0;text-align:right" value="${n.profitPct || ''}" onchange="setFloorNameRule(${idx},'profitPct',this.value)"> or a fixed floor $<input type="number" min="0" step="1" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.floor || ''}" title="This price exactly, no eBay fees -- for things you don't sell on eBay" onchange="setFloorNameRule(${idx},'floor',this.value)"> <button class="ra" onclick="removeFloorNameRule(${idx})">x</button></div>`).join('')}
       <button class="ra" style="margin-top:4px" onclick="addFloorNameRule()">+ NAME RULE</button>
     </div>
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">${escHtml(example(2.5))} · ${escHtml(example(6))} · ${escHtml(example(45))}<br>${escHtml(comic)}</div>
@@ -4930,9 +4930,11 @@ function setFloorNameRule(idx, field, value){
 function addFloorNameRule(){
   const match = prompt('Items whose name has (e.g. Secret Lair):', '');
   if(!match || !match.trim()) return;
-  const profit = Math.max(0, parseFloat(prompt('Minimum profit after eBay fees ($):', '10')) || 0);
+  const fixed = prompt('A fixed floor price for these ($, no eBay fees)? Leave blank to use a minimum profit after eBay fees instead.', '');
+  const floor = Math.max(0, parseFloat(fixed) || 0);
+  const profit = floor ? 0 : Math.max(0, parseFloat(prompt('Minimum profit after eBay fees ($):', '10')) || 0);
   const r = floorRules();
-  r.names = [...(r.names || []), { match:match.trim(), profit, profitPct:0 }];
+  r.names = [...(r.names || []), floor ? { match:match.trim(), floor } : { match:match.trim(), profit, profitPct:0 }];
   saveFloorRules(r);
 }
 function removeFloorNameRule(idx){
@@ -15846,7 +15848,10 @@ function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.mi
 // as autoFloor (new items at creation, again whenever cost or category
 // changes, all of them via APPLY FLOORS) so the shop and checkout use the
 // same number. The item's own floor (minPrice) still wins if it's higher.
-const DEFAULT_FLOOR_RULES = { on:true, ebayPct:13.25, orderFee:0.30, orderFeeOver10:0.40, perOrderCost:0, profit:0.50, profitPct:0, categories:{}, names:[{ match:'Secret Lair', profit:10, profitPct:0 }] };
+// A name rule can instead set a fixed floor price (floor $) with no eBay
+// fees in it -- store: "Secret Lairs won't be on eBay. Just set floors to
+// 55 on those."
+const DEFAULT_FLOOR_RULES = { on:true, ebayPct:13.25, orderFee:0.30, orderFeeOver10:0.40, perOrderCost:0, profit:0.50, profitPct:0, categories:{}, names:[{ match:'Secret Lair', floor:55 }] };
 function floorRules(){
   const saved = getVendorConfig().floorRules || {};
   return { ...DEFAULT_FLOOR_RULES, ...saved, categories:{ ...(saved.categories || {}) }, names:Array.isArray(saved.names) ? saved.names : DEFAULT_FLOOR_RULES.names };
@@ -15855,7 +15860,7 @@ function floorRules(){
 function floorProfitRuleFor(item = {}, rules = floorRules()){
   const name = String(inventoryCardName(item) || item.title || '').toLowerCase();
   const byName = (rules.names || []).find(r => r && String(r.match || '').trim() && name.includes(String(r.match).trim().toLowerCase()));
-  if(byName) return { profit:Number(byName.profit || 0), profitPct:Number(byName.profitPct || 0), from:'name has "' + String(byName.match).trim() + '"' };
+  if(byName) return { profit:Number(byName.profit || 0), profitPct:Number(byName.profitPct || 0), fixed:Number(byName.floor || 0), from:'name has "' + String(byName.match).trim() + '"' };
   const category = String(item.category || item.raw?.category || '').trim();
   const byCategory = rules.categories?.[category];
   if(byCategory && (byCategory.profit != null || byCategory.profitPct != null)) return { profit:Number(byCategory.profit || 0), profitPct:Number(byCategory.profitPct || 0), from:category + ' rule' };
@@ -15883,7 +15888,10 @@ function ebayNetProfit(price, cost, rules = floorRules()){
 // The floor an item should carry now (0 = none: floors off, or no cost).
 function computeAutoFloor(item = {}, rules = floorRules()){
   if(!rules.on || inventoryIsDropship(item)) return 0;
-  return ebayFloorPrice(inventoryCostBasis(item), floorProfitRuleFor(item, rules), rules);
+  const rule = floorProfitRuleFor(item, rules);
+  // A fixed floor is that price, fees or not, cost or not.
+  if(rule.fixed > 0) return roundSellPrice(rule.fixed);
+  return ebayFloorPrice(inventoryCostBasis(item), rule, rules);
 }
 function inventoryAutoFloor(item={}){ return Number(item.autoFloor ?? item.raw?.autoFloor ?? 0) || 0; }
 // The floor actually used: the higher of the item's own and the automatic.

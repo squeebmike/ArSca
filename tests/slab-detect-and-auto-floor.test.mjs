@@ -104,9 +104,14 @@ const F = floor(() => cfg, i => i.name || '', i => !!i.dropship, i => Number(i.c
   assert.ok(F.ebayNetProfit(F.ebayFloorPrice(4, { profit: 0.5 }), 4) >= 0.5, 'the floor always clears cost + profit after fees');
 }
 {
+  // Store: "Secret Lairs won't be on eBay. Just set floors to 55 on those."
+  cfg.floorRules = {};
+  assert.equal(F.computeAutoFloor({ name: 'Secret Lair x Fallout', category: 'Magic: The Gathering', cost: 45 }), 55, 'Secret Lair: a flat $55 floor by default');
+  assert.equal(F.computeAutoFloor({ name: 'Secret Lair x Fallout', category: 'Magic: The Gathering', cost: 0 }), 55, 'even with no cost entered');
+  assert.equal(F.computeAutoFloor({ name: 'Secret Lair x Fallout', category: 'Magic: The Gathering', cost: 70 }), 55, 'no eBay fees, no cost math');
   cfg.floorRules = { categories: { Comic: { profit: 1 } }, names: [{ match: 'Secret Lair', profit: 10 }] };
   assert.deepEqual(F.floorProfitRuleFor({ name: 'Secret Lair: Bob Ross', category: 'Magic: The Gathering' }).from, 'name has "Secret Lair"', 'a name rule wins');
-  assert.equal(F.computeAutoFloor({ name: 'Secret Lair x Fallout', category: 'Magic: The Gathering', cost: 30 }), 47, 'Secret Lair: cost + $10 after eBay');
+  assert.equal(F.computeAutoFloor({ name: 'Secret Lair x Fallout', category: 'Magic: The Gathering', cost: 30 }), 47, 'a name rule can still be cost + profit after eBay');
   assert.equal(F.floorProfitRuleFor({ name: 'Batman #1', category: 'Comic' }).profit, 1, 'then the category');
   assert.equal(F.floorProfitRuleFor({ name: 'Pikachu', category: 'Pokemon TCG' }).from, 'store default');
   assert.equal(F.computeAutoFloor({ name: 'x', cost: 5, dropship: true }), 0, 'dropship: no floor');
