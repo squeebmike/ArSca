@@ -7,7 +7,7 @@ import fs from 'node:fs';
 // hours). The storefront_inventory view builds the same data object in one
 // pass (0.12s, nothing on disk).
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-const sql = fs.readFileSync('supabase-migrations/2026-10-21-storefront-inventory-view.sql', 'utf8');
+const sql = fs.readFileSync('supabase-migrations/2026-10-25-storefront-view-auto-floor.sql', 'utf8');
 const keys = JSON.parse(worker.match(/const STOREFRONT_DATA_KEYS=(\[[^\]]+\])/)[1]);
 const viewKeys = sql.match(/array\[([^\]]+)\]/)[1].split(',').map(k => k.trim().replace(/^'|'$/g, ''));
 assert.deepEqual(viewKeys, [...keys, 'raw', 'externalRefs'], 'the view returns exactly the fields the shop reads');
