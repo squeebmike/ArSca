@@ -22,7 +22,14 @@ if(!combinedSource&&!Object.keys(sourceMap).length)throw new Error('PRICECHARTIN
 await fsp.mkdir(rawDir,{recursive:true});
 
 let lastRemoteDownloadAt=0;
-async function sourceFile(input,key='combined'){if(!/^https?:\/\//i.test(input))return path.resolve(root,input);if(lastRemoteDownloadAt&&downloadDelayMs){const waitMs=Math.max(0,downloadDelayMs-(Date.now()-lastRemoteDownloadAt));if(waitMs){process.stdout.write(`[pricecharting-bundle] waiting ${Math.ceil(waitMs/1000)}s before ${key} download\n`);await new Promise(resolve=>setTimeout(resolve,waitMs));}}lastRemoteDownloadAt=Date.now();const destination=path.join(rawDir,`pricecharting-${key}.csv`),response=await fetch(input);if(!response.ok||!response.body)throw new Error(`${key} download HTTP ${response.status}`);const writer=fs.createWriteStream(destination);await new Promise((resolve,reject)=>Readable.fromWeb(response.body).pipe(writer).on('finish',resolve).on('error',reject));return destination;}
+// 2026-10-25: one PriceCharting 503 on the Yu-Gi-Oh file failed the whole
+// run, so no category updated. A busy/down answer (429, 5xx, or no answer)
+// is tried again -- still waiting the download delay between tries -- and a
+// category that keeps failing keeps yesterday's catalog (see below).
+const downloadAttempts=Math.max(1,Number(args.get('download-attempts')||process.env.PRICECHARTING_DOWNLOAD_ATTEMPTS||3)||3);
+const retryWaitMs=Math.max(0,Number(args.get('retry-wait-ms')??process.env.PRICECHARTING_RETRY_WAIT_MS??30000)||0);
+const retryable=status=>status===429||status>=500;
+async function sourceFile(input,key='combined'){if(!/^https?:\/\//i.test(input))return path.resolve(root,input);const destination=path.join(rawDir,`pricecharting-${key}.csv`);let lastError=null;for(let attempt=1;attempt<=downloadAttempts;attempt++){const gapMs=downloadDelayMs||(attempt>1?retryWaitMs*attempt:0);if(lastRemoteDownloadAt&&gapMs){const waitMs=Math.max(0,gapMs-(Date.now()-lastRemoteDownloadAt));if(waitMs){process.stdout.write(`[pricecharting-bundle] waiting ${Math.ceil(waitMs/1000)}s before ${key} download${attempt>1?` (try ${attempt} of ${downloadAttempts})`:''}\n`);await new Promise(resolve=>setTimeout(resolve,waitMs));}}lastRemoteDownloadAt=Date.now();let response;try{response=await fetch(input);}catch(error){lastError=new Error(`${key} download failed: ${error.message}`);continue;}if(response.ok&&response.body){const writer=fs.createWriteStream(destination);await new Promise((resolve,reject)=>Readable.fromWeb(response.body).pipe(writer).on('finish',resolve).on('error',reject));return destination;}lastError=new Error(`${key} download HTTP ${response.status}`);if(!retryable(response.status))break;process.stdout.write(`[pricecharting-bundle] ${key} download HTTP ${response.status}${attempt<downloadAttempts?' -- trying again':''}\n`);}throw lastError;}
 function text(row,...keys){for(const key of keys){const value=row[key];if(value!=null&&String(value).trim())return String(value).trim();}return'';}
 function money(value){if(value==null||value==='')return null;const n=Number(String(value).replace(/[$,]/g,''));if(!Number.isFinite(n))return null;return Number.isInteger(n)&&n>999?n/100:n;}
 function categoryFor(row){const hay=[text(row,'category','console-name','console_name','console'),text(row,'genre','product-type','product_type')].join(' ').toLowerCase();const tests=[['video_games',/video game/],['yugioh',/yu-?gi-?oh/],['one_piece',/one piece/]];return tests.find(([,re])=>re.test(hay))?.[0]||'';}
@@ -35,5 +42,10 @@ async function importCsv(input,forcedCategory,groups){const csvFile=await source
 
 const groups=Object.fromEntries(CATEGORIES.map(category=>[category,new Map()]));
 if(combinedSource)await importCsv(combinedSource,'',groups);
-for(const [category,input] of Object.entries(sourceMap))await importCsv(String(input),category,groups);
-for(const category of CATEGORIES){const rows=[...groups[category].values()];if(!rows.length)continue;const built=await writeCategory(category,rows);if(upload){uploadObject(built.descriptor.path,built.file);uploadObject(`${category}/manifest.json`,built.manifestPath);}process.stdout.write(`[pricecharting-bundle] ${category}: ${rows.length.toLocaleString()} products\n`);}
+// A category whose file can't be downloaded keeps yesterday's catalog (its
+// manifest isn't replaced); the others still publish. Only a run where
+// nothing could be downloaded fails.
+const failed=[];
+for(const [category,input] of Object.entries(sourceMap)){try{await importCsv(String(input),category,groups);}catch(error){groups[category]=new Map();failed.push(category);process.stdout.write(`::warning::PriceCharting ${CATEGORY_LABELS[category]} not updated today, yesterday's catalog stays live (${error.message})\n`);}}
+for(const category of CATEGORIES){if(failed.includes(category))continue;const rows=[...groups[category].values()];if(!rows.length)continue;const built=await writeCategory(category,rows);if(upload){uploadObject(built.descriptor.path,built.file);uploadObject(`${category}/manifest.json`,built.manifestPath);}process.stdout.write(`[pricecharting-bundle] ${category}: ${rows.length.toLocaleString()} products\n`);}
+if(failed.length&&failed.length===Object.keys(sourceMap).length&&!combinedSource)throw new Error(`No PriceCharting category could be downloaded (${failed.join(', ')})`);
