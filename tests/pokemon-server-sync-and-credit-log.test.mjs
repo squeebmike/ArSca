@@ -42,6 +42,7 @@ assert.match(migration, /-- grants: service_role only ppt_usage_log/);
 assert.match(migration, /alter table public\.ppt_usage_log enable row level security;/);
 assert.match(migration, /grant execute on function public\.ppt_usage_summary\(timestamptz, integer\) to service_role;/);
 assert.ok(worker.includes("url.pathname === '/pricing/ppt-usage'") && worker.includes("rpc/ppt_usage_summary"), 'usage report route');
+assert.ok(worker.includes("const hours = askedHours > 0 ? Math.min(24 * 30, Math.max(1, askedHours)) : 0;"), 'no ?hours: since the PPT reset, not the last hour');
 assert.ok(worker.includes("pptSourceLabel(url.searchParams.get('ppt_src'), 'dashboard')"), 'proxy logs who asked');
 assert.ok(worker.includes("source:'website:'+(path==='/sets'?'sets':'set-cards')") || readFileSync(new URL('../scripts/public-pokemon-sets.mjs', import.meta.url), 'utf8').includes("source:'website:'"), 'website pages log their calls');
 assert.ok(/runScheduledPointsHoldSweep\(env\), runScheduledPptUsageCleanup\(env\)/.test(worker), 'cleanup is scheduled');

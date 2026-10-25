@@ -11295,7 +11295,8 @@ function serverPriceCheckedToday(item = {}){
 }
 // Its big changes come here for review, same as the dashboard's own.
 async function claimServerPriceSyncReview(){
-  if(getAccountContext().isDemo || !requireOwnerAdmin()) return 0;
+  // Handed over once, so wait for the inventory they point at.
+  if(getAccountContext().isDemo || !requireOwnerAdmin() || !(all || []).length) return 0;
   let proposals = [];
   try {
     const res = await storeWorkerFetch('/price-sync/review', { cache:'no-store' });

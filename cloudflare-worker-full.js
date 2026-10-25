@@ -16240,7 +16240,8 @@ async function routeRequest(request, env, ctx) {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
-      const hours = Math.min(24 * 30, Math.max(1, Number(url.searchParams.get('hours')) || 0));
+      const askedHours = Number(url.searchParams.get('hours')) || 0;
+      const hours = askedHours > 0 ? Math.min(24 * 30, Math.max(1, askedHours)) : 0;
       const now = new Date();
       const pptDayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
       const since = hours ? new Date(now.getTime() - hours * 3600 * 1000) : pptDayStart;
