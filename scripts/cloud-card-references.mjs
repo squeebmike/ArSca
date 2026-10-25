@@ -85,8 +85,8 @@ export class CardReferenceArchive {
   }
   if(request.method==='GET'&&url.pathname==='/family'){
    const number=url.searchParams.get('number')||'';if(!/^[a-z0-9.-]{1,40}$/i.test(number))return new Response('Invalid number',{status:400});
-   const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000}),cards=[],audit=await this.ctx.storage.get('audit');
-   if(audit?.phase==='metadata')return reply({cards:[]});
+   const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000}),cards=[],audit=await this.ctx.storage.get('audit'),archived=!!(await this.ctx.storage.get('meta'));
+   if(audit?.phase==='metadata')return reply({cards:[],archived});
    for(const row of rows.values()){
     const slug=new URL(row.url).pathname.split('/').pop(),check=await this.ctx.storage.get('validation:'+slug),id=referenceImageKey(row.image);
     if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.length||check.matches.length!==1||!id)continue;
@@ -94,7 +94,7 @@ export class CardReferenceArchive {
     const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(usage.size!==1)continue;
     cards.push({...row,validation:'automatically_matched',imageCheckedAt:health.checkedAt,visuallyReviewed:false});
    }
-   return reply({cards});
+   return reply({cards,archived});
   }
   return new Response('Not found',{status:404});
  }
@@ -189,6 +189,6 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
  return deps.json({error:'Not found'},404);
 }
 export async function cloudReferenceFamily(env,consoleId,number){
- if(!env.CARD_REFERENCE_ARCHIVE||!number)return [];
- try{const target=new URL('https://archive.internal/family');target.searchParams.set('number',number);const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));const r=await stub.fetch(target.href,{signal:AbortSignal.timeout(2500)});return r.ok?(await r.json()).cards||[]:[];}catch{return [];}
+ if(!env.CARD_REFERENCE_ARCHIVE||!number)return {cards:[],archived:false};
+ try{const target=new URL('https://archive.internal/family');target.searchParams.set('number',number);const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));const r=await stub.fetch(target.href,{signal:AbortSignal.timeout(2500)});return r.ok?await r.json():{cards:[],archived:true};}catch{return {cards:[],archived:true};}
 }
