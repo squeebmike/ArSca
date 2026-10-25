@@ -59,6 +59,14 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
  if(!/^\d{10}$/.test(campaign)||!env.LBA_KV||!deps.searchEbay)return [];
  const key='sports-checklist-listings-v15:'+campaign+':'+set.id+':'+group.id+':'+(card?.id||'section')+':'+(card?.parallelRule?.id||'family');
  const load=async signal=>{
+  const pause=await env.LBA_KV.get('sports-ebay-photo-pause','json');
+  if(Number(pause?.until)>Date.now())throw new Error('Marketplace unavailable HTTP 429');
+  const check=async result=>{
+   if(!result.warning)return;
+   const status=result.warning.match(/Browse API (\d{3})/)?.[1];
+   if(status==='429')await env.LBA_KV.put('sports-ebay-photo-pause',JSON.stringify({until:Date.now()+300000}),{expirationTtl:300});
+   throw new Error('Marketplace unavailable'+(status?' HTTP '+status:''));
+  };
   // Numeric card numbers recur across base, parallels and autographs. Keep
   // the subset in those searches; prefixed IDs already disambiguate inserts.
   const needsSubset=!card||/^\d+$/.test(String(card.cardNumber));
@@ -66,14 +74,14 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
   const eligible=listings=>(listings||[]).filter(l=>ebayAffiliateListingUrl(l.affiliateUrl,campaign)&&/^https:\/\/(?:[^/]+\.)?ebayimg\.com\//.test(l.imageUrl||''))
    .filter(l=>card?sportsListingMatches(l,card,set,group):group.cards.some(c=>sportsListingMatches(l,c,set,group)));
   const result=await deps.searchEbay(query,campaign,signal);
-  if(result.warning)throw new Error('Marketplace unavailable'+(/Browse API (\d{3})/.test(result.warning)?' HTTP '+result.warning.match(/Browse API (\d{3})/)[1]:''));
+  await check(result);
   let matches=eligible(result.listings);
   // One bounded retry removes publisher-only section wording and the serial
   // search token. Exact release, subset, finish and numbering validation stays.
   const fallback=card?[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card.player,card.cardNumber,needsSubset&&!card.parallelRule?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card.parallelRule?.searchTerm||card.parallelRule?.name].filter(Boolean).join(' '):query;
   if(!matches.length&&fallback!==query&&!signal.aborted){
    const retry=await deps.searchEbay(fallback,campaign,signal);
-   if(retry.warning)throw new Error('Marketplace unavailable'+(/Browse API (\d{3})/.test(retry.warning)?' HTTP '+retry.warning.match(/Browse API (\d{3})/)[1]:''));
+   await check(retry);
    matches=eligible(retry.listings);
   }
   const checkedAt=Date.now();

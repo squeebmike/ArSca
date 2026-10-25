@@ -108,6 +108,15 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  assert.match(target.textContent,/eBay seller photo/);
  const offer=document.querySelector('details > p > a');assert.ok(offer);assert.equal(offer.getAttribute('rel'),'noopener sponsored');assert.match(offer.getAttribute('href'),/campid=5339046175/);
  assert.equal(document.querySelector('summary a'),null,'main card image keeps its expand/collapse action');
+ // A provider-wide 429 must pause other cards too, not just this cache key.
+ const paused=new Map([['sports-reference-provider-paused','1']]);let rejectedSearches=0;
+ const quotaEnv={...e,LBA_KV:{get:async k=>paused.get(k)||null,put:async(k,v)=>paused.set(k,JSON.parse(v))}};
+ const quotaDeps={...d,searchEbay:async()=>{rejectedSearches++;return {warning:'eBay Browse API 429: Too many requests',listings:[]};}};
+ for(const card of s.cards.slice(0,2)){
+  const u=new URL('https://www.themanapocket.com/baseball/checklists/'+s.id+'/cards/'+card.id+'?reference=2');
+  const out=await(await handleBaseballCatalog(new Request(u),quotaEnv,u,quotaDeps)).json();assert.equal(out.providerStatus,429);assert.equal(out.marketplaceUnavailable,true);
+ }
+ assert.equal(rejectedSearches,1,'one rejected card pauses other photo searches for five minutes');
 }
 
 for(const section of groups){
