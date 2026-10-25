@@ -1,4 +1,4 @@
-# Mana Pocket Card Collector — cloud edition (1.2.1)
+# Mana Pocket Card Collector — cloud edition (1.2.2)
 
 ## Install once
 
@@ -19,6 +19,8 @@ Click **Collect baseball sets** or **Collect football sets** to start from the p
 The collector enables **Include Variants**, uses normal **more results** controls, follows set links from directory pages, and uploads every batch directly to Cloudflare. It collects card names, numbers, parallel labels, print runs when shown, source links and available photo URLs. It keeps entries without images. Default sports discovery includes Topps/Bowman releases from 2019 onward. Uncheck that filter to collect other sources deliberately.
 
 Keep Chrome and the dashboard tab open. You can close the collector review page; collection continues in its source tab. **Pause / Resume** work across browser restarts. Don't browse elsewhere in the collector tab while it is running. One job supports up to 500 linked sets and 1,000 batches per source. It waits four seconds between batches and stops for access challenges or stalled pages. It never solves CAPTCHAs or bypasses access restrictions. If a source has no picture, the extension cannot create one. Source directories may not link every set the provider has.
+
+Slow pagination gets a 30-second recovery wait, with at most three attempts without new card rows before pausing for review. A temporarily missing More button or a full-page POST does not complete a set. New rows reset the recovery count. Access challenges still pause immediately.
 
 ## Cloud references — no image files or exports
 

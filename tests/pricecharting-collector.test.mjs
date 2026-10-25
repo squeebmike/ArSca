@@ -48,6 +48,13 @@ for(let attempt=0;attempt<300&&!store.job.navigating;attempt++)await new Promise
 assert.equal(store.job.completed.length,0,'missing script result during full-page POST cannot complete the set');assert.ok(store.job.navigating);
 listeners.alarm({name:'collector-resume'});await new Promise(r=>setTimeout(r,30));
 assert.equal(store.job.completed.length,1);assert.equal(cloudRows.length,4,'both sides of a full-page navigation are uploaded');
+let slowPhase=0;
+chrome.scripting.executeScript=async options=>{if(options.args[0]){slowPhase=1;return [{result:{stalled:true,message:'Source still loading'}}];}return [{result:{...result,signature:'slow-page-'+slowPhase,cards:[{...result.cards[0],url:result.cards[0].url+'-slow-'+slowPhase}],hasNext:slowPhase===0}}];};
+await message({type:'start',urls:base,discover:true});
+for(let attempt=0;attempt<300&&!store.job.notBefore;attempt++)await new Promise(r=>setTimeout(r,20));
+assert.ok(store.job.running&&store.job.notBefore>Date.now(),'slow source response schedules a recovery wait instead of pausing');assert.equal(store.job.queue[0].paginationWaits,1);
+store.job.notBefore=Date.now()-1;listeners.alarm({name:'collector-resume'});await new Promise(r=>setTimeout(r,30));
+assert.equal(store.job.completed.length,1);assert.equal(cloudRows.length,6,'a later alarm uploads the page that finished after the source timeout');
 const manifest=JSON.parse(fs.readFileSync(new URL('../extensions/pricecharting-collector/manifest.json',import.meta.url)));assert.equal(manifest.manifest_version,3);assert.ok(!manifest.permissions.includes('cookies'));assert.ok(!manifest.host_permissions.includes('<all_urls>'));
 assert.ok(!manifest.permissions.includes('downloads'),'no file download capability in cloud edition');
 const panelPage=parseHTML('<html><body></body></html>'),panelMessages=[];

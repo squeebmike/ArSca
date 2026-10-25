@@ -22,6 +22,7 @@ async function run(){
   pumping=(async()=>{
     for(let step=0;step<6;step++){
       let job=await read(); if(!job?.running)return;
+      if(Number(job.notBefore)>Date.now())return;
       if(!job.queue.length){job.running=false;job.message='Collection complete. References are saved in the cloud and available to the website.';await save(job);return;}
       const current=job.queue[0];let tab;
       try{tab=job.tabId?await chrome.tabs.get(job.tabId):null;}catch{}
@@ -39,6 +40,7 @@ async function run(){
       if(!result || result.blocked)return pause(result?.message || 'Could not read this page.');
       // Reload state so a Pause clicked during navigation is respected.
       job=await read();if(!job.running)return;
+      if(result.signature&&result.signature!==job.queue[0].signature){job.queue[0].paginationWaits=0;job.queue[0].signature=result.signature;}
       await capture(job,result);
       job.queue[0].pages++;job.message=`Cloud saved: ${Object.values(job.sets).reduce((n,s)=>n+s.cards,0)} cards across ${Object.keys(job.sets).length} sets.`;
       const latestState=await read();if(!latestState.running){job.running=false;job.message=latestState.message;}
@@ -55,7 +57,14 @@ async function run(){
           if(latest && sourceUrl(latest.url)===current.url){job=await read();job.navigating=current.url;await save(job);return;}
           return pause('Pagination was interrupted. Review the source tab, then resume.');
         }
-        if(more?.blocked || more?.stalled)return pause(more.message);
+        if(more?.blocked)return pause(more.message);
+        if(more?.stalled){
+          job=await read();if(!job.running)return;
+          const waits=(job.queue[0].paginationWaits||0)+1;
+          if(waits>3)return pause(more.message+' Automatic source waits were exhausted; review the source tab.');
+          job.queue[0].paginationWaits=waits;job.navigating=current.url;job.notBefore=Date.now()+30000;
+          job.message='Source pagination is slow; waiting 30 seconds before continuing this set.';await save(job);return;
+        }
         if(more?.advanced)continue;
         // Chrome can return no script result when a POST replaces the whole
         // document. Capture that next document; do not mark the set complete.
