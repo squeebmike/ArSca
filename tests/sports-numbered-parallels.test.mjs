@@ -257,7 +257,8 @@ const beforeBase=loads;await get(path);assert.equal(loads,beforeBase+1,'all inli
 assert.match(page.bodyHtml,/data-mp-sports-lookup-runtime/);
 const largePage=await(await get('/baseball/checklists/'+series26.id)).text();
 assert.ok((largePage.match(/data-sports-preview=/g)||[]).length>2000,'the full page retains its verified finish endpoints');
-assert.equal((largePage.match(/<button[^>]+data-sports-lookup=/g)||[]).length,0,'thousands of closed-card photo controls must not be mounted in initial HTML');
+assert.equal((largePage.match(/<button[^>]+data-sports-lookup=/g)||[]).length,60,'one base offer per paginated card is allowed; thousands of parallel controls stay unmounted');
+assert.equal((largePage.match(/<button[^>]+data-sports-lookup="[^"]*parallel=/g)||[]).length,0,'parallel requests remain lazy until versions are opened');
 assert.ok((largePage.match(/href="[^"]*\?parallel=/g)||[]).length>2000,'finish names and links remain crawlable without JavaScript');
 const ownWithPhoto={...own,image:'https://example.test/our-gold-photo.jpg'};
 const stockedPanel=relatedParallelLinks(set,base,esc,{inventory:[ownWithPhoto],deps});
