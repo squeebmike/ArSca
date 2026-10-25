@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {parseHTML} from 'linkedom';
+import {sourceUrl,eligibleSet,mergeCards,csv,inspectPage} from '../extensions/pricecharting-collector/core.mjs';
+import {reviewCapture} from '../scripts/import-reference-capture.mjs';
+const base='https://www.sportscardspro.com/console/baseball-cards-2022-topps-chrome-platinum-anniversary';
+assert.match(sourceUrl(base+'?exclude-variants=true'),/exclude-variants=false/);
+for(const url of ['https://evil.test/console/a','javascript:alert(1)','https://www.pricecharting.com.evil.test/console/a','https://user:secret@www.pricecharting.com/console/a','https://www.pricecharting.com/account'])assert.equal(sourceUrl(url),'');
+assert.ok(eligibleSet(base));assert.ok(!eligibleSet(base.replace('topps','panini')));assert.ok(!eligibleSet(base.replace('2022','2018')));
+const url='https://www.sportscardspro.com/game/baseball-cards-2022-topps-chrome-platinum-anniversary/ken-griffey-jr-gold-192';
+const html=`<h1>2022 Topps Chrome Platinum Anniversary Baseball Cards</h1><table><tr id="product-123" data-product="123"><td class="image"><img src="https://storage.googleapis.com/images.pricecharting.com/abc123/60.jpg"></td><td class="title"><a href="${url}">Ken Griffey Jr. [Gold] #192</a><span class="list-print-run">/50</span></td></tr><tr id="product-124"><td class="title"><a href="${url.replace('gold','red')}">Ken Griffey Jr. [Red] #192</a></td></tr></table><form class="js-next-page"><input type="submit" value="more results »"></form>`;
+const {document,window}=parseHTML(html);const context=vm.createContext({document,location:new URL(base),URL,Date,MutationObserver:window.MutationObserver,setTimeout,clearTimeout});
+const result=await vm.runInContext('('+inspectPage.toString()+')()',context);
+assert.equal(result.cards.length,2);assert.equal(result.cards[0].parallel,'Gold');assert.equal(result.cards[0].run,'/50');assert.equal(result.cards[0].cardNumber,'192');assert.match(result.cards[0].image,/240.jpg$/);assert.equal(result.cards[1].image,'','missing photos do not lose card identities');assert.ok(result.hasNext);
+const merged=mergeCards(result.cards,[{...result.cards[0],image:''}]);assert.equal(merged.length,2);assert.ok(merged[0].image,'resume preserves a previously collected photo');
+assert.match(csv([{title:'Ken, "The Kid"',run:'/50'}]),/Ken, ""The Kid""/);
+const fakeSet={id:'test',sport:'baseball',displayName:'2022 Topps Chrome Platinum Anniversary Baseball',cards:[{cardNumber:'192',player:'Ken Griffey Jr.',section:'Base'}]};
+const baseRow={...result.cards[0],title:'Ken Griffey Jr. #192',run:'',image:'https://storage.googleapis.com/images.pricecharting.com/base123/240.jpg',url:url.replace('-gold','')};
+const report=reviewCapture({schema:1,cards:[baseRow,result.cards[0],{...baseRow,url:'https://evil.test/game/a'}]},fakeSet);
+assert.equal(report.accepted.length,1,'only verified exact printing is accepted');assert.equal(report.failures.length,2);
+const blocked=parseHTML('<title>Just a moment</title><h1>Verify you are human</h1>').document;
+assert.ok((await vm.runInContext('('+inspectPage.toString()+')()',vm.createContext({document:blocked,location:new URL(base),URL,Date}))).blocked);
+// Exercise the actual service worker event handler with persisted storage and
+// ordinary tab navigation. A restart gets the same queue, not a fresh job.
+const store={},listeners={},events={addListener:f=>{}};let tab=null,workerSource=fs.readFileSync(new URL('../extensions/pricecharting-collector/background.js',import.meta.url),'utf8');
+const chrome={storage:{local:{get:async key=>key?{[key]:structuredClone(store[key])}:structuredClone(store),set:async value=>Object.assign(store,structuredClone(value))}},alarms:{create:async()=>{},onAlarm:{addListener:f=>listeners.alarm=f}},action:{onClicked:events},tabs:{get:async()=>tab,create:async x=>tab={...x,id:5,status:'loading'},update:async(id,x)=>tab={...tab,...x},onUpdated:{addListener:f=>listeners.updated=f}},runtime:{onStartup:events,onInstalled:events,onMessage:{addListener:f=>listeners.message=f},getURL:x=>x},scripting:{executeScript:async()=>[{result:{...result,hasNext:false}}]}};
+vm.runInNewContext(workerSource.replace(/^import[^\n]+\n/,''),{chrome,sourceUrl,eligibleSet,mergeCards,inspectPage,URL,Date,console,setTimeout,structuredClone});
+const message=value=>new Promise(resolve=>listeners.message(value,{},resolve));
+assert.ok((await message({type:'start',urls:base,discover:true})).ok);await new Promise(r=>setTimeout(r,15));assert.equal(store.job.tabId,5);
+await message({type:'pause'});assert.equal(store.job.running,false);tab.status='complete';await message({type:'resume'});await new Promise(r=>setTimeout(r,30));
+assert.equal(store.job.running,false);assert.equal(store.job.completed.length,1);assert.equal(store['set:'+result.cards[0].consoleId].length,2);
+const manifest=JSON.parse(fs.readFileSync(new URL('../extensions/pricecharting-collector/manifest.json',import.meta.url)));assert.equal(manifest.manifest_version,3);assert.ok(!manifest.permissions.includes('cookies'));assert.ok(!manifest.host_permissions.includes('<all_urls>'));
+console.log('Card collector: source boundaries, rows/photos/parallels, missing cards, resume, review import passed');

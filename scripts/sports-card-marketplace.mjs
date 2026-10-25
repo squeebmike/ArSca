@@ -79,6 +79,7 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
    .filter(l=>card?sportsListingMatches(l,card,set,group):group.cards.some(c=>sportsListingMatches(l,c,set,group)));
   const result=await deps.searchEbay(query,campaign,signal);
   await check(result);
+  let checkedAt=Number(result.checkedAt)||Date.now();
   let matches=eligible(result.listings);
   // One bounded retry removes publisher-only section wording and the serial
   // search token. Exact release, subset, finish and numbering validation stays.
@@ -87,9 +88,9 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
    const retry=await deps.searchEbay(fallback,campaign,signal);
    await check(retry);
    matches=eligible(retry.listings);
+   checkedAt=Number(retry.checkedAt)||Date.now();
   }
-  const checkedAt=Date.now();
-  return matches.map(l=>({itemId:l.itemId,title:l.title,image:l.imageUrl,href:l.affiliateUrl,price:l.currency==='USD'&&Number.isFinite(Number(l.price))&&Number(l.price)>0?Number(l.price):null,priceKind:l.priceKind||'buyNow',checkedAt,endTime:l.endTime||null}));
+  return {at:checkedAt,items:matches.map(l=>({itemId:l.itemId,title:l.title,image:l.imageUrl,href:l.affiliateUrl,price:l.currency==='USD'&&Number.isFinite(Number(l.price))&&Number(l.price)>0?Number(l.price):null,priceKind:l.priceKind||'buyNow',checkedAt,endTime:l.endTime||null}))};
  };
  const live=items=>items.filter(l=>!l.endTime||Date.parse(l.endTime)>Date.now());
  if(wait)return live(await cachedPublicCatalog(env,ctx,key,load,{freshMs:FRESH,maxAgeMs:FRESH,staleMs:RETAIN,timeoutMs:9500}));

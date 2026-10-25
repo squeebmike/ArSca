@@ -5667,6 +5667,12 @@ function ebayBrowseRetryAt(usage, retryAfter, now = Date.now()) {
   return {retryAt:new Date(Math.min(now + 86400000, Math.max(now + 300000, Number.isFinite(headerTime) ? headerTime : 0))).toISOString(),exhausted:false};
 }
 async function fetchEbayActiveListings(env, query, opts = {}) {
+  if (opts.campaignId && env.PUBLIC_EBAY_CACHE && opts.coordinated !== false) {
+    const input={query:String(query).trim().replace(/\s+/g,' ').slice(0,300),campaignId:String(opts.campaignId),listingType:opts.listingType||'',limit:opts.limit||5,maxPrice:opts.maxPrice||0,sortOrder:opts.sortOrder||''};
+    const stub=env.PUBLIC_EBAY_CACHE.get(env.PUBLIC_EBAY_CACHE.idFromName(JSON.stringify(input)));
+    const response=await stub.fetch('https://cache.internal/search',{method:'POST',body:JSON.stringify(input),signal:opts.signal});
+    return response.json();
+  }
   const token = await getEbayAppAccessToken(env).catch(() => '');
   if (!token) return { source: 'none', listings: [], warning: 'eBay app access token unavailable -- check EBAY_CLIENT_ID/EBAY_CLIENT_SECRET' };
   const { maxPrice = 0, sortOrder = '', listingType = '', limit = 5 } = opts;
@@ -5693,7 +5699,61 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
     return { source: 'ebay_active', listings: [], warning: 'eBay Browse API ' + res.status + (data?.errors?.[0]?.message ? ': ' + data.errors[0].message : ''), ...(rateLimit ? {rateLimit} : {}) };
   }
   const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
-  return { source: 'ebay_active', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null };
+  return { source: 'ebay_active', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null, checkedAt:Date.now() };
+}
+
+// One globally addressed instance per public search, shared by all edge regions.
+// The alarm only removes expired storage; it never refreshes or calls eBay.
+export class PublicEbayCache {
+  constructor(ctx,env){this.ctx=ctx;this.env=env;this.refreshing=null;}
+  async fetch(request){
+    if(request.method!=='POST')return new Response('POST only',{status:405});
+    if(Number(request.headers.get('Content-Length')||0)>2048)return new Response('Too large',{status:413});
+    const text=await request.text();if(text.length>2048)return new Response('Too large',{status:413});
+    let input;try{input=JSON.parse(text);}catch{return new Response('Invalid request',{status:400});}
+    if(!input.query||input.query.length>300||!/^\d{10}$/.test(input.campaignId)||!['','Auction','FixedPrice','AllPurchasable'].includes(input.listingType))return new Response('Invalid search',{status:400});
+    const now=Date.now(),freshMs=3*3600000,retainMs=(6*60-5)*60000;
+    const saved=await this.ctx.storage.get('snapshot'),age=saved?now-saved.at:Infinity;
+    const usable=age>=0&&age<retainMs&&Array.isArray(saved?.result?.listings);
+    if(usable&&age<freshMs)return Response.json(saved.result);
+    const pause=await this.env.LBA_KV.get('sports-ebay-photo-pause','json');
+    if(Number(pause?.until)>now)return Response.json(usable?saved.result:{listings:[],warning:'eBay Browse API 429: Search paused',rateLimit:{retryAt:new Date(pause.until).toISOString(),exhausted:pause.quotaExhausted===true}});
+    const retryAt=Number(await this.ctx.storage.get('retryAt'))||0;
+    if(retryAt>now&&!this.refreshing)return Response.json(usable?saved.result:{listings:[],warning:'eBay search temporarily unavailable'});
+    // Check after all storage awaits, then assign without yielding: concurrent
+    // requests join this same promise rather than starting another upstream call.
+    if(!this.refreshing){
+      this.refreshing=(async()=>{
+        try{
+          const result=await fetchEbayActiveListings(this.env,input.query,{campaignId:input.campaignId,listingType:input.listingType,limit:Math.min(50,Math.max(1,Number(input.limit)||5)),maxPrice:Math.max(0,Number(input.maxPrice)||0),sortOrder:input.sortOrder||'',coordinated:false,signal:AbortSignal.timeout(9000)});
+          if(result.warning){
+            if(result.rateLimit){const reset=Date.parse(result.rateLimit.retryAt),until=Number.isFinite(reset)?Math.max(Date.now()+300000,Math.min(Date.now()+86405000,reset)):Date.now()+300000;await this.env.LBA_KV.put('sports-ebay-photo-pause',JSON.stringify({until,quotaExhausted:result.rateLimit.exhausted===true}),{expirationTtl:Math.ceil((until-Date.now())/1000)});}
+            await this.ctx.storage.put('retryAt',Date.now()+60000);
+            await this.ctx.storage.setAlarm(Date.now()+retainMs);
+            return usable&&Date.now()-saved.at<retainMs?saved.result:result;
+          }
+          await this.ctx.storage.put('snapshot',{at:result.checkedAt,result});
+          await this.ctx.storage.put('retryAt',0);
+          await this.ctx.storage.setAlarm(result.checkedAt+retainMs);
+          return result;
+        }catch{
+          await this.ctx.storage.put('retryAt',Date.now()+60000);
+          await this.ctx.storage.setAlarm(Date.now()+retainMs);
+          return usable&&Date.now()-saved.at<retainMs?saved.result:{listings:[],warning:'eBay search temporarily unavailable'};
+        }
+      })().finally(()=>{this.refreshing=null;});
+      this.ctx.waitUntil(this.refreshing.catch(()=>{}));
+    }
+    if(usable)return Response.json(saved.result);
+    return Response.json(await this.refreshing);
+  }
+  async alarm(){
+    const saved=await this.ctx.storage.get('snapshot');
+    const expires=Number(saved?.at)+(6*60-5)*60000;
+    if(expires>Date.now()){await this.ctx.storage.setAlarm(expires);return;}
+    if(this.refreshing){await this.ctx.storage.setAlarm(Date.now()+60000);return;}
+    await this.ctx.storage.deleteAll();
+  }
 }
 
 // ── Pocket Scout: universal item scanner ─────────────────────────────────
