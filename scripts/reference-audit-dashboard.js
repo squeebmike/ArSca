@@ -2,7 +2,7 @@
 // are copied to extensions, URLs, logs, files, or third-party services.
 (() => {
  if(document.getElementById('reference-audit-panel'))return;
- const panel=document.createElement('details');panel.id='reference-audit-panel';panel.style.cssText='position:fixed;left:12px;bottom:12px;z-index:100001;width:min(950px,calc(100vw - 24px));max-height:80vh;overflow:auto;background:#20172b;color:#f8f3fb;border:2px solid #b79acf;border-radius:12px;padding:12px;font:14px/1.5 system-ui;box-shadow:0 8px 30px #0008';
+ const panel=document.createElement('details');panel.id='reference-audit-panel';panel.style.cssText='box-sizing:border-box;max-width:1360px;margin:0 auto 14px;max-height:80vh;overflow:auto;background:#20172b;color:#f8f3fb;border:2px solid #b79acf;border-radius:12px;padding:12px;font:14px/1.5 system-ui;box-shadow:0 8px 30px #0008';
  const summary=document.createElement('summary');summary.textContent='Card reference audit';summary.style.cssText='font-weight:750;cursor:pointer';panel.append(summary);
  const note=document.createElement('p');note.textContent='Owner-only review of actual cloud records. Automated eligibility checks metadata, source identity, image availability and conflicts. It is not visual authentication of every photo.';panel.append(note);
  const buttons=document.createElement('div');buttons.style.cssText='display:flex;gap:8px;flex-wrap:wrap';panel.append(buttons);
@@ -35,5 +35,9 @@
   clearTimeout(timer);if(data.running)timer=setTimeout(()=>{if(!document.hidden)void auditStatus().catch(error=>status.textContent=error.message);},30000);
  }
  for(const [label,action]of [['Load cloud archive',loadArchive],['Load real photo samples',samples],['Run automated archive audit',async()=>{await request('audit/start','POST');await auditStatus();}],['Refresh audit progress',auditStatus]]){const button=document.createElement('button');button.type='button';button.textContent=label;button.style.cssText='padding:8px 10px;background:#382746;color:white;border:1px solid #b79acf;border-radius:6px;cursor:pointer';button.onclick=async()=>{button.disabled=true;try{await action();}catch(error){status.textContent=error.message;}finally{button.disabled=false;}};buttons.append(button);}
- document.body.append(panel);
+ // Lives in SETTINGS / ADMIN only. It used to float over every tab with no
+ // way to close it (store, 2026-10-25: "I can't close this tab?").
+ const home=document.getElementById('tab-backoffice');
+ if(home)home.insertBefore(panel,document.getElementById('backoffice-panels'));
+ else{panel.style.cssText+=';position:fixed;left:12px;bottom:12px;z-index:100001;width:min(950px,calc(100vw - 24px))';document.body.append(panel);}
 })();
