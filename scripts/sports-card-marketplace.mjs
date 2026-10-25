@@ -66,14 +66,14 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
   const eligible=listings=>(listings||[]).filter(l=>ebayAffiliateListingUrl(l.affiliateUrl,campaign)&&/^https:\/\/(?:[^/]+\.)?ebayimg\.com\//.test(l.imageUrl||''))
    .filter(l=>card?sportsListingMatches(l,card,set,group):group.cards.some(c=>sportsListingMatches(l,c,set,group)));
   const result=await deps.searchEbay(query,campaign,signal);
-  if(result.warning)throw new Error('Marketplace unavailable');
+  if(result.warning)throw new Error('Marketplace unavailable'+(/Browse API (\d{3})/.test(result.warning)?' HTTP '+result.warning.match(/Browse API (\d{3})/)[1]:''));
   let matches=eligible(result.listings);
   // One bounded retry removes publisher-only section wording and the serial
   // search token. Exact release, subset, finish and numbering validation stays.
   const fallback=card?[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card.player,card.cardNumber,needsSubset&&!card.parallelRule?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card.parallelRule?.searchTerm||card.parallelRule?.name].filter(Boolean).join(' '):query;
   if(!matches.length&&fallback!==query&&!signal.aborted){
    const retry=await deps.searchEbay(fallback,campaign,signal);
-   if(retry.warning)throw new Error('Marketplace unavailable');
+   if(retry.warning)throw new Error('Marketplace unavailable'+(/Browse API (\d{3})/.test(retry.warning)?' HTTP '+retry.warning.match(/Browse API (\d{3})/)[1]:''));
    matches=eligible(retry.listings);
   }
   const checkedAt=Date.now();
@@ -109,7 +109,7 @@ async function loadReference(target){
   if(d.reference||d.listing){var photo=d.reference||d.listing,img=document.createElement('img'),credit=document.createElement('small');img.src=photo.image;img.alt=photo.title+(d.listing?' — eBay seller photo':' — PriceCharting reference image');img.width=180;img.height=240;img.loading='lazy';img.decoding='async';credit.textContent=d.listing?'eBay seller photo':'PriceCharting reference';target.append(img,credit);img.onerror=function(){target.textContent='Reference photo unavailable';};
    if(d.listing){var offer=document.createElement('a');offer.href=photo.href;offer.target='_blank';offer.rel='noopener sponsored';offer.textContent='View this copy on eBay'+(photo.price?' · '+(photo.priceKind==='currentBid'?'Auction bid ':'')+'$'+Number(photo.price).toFixed(2)+' USD':'');var details=target.closest('details.mp-card-parallels');if(details){var p=document.createElement('p');p.append(offer);details.querySelector('summary').after(p);}else{var link=document.createElement('a');link.href=photo.href;link.target='_blank';link.rel='noopener sponsored';link.append(img);target.prepend(link);target.append(offer);}}
   }
-  else target.textContent='No exact card photo found';
+  else target.textContent=d.marketplaceUnavailable?'eBay photos temporarily unavailable':'No exact card photo found';
  }catch(_){target.textContent='Card photo temporarily unavailable';}
 }
 function compactTarget(target){return !!(target.closest&&target.closest('.mp-parallel-card'));}
