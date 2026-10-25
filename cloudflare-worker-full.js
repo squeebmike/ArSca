@@ -5646,7 +5646,7 @@ async function fetchEbayItemGroup(env, groupId) {
 // close still below value) instead of only ever looking at sold history.
 function normalizeEbayBrowseUsage(data) {
   const number = v => v !== null && v !== undefined && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null;
-  return (data?.rateLimits || []).filter(api => api.apiName === 'browse' && api.apiContext === 'buy').flatMap(api =>
+  return (data?.rateLimits || []).filter(api => String(api.apiName || '').toLowerCase() === 'browse' && String(api.apiContext || '').toLowerCase() === 'buy').flatMap(api =>
     (api.resources || []).flatMap(resource => (resource.rates || []).map(rate => ({ resource:String(resource.name || ''), limit:number(rate.limit), count:number(rate.count), remaining:number(rate.remaining), reset:Number.isFinite(Date.parse(rate.reset)) ? new Date(rate.reset).toISOString() : null, timeWindow:number(rate.timeWindow) }))));
 }
 async function fetchEbayBrowseUsage(env, token) {
@@ -5654,6 +5654,7 @@ async function fetchEbayBrowseUsage(env, token) {
     return await cachedPublicCatalog(env, null, 'ebay-browse-usage-v1', async signal => {
       const response = await fetch('https://api.ebay.com/developer/analytics/v1_beta/rate_limit/?api_context=buy&api_name=browse', { signal, headers:{ Authorization:'Bearer ' + token, Accept:'application/json' } });
       const {data} = await readApiJson(response);
+      await env.LBA_KV?.put('diagnostic:ebay-browse-usage', JSON.stringify({at:Date.now(),status:response.status,rootKeys:Object.keys(data || {}),apis:(data?.rateLimits || []).map(api => ({name:String(api.apiName || ''),context:String(api.apiContext || ''),resources:(api.resources || []).map(r => String(r.name || ''))}))}), {expirationTtl:600});
       if (!response.ok) throw new Error('eBay usage unavailable');
       return normalizeEbayBrowseUsage(data);
     }, {freshMs:300000,maxAgeMs:300000,staleMs:300000,retryMs:300000,timeoutMs:2500});
