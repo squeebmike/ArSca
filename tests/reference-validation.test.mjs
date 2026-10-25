@@ -14,4 +14,11 @@ assert.equal((await checkReferenceImage(base.image,async()=>new Response(null,{s
 assert.equal((await checkReferenceImage(base.image,async()=>new Response('HTML',{headers:{'Content-Type':'text/html'}}))).reason,'not_an_image');
 let external=0;assert.equal((await checkReferenceImage('https://evil.test/photo.jpg',async()=>{external++;})).reason,'invalid_image_host');assert.equal(external,0,'no SSRF or arbitrary host probing');
 assert.equal(referenceMetadataCheck(base).visuallyReviewed,false,'metadata checks never claim visual authentication');
+const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,consoleId,player,cardNumber,parallel,run,url:'https://www.sportscardspro.com/game/'+consoleId+'/sample',title:player+(parallel?' ['+parallel+']':'')+' #'+cardNumber});
+for(const [player,expected] of [['Adrian Gil','2026-bowman-baseball'],['Angeibel Gomez','2026-bowman-chrome-baseball']]){
+ const check=referenceMetadataCheck(bowman('baseball-cards-2026-bowman-chrome-prospect-autograph',player,'CPA-AG'));
+ assert.deepEqual(check.flags,[]);assert.equal(check.matches.length,1);assert.equal(check.matches[0].setId,expected,'same autograph number needs the correct player and release');
+}
+assert.deepEqual(referenceMetadataCheck(bowman('baseball-cards-2026-bowman-paper-prospect','Aidan Miller','BP-49','Logo Pattern')).flags,[]);
+assert.ok(referenceMetadataCheck(bowman('baseball-cards-2026-bowman-chrome-prospect-autograph','Adrian Gil','CPA-AG','Peanuts Refractor')).flags.includes('no_exact_checklist_match'),'missing serial information cannot be invented from a photo');
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

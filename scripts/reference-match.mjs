@@ -1,5 +1,5 @@
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
-const finishName=s=>fold(s).replace(/^platinum toile /,'toile ').replace(/ refractor$/,'');
+const finishName=s=>fold(s).replace(/^platinum toile /,'toile ').replace(/^bowman logo pattern$/,'logo pattern').replace(/ refractor$/,'');
 export function safeReferenceImage(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='storage.googleapis.com'&&/^\/images\.pricecharting\.com\/[a-z0-9]+\/(?:60|240|300|400|1600)\.jpg$/.test(u.pathname)?u.href:null;}catch{return null;}}
 export function referenceIdentityMatches(row,card){
  const m=String(row.title||'').match(/^(.*?)\s*(?:\[([^\]]+)\])?\s*#([^\s]+)\s*$/),rule=card.parallelRule,number=String(card.cardNumber);

@@ -24,7 +24,7 @@ export function parseReferenceFamily(html,consoleId){
 }
 export function savedReferenceImage(set,card){return matchReferenceImage(referenceImageSeeds[set.id]||[],set,card);}
 export async function sportsReferenceImage(env,ctx,set,card,deps={}){
- const consoles=referenceConsoles(set);
+ const consoles=referenceConsoles(set,card);
  for(const id of consoles){
   const cloud=await cloudReferenceFamily(env,id,String(card.cardNumber));
   // A shared photo across different finishes is not proof of the printing.

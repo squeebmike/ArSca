@@ -3,14 +3,23 @@ import {footballSets} from './topps/football-seed.mjs';
 import {sectionsForSet} from './baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
-export const REFERENCE_AUDIT_VERSION='2026-10-25.1';
+export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
-export function referenceConsoles(set){
+export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
  if(sport==='baseball'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
  if(sport==='baseball'&&/topps update series/i.test(set.displayName))ids.push('baseball-cards-'+name.replace('-update-series','-update'));
+ if(set.id==='2026-bowman-baseball'){
+  if(!card||card.section==='Paper Prospects')ids.push('baseball-cards-2026-bowman-paper-prospect');
+  if(!card||card.section==='Chrome Prospects')ids.push('baseball-cards-2026-bowman-chrome-prospect');
+  if(!card||card.section==='Chrome Prospects Autograph Variation')ids.push('baseball-cards-2026-bowman-chrome-prospect-autograph');
+ }
+ if(set.id==='2026-bowman-chrome-baseball'){
+  if(!card||card.section==='Chrome Prospects')ids.push('baseball-cards-2026-bowman-chrome-prospect');
+  if(!card||card.section==='Bowman Chrome Prospect Autographs')ids.push('baseball-cards-2026-bowman-chrome-prospect-autograph');
+ }
  return [...new Set(ids)];
 }
 function possibleSources(consoleId){
@@ -25,7 +34,7 @@ function cardIndex(set){
  }
  indexes.set(set,index);return index;
 }
-export function referenceCategory(row){return /auto|signature/i.test(row.title)?'autograph':row.run?'numbered':row.parallel?'parallel':/#[a-z]+-/i.test(row.title)?'insert':'base';}
+export function referenceCategory(row){return /auto|signature/i.test(row.title+' '+row.consoleId)?'autograph':row.run?'numbered':row.parallel?'parallel':/#[a-z]+-/i.test(row.title)?'insert':'base';}
 export function referenceMetadataCheck(row){
  const flags=[],parsed=String(row.title||'').match(/^(.*?)\s*(?:\[([^\]]+)\])?\s*#([^\s]+)\s*$/),matches=[];
  if(!parsed)flags.push('missing_card_identity');
@@ -40,6 +49,7 @@ export function referenceMetadataCheck(row){
  if(!sources.length)flags.push('unmapped_source_set');
  if(parsed&&sources.length){
   for(const {set}of sources)for(const card of cardIndex(set).get(parsed[3]+'|'+fold(parsed[1]))||[]){
+   if(!referenceConsoles(set,card).includes(row.consoleId))continue;
    const variants=[card,...cardParallelProgram(set,card).variants.map(rule=>selectedParallelCard(set,card,rule.id))];
    for(const candidate of variants)if(referenceIdentityMatches(row,candidate)){
     const path='/'+(set.sport==='football'?'football':'baseball')+'/checklists/'+set.id+'/cards/'+card.id+(candidate.parallelRule?'?parallel='+encodeURIComponent(candidate.parallelRule.id):'');
