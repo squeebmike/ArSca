@@ -66,7 +66,7 @@ export class CardReferenceArchive {
    const samples=[],counts={};let cursor='',scanned=0;
    for(let page=0;page<20;page++){
     const rows=await this.ctx.storage.list({prefix:'row:',limit:200,...(cursor?{startAfter:cursor}:{})});if(!rows.size)break;
-    for(const [key,row]of rows){scanned++;if(!row.image)continue;const kind=referenceCategory(row);if((counts[kind]||0)>=3)continue;counts[kind]=(counts[kind]||0)+1;samples.push({...row,validation:await this.ctx.storage.get('validation:'+key.slice(4))||referenceMetadataCheck(row),health:await this.ctx.storage.get('health:'+referenceImageKey(row.image))||null,hold:await this.ctx.storage.get('hold:'+referenceImageKey(row.image))||null});}
+    for(const [key,row]of rows){scanned++;if(!row.image)continue;const kind=row.run?'numbered':row.parallel?'parallel':referenceCategory(row);if((counts[kind]||0)>=3)continue;counts[kind]=(counts[kind]||0)+1;samples.push({...row,validation:await this.ctx.storage.get('validation:'+key.slice(4))||referenceMetadataCheck(row),health:await this.ctx.storage.get('health:'+referenceImageKey(row.image))||null,hold:await this.ctx.storage.get('hold:'+referenceImageKey(row.image))||null});}
     cursor=[...rows.keys()].at(-1);if(rows.size<200||samples.length>=15)break;
    }
    return reply({samples,scanned});
