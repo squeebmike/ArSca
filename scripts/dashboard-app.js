@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.25.1-slabs-and-floors';
+const APP_VERSION = '2026.10.25.3-secret-lair-floor';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4873,7 +4873,7 @@ function floorRulesPanelHtml(){
       <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--g);letter-spacing:.04em">AUTOMATIC FLOOR -- NEVER SELL AT A LOSS</div>
       <label style="font-family:var(--font-mono);font-size:10px;color:var(--dim);display:flex;gap:6px;align-items:center"><input type="checkbox" ${r.on ? 'checked' : ''} onchange="setFloorRule('on',this.checked)"> ON</label>
     </div>
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin:6px 0 8px">Every item with a cost gets a floor: the lowest whole-dollar price that still covers its cost plus a minimum profit after eBay's cut. The shop, register, labels and eBay never go below it (an item's own floor wins if it's higher). The minimum profit is a name rule below if one matches, otherwise its category's (in the table), otherwise the store default.</div>
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin:6px 0 8px">Every item with a cost gets a floor: the lowest whole-dollar price that still covers its cost plus a minimum profit after eBay's cut. The shop, register, labels and eBay never go below it (an item's own floor wins if it's higher). The minimum profit is a name rule below if one matches, otherwise its category's (in the table), otherwise the store default. A name rule with a fixed floor uses that price as-is, no eBay fees (for things you don't sell on eBay).</div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10px;color:var(--dim);align-items:center">
       <label>eBay fee %${num('ebayPct', r.ebayPct, 0.01, 70)}</label>
       <label>+ order fee $${num('orderFee', r.orderFee, 0.01, 60)}</label>
@@ -4886,7 +4886,7 @@ function floorRulesPanelHtml(){
       <span>(whichever is more)</span>
     </div>
     <div style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">NAME RULES (win over the category):
-      ${(r.names || []).map((n, idx) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">name has <input class="tsi" style="width:150px;margin:0" value="${escHtml(n.match || '')}" onchange="setFloorNameRule(${idx},'match',this.value)"> min profit $<input type="number" min="0" step="0.01" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.profit ?? ''}" onchange="setFloorNameRule(${idx},'profit',this.value)"> or %<input type="number" min="0" step="1" class="tsi" style="width:60px;margin:0;text-align:right" value="${n.profitPct || ''}" onchange="setFloorNameRule(${idx},'profitPct',this.value)"> <button class="ra" onclick="removeFloorNameRule(${idx})">x</button></div>`).join('')}
+      ${(r.names || []).map((n, idx) => `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px">name has <input class="tsi" style="width:150px;margin:0" value="${escHtml(n.match || '')}" onchange="setFloorNameRule(${idx},'match',this.value)"> min profit $<input type="number" min="0" step="0.01" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.profit || ''}" onchange="setFloorNameRule(${idx},'profit',this.value)"> or %<input type="number" min="0" step="1" class="tsi" style="width:60px;margin:0;text-align:right" value="${n.profitPct || ''}" onchange="setFloorNameRule(${idx},'profitPct',this.value)"> or a fixed floor $<input type="number" min="0" step="1" class="tsi" style="width:70px;margin:0;text-align:right" value="${n.floor || ''}" title="This price exactly, no eBay fees -- for things you don't sell on eBay" onchange="setFloorNameRule(${idx},'floor',this.value)"> <button class="ra" onclick="removeFloorNameRule(${idx})">x</button></div>`).join('')}
       <button class="ra" style="margin-top:4px" onclick="addFloorNameRule()">+ NAME RULE</button>
     </div>
     <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-top:8px">${escHtml(example(2.5))} · ${escHtml(example(6))} · ${escHtml(example(45))}<br>${escHtml(comic)}</div>
@@ -4930,9 +4930,11 @@ function setFloorNameRule(idx, field, value){
 function addFloorNameRule(){
   const match = prompt('Items whose name has (e.g. Secret Lair):', '');
   if(!match || !match.trim()) return;
-  const profit = Math.max(0, parseFloat(prompt('Minimum profit after eBay fees ($):', '10')) || 0);
+  const fixed = prompt('A fixed floor price for these ($, no eBay fees)? Leave blank to use a minimum profit after eBay fees instead.', '');
+  const floor = Math.max(0, parseFloat(fixed) || 0);
+  const profit = floor ? 0 : Math.max(0, parseFloat(prompt('Minimum profit after eBay fees ($):', '10')) || 0);
   const r = floorRules();
-  r.names = [...(r.names || []), { match:match.trim(), profit, profitPct:0 }];
+  r.names = [...(r.names || []), floor ? { match:match.trim(), floor } : { match:match.trim(), profit, profitPct:0 }];
   saveFloorRules(r);
 }
 function removeFloorNameRule(idx){
@@ -9878,11 +9880,12 @@ function pokemonCardNumberForSync(card = {}){
 // silently return a different (much cheaper) printing's condition price
 // than the one this exact card/row actually is. prices.variants is scoped
 // correctly and must be tried first.
-function pokemonPriceTrackerVariantConditionPrice(card = {}, condition = ''){
+function pokemonPriceTrackerVariantConditionPrice(card = {}, condition = '', printing = ''){
   const prices = card.prices || {};
   const variants = prices.variants || {};
   const variantNames = Object.keys(variants);
   if(!variantNames.length) return 0;
+  if(printing && variants[printing]) return pokemonPptPriceValue(pokemonPptObjectMatch(variants[printing], pokemonPptConditionLabel(condition || 'Near Mint')));
   // Prefer whichever printing the API itself says the primary/market price
   // represents (primaryPrinting) so a holofoil-only card never gets read
   // out of some other printing's bucket.
@@ -9891,8 +9894,15 @@ function pokemonPriceTrackerVariantConditionPrice(card = {}, condition = ''){
     : variantNames.find(name => normalizePokemonPptKey(name) === normalizePokemonPptKey(prices.primaryPrinting || '')) || variantNames[0];
   return pokemonPptPriceValue(pokemonPptObjectMatch(variants[preferredName] || {}, pokemonPptConditionLabel(condition)));
 }
-function pokemonPriceTrackerMarketPrice(card = {}, condition = ''){
+// printing: the exact edition printing for a card printed in editions
+// (pptEditionPrinting) -- its own price, at any condition, NM included,
+// since PPT's market figure is its primary (1st Edition) printing.
+function pokemonPriceTrackerMarketPrice(card = {}, condition = '', printing = ''){
   const prices = card.prices || {};
+  if(printing && prices.variants?.[printing]) {
+    const editionPrice = pokemonPriceTrackerVariantConditionPrice(card, condition || 'NM', printing);
+    if(editionPrice > 0) return editionPrice;
+  }
   // Only override with a per-condition price for a genuinely non-NM item.
   // The very first cut of this fix checked this for EVERY condition
   // (including plain NM), which meant it started preferring
@@ -11011,6 +11021,9 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
       }
       if(sealed) summary.sealedMatched++;
       const itemCondition = String(item.condition || 'NM');
+      // A card printed in editions syncs from its own edition (Unlimited
+      // unless the item says 1st Edition), not PPT's primary printing.
+      const editionPrinting = sealed ? '' : pptEditionPrinting(pptVariantsOf(live.card), item);
       // Sealed product doesn't carry NM/LP/MP/HP/DMG grading, so this check
       // only applies to raw singles. A non-NM single with no real
       // per-condition price on file gets skipped rather than silently
@@ -11018,7 +11031,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
       // that mismatch is exactly what made an ordinary MP card look like it
       // "spiked" when the sync actually just fetched its NM price.
       if(!sealed && pokemonPptConditionCode(itemCondition) !== 'NM'){
-        const perConditionPrice = pokemonPriceTrackerVariantConditionPrice(live.card, itemCondition)
+        const perConditionPrice = pokemonPriceTrackerVariantConditionPrice(live.card, itemCondition, editionPrinting)
           || pokemonPptPriceValue(pokemonPptObjectMatch(live.card.prices?.conditions || {}, pokemonPptConditionLabel(itemCondition)));
         if(!(perConditionPrice > 0)){
           summary.noPrice++;
@@ -11030,7 +11043,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
           return;
         }
       }
-      const freshPrice = pokemonPriceTrackerMarketPrice(live.card, itemCondition);
+      const freshPrice = pokemonPriceTrackerMarketPrice(live.card, itemCondition, editionPrinting);
       if(!freshPrice || freshPrice <= 0) {
         summary.noPrice++;
         const linkedId = inventoryTcgPlayerId(item) || live.card.tcgPlayerId || live.card.tcgplayerId || '';
@@ -14167,6 +14180,10 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // Automatic floor (cost + minimum profit after eBay fees) -- see
   // computeAutoFloor. Listed here so it survives every later save.
   ['autoFloor',0,'num'],
+  // The exact PokemonPriceTracker printing this copy is ("Unlimited",
+  // "1st Edition Holofoil"...) and whether a person picked it -- see
+  // pptEditionPrinting.
+  ['selectedPrinting',''], ['editionConfirmed',false,'bool'],
   // Category markup ({pct, flat}) this item is priced by -- see
   // inventoryPriceRule. Listed here so it survives every later save.
   ['priceRule',null,'raw'],
@@ -15831,7 +15848,10 @@ function inventoryMinPrice(item={}){ return Number(item.minPrice ?? item.raw?.mi
 // as autoFloor (new items at creation, again whenever cost or category
 // changes, all of them via APPLY FLOORS) so the shop and checkout use the
 // same number. The item's own floor (minPrice) still wins if it's higher.
-const DEFAULT_FLOOR_RULES = { on:true, ebayPct:13.25, orderFee:0.30, orderFeeOver10:0.40, perOrderCost:0, profit:0.50, profitPct:0, categories:{}, names:[{ match:'Secret Lair', profit:10, profitPct:0 }] };
+// A name rule can instead set a fixed floor price (floor $) with no eBay
+// fees in it -- store: "Secret Lairs won't be on eBay. Just set floors to
+// 55 on those."
+const DEFAULT_FLOOR_RULES = { on:true, ebayPct:13.25, orderFee:0.30, orderFeeOver10:0.40, perOrderCost:0, profit:0.50, profitPct:0, categories:{}, names:[{ match:'Secret Lair', floor:55 }] };
 function floorRules(){
   const saved = getVendorConfig().floorRules || {};
   return { ...DEFAULT_FLOOR_RULES, ...saved, categories:{ ...(saved.categories || {}) }, names:Array.isArray(saved.names) ? saved.names : DEFAULT_FLOOR_RULES.names };
@@ -15840,7 +15860,7 @@ function floorRules(){
 function floorProfitRuleFor(item = {}, rules = floorRules()){
   const name = String(inventoryCardName(item) || item.title || '').toLowerCase();
   const byName = (rules.names || []).find(r => r && String(r.match || '').trim() && name.includes(String(r.match).trim().toLowerCase()));
-  if(byName) return { profit:Number(byName.profit || 0), profitPct:Number(byName.profitPct || 0), from:'name has "' + String(byName.match).trim() + '"' };
+  if(byName) return { profit:Number(byName.profit || 0), profitPct:Number(byName.profitPct || 0), fixed:Number(byName.floor || 0), from:'name has "' + String(byName.match).trim() + '"' };
   const category = String(item.category || item.raw?.category || '').trim();
   const byCategory = rules.categories?.[category];
   if(byCategory && (byCategory.profit != null || byCategory.profitPct != null)) return { profit:Number(byCategory.profit || 0), profitPct:Number(byCategory.profitPct || 0), from:category + ' rule' };
@@ -15868,7 +15888,10 @@ function ebayNetProfit(price, cost, rules = floorRules()){
 // The floor an item should carry now (0 = none: floors off, or no cost).
 function computeAutoFloor(item = {}, rules = floorRules()){
   if(!rules.on || inventoryIsDropship(item)) return 0;
-  return ebayFloorPrice(inventoryCostBasis(item), floorProfitRuleFor(item, rules), rules);
+  const rule = floorProfitRuleFor(item, rules);
+  // A fixed floor is that price, fees or not, cost or not.
+  if(rule.fixed > 0) return roundSellPrice(rule.fixed);
+  return ebayFloorPrice(inventoryCostBasis(item), rule, rules);
 }
 function inventoryAutoFloor(item={}){ return Number(item.autoFloor ?? item.raw?.autoFloor ?? 0) || 0; }
 // The floor actually used: the higher of the item's own and the automatic.
@@ -16147,6 +16170,7 @@ function inventoryHealthSummary(items=all){
     noMarket:inStock.filter(i=>inventoryMarketPrice(i) <= 0).length,
     stale:inStock.filter(inventoryIsPriceStale).length,
     oldPrice:inStock.filter(inventoryPriceIsOld).length,
+    checkEdition:inStock.filter(inventoryEditionUnchecked).length,
     listed:inStock.filter(inventoryIsListed).length,
     notListed:inStock.filter(i=>!inventoryIsListed(i)).length,
     belowCost:inStock.filter(i=>{ const s=inventoryProfitStats(i); return s.cost>0 && s.list>0 && s.list<s.cost; }).length,
@@ -16256,6 +16280,7 @@ function renderInventoryHealthPanel(){
     ['no_market','No Market',h.noMarket,'needs market sync'],
     ['stale_price','Stale Price',h.stale,'older than 14 days'],
     ['old_price','Price 30+ Days',h.oldPrice,'market price over a month old'],
+    ['check_edition','Check Edition',h.checkEdition,'Unlimited or 1st Edition?'],
     ['not_listed','Not Listed',h.notListed,'in stock'],
     ['listed_online','Listed',h.listed,'online lifecycle'],
     ['below_cost','Below Cost',h.belowCost,'list below cost'],
@@ -16991,6 +17016,7 @@ function inventoryMatchesFlag(i, flag){
   if(flag === 'no_market') return inventoryMarketPrice(i) <= 0;
   if(flag === 'stale_price') return inventoryIsPriceStale(i);
   if(flag === 'old_price') return inventoryPriceIsOld(i);
+  if(flag === 'check_edition') return inventoryEditionUnchecked(i);
   if(flag === 'below_cost') return inventoryProfitStats(i).cost>0 && inventoryProfitStats(i).list>0 && inventoryProfitStats(i).list<inventoryProfitStats(i).cost;
   if(flag === 'high_value') return inventoryListPrice(i) >= 100;
   return true;
@@ -17075,7 +17101,7 @@ function renderTable(){
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
-      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${inventoryHeldAtFloor(i)?`<span class="inv-warning-pill" style="color:var(--gold);border-color:var(--gold)" title="Held at its floor: under this it loses money after eBay fees (cost $${inventoryCostBasis(i).toFixed(2)})">FLOOR</span><br>`:''}${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}${inventoryPriceAgeLabel(i)?`<br><span class="inv-price-age" style="font-family:var(--font-mono);font-size:8px;color:${inventoryPriceAgeColor(i)}">${escHtml(inventoryPriceAgeLabel(i))}</span>`:''}</td>
+      <td class="pp pm">${money.list>0?fd$(money.list):(money.market>0?fd$(money.market):'—')}${inventoryPriceOverride(i)>0?'<span class="inv-lock" title="Price locked -- price syncs leave it alone">🔒</span>':''}<br>${inventoryEditionUnchecked(i)?`<span style="white-space:nowrap">${inventoryEditionButtonsHtml(i, true)}</span><br>`:''}${inventoryHeldAtFloor(i)?`<span class="inv-warning-pill" style="color:var(--gold);border-color:var(--gold)" title="Held at its floor: under this it loses money after eBay fees (cost $${inventoryCostBasis(i).toFixed(2)})">FLOOR</span><br>`:''}${money.list>0&&money.market>0?`<span style="font-family:var(--font-mono);font-size:8px;color:var(--dim)">MKT ${fd$(money.market)}</span><br>`:''}${priceSourceBadge(i.priceSource, i.category)}${stale?'<br><span class="inv-warning-pill">STALE</span>':''}${inventoryPriceAgeLabel(i)?`<br><span class="inv-price-age" style="font-family:var(--font-mono);font-size:8px;color:${inventoryPriceAgeColor(i)}">${escHtml(inventoryPriceAgeLabel(i))}</span>`:''}</td>
       <td class="pp pd">${inventoryIsDropship(i)?'Not owned':money.cost>0?fd$(money.cost):'<span class="inv-warning-pill">NO COST</span>'}</td>
       <td class="${ppc}">${money.cost>0||i.profit?(pft>=0?'+':'')+fd$(pft)+(money.list>0||money.cost>0?' ('+margin+')':''):'—'}</td>
       <td><span style="font-family:var(--font-mono);font-size:9px;color:${rowAvail.color}">${rowAvail.label}</span>${ins&&daysInStock!==null?`<div style="font-family:var(--font-mono);font-size:8px;color:${aged?'var(--red)':'var(--dim)'};margin-top:3px">${daysInStock}d in stock</div>`:''}${aged?'<span class="inv-warning-pill" style="margin-top:3px">AGED</span>':''}</td>
@@ -24789,7 +24815,7 @@ async function verifyInventoryTcgplayerReference(){
     const url = match.tcgPlayerUrl || match.productUrl || 'https://www.tcgplayer.com/product/' + id;
     inventoryTcgReferenceState.verified = { id, url, match, productType };
     if(input) input.value = url;
-    const price = pokemonPriceTrackerMarketPrice(match, formItem.condition);
+    const price = pokemonPriceTrackerMarketPrice(match, formItem.condition, pptEditionPrinting(pptVariantsOf(match), formItem));
     if(status) {
       status.style.color='var(--g)';
       status.textContent='✓ #' + id + ' · ' + (match.name || match.productName || 'Exact Pokémon product') + ' · ' + (productType === 'sealed' ? 'Sealed' : 'Single') + (price ? ' · $' + price.toFixed(2) : '');
@@ -25696,6 +25722,7 @@ function openEditModal(id) {
   const condSel = document.getElementById('edit-condition');
   const cond = item.condition || 'NM';
   [...condSel.options].forEach(o => o.selected = o.value === cond);
+  renderEditEditionRow(item);
 
   populateEditCategorySelect(item.category);
 
@@ -33189,6 +33216,10 @@ function qplCategoryAllows(r, wants){
 
 function normalizeQplFinish(value){
   const raw = String(value || 'normal').toLowerCase();
+  // An edition is part of the printing (see pptEditionOf): "1st Edition
+  // Holofoil" and "Unlimited Holofoil" are different cards.
+  const edition = pptEditionOf(raw);
+  if(edition) return ({ 'Unlimited':'unlimited', '1st Edition':'first_edition', 'Shadowless':'shadowless' })[edition] + ({ reverse:'_reverse_holo', holo:'_holofoil', normal:'' })[pptFinishKind(raw)];
   // Pokemon-specific (order matters — check specific before generic)
   if(raw.includes('master ball') || raw.includes('masterball')) return 'master_ball_holo';
   if(raw.includes('poke ball') || raw.includes('pokeball')) return 'poke_ball_holo';
@@ -33227,6 +33258,8 @@ function qplFinishLabel(value){
   return ({
     // Standard
     normal:'Normal', foil:'Foil', first_edition:'1st Edition', unlimited:'Unlimited', serialized:'Serialized',
+    first_edition_holofoil:'1st Edition Holofoil', unlimited_holofoil:'Unlimited Holofoil', shadowless:'Shadowless', shadowless_holofoil:'Shadowless Holofoil',
+    first_edition_reverse_holo:'1st Edition Reverse Holofoil', unlimited_reverse_holo:'Unlimited Reverse Holofoil',
     // Pokemon holos
     reverse_holo:'Reverse Holo', holofoil:'Holofoil', cosmos_holo:'Cosmos Holo',
     master_ball_holo:'Master Ball Holo', poke_ball_holo:'Poké Ball Holo',
@@ -33275,8 +33308,57 @@ function pokemonPptConditionCode(condition = ''){
   return 'NM';
 }
 
+// Store ask: "I need to be able to toggle Unlimited and 1st Edition."
+// WotC-era cards (Base Set through Neo) come in editions, and
+// PokemonPriceTracker lists each as its own printing -- "Unlimited" /
+// "1st Edition", "Unlimited Holofoil" / "1st Edition Holofoil" -- with 1st
+// Edition as its primary. Every price read took the primary printing (or
+// read "1st Edition Holofoil" as plain "Holofoil"), so a $0.50 Unlimited
+// Jungle common was priced off its 1st Edition column. The edition is now
+// part of the printing everywhere, Unlimited is the default until someone
+// picks, and Research / the item editor switch between them.
+const PPT_EDITIONS = ['Unlimited', '1st Edition', 'Shadowless'];
+function pptEditionOf(text){
+  const t = String(text || '').toLowerCase();
+  if(/\b1st\b|first[\s_-]*ed/.test(t)) return '1st Edition';
+  if(/shadowless/.test(t)) return 'Shadowless';
+  if(/unlimited/.test(t)) return 'Unlimited';
+  return '';
+}
+function pptFinishKind(text){
+  const t = String(text || '').toLowerCase();
+  return t.includes('reverse') ? 'reverse' : (t.includes('holo') || t.includes('foil')) ? 'holo' : 'normal';
+}
+function pptVariantsOf(src = {}){
+  let v = src?.prices?.variants ?? src?.pokemonPriceTrackerVariants ?? src?.raw?.pokemonPriceTrackerVariants ?? src?.pokemonPriceTracker?.prices?.variants;
+  if(typeof v === 'string') { try { v = JSON.parse(v); } catch(e) { v = null; } }
+  return v && typeof v === 'object' ? v : {};
+}
+// Editions this card is printed in, Unlimited first ([] = no edition question).
+function pptEditionsIn(variants = {}){
+  const found = new Set(Object.keys(variants || {}).map(pptEditionOf).filter(Boolean));
+  return found.size > 1 ? PPT_EDITIONS.filter(e => found.has(e)) : [];
+}
+// The exact printing key for a copy of a card that comes in editions: the
+// one it was saved as, else the same finish in the edition it says it is
+// (its printing, edition field or name), else Unlimited. '' when the card
+// has no editions -- every other card prices exactly as before.
+function pptEditionPrinting(variants = {}, item = {}, edition = ''){
+  const editions = pptEditionsIn(variants);
+  if(!editions.length) return '';
+  const keys = Object.keys(variants);
+  const saved = String(item.selectedPrinting || item.raw?.selectedPrinting || item.printing || item.raw?.printing || '').trim();
+  const want = edition || pptEditionOf(saved) || pptEditionOf(item.edition || item.raw?.edition) || pptEditionOf(inventoryCardName(item)) || editions[0];
+  if(keys.includes(saved) && pptEditionOf(saved) === want) return saved;
+  const inEdition = keys.filter(k => pptEditionOf(k) === want);
+  if(!inEdition.length) return '';
+  const kind = saved ? pptFinishKind(saved) : '';
+  return inEdition.find(k => pptFinishKind(k) === kind) || inEdition[0];
+}
 function pokemonPptFinishLabel(value = ''){
   const raw = String(value || 'Normal').toLowerCase();
+  const edition = pptEditionOf(raw);
+  if(edition) return edition + ({ reverse:' Reverse Holofoil', holo:' Holofoil', normal:'' })[pptFinishKind(raw)];
   if(raw.includes('master ball') || raw.includes('masterball')) return 'Master Ball Holo';
   if(raw.includes('poke ball') || raw.includes('pokeball')) return 'Poké Ball Holo';
   if(raw.includes('cosmos')) return 'Cosmos Holo';
@@ -33362,7 +33444,9 @@ function pokemonPptMatrixRows(row = {}){
       });
     });
   });
-  const conditionLabels = Object.keys(prices.conditions || {}).map(pokemonPptConditionLabel);
+  // The flat conditions map doesn't say which edition it prices -- left out
+  // for a card printed in editions (its variants carry both).
+  const conditionLabels = pptEditionsIn(variants).length ? [] : Object.keys(prices.conditions || {}).map(pokemonPptConditionLabel);
   conditionLabels.forEach(conditionRaw => {
     const condition = pokemonPptConditionCode(conditionRaw);
     const exists = rows.some(r => r.condition === condition && pokemonPptObjectMatch(variants, r.finishLabel));
@@ -33902,9 +33986,15 @@ function resolvePokemonPriceTrackerPrice(row = {}){
   if(!card?.prices) return null;
   const prices = card.prices || {};
   const selectedCondition = pokemonPptConditionLabel(row.selectedCondition || row.condition || prices.primaryCondition || 'Near Mint');
-  const selectedFinish = pokemonPptFinishLabel(row.selectedFinish || row.finish || row.selectedPrinting || prices.primaryPrinting || 'Normal');
   const variants = prices.variants || {};
-  const variantFinish = pokemonPptObjectMatch(variants, selectedFinish);
+  // A card printed in editions is priced from its exact edition printing
+  // (Unlimited unless someone picked 1st Edition) -- never PPT's primary.
+  // The pick on screen (selectedFinish, set by the printing buttons) wins over
+  // the printing saved last time, whichever one names an edition.
+  const printingHint = [row.selectedFinish, row.finish, row.selectedPrinting].find(v => pptEditionOf(v)) || row.selectedPrinting || '';
+  const editionKey = pptEditionPrinting(variants, { ...row, selectedPrinting:printingHint ? pokemonPptFinishLabel(printingHint) : '' });
+  const selectedFinish = editionKey || pokemonPptFinishLabel(row.selectedFinish || row.finish || row.selectedPrinting || prices.primaryPrinting || 'Normal');
+  const variantFinish = editionKey ? variants[editionKey] : pokemonPptObjectMatch(variants, selectedFinish);
   const variantCondition = pokemonPptObjectMatch(variantFinish, selectedCondition);
   const variantPrice = pokemonPptPriceValue(variantCondition);
   const lastUpdated = prices.lastUpdated || card.lastUpdated || card.updatedAt || row.pokemonPriceTrackerLastUpdated || '';
@@ -33922,8 +34012,10 @@ function resolvePokemonPriceTrackerPrice(row = {}){
     };
   }
   // Finish lookup missed — try every finish key for the selected condition (handles unknown finish).
+  // Never the other edition's: no price beats a 1st Edition price on an Unlimited card.
   for(const [finKey, condMap] of Object.entries(variants)) {
     if(!condMap || typeof condMap !== 'object') continue;
+    if(editionKey && pptEditionOf(finKey) !== pptEditionOf(editionKey)) continue;
     const c = pokemonPptObjectMatch(condMap, selectedCondition);
     const cv = pokemonPptPriceValue(c);
     if(cv > 0) {
@@ -33941,7 +34033,8 @@ function resolvePokemonPriceTrackerPrice(row = {}){
       };
     }
   }
-  const conditionEntry = pokemonPptObjectMatch(prices.conditions || {}, selectedCondition);
+  // The flat conditions map doesn't say which edition a price is for.
+  const conditionEntry = editionKey ? null : pokemonPptObjectMatch(prices.conditions || {}, selectedCondition);
   const conditionPrice = pokemonPptPriceValue(conditionEntry);
   if(conditionPrice > 0) {
     return {
@@ -33959,7 +34052,7 @@ function resolvePokemonPriceTrackerPrice(row = {}){
   const primaryCondition = pokemonPptConditionLabel(prices.primaryCondition || 'Near Mint');
   const primaryFinish = pokemonPptFinishLabel(prices.primaryPrinting || 'Normal');
   const marketPrice = pokemonPptPriceValue(prices.market);
-  if(marketPrice > 0 && normalizePokemonPptKey(selectedCondition) === normalizePokemonPptKey(primaryCondition) && normalizePokemonPptKey(selectedFinish) === normalizePokemonPptKey(primaryFinish)) {
+  if(marketPrice > 0 && normalizePokemonPptKey(selectedCondition) === normalizePokemonPptKey(primaryCondition) && normalizePokemonPptKey(selectedFinish) === normalizePokemonPptKey(primaryFinish) && (!editionKey || pptEditionOf(prices.primaryPrinting) === pptEditionOf(editionKey))) {
     return {
       ok:true,
       price:marketPrice,
@@ -35093,6 +35186,76 @@ function qplVariantSelectOptions(r, key, current){
   return vals.map(v => `<option value="${escHtml(v)}" ${String(current||'')===String(v)?'selected':''}>${escHtml(key === 'finish' ? qplFinishLabel(v) : v)}</option>`).join('');
 }
 
+// UNLIMITED / 1ST EDITION (store ask) -- only for a card printed in
+// editions. Each chip shows that edition's price at the condition picked.
+function qplEditionChips(r = {}, idx = 0){
+  if(r.is_sealed || !r.pokemonPriceTracker) return '';
+  const variants = pptVariantsOf(r.pokemonPriceTracker);
+  const editions = pptEditionsIn(variants);
+  if(!editions.length) return '';
+  const current = pptEditionOf(r.selectedPrinting || r.selectedFinish);
+  const cond = pokemonPptConditionLabel(r.selectedCondition || r.condition || 'NM');
+  const chips = editions.map(edition => {
+    const key = pptEditionPrinting(variants, r, edition);
+    const price = pokemonPptPriceValue(pokemonPptObjectMatch(variants[key] || {}, cond));
+    return `<button class="qpl-cond-chip${edition === current ? ' active' : ''}" onclick="setQplEdition(${idx},${escHtml(JSON.stringify(key))})">
+        <span class="cchip-label">${escHtml(edition.toUpperCase())}</span>
+        <span class="${price ? 'cchip-price' : 'cchip-na'}">${price ? '$' + price.toFixed(2) : '—'}</span>
+      </button>`;
+  }).join('');
+  return `<div class="qpl-condition-chips" title="Which edition is this copy? Look for the 1st Edition stamp under the art.">${chips}${r.editionConfirmed ? '' : '<span style="font-family:var(--font-mono);font-size:9px;color:var(--gold);align-self:center">check the stamp</span>'}</div>`;
+}
+// Inventory: a card printed in editions whose edition nobody has picked yet
+// (it was saved before this, or straight from PPT's primary printing).
+function inventoryEditionUnchecked(item = {}){
+  return !item.editionConfirmed && !item.raw?.editionConfirmed && pptEditionsIn(pptVariantsOf(item)).length > 0;
+}
+function inventoryEditionPrice(item = {}, key = ''){
+  const variants = pptVariantsOf(item);
+  return pokemonPptPriceValue(pokemonPptObjectMatch(variants[key] || {}, pokemonPptConditionLabel(item.condition || 'NM')));
+}
+// UNLIMITED / 1ST EDITION buttons for an inventory item ('' = no editions).
+function inventoryEditionButtonsHtml(item = {}, compact = false){
+  const variants = pptVariantsOf(item);
+  const editions = pptEditionsIn(variants);
+  if(!editions.length) return '';
+  const current = item.editionConfirmed || item.raw?.editionConfirmed ? pptEditionOf(item.selectedPrinting || item.raw?.selectedPrinting) : '';
+  return editions.map(edition => {
+    const key = pptEditionPrinting(variants, item, edition);
+    const price = inventoryEditionPrice(item, key);
+    const on = edition === current;
+    return `<button class="${compact ? 'ra' : 'hbtn'}" style="${on ? 'border-color:var(--g);color:var(--g)' : ''}${compact ? ';font-size:8px;padding:2px 5px;min-height:0' : ''}" onclick="event.stopPropagation();setInventoryEdition(${escHtml(JSON.stringify(String(item.id)))},${escHtml(JSON.stringify(key))})">${escHtml(compact ? (edition === '1st Edition' ? '1ST' : edition.toUpperCase()) : edition.toUpperCase())}${price ? ' $' + price.toFixed(2) : ''}${on ? ' ✓' : ''}</button>`;
+  }).join(' ');
+}
+async function setInventoryEdition(itemId, key){
+  const item = (all || []).find(i => String(i.id) === String(itemId));
+  if(!item) { toast_dash('Item not found -- refresh inventory first'); return; }
+  const updates = { selectedPrinting:key, selectedFinish:normalizeQplFinish(key), edition:pptEditionOf(key), editionConfirmed:true };
+  const price = Math.round(inventoryEditionPrice(item, key) * 100) / 100;
+  if(price > 0 && Math.abs(price - inventoryMarketPrice(item)) >= 0.01) {
+    Object.assign(updates, { previousMarketPrice:inventoryMarketPrice(item), market:price, marketPrice:price, rawMarketPrice:price, priceSource:'PokemonPriceTracker ' + key, priceUpdatedAt:new Date().toISOString() });
+    if(!(inventoryPriceOverride(item) > 0)) { const list = inventoryListPrice({ ...item, ...updates }); Object.assign(updates, { salePrice:list, listPrice:list, displayPrice:list }); }
+  }
+  try {
+    await saveInventoryEdit(item, updates);
+    Object.assign(item, updates); if(item.raw) Object.assign(item.raw, updates);
+    toast_dash(`${item.name}: ${pptEditionOf(key)}${updates.market ? ' · market $' + price.toFixed(2) : ''}`);
+    const marketInput = document.getElementById('edit-market');
+    if(updates.market && marketInput && document.getElementById('edit-modal')?.classList.contains('on') && String(editingItemId) === String(item.id)) marketInput.value = price.toFixed(2);
+    renderEditEditionRow(item);
+    filterTable();
+  } catch(e) { toast_dash('Could not save the edition: ' + (e?.message || e)); }
+}
+function renderEditEditionRow(item = {}){
+  const el = document.getElementById('edit-edition-row');
+  if(!el) return;
+  const buttons = inventoryEditionButtonsHtml(item);
+  el.style.display = buttons ? '' : 'none';
+  el.innerHTML = buttons ? `<label>Edition <span style="opacity:.7">(look for the 1st Edition stamp under the art)</span></label><div style="display:flex;gap:6px;flex-wrap:wrap">${buttons}</div>` : '';
+}
+async function setQplEdition(idx, key){
+  return updateQplVariant(idx, { selectedPrinting:key, selectedFinish:normalizeQplFinish(key), finish:normalizeQplFinish(key), editionConfirmed:true, pricingMode:'raw', selectedGrade:'', selectedGradeKey:'' });
+}
 async function updateQplVariant(idx, patch = {}, rerender = true){
   const r = qplResults[idx];
   if(!r) return;
@@ -36467,6 +36630,8 @@ async function resolveExactPokemonPriceTrackerCard(row = {}, query = qplLastSear
 
 function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parseResult = null){
   const prices = card.prices || {};
+  // Printed in editions: start on Unlimited unless the search says 1st Edition.
+  const startPrinting = pptEditionPrinting(pptVariantsOf(card), { name:[query, parseResult?.variant].filter(Boolean).join(' ') });
   const imageUrl = card.imageCdnUrl400 || card.imageCdnUrl800 || card.imageCdnUrl200 || card.imageCdnUrl || card.imageUrl || '';
   const row = {
     source:'pokemonpricetracker',
@@ -36480,8 +36645,9 @@ function pokemonPriceTrackerCardToQplRow(card = {}, query = qplLastSearch, parse
     cardNumber:card.cardNumber || parseResult?.cardNumber || '',
     condition:pokemonPptConditionCode(prices.primaryCondition || 'Near Mint'),
     selectedCondition:pokemonPptConditionCode(prices.primaryCondition || 'Near Mint'),
-    finish:pokemonPptFinishLabel(prices.primaryPrinting || parseResult?.variant || 'Normal'),
-    selectedFinish:pokemonPptFinishLabel(prices.primaryPrinting || parseResult?.variant || 'Normal'),
+    finish:startPrinting || pokemonPptFinishLabel(prices.primaryPrinting || parseResult?.variant || 'Normal'),
+    selectedFinish:startPrinting || pokemonPptFinishLabel(prices.primaryPrinting || parseResult?.variant || 'Normal'),
+    selectedPrinting:startPrinting || '',
     selectedGrade:parseResult?.grade ? 'PSA ' + parseResult.grade : '',
     language:card.language || parseResult?.language || 'English',
     market:Number(prices.market || prices.lowPrice || 0),
@@ -37852,6 +38018,7 @@ function quickLookupResultCard(r, idx){
           return `<button class="qpl-cat-pill${isAct?' active':''}" onclick="updateQplVariant(${idx},{selectedFinish:'${escHtml(f)}'})" style="font-size:9px;padding:4px 8px;min-height:26px">${escHtml(qplFinishLabel(f))}</button>`;
         }).join('')}</div>`;
       })()}
+      ${qplEditionChips(r, idx)}
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
       ${qplGradedQuickChips(r, idx)}
@@ -39196,6 +39363,7 @@ function selectedQuickLookupItem(idx){
     selectedFinish:document.getElementById('qpl-edit-finish')?.value || r.selectedFinish || r.finish || '',
     selectedLanguage:document.getElementById('qpl-edit-language')?.value || r.selectedLanguage || r.language || 'English',
     selectedPrinting:selectedVariant.printing || r.selectedPrinting || qplFinishLabel(r.selectedFinish || r.finish || ''),
+    editionConfirmed:!!r.editionConfirmed,
     productId:r.productId || '',
     scryfallId:r.scryfallId || r.raw?.scryfallId || r.raw?.id || '',
     oracleId:r.oracleId || r.raw?.oracleId || r.raw?.oracle_id || '',
@@ -39481,6 +39649,7 @@ function addSelectedQuickLookupToBuyOffer(idx){
     selectedFinish:item.selectedFinish,
     selectedLanguage:item.selectedLanguage,
     selectedPrinting:item.selectedPrinting,
+    editionConfirmed:!!item.editionConfirmed,
     productId:item.productId,
     skuId:item.skuId,
     productConditionId:item.productConditionId,
@@ -41389,6 +41558,8 @@ function buyItemToInventoryUpdates(item){
     activePriceBasis:item.activePriceBasis || null,
     selectedCondition:item.selectedCondition || item.condition || '',
     selectedFinish:item.selectedFinish || '',
+    selectedPrinting:item.selectedPrinting || '',
+    editionConfirmed:!!item.editionConfirmed,
     selectedLanguage:item.selectedLanguage || 'English',
     selectedGrade:item.activePriceBasis?.grade || item.selectedGrade || item.slabGrade || '',
     resolvedPricePath:item.activePriceBasis?.pricePath || item.resolvedPricePath || '',
