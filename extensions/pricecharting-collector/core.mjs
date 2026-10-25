@@ -13,6 +13,15 @@ export function eligibleSet(url, licensedOnly = true) {
   const year = Number(url.match(/-cards-(\d{4})-/)?.[1]);
   return year >= 2019 && /-(topps|bowman)(?:-|\/)/.test(url);
 }
+// Sort by set year, then verified release date where available. The provider's
+// New Releases list breaks ties before alphabetical fallback; import/write
+// timestamps are never treated as release dates.
+export function newestSetQueue(items){
+  const year=item=>Number(item.url.match(/\/console\/[^/?]*?((?:19|20)\d{2})(?:-|\?|$)/)?.[1])||0;
+  const verified={'baseball-cards-2026-topps-holiday':'2026-10-21','football-cards-2026-topps-heritage':'2026-10-21'};
+  const date=item=>verified[new URL(item.url).pathname.split('/')[2]]||'';
+  return [...items].sort((a,b)=>Number(b.url.includes('/category/'))-Number(a.url.includes('/category/'))||year(b)-year(a)||date(b).localeCompare(date(a))||(a.recentRank??99999)-(b.recentRank??99999)||a.url.localeCompare(b.url));
+}
 export function mergeCards(oldRows, newRows) {
   const rows = new Map(oldRows.map(row => [row.url, row]));
   for (const row of newRows) {
@@ -73,5 +82,9 @@ export async function inspectPage(advance = false) {
     cards.push({consoleId:location.pathname.split('/')[2],setName:'',productId:'',title,player:clean(title.replace(/\[[^\]]+\]/g,'').replace(/#.*$/,'')),cardNumber:number,parallel:title.match(/\[([^\]]+)\]/)?.[1] || '',run:clean(document.querySelector('.list-print-run')?.textContent),image:photo(img) || photo({src:og}),url:safe(location.href),capturedAt:new Date().toISOString()});
   }
   const sets = [...new Set([...document.querySelectorAll('a[href*="/console/"]')].map(a=>safe(a.href)).filter(Boolean))];
-  return {url:location.href,title,cards,sets,hasNext:!!next(),signature:cards.map(x=>x.url).join('|')};
+  const recentSets=[];
+  for(const heading of document.querySelectorAll('h2,h3'))if(/new releases/i.test(heading.textContent)){
+    for(let node=heading.nextElementSibling;node&&!/^H[1-3]$/.test(node.tagName);node=node.nextElementSibling){for(const a of node.querySelectorAll('a[href*="/console/"]')){const url=safe(a.href);if(url&&!recentSets.includes(url))recentSets.push(url);}}
+  }
+  return {url:location.href,title,cards,sets,recentSets,hasNext:!!next(),signature:cards.map(x=>x.url).join('|')};
 }

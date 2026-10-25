@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Mana Pocket Card Collector",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Collect public set, card, parallel and photo references directly into The Mana Pocket cloud.",
   "permissions": ["storage", "unlimitedStorage", "scripting", "alarms"],
   "host_permissions": ["https://www.pricecharting.com/*", "https://pricecharting.com/*", "https://www.sportscardspro.com/*", "https://sportscardspro.com/*", "https://squeebmike.github.io/ArSca/*"],
   "background": {"service_worker": "background.js", "type": "module"},
+  "content_scripts": [{"matches":["https://squeebmike.github.io/ArSca/dashboard.html*"],"js":["dashboard-controls.js"],"run_at":"document_idle"}],
   "action": {"default_title": "Open card collector"},
   "content_security_policy": {"extension_pages": "script-src 'self'; object-src 'none'"}
 }

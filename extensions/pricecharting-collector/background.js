@@ -1,4 +1,4 @@
-import {sourceUrl,eligibleSet,inspectPage} from './core.mjs';
+import {sourceUrl,eligibleSet,inspectPage,newestSetQueue} from './core.mjs';
 import {cloudRequest,uploadReferences,DASHBOARD} from './cloud.mjs';
 let pumping;
 const read = async () => (await chrome.storage.local.get('job')).job;
@@ -11,8 +11,10 @@ async function capture(job, data) {
   // from directories, rather than recursively walking the entire site.
   if(job.discover && !data.cards?.length)for(const raw of data.sets || []){
     const url=sourceUrl(raw);
-    if(url && eligibleSet(url,job.licensedOnly) && !job.seen.includes(url) && job.seen.length<500){job.queue.push({url,pages:0});job.seen.push(url);}
+    if(url && eligibleSet(url,job.licensedOnly) && !job.seen.includes(url) && job.seen.length<500){const recentRank=(data.recentSets||[]).map(x=>sourceUrl(x)).indexOf(url);job.queue.push({url,pages:0,...(recentRank>=0?{recentRank}:{})});job.seen.push(url);}
   }
+  // Keep the active source in place; discover all directory roots before sets.
+  job.queue=[job.queue[0],...newestSetQueue(job.queue.slice(1))];
 }
 async function pause(message){const job=await read();if(job){job.running=false;job.message=message;await save(job);}}
 async function run(){
@@ -66,9 +68,9 @@ chrome.action.onClicked.addListener(()=>chrome.tabs.create({url:chrome.runtime.g
 chrome.alarms.onAlarm.addListener(alarm=>{if(alarm.name==='collector-resume')void run();});
 chrome.tabs.onUpdated.addListener((_id,change)=>{if(change.status==='complete')void run();});
 chrome.runtime.onStartup.addListener(()=>{void schedule().then(run);});
-chrome.runtime.onInstalled.addListener(()=>{void schedule();});
+chrome.runtime.onInstalled.addListener(()=>{void schedule();void chrome.tabs.query({url:DASHBOARD+'*'}).then(tabs=>Promise.all(tabs.map(tab=>chrome.scripting.executeScript({target:{tabId:tab.id},files:['dashboard-controls.js']})))).catch(()=>{});});
 chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
-  if(!['start','pause','resume','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier'].includes(message.type))return;
+  if(!['start','pause','resume','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier','collector-status'].includes(message.type))return;
   (async()=>{
     if(message.type==='start'){
       const old=await read();if(old?.running)throw new Error('Pause the existing collection first.');
@@ -78,9 +80,10 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       const eligible=urls.filter(x=>eligibleSet(x,licensedOnly));
       if(!eligible.length)throw new Error('Add an allowed set or category URL. The licensed sports filter accepts Topps/Bowman sets from 2019 onward.');
       if(eligible.length>500)throw new Error('Collect up to 500 starting URLs per job.');
-      await save({running:true,queue:eligible.map(url=>({url,pages:0})),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting collection…'});
+      await save({running:true,queue:newestSetQueue(eligible.map(url=>({url,pages:0}))),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting newest-first collection…'});
       await schedule();void run();
-    }else if(message.type==='pause')await pause('Paused. Uploaded references are safe in the cloud.');
+    }else if(message.type==='collector-status'){const job=await read();return {job:job||null,pending:((await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch||[]).length};}
+    else if(message.type==='pause')await pause('Paused. Uploaded references are safe in the cloud.');
     else if(message.type==='resume'){const job=await read();if(!job?.queue.length)throw new Error('Start a new collection first.');const pending=(await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch;if(pending?.length)await uploadReferences(chrome,pending);job.running=true;await save(job);void run();}
     else if(message.type==='open-source'){const job=await read();if(job?.tabId)await chrome.tabs.update(job.tabId,{active:true});}
     else if(message.type==='connect-cloud'){

@@ -1,4 +1,4 @@
-# Mana Pocket Card Collector — cloud edition (1.1.0)
+# Mana Pocket Card Collector — cloud edition (1.2.0)
 
 ## Install once
 
@@ -9,6 +9,8 @@
 This is an unpacked extension, not a Chrome Web Store listing. Permissions cover PriceCharting/SportsCardsPro, your ArSca dashboard, queue recovery storage, scripting, and a recovery alarm. Download permission has been removed. If updating version 1.0, replace the source files and click Reload in Chrome.
 
 Open the signed-in [ArSca dashboard](https://squeebmike.github.io/ArSca/dashboard.html), then click **Connect cloud** in the collector. The dashboard's existing session authorizes cloud requests as The Mana Pocket's owner/admin. No Supabase access token is copied into the extension. Keep Chrome and that dashboard tab open while collecting. If sign-in expires, collection pauses with a recoverable pending metadata batch.
+
+You can now use the **Cloud card collector** panel on the regular ArSca dashboard. Click **Start newest first** to discover baseball and football directories together, then collect linked eligible sets in descending set-year order. Known release dates and the provider's New Releases list help order sets within a year; undated same-year sets fall back to alphabetical order. Article writing dates are never used. The panel shows live cloud counts, the current set, and Pause/Resume controls. If it is missing after installation, reload the dashboard.
 
 ## Minimal-work collection
 
