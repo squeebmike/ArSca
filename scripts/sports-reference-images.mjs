@@ -24,13 +24,16 @@ export function parseReferenceFamily(html,consoleId){
 }
 export function savedReferenceImage(set,card){return matchReferenceImage(referenceImageSeeds[set.id]||[],set,card);}
 export async function sportsReferenceImage(env,ctx,set,card,deps={}){
- const consoles=referenceConsoles(set,card);
+ const consoles=referenceConsoles(set,card);let archived=false;
  for(const id of consoles){
-  const cloud=await cloudReferenceFamily(env,id,String(card.cardNumber));
+  const family=await cloudReferenceFamily(env,id,String(card.cardNumber)),cloud=family.cards||[];archived ||= family.archived;
   // A shared photo across different finishes is not proof of the printing.
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
   const match=matchReferenceImage(reviewed,set,card);if(match)return match;
  }
+ // An archived collection's holds also govern legacy source-page fallbacks.
+ // An unchecked or rejected photo must not reappear from that older cache.
+ if(archived)return null;
  const saved=savedReferenceImage(set,card);if(saved)return saved;
  // No database/API-key lookup. One cached public family page covers every finish.
  if(!env.LBA_KV)return null;
