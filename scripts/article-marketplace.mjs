@@ -3,6 +3,7 @@ import {baseballSets} from './topps/baseball-seed.mjs';
 import {footballSets} from './topps/football-seed.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ');
 const httpsHost=(value,host)=>{try{const u=new URL(value);return u.protocol==='https:'&&(u.hostname===host||u.hostname.endsWith('.'+host));}catch{return false;}};
+const articleRefreshes=new Map();
 export function tcgImageAffiliateUrl(image){
  if(!httpsHost(image,'tcgplayer.com'))return null;
  const id=new URL(image).pathname.match(/\/(\d+)(?:_[^/]*)?\.(?:jpg|png|webp)$/i)?.[1];
@@ -53,14 +54,17 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
  if(set&&!/^\d{10}$/.test(campaign))return null;
  if(!env.LBA_KV||!ctx?.waitUntil)return null;
  const key='article-marketplace:'+(set?'v5':'v3')+':'+article.slug+':'+String(article.updatedAt||'')+':'+(set?campaign:'tcg');
- const now=Date.now(),ttl=set?15*60*1000:6*60*60*1000;
+ const now=Date.now(),ttl=set?3*60*60*1000:6*60*60*1000,retain=set?(6*60-5)*60*1000:ttl;
  let cached;try{cached=await env.LBA_KV.get(key,'json');}catch{}
  const fresh=cached&&Number(cached.checkedAt)<=now&&now-Number(cached.checkedAt)<ttl;
+ const displayable=cached&&Number(cached.checkedAt)<=now&&now-Number(cached.checkedAt)<retain;
  const refresh=async()=>{
   try{
    let cards=[];
    if(tcg)cards=chooseArticleCards(await deps.loadCards(guide),article);
    else{
+    const pause=await env.LBA_KV.get('sports-ebay-photo-pause','json');
+    if(Number(pause?.until)>Date.now())return;
     const text=fold(article.bodyHtml),insert=text.includes('heavy lumber')?'Heavy Lumber':'insert';
     const autoPlayer=['Roki Sasaki','Juan Soto','Shohei Ohtani','Paul Skenes','Aaron Judge'].find(name=>text.includes(fold(name)));
     const insertPlayer=insert==='Heavy Lumber'&&text.includes('manny machado')?'Manny Machado':'';
@@ -69,7 +73,13 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
     // Sequential requests keep eBay traffic bounded for each known article.
     for(const [label,term,mention] of groups){
      const result=await deps.searchEbay(set.displayName+' '+(mention?mention+' ':'')+term,campaign);
-     if(result.warning)continue;
+     if(result.warning){
+      if(/Browse API 429/.test(result.warning)){
+       const reset=Date.parse(result.rateLimit?.retryAt),now=Date.now(),until=Number.isFinite(reset)&&reset>now&&reset<=now+86405000?Math.max(now+300000,reset):now+300000;
+       await env.LBA_KV.put('sports-ebay-photo-pause',JSON.stringify({until,quotaExhausted:result.rateLimit?.exhausted===true}),{expirationTtl:Math.ceil((until-now)/1000)});
+      }
+      throw Error('Article marketplace unavailable');
+     }
      for(const listing of result.listings||[]){
       const href=ebayAffiliateListingUrl(listing.affiliateUrl,campaign),title=fold(listing.title);
       if(!href||!httpsHost(listing.imageUrl,'ebayimg.com')||seen.has(listing.itemId)||!listingMatchesRelease(listing.title,set)||/\b(?:break|digital|reprint|lot|replica|box|boxes|pack|packs|case|cases|sealed)\b/.test(title))continue;
@@ -84,11 +94,11 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
      }
     }
    }
-   await env.LBA_KV.put(key,JSON.stringify({checkedAt:Date.now(),cards}),{expirationTtl:Math.ceil(ttl/1000)});
+   await env.LBA_KV.put(key,JSON.stringify({checkedAt:Date.now(),cards}),{expirationTtl:Math.ceil(retain/1000)});
   }catch{console.warn('Article marketplace refresh unavailable',{slug:article.slug});}
  };
- if(!fresh||now-Number(cached.checkedAt)>ttl*.8)ctx.waitUntil(refresh());
- return fresh?{...cached,cards:(cached.cards||[]).filter(c=>!c.endTime||Date.parse(c.endTime)>now)}:null;
+ if((!fresh||now-Number(cached.checkedAt)>ttl*.8)&&!articleRefreshes.has(key)){const task=refresh().finally(()=>articleRefreshes.delete(key));articleRefreshes.set(key,task);ctx.waitUntil(task);}
+ return displayable?{...cached,cards:(cached.cards||[]).filter(c=>!c.endTime||Date.parse(c.endTime)>now)}:null;
 }
 export const articleMarketplaceStyles=`<style>.mp-market-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:18px;margin:18px 0 28px}.mp-market-card{padding:14px;border:1px solid var(--wo-border,rgba(255,255,255,.2));border-radius:14px;background:var(--wo-surface,transparent);min-width:0}.mp-market-card img{display:block;width:100%;height:240px;object-fit:contain;border-radius:8px;background:var(--wo-bg,transparent)}.mp-market-card h3{font-size:16px;line-height:1.5;margin:12px 0 8px}.mp-market-card p{font-size:13px;line-height:1.6;margin:8px 0}.mp-market-card a{color:var(--wo-accent,inherit)}.mp-market-card>a:last-child{display:inline-flex;align-items:center;min-height:44px;font:700 14px/1.5 system-ui}.mp-market-inline{max-width:320px;margin:22px auto}</style>`;
 function cardHtml(c,esc){

@@ -33,7 +33,11 @@ for(const img of document.querySelectorAll('img')){
  const anchor=img.closest('a');assert.ok(anchor);assert.ok(anchor.getAttribute('rel').includes('sponsored'));assert.equal(new URL(anchor.getAttribute('href')).searchParams.get('campid'),campaign);
 }
 assert.ok(rendered.after.includes('check shipping')&&rendered.after.includes('third-party sellers'));
-for(const v of store.values())v.checkedAt=Date.now()-16*60*1000;
+for(const v of store.values())v.checkedAt=Date.now()-4*60*60*1000;
+const pausedTasks=[];store.set('sports-ebay-photo-pause',{until:Date.now()+300000});
+const retained=await articleMarketplace(env,{waitUntil:p=>pausedTasks.push(p)},article,null,{searchEbay:async()=>{throw Error('must not search during pause');}});
+await Promise.all(pausedTasks);assert.equal(retained.cards.length,2,'recent article photos remain available during a provider pause');
+store.delete('sports-ebay-photo-pause');for(const v of store.values())v.checkedAt=Date.now()-6*60*60*1000;
 const failedTasks=[];assert.equal(await articleMarketplace(env,{waitUntil:p=>failedTasks.push(p)},article,null,{searchEbay:async()=>{throw Error('offline');}}),null,'expired listing prices are never served');await Promise.all(failedTasks);
 console.log('Marketplace cold/fresh/expired behavior, product IDs, inline cards and every-image affiliate attribution passed');
 

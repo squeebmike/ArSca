@@ -6,6 +6,7 @@ The live photo routes returned eBay HTTP 429. Do not assume a daily quota reset 
 
 - Checklist HTML requests only read saved marketplace results. They no longer start a search in `waitUntil` when a crawler or customer opens a reference page.
 - Visible-card JSON requests refresh results after three hours instead of fifteen minutes. The existing two-concurrent-lookups browser queue remains.
+- Sports article galleries also refresh on a three-hour interval, share the provider-wide pause and deduplicate simultaneous refreshes. Failed provider responses no longer replace a recent gallery with an empty one. TCG gallery intervals are unchanged.
 - Successful listing results remain available during a brief failure for at most five hours and fifty-five minutes. Ended auctions are filtered out. This stays within the six-hour listing-data display window in eBay's API License Agreement. Price check times remain visible.
 - A Browse 429 triggers one cached Developer Analytics lookup through the existing application token. It uses `api_context=buy&api_name=browse`; no new credentials or scopes are introduced.
 - Analytics data is allowlisted to resource name, limit, count, remaining, reset and window. It is cached for five minutes, including retry backoff on failure.
