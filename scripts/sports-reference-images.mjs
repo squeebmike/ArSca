@@ -1,5 +1,6 @@
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
+import {cloudReferenceFamily} from './cloud-card-references.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
 const slug=s=>fold(s).replaceAll(' ','-');
 const decode=s=>String(s||'').replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;/g,' ');
@@ -44,6 +45,14 @@ export function matchReferenceImage(rows,set,card){
 }
 export function savedReferenceImage(set,card){return matchReferenceImage(referenceImageSeeds[set.id]||[],set,card);}
 export async function sportsReferenceImage(env,ctx,set,card,deps={}){
+ const consoles=[consoleSlug(set)];
+ if(set.sport!=='football'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)consoles.push('baseball-cards-'+set.year+'-topps');
+ for(const id of consoles){
+  const cloud=await cloudReferenceFamily(env,id,String(card.cardNumber));
+  // A shared photo across different finishes is not proof of the printing.
+  const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
+  const match=matchReferenceImage(reviewed,set,card);if(match)return match;
+ }
  const saved=savedReferenceImage(set,card);if(saved)return saved;
  // No database/API-key lookup. One cached public family page covers every finish.
  if(!env.LBA_KV)return null;

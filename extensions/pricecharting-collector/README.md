@@ -1,4 +1,4 @@
-# Mana Pocket Card Collector
+# Mana Pocket Card Collector — cloud edition (1.1.0)
 
 ## Install once
 
@@ -6,28 +6,26 @@
 2. Open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select this folder (the one containing `manifest.json`).
 3. Pin **Mana Pocket Card Collector**. Click it to open the review page.
 
-This is a local extension, not a Chrome Web Store listing. Permissions cover only PriceCharting/SportsCardsPro, local saved data, one collection tab, downloads, and a recovery alarm. No API keys, account data, prices, cookies, or browsing history are exported. Nothing is sent to The Mana Pocket automatically.
+This is an unpacked extension, not a Chrome Web Store listing. Permissions cover PriceCharting/SportsCardsPro, your ArSca dashboard, queue recovery storage, scripting, and a recovery alarm. Download permission has been removed. If updating version 1.0, replace the source files and click Reload in Chrome.
+
+Open the signed-in [ArSca dashboard](https://squeebmike.github.io/ArSca/dashboard.html), then click **Connect cloud** in the collector. The dashboard's existing session authorizes cloud requests as The Mana Pocket's owner/admin. No Supabase access token is copied into the extension. Keep Chrome and that dashboard tab open while collecting. If sign-in expires, collection pauses with a recoverable pending metadata batch.
 
 ## Minimal-work collection
 
 Click **Collect baseball sets** or **Collect football sets** to start from the public set directory. Or open a set or set directory on PriceCharting/SportsCardsPro, click **Use current source tab**, then **Collect sets & cards**. You can also paste multiple source URLs, one per line.
 
-The collector enables **Include Variants**, uses normal **more results** controls, follows set links from directory pages, and saves every batch. It collects card names, numbers, parallel labels, print runs when shown, source links and available photo URLs. It keeps entries without images. Default sports discovery includes Topps/Bowman releases from 2019 onward. Uncheck that filter to collect other sources deliberately.
+The collector enables **Include Variants**, uses normal **more results** controls, follows set links from directory pages, and uploads every batch directly to Cloudflare. It collects card names, numbers, parallel labels, print runs when shown, source links and available photo URLs. It keeps entries without images. Default sports discovery includes Topps/Bowman releases from 2019 onward. Uncheck that filter to collect other sources deliberately.
 
-Keep Chrome open. You can close the review page; collection continues in the source tab. **Pause / Resume** work across browser restarts. Don't browse elsewhere in the collector tab while it is running. One job supports up to 500 sets and 1,000 batches per source. It waits four seconds between batches and stops for access challenges or stalled pages. It never solves CAPTCHAs or bypasses access restrictions. If a source has no picture, the extension cannot create one.
+Keep Chrome and the dashboard tab open. You can close the collector review page; collection continues in its source tab. **Pause / Resume** work across browser restarts. Don't browse elsewhere in the collector tab while it is running. One job supports up to 500 linked sets and 1,000 batches per source. It waits four seconds between batches and stops for access challenges or stalled pages. It never solves CAPTCHAs or bypasses access restrictions. If a source has no picture, the extension cannot create one. Source directories may not link every set the provider has.
 
-## Review and export
+## Cloud references — no image files or exports
 
-Filter by set, player/card number, parallel, or missing photos. **Export JSON / CSV** export the entire matching selection, not just the first 100 cards on screen. **Download matching photos** optionally saves local JPGs in set folders; keep the review page open for that operation. Chrome may ask about multiple downloads. Stop cancels future queued downloads, not a file already downloading.
+Review cloud sets in pages of 100 cards. Filter the loaded cards by player/card number, parallel, or missing photos. **Sync earlier captures** moves version 1.0 captures into the cloud and removes each local set shard only after acknowledgement. New collections retain only progress, a connection tab ID and one pending batch in Chrome for recovery. Replayed uploads upsert the same source card rather than duplicating it.
 
-Photos remain source references. Collecting a URL or file does not grant commercial image rights. Check reuse permission and the exact printing before publishing. No fake images, missing serial numbers, or duplicate finish assumptions are invented.
+Photo URLs and card details persist in Cloudflare independently of the eBay offer cache. No image bytes, prices, customer data, cookies or browsing history are uploaded. URLs do not grant image-reuse rights. Check permission to display source photos. Reference photos do not represent cards the store owns or active listings.
 
-## Connect a reviewed sports set to the site
+## Automatic website connection
 
-From the ArSca repo:
+Uploaded references are available through the website's existing card-photo lookup. Exact source set, subject, card number, finish and known print run must match. Ambiguous photos, including one image reused across different finishes, are not shown as exact matches. Ordinary base photos are never substituted for numbered parallels.
 
-```
-node scripts/import-reference-capture.mjs capture.json --set=2022-topps-chrome-platinum-anniversary
-```
-
-This produces `capture.json.review.json` without changing the site. It verifies the source set, exact player, card number, finish and known print run against the existing checklist. Ambiguous matches and photos reused across finishes are rejected for review. After reviewing ownership and matches, add `--write` to update the existing reference-image seed file, then run the sports checklist tests and deploy normally. No Supabase copy is created. A local capture does not become live until imported and deployed. TCG captures export normally; this sports importer intentionally does not map them into baseball/football checklists.
+Reference photos have no three-hour eBay expiration. They update when the collector revisits and uploads the source card. Missing/expired eBay listings do not delete references. Existing shop inventory, purchase buttons and eBay affiliate offers remain separate. The current website reference lookup supports sports checklists; other card categories retain their existing catalog image sources.

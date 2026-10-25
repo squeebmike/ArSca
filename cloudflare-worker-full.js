@@ -2,6 +2,8 @@ import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {collectorPageStyles,setPageHeader} from './scripts/collector-page-ui.mjs';
 import {handlePocketGuides,pocketGuidePaths} from './scripts/pocket-guides.mjs';
 import {cachedPublicCatalog} from './scripts/public-catalog-cache.mjs';
+import {CardReferenceArchive,handleCloudReferenceRequest} from './scripts/cloud-card-references.mjs';
+export {CardReferenceArchive};
 import { renderBookAlertForm, alertBookTitle } from './scripts/book-alert-ui.mjs';
 import { handleBookAlertRequest, handleAccountBookAlerts, runBookAlerts } from './scripts/book-alerts.mjs';
 import { isBcwItem, isBcwPublished, catalogSelection, renderBcwCatalog, renderBcwProduct } from './scripts/bcw-storefront.mjs';
@@ -6092,6 +6094,8 @@ async function routeRequest(request, env, ctx) {
     }
     try {
     const url = new URL(request.url);
+
+    if(url.pathname.startsWith('/reference-collector/'))return handleCloudReferenceRequest(request,env,url,{json,requireStoreUser,readJsonWithLimit,storeId:ITEM_DETAIL_STORE_ID});
 
     // Retired entry points must resolve to the same public page for crawlers
     // and customers. Leave non-GET requests and unrelated query state alone.

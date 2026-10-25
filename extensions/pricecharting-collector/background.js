@@ -1,17 +1,12 @@
-import {sourceUrl,eligibleSet,mergeCards,inspectPage} from './core.mjs';
+import {sourceUrl,eligibleSet,inspectPage} from './core.mjs';
+import {cloudRequest,uploadReferences,DASHBOARD} from './cloud.mjs';
 let pumping;
 const read = async () => (await chrome.storage.local.get('job')).job;
 const save = job => chrome.storage.local.set({job});
 const nap = ms => new Promise(resolve=>setTimeout(resolve,ms));
 async function schedule(){await chrome.alarms.create('collector-resume',{periodInMinutes:0.5});}
 async function capture(job, data) {
-  const grouped = new Map();
-  for(const row of data.cards || []) {if(!grouped.has(row.consoleId))grouped.set(row.consoleId,[]);grouped.get(row.consoleId).push(row);}
-  for(const [id,rows] of grouped){
-    const key='set:'+id, old=(await chrome.storage.local.get(key))[key] || [];
-    const merged=mergeCards(old,rows); await chrome.storage.local.set({[key]:merged});
-    job.sets[id]={name:rows[0].setName || id,cards:merged.length,photos:merged.filter(x=>x.image).length};
-  }
+  for(const summary of await uploadReferences(chrome,data.cards||[]))job.sets[summary.consoleId]=summary;
   // Set pages contain unrelated navigation/recommendations. Discover sets only
   // from directories, rather than recursively walking the entire site.
   if(job.discover && !data.cards?.length)for(const raw of data.sets || []){
@@ -25,7 +20,7 @@ async function run(){
   pumping=(async()=>{
     for(let step=0;step<6;step++){
       let job=await read(); if(!job?.running)return;
-      if(!job.queue.length){job.running=false;job.message='Collection complete. Review and export the saved sets.';await save(job);return;}
+      if(!job.queue.length){job.running=false;job.message='Collection complete. References are saved in the cloud and available to the website.';await save(job);return;}
       const current=job.queue[0];let tab;
       try{tab=job.tabId?await chrome.tabs.get(job.tabId):null;}catch{}
       if(!tab){tab=await chrome.tabs.create({url:current.url,active:false});job.tabId=tab.id;job.navigating=current.url;await save(job);return;}
@@ -43,7 +38,7 @@ async function run(){
       // Reload state so a Pause clicked during navigation is respected.
       job=await read();if(!job.running)return;
       await capture(job,result);
-      job.queue[0].pages++;job.message=`Saved ${Object.values(job.sets).reduce((n,s)=>n+s.cards,0)} cards across ${Object.keys(job.sets).length} sets.`;
+      job.queue[0].pages++;job.message=`Cloud saved: ${Object.values(job.sets).reduce((n,s)=>n+s.cards,0)} cards across ${Object.keys(job.sets).length} sets.`;
       const latestState=await read();if(!latestState.running){job.running=false;job.message=latestState.message;}
       await save(job);
       if(!job.running)return;
@@ -73,10 +68,11 @@ chrome.tabs.onUpdated.addListener((_id,change)=>{if(change.status==='complete')v
 chrome.runtime.onStartup.addListener(()=>{void schedule().then(run);});
 chrome.runtime.onInstalled.addListener(()=>{void schedule();});
 chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
-  if(!['start','pause','resume','open-source','download-images'].includes(message.type))return;
+  if(!['start','pause','resume','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier'].includes(message.type))return;
   (async()=>{
     if(message.type==='start'){
       const old=await read();if(old?.running)throw new Error('Pause the existing collection first.');
+      await cloudRequest(chrome,'/reference-collector/sets');
       const urls=[...new Set(String(message.urls||'').split(/\s+/).map(x=>sourceUrl(x)).filter(Boolean))];
       const licensedOnly=message.licensedOnly!==false;
       const eligible=urls.filter(x=>eligibleSet(x,licensedOnly));
@@ -84,10 +80,22 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       if(eligible.length>500)throw new Error('Collect up to 500 starting URLs per job.');
       await save({running:true,queue:eligible.map(url=>({url,pages:0})),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting collection…'});
       await schedule();void run();
-    }else if(message.type==='pause')await pause('Paused. Saved cards are safe; resume whenever you want.');
-    else if(message.type==='resume'){const job=await read();if(!job?.queue.length)throw new Error('Start a new collection first.');job.running=true;await save(job);void run();}
+    }else if(message.type==='pause')await pause('Paused. Uploaded references are safe in the cloud.');
+    else if(message.type==='resume'){const job=await read();if(!job?.queue.length)throw new Error('Start a new collection first.');const pending=(await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch;if(pending?.length)await uploadReferences(chrome,pending);job.running=true;await save(job);void run();}
     else if(message.type==='open-source'){const job=await read();if(job?.tabId)await chrome.tabs.update(job.tabId,{active:true});}
-    else if(message.type==='download-images')throw new Error('Use the download button in the review page.');
+    else if(message.type==='connect-cloud'){
+      const tabs=await chrome.tabs.query({url:DASHBOARD+'*'});if(!tabs.length){await chrome.tabs.create({url:DASHBOARD,active:true});throw Error('Sign in to the dashboard, then click Connect cloud again.');}
+      return await cloudRequest(chrome,'/reference-collector/sets');
+    }else if(message.type==='cloud-sets')return await cloudRequest(chrome,'/reference-collector/sets');
+    else if(message.type==='cloud-cards'){
+      if(!/^[a-z0-9-]{1,160}$/.test(message.console||'')||message.cursor&&!/^row:[a-z0-9-]{1,250}$/.test(message.cursor))throw Error('Invalid source set or cursor.');
+      return await cloudRequest(chrome,'/reference-collector/cards?console='+encodeURIComponent(message.console)+'&cursor='+encodeURIComponent(message.cursor||''));
+    }else if(message.type==='sync-earlier'){
+      if((await read())?.running)throw Error('Pause collection before syncing earlier captures.');
+      const keys=(await chrome.storage.local.getKeys()).filter(key=>key.startsWith('set:'));
+      for(const key of keys){const rows=(await chrome.storage.local.get(key))[key]||[];await uploadReferences(chrome,rows);await chrome.storage.local.remove(key);}
+      return {ok:true,message:'Earlier captures are saved in the cloud.'};
+    }
     return {ok:true};
   })().then(respond,error=>respond({error:error.message}));
   return true;
