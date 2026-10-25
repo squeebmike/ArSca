@@ -39,6 +39,15 @@ assert.equal((await get('cards?console='+consoleId+'&cursor=../private')).status
 const audit=instances.get('console:'+consoleId);await audit.fetch(new Request('https://archive.internal/audit-start',{method:'POST'}));
 let auditState;for(let n=0;n<10;n++){await audit.alarm();auditState=await(await audit.fetch(new Request('https://archive.internal/audit-status'))).json();if(!auditState.running)break;}
 assert.equal(auditState.phase,'complete');assert.equal(auditState.records,2);assert.equal(auditState.duplicateImages,1);assert.equal(auditState.eligible,0);assert.equal(auditState.held,2,'shared images remain held after archive-wide checks');
+// An image request can yield while an owner starts a newer audit.
+const raceStorage=storage();let releaseImage,imageStarted;
+const imageWaiting=new Promise(resolve=>imageStarted=resolve),imageRelease=new Promise(resolve=>releaseImage=resolve);
+const racing=new CardReferenceArchive({storage:raceStorage},{REFERENCE_IMAGE_FETCH:async()=>{imageStarted();await imageRelease;return new Response(null,{headers:{'Content-Type':'image/jpeg'}});}});
+await raceStorage.put('audit',{running:true,phase:'images',startedAt:1,version:'old',imagesChecked:0,imagesOk:0,imagesFailed:0,duplicateImages:0});
+await raceStorage.put('image:card123',{image});await raceStorage.put('usage:card123:judge',{title:card.title,url:card.url});
+const oldBatch=racing.alarm();await imageWaiting;
+await raceStorage.put('audit',{running:true,phase:'metadata',startedAt:2,version:'new',records:0});releaseImage();await oldBatch;
+assert.equal((await raceStorage.get('audit')).startedAt,2,'an old in-flight batch never overwrites a newer audit generation');
 // Simulate the extension bridge: the dashboard executes only the scoped
 // reference request and returns data, never an auth token.
 const local={},calls=[];let offline=false;

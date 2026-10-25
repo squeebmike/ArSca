@@ -132,7 +132,7 @@ export class CardReferenceArchive {
     state.cursor=[...rows.keys()].at(-1)||state.cursor;
     if(rows.size<200){state.running=false;state.phase='complete';state.completedAt=Date.now();}
    }
-   state.updatedAt=Date.now();await this.ctx.storage.put('audit',state);
+   state.updatedAt=Date.now();await this.ctx.storage.transaction(async tx=>{const current=await tx.get('audit');if(current?.startedAt===state.startedAt&&current?.version===state.version)await tx.put('audit',state);});
    await this.ctx.storage.setAlarm(Date.now()+1000);return;
   }
   // New uploads get the same checks after the initial audit, without rescanning
