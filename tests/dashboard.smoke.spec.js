@@ -15,6 +15,7 @@ test('dashboard html and worker scripts parse', async () => {
   const worker = fs.readFileSync(path.join(root, 'cloudflare-worker-full.js'), 'utf8')
     .replace(/^import\s*\{[^}]*\}\s*from\s*'[^']*';?\r?$/gm, '')
     .replace(/^export\s+(?=class\s)/gm, '')
+    .replace(/^export\s*\{[^}]*\};?\r?$/gm, '')
     .replace(/^export default/m, 'const __worker =');
   expect(() => new Function(worker), 'cloudflare worker parse').not.toThrow();
 });

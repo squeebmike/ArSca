@@ -1,0 +1,45 @@
+import assert from 'node:assert/strict';
+import {CardReferenceArchive,normalizeCloudReference,handleCloudReferenceRequest} from '../scripts/cloud-card-references.mjs';
+import {sportsReferenceImage} from '../scripts/sports-reference-images.mjs';
+import {dashboardCloudRequest,cloudRequest,uploadReferences,isDashboard} from '../extensions/pricecharting-collector/cloud.mjs';
+const consoleId='baseball-cards-2026-topps',image='https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg';
+const card={consoleId,title:'Ken Griffey Jr. #1',cardNumber:'1',image,url:'https://www.sportscardspro.com/game/'+consoleId+'/ken-griffey-jr-1',setName:'2026 Topps',player:'Ken Griffey Jr.'};
+assert.ok(normalizeCloudReference(card));
+for(const row of [{...card,url:'https://evil.test/game/'+consoleId+'/x'},{...card,image:'https://evil.test/a.jpg'},{...card,cardNumber:'2'},{...card,consoleId:'other'}])assert.equal(normalizeCloudReference(row),null);
+assert.equal(normalizeCloudReference({...card,image:''}).image,'','missing images retain identities');
+function storage(){let values=new Map(),queue=Promise.resolve();return {get:async k=>structuredClone(values.get(k)),put:async(k,v)=>values.set(k,structuredClone(v)),list:async({prefix,limit,startAfter=''})=>new Map([...values].filter(([k])=>k.startsWith(prefix)&&k>startAfter).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)),transaction(callback){const run=queue.then(async()=>{const copy=new Map(values),tx={get:async k=>structuredClone(copy.get(k)),put:async(k,v)=>copy.set(k,structuredClone(v)),delete:async k=>copy.delete(k)};const result=await callback(tx);values=copy;return result;});queue=run.catch(()=>{});return run;}};}
+const instances=new Map();const binding={idFromName:id=>id,get:id=>{if(!instances.has(id))instances.set(id,new CardReferenceArchive({storage:storage()},{}));const object=instances.get(id);return {fetch:(input,options)=>object.fetch(new Request(input,options))};}};
+const env={CARD_REFERENCE_ARCHIVE:binding},deps={storeId:'mana',json:(body,status=200,headers={})=>Response.json(body,{status,headers}),readJsonWithLimit:async r=>({data:await r.json()}),requireStoreUser:async(r,e,id,roles)=>r.headers.get('Authorization')==='Bearer owner'&&roles.join(',')==='owner,admin'?{}:{error:new Response('Denied',{status:403})}};
+const send=(cards,auth='owner')=>{const url=new URL('https://worker.example/reference-collector/batch');return handleCloudReferenceRequest(new Request(url,{method:'POST',headers:{Authorization:'Bearer '+auth},body:JSON.stringify({cards})}),env,url,deps);};
+assert.equal((await send([card],'shopper')).status,403);
+assert.equal(instances.size,0,'unauthorized calls never touch reference storage');
+let result=await(await send([card])).json();assert.equal(result.summary.cards,1);assert.equal(result.summary.photos,1);
+await Promise.all(Array.from({length:10},()=>send([card])));
+result=await(await send([{...card,image:''}])).json();assert.equal(result.summary.cards,1);assert.equal(result.summary.photos,1,'retry or missing-photo capture does not erase a good reference');
+const set={id:'2026-topps-series-1-baseball',displayName:'2026 Topps Series 1 Baseball',sport:'baseball',year:2026};
+let found=await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base'});
+assert.equal(found.image,image,'website reads the uploaded cloud reference through the verified flagship alias');
+assert.equal(found.referenceOnly,true);
+assert.equal(await sportsReferenceImage(env,{},set,{player:'Different Player',cardNumber:'1',section:'Base'}),null,'same number never substitutes another player');
+const gold={...card,title:'Ken Griffey Jr. [Gold] #1',parallel:'Gold',run:'/50',url:card.url+'-gold',image:image.replace('card123','gold123')};
+await send([gold]);
+found=await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base',parallelRule:{name:'Gold',printRun:50}});assert.equal(found.image,gold.image);
+assert.equal(await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base',parallelRule:{name:'Gold',printRun:25}}),null,'numbered runs must agree');
+await send([{...gold,image}]);
+assert.equal(await sportsReferenceImage(env,{},set,{player:'Ken Griffey Jr.',cardNumber:'1',section:'Base',parallelRule:{name:'Gold',printRun:50}}),null,'a reused base photo is not a gold reference');
+const get=path=>{const url=new URL('https://worker.example/reference-collector/'+path);return handleCloudReferenceRequest(new Request(url,{headers:{Authorization:'Bearer owner'}}),env,url,deps);};
+assert.equal((await(await get('sets')).json()).sets.length,1);
+assert.equal((await(await get('cards?console='+consoleId)).json()).cards.length,2);
+assert.equal((await get('cards?console='+consoleId+'&cursor=../private')).status,400);
+// Simulate the extension bridge: the dashboard executes only the scoped
+// reference request and returns data, never an auth token.
+const local={},calls=[];let offline=false;
+const chrome={storage:{local:{get:async key=>({[key]:local[key]}),set:async data=>Object.assign(local,structuredClone(data)),remove:async key=>{delete local[key];}}},tabs:{get:async()=>({id:7,url:'https://squeebmike.github.io/ArSca/dashboard.html'}),query:async()=>[{id:7,url:'https://squeebmike.github.io/ArSca/dashboard.html'}]},scripting:{executeScript:async options=>{calls.push(options);if(offline)throw Error('Network interrupted');return [{result:{status:200,data:{ok:true,rejected:0,summary:{consoleId,cards:1,photos:1}}}}];}}};
+await uploadReferences(chrome,[card]);assert.ok(!local.pendingCloudBatch);assert.equal(local.cloudConnection.tabId,7);assert.ok(!JSON.stringify(local).includes('Bearer'));
+assert.equal(calls[0].world,'MAIN');assert.equal(calls[0].args[0],'/reference-collector/batch');
+offline=true;await assert.rejects(uploadReferences(chrome,[card]),/Network interrupted/);assert.equal(local.pendingCloudBatch.length,1,'failed cloud request retains exactly the pending metadata batch');
+offline=false;await uploadReferences(chrome,local.pendingCloudBatch);assert.ok(!local.pendingCloudBatch,'acknowledgement clears the outbox');
+assert.ok(!isDashboard('https://squeebmike.github.io/Other/dashboard.html'));assert.ok(!isDashboard('https://evil.test/ArSca/dashboard.html'));
+const oldLocation=globalThis.location;globalThis.location={origin:'https://squeebmike.github.io',pathname:'/ArSca/dashboard.html'};
+await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/);globalThis.location=oldLocation;
+console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, cloud bridge and interrupted-upload recovery passed');

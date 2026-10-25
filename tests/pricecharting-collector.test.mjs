@@ -25,10 +25,12 @@ assert.ok((await vm.runInContext('('+inspectPage.toString()+')()',vm.createConte
 // ordinary tab navigation. A restart gets the same queue, not a fresh job.
 const store={},listeners={},events={addListener:f=>{}};let tab=null,workerSource=fs.readFileSync(new URL('../extensions/pricecharting-collector/background.js',import.meta.url),'utf8');
 const chrome={storage:{local:{get:async key=>key?{[key]:structuredClone(store[key])}:structuredClone(store),set:async value=>Object.assign(store,structuredClone(value))}},alarms:{create:async()=>{},onAlarm:{addListener:f=>listeners.alarm=f}},action:{onClicked:events},tabs:{get:async()=>tab,create:async x=>tab={...x,id:5,status:'loading'},update:async(id,x)=>tab={...tab,...x},onUpdated:{addListener:f=>listeners.updated=f}},runtime:{onStartup:events,onInstalled:events,onMessage:{addListener:f=>listeners.message=f},getURL:x=>x},scripting:{executeScript:async()=>[{result:{...result,hasNext:false}}]}};
-vm.runInNewContext(workerSource.replace(/^import[^\n]+\n/,''),{chrome,sourceUrl,eligibleSet,mergeCards,inspectPage,URL,Date,console,setTimeout,structuredClone});
+const cloudRows=[];
+vm.runInNewContext(workerSource.replace(/^import[^\n]+\n/gm,''),{chrome,sourceUrl,eligibleSet,inspectPage,URL,Date,console,setTimeout,structuredClone,cloudRequest:async()=>({sets:[]}),uploadReferences:async(_chrome,rows)=>{cloudRows.push(...rows);return rows.length?[{consoleId:rows[0].consoleId,name:rows[0].setName,cards:rows.length,photos:rows.filter(r=>r.image).length}]:[];},DASHBOARD:'https://squeebmike.github.io/ArSca/dashboard.html'});
 const message=value=>new Promise(resolve=>listeners.message(value,{},resolve));
 assert.ok((await message({type:'start',urls:base,discover:true})).ok);await new Promise(r=>setTimeout(r,15));assert.equal(store.job.tabId,5);
 await message({type:'pause'});assert.equal(store.job.running,false);tab.status='complete';await message({type:'resume'});await new Promise(r=>setTimeout(r,30));
-assert.equal(store.job.running,false);assert.equal(store.job.completed.length,1);assert.equal(store['set:'+result.cards[0].consoleId].length,2);
+assert.equal(store.job.running,false);assert.equal(store.job.completed.length,1);assert.equal(cloudRows.length,2);assert.ok(!Object.keys(store).some(k=>k.startsWith('set:')),'new captures live in the cloud, not local set shards');
 const manifest=JSON.parse(fs.readFileSync(new URL('../extensions/pricecharting-collector/manifest.json',import.meta.url)));assert.equal(manifest.manifest_version,3);assert.ok(!manifest.permissions.includes('cookies'));assert.ok(!manifest.host_permissions.includes('<all_urls>'));
+assert.ok(!manifest.permissions.includes('downloads'),'no file download capability in cloud edition');
 console.log('Card collector: source boundaries, rows/photos/parallels, missing cards, resume, review import passed');

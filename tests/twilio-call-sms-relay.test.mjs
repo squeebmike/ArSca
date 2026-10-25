@@ -99,6 +99,7 @@ console.log('Dashboard call-forwarding/SMS-relay settings UI checks passed');
 const workerBody = worker
   .replace(/^import\s*\{[^}]*\}\s*from\s*'[^']*';?\r?$/gm, '')
   .replace(/^export\s+(?=class\s)/gm, '')
+  .replace(/^export\s*\{[^}]*\};?\r?$/gm, '')
   .replace(/^export default/m, 'const __worker =');
 const workerModule = new Function(`${workerBody}\nreturn { verifyTwilioSignature, escapeXmlText, constantTimeEqualHex };`);
 const { verifyTwilioSignature, escapeXmlText } = workerModule();

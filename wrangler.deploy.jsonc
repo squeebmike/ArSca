@@ -16,8 +16,8 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  "durable_objects": {"bindings":[{"name":"PUBLIC_EBAY_CACHE","class_name":"PublicEbayCache"}]},
-  "migrations": [{"tag":"public-ebay-cache-v1","new_sqlite_classes":["PublicEbayCache"]}],
+  "durable_objects": {"bindings":[{"name":"PUBLIC_EBAY_CACHE","class_name":"PublicEbayCache"},{"name":"CARD_REFERENCE_ARCHIVE","class_name":"CardReferenceArchive"}]},
+  "migrations": [{"tag":"public-ebay-cache-v1","new_sqlite_classes":["PublicEbayCache"]},{"tag":"card-reference-archive-v1","new_sqlite_classes":["CardReferenceArchive"]}],
   "kv_namespaces": [
     {
       "binding": "LBA_KV",
