@@ -24,9 +24,10 @@ export async function cachedPublicCatalog(env,ctx,key,load,{freshMs=60000,maxAge
   refresh=Promise.race([
    Promise.resolve().then(()=>load(controller.signal)),
    new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error('Public catalog timed out'));},timeoutMs);})
-  ]).then(async items=>{
-   if(!Array.isArray(items))throw new Error('Invalid public catalog');
-   try{await env.LBA_KV?.put('public-catalog:'+key,JSON.stringify({at:Date.now(),items}),{expirationTtl:Math.ceil(staleMs/1000)});}catch{}
+  ]).then(async value=>{
+   const items=Array.isArray(value)?value:value?.items,at=Array.isArray(value)?Date.now():value?.at;
+   if(!Array.isArray(items)||!Number.isFinite(at)||at>Date.now()||Date.now()-at>=staleMs)throw new Error('Invalid public catalog');
+   try{await env.LBA_KV?.put('public-catalog:'+key,JSON.stringify({at,items}),{expirationTtl:Math.max(60,Math.ceil((staleMs-(Date.now()-at))/1000))});}catch{}
    return items;
   }).catch(async err=>{
    // Validation failures must pause retries too, not just rejected network loads.

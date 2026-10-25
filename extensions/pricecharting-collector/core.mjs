@@ -1,0 +1,77 @@
+export function sourceUrl(raw, base) {
+  try {
+    const u = new URL(raw, base);
+    if (u.protocol !== 'https:' || !/^(www\.)?(pricecharting|sportscardspro)\.com$/.test(u.hostname) || u.username || u.password) return '';
+    if (!/^\/(?:console|game|category)\/[a-z0-9/-]+\/?$/.test(u.pathname)) return '';
+    u.hash = ''; u.search = '';
+    if (u.pathname.startsWith('/console/')) { u.searchParams.set('exclude-variants', 'false'); u.searchParams.set('sort', 'model-number'); }
+    return u.href;
+  } catch { return ''; }
+}
+export function eligibleSet(url, licensedOnly = true) {
+  if (!licensedOnly || !/\/(?:console|game)\/(?:baseball|football)-cards-/.test(url)) return true;
+  const year = Number(url.match(/-cards-(\d{4})-/)?.[1]);
+  return year >= 2019 && /-(topps|bowman)(?:-|\/)/.test(url);
+}
+export function mergeCards(oldRows, newRows) {
+  const rows = new Map(oldRows.map(row => [row.url, row]));
+  for (const row of newRows) {
+    if (!sourceUrl(row.url) || !row.title || !row.consoleId) continue;
+    const old = rows.get(row.url);
+    rows.set(row.url, {...old, ...row, image: row.image || old?.image || ''});
+  }
+  return [...rows.values()];
+}
+export function csv(rows) {
+  const keys = ['consoleId','setName','productId','title','player','cardNumber','parallel','run','image','url','capturedAt'];
+  const cell = value => '"' + String(value ?? '').replaceAll('"','""') + '"';
+  return [keys.map(cell).join(','), ...rows.map(row => keys.map(key => cell(row[key])).join(','))].join('\r\n');
+}
+// Self-contained: Chrome serializes this function into the permitted source tab.
+export async function inspectPage(advance = false) {
+  const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
+  const blocked = /just a moment|access denied|verify (?:that )?you are human|too many requests|captcha|unusual traffic/i.test(document.title + ' ' + (document.querySelector('h1')?.textContent || '')) || !!document.querySelector('iframe[src*="captcha"],#challenge-running');
+  if (blocked) return {blocked: true, message: 'Source site requested a pause. Open the collector tab and review it.'};
+  const safe = raw => { try { const u = new URL(raw, location.href); return u.protocol === 'https:' && /^(www\.)?(pricecharting|sportscardspro)\.com$/.test(u.hostname) && /^\/(console|game|category)\/[a-z0-9/-]+\/?$/.test(u.pathname) ? u.href : ''; } catch { return ''; } };
+  const photo = img => {
+    for (const raw of [img?.getAttribute('data-src'),img?.getAttribute('data-original'),img?.currentSrc,img?.src]) {
+      if (/^https:\/\/storage\.googleapis\.com\/images\.pricecharting\.com\/[a-z0-9]+\/(60|240|300|400|1600)\.jpg$/i.test(raw || '')) return raw.replace(/\/60\.jpg$/, '/240.jpg');
+    }
+    return '';
+  };
+  const title = clean(document.querySelector('h1')?.textContent || document.title);
+  const rowNodes = () => [...document.querySelectorAll('tr[id^="product-"]')];
+  const next = () => document.querySelector('form.js-next-page input[type="submit"],a[rel="next"]') || [...document.querySelectorAll('a,button,input[type="submit"]')].find(x => /^(more results\s*[»›]?|next\s*[»›]?)$/i.test(clean(x.value || x.textContent)));
+  if (advance) {
+    const control = next();
+    if (!control || control.disabled) return {done: true};
+    if (control.tagName === 'A' && !safe(control.href)) return {blocked:true,message:'Pagination left the allowed source.'};
+    const before = rowNodes().map(x=>x.id).join(',');
+    return await new Promise(resolve => {
+      let timer;
+      const observer = new MutationObserver(() => {
+        if (rowNodes().map(x=>x.id).join(',') !== before) finish({advanced:true});
+        else if(!next())finish({done:true});
+      });
+      const finish = value => { clearTimeout(timer); observer.disconnect(); resolve(value); };
+      observer.observe(document.body, {childList:true,subtree:true});
+      timer = setTimeout(() => finish({stalled:true,message:'More results did not add cards. Resume after reviewing the source tab.'}), 15000);
+      control.click();
+    });
+  }
+  const cards = [];
+  for (const row of rowNodes()) {
+    const a = row.querySelector('td.title a[href*="/game/"]');
+    const url = safe(a?.href); if (!url) continue;
+    const name = clean(a.textContent), match = name.match(/#([a-z0-9][a-z0-9.-]*)\b/i);
+    cards.push({consoleId:new URL(url).pathname.split('/')[2],setName:title.replace(/^(Cheapest|Most Expensive)\s+/i,''),productId:row.getAttribute('data-product') || row.id.replace('product-',''),title:name,player:clean(name.replace(/\[[^\]]+\]/g,'').replace(/#.*$/,'')),cardNumber:match?.[1] || '',parallel:(name.match(/\[([^\]]+)\]/)?.[1] || ''),run:clean(row.querySelector('.list-print-run')?.textContent),image:photo(row.querySelector('td.image img')),url,capturedAt:new Date().toISOString()});
+  }
+  if (!cards.length && location.pathname.startsWith('/game/')) {
+    const img = document.querySelector('#product_details img, #product-image img, img[itemprop="image"]');
+    const og = document.querySelector('meta[property="og:image"]')?.content;
+    const number = title.match(/#([a-z0-9][a-z0-9.-]*)\b/i)?.[1] || '';
+    cards.push({consoleId:location.pathname.split('/')[2],setName:'',productId:'',title,player:clean(title.replace(/\[[^\]]+\]/g,'').replace(/#.*$/,'')),cardNumber:number,parallel:title.match(/\[([^\]]+)\]/)?.[1] || '',run:clean(document.querySelector('.list-print-run')?.textContent),image:photo(img) || photo({src:og}),url:safe(location.href),capturedAt:new Date().toISOString()});
+  }
+  const sets = [...new Set([...document.querySelectorAll('a[href*="/console/"]')].map(a=>safe(a.href)).filter(Boolean))];
+  return {url:location.href,title,cards,sets,hasNext:!!next(),signature:cards.map(x=>x.url).join('|')};
+}

@@ -60,7 +60,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
  const displayable=cached&&Number(cached.checkedAt)<=now&&now-Number(cached.checkedAt)<retain;
  const refresh=async()=>{
   try{
-   let cards=[];
+   let cards=[],sourceAt=Date.now();
    if(tcg)cards=chooseArticleCards(await deps.loadCards(guide),article);
    else{
     const pause=await env.LBA_KV.get('sports-ebay-photo-pause','json');
@@ -73,6 +73,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
     // Sequential requests keep eBay traffic bounded for each known article.
     for(const [label,term,mention] of groups){
      const result=await deps.searchEbay(set.displayName+' '+(mention?mention+' ':'')+term,campaign);
+     sourceAt=Math.min(sourceAt,Number(result.checkedAt)||Date.now());
      if(result.warning){
       if(/Browse API 429/.test(result.warning)){
        const reset=Date.parse(result.rateLimit?.retryAt),now=Date.now(),until=Number.isFinite(reset)&&reset>now&&reset<=now+86405000?Math.max(now+300000,reset):now+300000;
@@ -94,7 +95,7 @@ export async function articleMarketplace(env,ctx,article,guide,deps){
      }
     }
    }
-   await env.LBA_KV.put(key,JSON.stringify({checkedAt:Date.now(),cards}),{expirationTtl:Math.ceil(retain/1000)});
+   await env.LBA_KV.put(key,JSON.stringify({checkedAt:sourceAt,cards}),{expirationTtl:Math.max(60,Math.ceil((retain-(Date.now()-sourceAt))/1000))});
   }catch{console.warn('Article marketplace refresh unavailable',{slug:article.slug});}
  };
  if((!fresh||now-Number(cached.checkedAt)>ttl*.8)&&!articleRefreshes.has(key)){const task=refresh().finally(()=>articleRefreshes.delete(key));articleRefreshes.set(key,task);ctx.waitUntil(task);}

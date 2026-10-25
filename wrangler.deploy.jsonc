@@ -16,6 +16,8 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
+  "durable_objects": {"bindings":[{"name":"PUBLIC_EBAY_CACHE","class_name":"PublicEbayCache"}]},
+  "migrations": [{"tag":"public-ebay-cache-v1","new_sqlite_classes":["PublicEbayCache"]}],
   "kv_namespaces": [
     {
       "binding": "LBA_KV",
