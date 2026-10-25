@@ -41,6 +41,13 @@ assert.ok((await message({type:'start',urls:base,discover:true})).ok);await new 
 await message({type:'pause'});assert.equal(store.job.running,false);tab.status='complete';await message({type:'resume'});await new Promise(r=>setTimeout(r,30));
 assert.equal(store.job.running,false);assert.equal(store.job.completed.length,1);assert.equal(cloudRows.length,2);assert.ok(!Object.keys(store).some(k=>k.startsWith('set:')),'new captures live in the cloud, not local set shards');
 assert.equal(store.collectorPaused,false,'an explicit Resume clears the independent pause latch');
+let phase=0;
+chrome.scripting.executeScript=async options=>{if(options.args[0]){phase=1;return [{result:null}];}return [{result:{...result,cards:[phase?{...result.cards[0],url:result.cards[0].url+'-next'}:result.cards[0]],hasNext:phase===0}}];};
+await message({type:'start',urls:base,discover:true});
+for(let attempt=0;attempt<300&&!store.job.navigating;attempt++)await new Promise(r=>setTimeout(r,20));
+assert.equal(store.job.completed.length,0,'missing script result during full-page POST cannot complete the set');assert.ok(store.job.navigating);
+listeners.alarm({name:'collector-resume'});await new Promise(r=>setTimeout(r,30));
+assert.equal(store.job.completed.length,1);assert.equal(cloudRows.length,4,'both sides of a full-page navigation are uploaded');
 const manifest=JSON.parse(fs.readFileSync(new URL('../extensions/pricecharting-collector/manifest.json',import.meta.url)));assert.equal(manifest.manifest_version,3);assert.ok(!manifest.permissions.includes('cookies'));assert.ok(!manifest.host_permissions.includes('<all_urls>'));
 assert.ok(!manifest.permissions.includes('downloads'),'no file download capability in cloud edition');
 const panelPage=parseHTML('<html><body></body></html>'),panelMessages=[];

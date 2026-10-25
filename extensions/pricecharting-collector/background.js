@@ -57,6 +57,9 @@ async function run(){
         }
         if(more?.blocked || more?.stalled)return pause(more.message);
         if(more?.advanced)continue;
+        // Chrome can return no script result when a POST replaces the whole
+        // document. Capture that next document; do not mark the set complete.
+        if(!more?.done){job=await read();job.navigating=current.url;await save(job);return;}
       }
       job=await read();if(!job.running)return;
       job.completed.push(job.queue.shift().url);await save(job);
