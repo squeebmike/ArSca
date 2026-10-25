@@ -73,11 +73,23 @@ export async function inspectPage(advance = false) {
     });
   }
   const cards = [];
+  // Use the visible column labels, not generic price-class names that mean
+  // different conditions for games, comics and cards. Unknown currency is held.
+  const currency=clean(document.querySelector('#currency_selector')?.textContent).match(/^([A-Z]{3})\b/)?.[1];
+  const headers=[...document.querySelectorAll('#games_table th')].map(th=>clean(th.textContent));
+  const priceFields={'Ungraded':'ungraded','Grade 9':'grade9','PSA 10':'psa10'};
+  const pricesFor=row=>{
+    if(currency!=='USD')return null;
+    const cells=[...row.querySelectorAll('td')],prices={currency:'USD'};
+    headers.forEach((label,i)=>{const field=priceFields[label],value=clean(cells[i]?.textContent);if(!field||!/^\$?\s*\d[\d,]*(?:\.\d{1,2})?$/.test(value))return;const amount=Number(value.replace(/[$,\s]/g,''));if(Number.isFinite(amount)&&amount>0&&amount<=100000000)prices[field]=amount;});
+    return Object.keys(prices).length>1?prices:null;
+  };
   for (const row of rowNodes()) {
     const a = row.querySelector('td.title a[href*="/game/"]');
     const url = safe(a?.href); if (!url) continue;
     const name = clean(a.textContent), match = name.match(/#([a-z0-9][a-z0-9.-]*)\b/i);
     cards.push({consoleId:new URL(url).pathname.split('/')[2],setName:title.replace(/^(Cheapest|Most Expensive)\s+/i,''),productId:row.getAttribute('data-product') || row.id.replace('product-',''),title:name,player:clean(name.replace(/\[[^\]]+\]/g,'').replace(/#.*$/,'')),cardNumber:match?.[1] || '',parallel:(name.match(/\[([^\]]+)\]/)?.[1] || ''),run:clean(row.querySelector('.list-print-run')?.textContent),image:photo(row.querySelector('td.image img')),url,capturedAt:new Date().toISOString()});
+    const prices=pricesFor(row);if(prices)cards[cards.length-1].referencePrices=prices;
   }
   if (!cards.length && location.pathname.startsWith('/game/')) {
     const img = document.querySelector('#product_details img, #product-image img, img[itemprop="image"]');

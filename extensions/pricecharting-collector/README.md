@@ -26,7 +26,11 @@ Slow pagination gets a 30-second recovery wait, with at most three attempts with
 
 Review cloud sets in pages of 100 cards. Filter the loaded cards by player/card number, parallel, or missing photos. **Sync earlier captures** moves version 1.0 captures into the cloud and removes each local set shard only after acknowledgement. New collections retain only progress, a connection tab ID and one pending batch in Chrome for recovery. Replayed uploads upsert the same source card rather than duplicating it.
 
-Photo URLs and card details persist in Cloudflare independently of the eBay offer cache. No image bytes, prices, customer data, cookies or browsing history are uploaded. URLs do not grant image-reuse rights. Check permission to display source photos. Reference photos do not represent cards the store owns or active listings.
+Photo URLs and card details persist in Cloudflare independently of the eBay offer cache. Version 1.3 also saves positive USD estimates from visibly labeled Ungraded, Grade 9 and PSA 10 columns. Each estimate retains its collection date. Missing values, zeros and unknown currencies are omitted; older or unpriced uploads do not erase a newer estimate for the same identity. No image bytes, customer data, cookies or browsing history are uploaded. URLs do not grant image-reuse rights. Check permission to display source photos. Reference photos do not represent cards the store owns or active listings.
+
+## Update to 1.3 without restarting the collection
+
+Reload **Mana Pocket Card Collector** in Chrome Extensions, then use **Connect cloud** and **Resume collection** on the dashboard if needed. The saved queue, completed sources and pending batch persist. Do not click Start newest first to apply this update. Existing archived records without prices remain unpriced until collected again; no estimate is invented from an eBay asking price. This update captures prices during ordinary collection, not through per-visitor source requests. A continuous scheduled price refresh is not enabled.
 
 ## Automatic website connection
 

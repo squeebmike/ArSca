@@ -15,6 +15,11 @@ const html=`<h1>2022 Topps Chrome Platinum Anniversary Baseball Cards</h1><table
 const {document,window}=parseHTML(html);const context=vm.createContext({document,location:new URL(base),URL,Date,MutationObserver:window.MutationObserver,setTimeout,clearTimeout});
 const result=await vm.runInContext('('+inspectPage.toString()+')()',context);
 assert.equal(result.cards.length,2);assert.equal(result.cards[0].parallel,'Gold');assert.equal(result.cards[0].run,'/50');assert.equal(result.cards[0].cardNumber,'192');assert.match(result.cards[0].image,/240.jpg$/);assert.equal(result.cards[1].image,'','missing photos do not lose card identities');assert.ok(result.hasNext);
+const pricePage='<h1>2022 Topps Chrome Platinum Anniversary</h1><div id="currency_selector">USD | CAD EUR</div><table id="games_table"><tr><th>Card</th><th>PSA 10</th><th>Ungraded</th><th>Grade 9</th></tr><tr id="product-123"><td class="title"><a href="'+url+'">Ken Griffey Jr. [Gold] #192</a></td><td>$1,234.56</td><td>$7.50</td><td>-</td></tr></table>';
+async function inspectFixture(markup){const p=parseHTML(markup);return vm.runInContext('('+inspectPage.toString()+')()',vm.createContext({document:p.document,location:new URL(base),URL,Date}));}
+const priced=await inspectFixture(pricePage);assert.deepEqual(JSON.parse(JSON.stringify(priced.cards[0].referencePrices)),{currency:'USD',psa10:1234.56,ungraded:7.5},'grade labels determine meanings even when columns are reordered; blanks are not zero');
+assert.equal((await inspectFixture(pricePage.replace('USD | CAD EUR','CAD | USD EUR'))).cards[0].referencePrices,undefined,'other currencies cannot be labeled USD');
+assert.equal((await inspectFixture(pricePage.replace('$1,234.56','$0.00').replace('$7.50','$0.00'))).cards[0].referencePrices,undefined,'zero estimates stay unavailable');
 // The live provider removes its More form and may clear the table while the
 // next response loads. Neither transient state means the set is complete.
 const paging=parseHTML('<html><body>'+html+'</body></html>');

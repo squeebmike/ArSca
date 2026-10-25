@@ -119,6 +119,7 @@ export const sportsMarketplaceNotice='<aside class="mp-seller-notice"><p class="
 export const sportsLookupScript=manaLoaderStyle+`<style>
 .mp-reference-figure{margin:0;text-align:center}.mp-reference-figure img{display:block;max-width:100%;object-fit:contain;margin:auto}.mp-reference-figure figcaption{font:12px/1.5 system-ui;margin:8px 0;color:var(--wo-muted,inherit)}
 .mp-reference-figure figcaption,.mp-reference-figure figcaption a{font:12px/1.5 system-ui!important;letter-spacing:normal!important;text-transform:none!important}.mp-ebay-copy [data-sports-result] strong{font:650 14px/1.5 system-ui!important}
+.mp-reference-estimate{display:block;margin-top:8px;font:12px/1.5 system-ui;text-align:center}.mp-reference-estimate strong{display:block;font:700 16px/1.5 system-ui!important}.mp-reference-estimate small{display:block;font:11px/1.5 system-ui!important;letter-spacing:normal!important;text-transform:none!important}.mp-reference-estimate select{display:block;width:100%;min-height:44px;margin:6px 0;padding:6px;border:1px solid var(--wo-border,#777);border-radius:6px;color:var(--wo-text,inherit);background:var(--wo-surface,#292430);font:12px system-ui}
 .mp-card-shopping [data-sports-result],.mp-sports-market{display:flow-root}.mp-card-shopping [data-sports-result] img,.mp-sports-market img{width:90px!important;height:120px!important;float:left;margin:0 14px 8px 0}.mp-card-shopping [data-sports-result] strong{font:650 14px/1.5 system-ui}.mp-parallel-card [data-sports-result]{min-height:0}
 .mp-parallel-market>[hidden]{display:none!important}
 .mp-card-reference{width:180px;flex-basis:180px;min-height:240px}.mp-card-reference img,.mp-reference-photo img{width:180px;height:240px}.mp-parallel-reference{min-height:230px;display:grid;place-items:center;text-align:center;font:12px/1.5 system-ui}.mp-parallel-reference img{width:100%;height:210px;object-fit:contain}.mp-parallel-reference figcaption a{display:inline!important;border:0!important;font:12px/1.5 system-ui!important}
@@ -127,11 +128,20 @@ export const sportsLookupScript=manaLoaderStyle+`<style>
 </style><script>(function(){
 /* data-mp-sports-lookup-runtime */
 function pausedPhotoText(data){var time=Date.parse(data.retryAt);return Number.isFinite(time)?'eBay photos paused until '+new Date(time).toLocaleString():'eBay photos temporarily unavailable';}
+function renderEstimate(figure,ref){
+ var box=document.createElement('span'),label=document.createElement('small'),amount=document.createElement('strong'),note=document.createElement('small'),prices=ref.referencePrices||{};
+ box.className='mp-reference-estimate';var fields=[['ungraded','Ungraded'],['grade9','Grade 9'],['psa10','PSA 10']].filter(function(pair){return prices.currency==='USD'&&typeof prices[pair[0]]==='number'&&Number.isFinite(prices[pair[0]])&&prices[pair[0]]>0;});
+ if(!fields.length){label.textContent='Estimate unavailable';box.append(label);figure.append(box);return;}
+ function choose(pair){label.textContent='PriceCharting estimate · '+pair[1];amount.textContent=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(prices[pair[0]])+' USD';}
+ choose(fields[0]);box.append(label,amount);
+ if(fields.length>1){var select=document.createElement('select');select.setAttribute('aria-label','PriceCharting grade for '+ref.title);fields.forEach(function(pair){var option=document.createElement('option');option.value=pair[0];option.textContent=pair[1];select.append(option);});select.onchange=function(){choose(fields.find(function(pair){return pair[0]===select.value;})||fields[0]);};box.append(select);}
+ var date=Date.parse(prices.capturedAt);note.textContent=(Number.isFinite(date)?'Collected '+new Date(date).toISOString().slice(0,10)+' · ':'')+'Estimate only; condition matters. Excludes shipping.';box.append(note);figure.append(box);
+}
 function renderReference(target,ref){
  var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');
  img.src=ref.image;img.alt=ref.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';
  link.href=ref.url;link.target='_blank';link.rel='noopener';link.textContent='PriceCharting reference';
- figure.className='mp-reference-figure';caption.append(link,document.createTextNode(' · Not a copy for sale.'));figure.append(img,caption);target.append(figure);
+ figure.className='mp-reference-figure';caption.append(link,document.createTextNode(' · Not a copy for sale.'));figure.append(img,caption);renderEstimate(figure,ref);target.append(figure);
  img.onerror=function(){figure.replaceChildren(document.createTextNode('Reference photo unavailable.'));};
 }
 async function loadReference(target){

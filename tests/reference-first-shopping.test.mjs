@@ -4,6 +4,7 @@ import {parseHTML} from 'linkedom';
 import {handleBaseballCatalog} from '../scripts/baseball-catalog-pages.mjs';
 import {sportsLookupScript} from '../scripts/sports-card-marketplace.mjs';
 const reference={title:'Aaron Judge #66',image:'https://storage.googleapis.com/images.pricecharting.com/example/240.jpg',url:'https://www.sportscardspro.com/game/baseball-cards-2026-bowman-chrome/aaron-judge-66',run:''};
+reference.referencePrices={currency:'USD',ungraded:7.5,grade9:25,psa10:80,capturedAt:'2026-10-25T08:00:00Z'};
 const href='https://www.ebay.com/itm/123?campid=5339046175';
 const store=new Map();let inventoryReads=0;
 const env={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async key=>store.get(key)||null,put:async(key,value)=>store.set(key,JSON.parse(value))},CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:()=>({fetch:async()=>Response.json({cards:[reference],archived:true})})}};
@@ -23,6 +24,10 @@ assert.equal(document.querySelector('[data-sports-result] img').src,data.listing
 assert.equal(document.querySelector('[data-sports-result] a').href,href);
 assert.equal(document.querySelector('[data-sports-result] a').rel,'noopener sponsored');
 assert.match(document.querySelector('[data-sports-result]').textContent,/8\.00 USD/);
+assert.match(document.querySelector('.mp-reference-estimate').textContent,/Ungraded\$7.50 USD/);
+const grades=document.querySelector('.mp-reference-estimate select');grades.querySelector('option[value="psa10"]').selected=true;grades.onchange();
+assert.match(document.querySelector('.mp-reference-estimate').textContent,/PSA 10\$80.00 USD/);
+assert.match(document.querySelector('.mp-reference-estimate').textContent,/Collected 2026-10-25/);
 payload={reference,listing:null};button.dispatchEvent(new window.Event('click',{bubbles:true}));await new Promise(resolve=>setImmediate(resolve));
 assert.equal(document.querySelector('[data-sports-reference-result] img').src,reference.image,'a disappeared listing does not remove the independent reference');
 assert.equal(document.querySelector('[data-sports-result] img'),null);
