@@ -53,17 +53,21 @@ export async function inspectPage(advance = false) {
   const next = () => document.querySelector('form.js-next-page input[type="submit"],a[rel="next"]') || [...document.querySelectorAll('a,button,input[type="submit"]')].find(x => /^(more results\s*[»›]?|next\s*[»›]?)$/i.test(clean(x.value || x.textContent)));
   if (advance) {
     const control = next();
-    if (!control || control.disabled) return {done: true};
+    if (!control) return {done: true};
+    if(control.disabled)return {stalled:true,message:'Source pagination is still loading. Review the source tab, then resume.'};
     if (control.tagName === 'A' && !safe(control.href)) return {blocked:true,message:'Pagination left the allowed source.'};
     const before = rowNodes().map(x=>x.id).join(',');
     return await new Promise(resolve => {
       let timer;
       const observer = new MutationObserver(() => {
-        if (rowNodes().map(x=>x.id).join(',') !== before) finish({advanced:true});
-        else if(!next())finish({done:true});
+        const rows=rowNodes();
+        if (rows.length && rows.map(x=>x.id).join(',') !== before) finish({advanced:true});
       });
       const finish = value => { clearTimeout(timer); observer.disconnect(); resolve(value); };
       observer.observe(document.body, {childList:true,subtree:true});
+      // The provider removes the More form while fetching the next batch.
+      // Its temporary absence is not the end of the set. Wait for real rows
+      // or the bounded timeout before deciding whether pagination is done.
       timer = setTimeout(() => finish({stalled:true,message:'More results did not add cards. Resume after reviewing the source tab.'}), 15000);
       control.click();
     });

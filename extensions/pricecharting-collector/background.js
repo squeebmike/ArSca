@@ -1,7 +1,7 @@
 import {sourceUrl,eligibleSet,inspectPage,newestSetQueue} from './core.mjs';
 import {cloudRequest,uploadReferences,DASHBOARD} from './cloud.mjs';
 let pumping;
-const read = async () => (await chrome.storage.local.get('job')).job;
+const read = async () => {const job=(await chrome.storage.local.get('job')).job;const paused=(await chrome.storage.local.get('collectorPaused')).collectorPaused;return paused&&job?{...job,running:false,message:typeof paused==='string'?paused:'Paused. Uploaded references are safe in the cloud.'}:job;};
 const save = job => chrome.storage.local.set({job});
 const nap = ms => new Promise(resolve=>setTimeout(resolve,ms));
 async function schedule(){await chrome.alarms.create('collector-resume',{periodInMinutes:0.5});}
@@ -16,7 +16,7 @@ async function capture(job, data) {
   // Keep the active source in place; discover all directory roots before sets.
   job.queue=[job.queue[0],...newestSetQueue(job.queue.slice(1))];
 }
-async function pause(message){const job=await read();if(job){job.running=false;job.message=message;await save(job);}}
+async function pause(message){await chrome.storage.local.set({collectorPaused:message});const job=await read();if(job){job.running=false;job.message=message;await save(job);}}
 async function run(){
   if(pumping)return pumping;
   pumping=(async()=>{
@@ -80,11 +80,12 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       const eligible=urls.filter(x=>eligibleSet(x,licensedOnly));
       if(!eligible.length)throw new Error('Add an allowed set or category URL. The licensed sports filter accepts Topps/Bowman sets from 2019 onward.');
       if(eligible.length>500)throw new Error('Collect up to 500 starting URLs per job.');
+      await chrome.storage.local.set({collectorPaused:false});
       await save({running:true,queue:newestSetQueue(eligible.map(url=>({url,pages:0}))),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting newest-first collection…'});
       await schedule();void run();
     }else if(message.type==='collector-status'){const job=await read();return {job:job||null,pending:((await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch||[]).length};}
     else if(message.type==='pause')await pause('Paused. Uploaded references are safe in the cloud.');
-    else if(message.type==='resume'){const job=await read();if(!job?.queue.length)throw new Error('Start a new collection first.');const pending=(await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch;if(pending?.length)await uploadReferences(chrome,pending);job.running=true;await save(job);void run();}
+    else if(message.type==='resume'){const job=await read();if(!job?.queue.length)throw new Error('Start a new collection first.');const pending=(await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch;if(pending?.length)await uploadReferences(chrome,pending);await chrome.storage.local.set({collectorPaused:false});job.running=true;await save(job);void run();}
     else if(message.type==='open-source'){const job=await read();if(job?.tabId)await chrome.tabs.update(job.tabId,{active:true});}
     else if(message.type==='connect-cloud'){
       const tabs=await chrome.tabs.query({url:DASHBOARD+'*'});if(!tabs.length){await chrome.tabs.create({url:DASHBOARD,active:true});throw Error('Sign in to the dashboard, then click Connect cloud again.');}

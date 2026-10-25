@@ -15,6 +15,13 @@ const html=`<h1>2022 Topps Chrome Platinum Anniversary Baseball Cards</h1><table
 const {document,window}=parseHTML(html);const context=vm.createContext({document,location:new URL(base),URL,Date,MutationObserver:window.MutationObserver,setTimeout,clearTimeout});
 const result=await vm.runInContext('('+inspectPage.toString()+')()',context);
 assert.equal(result.cards.length,2);assert.equal(result.cards[0].parallel,'Gold');assert.equal(result.cards[0].run,'/50');assert.equal(result.cards[0].cardNumber,'192');assert.match(result.cards[0].image,/240.jpg$/);assert.equal(result.cards[1].image,'','missing photos do not lose card identities');assert.ok(result.hasNext);
+// The live provider removes its More form and may clear the table while the
+// next response loads. Neither transient state means the set is complete.
+const paging=parseHTML('<html><body>'+html+'</body></html>');
+const newRow=paging.document.querySelector('tr').cloneNode(true);newRow.id='product-next-page';
+paging.document.querySelector('input[type="submit"]').addEventListener('click',()=>{paging.document.querySelector('form').remove();for(const row of paging.document.querySelectorAll('tr'))row.remove();setTimeout(()=>paging.document.querySelector('table').append(newRow),25);});
+const advanced=await vm.runInContext('('+inspectPage.toString()+')(true)',vm.createContext({document:paging.document,location:new URL(base),URL,Date,MutationObserver:paging.window.MutationObserver,setTimeout,clearTimeout}));
+assert.ok(advanced.advanced&&!advanced.done,'temporary form removal and empty table cannot skip the next page');
 const merged=mergeCards(result.cards,[{...result.cards[0],image:''}]);assert.equal(merged.length,2);assert.ok(merged[0].image,'resume preserves a previously collected photo');
 assert.match(csv([{title:'Ken, "The Kid"',run:'/50'}]),/Ken, ""The Kid""/);
 const fakeSet={id:'test',sport:'baseball',displayName:'2022 Topps Chrome Platinum Anniversary Baseball',cards:[{cardNumber:'192',player:'Ken Griffey Jr.',section:'Base'}]};
@@ -33,6 +40,7 @@ const message=value=>new Promise(resolve=>listeners.message(value,{},resolve));
 assert.ok((await message({type:'start',urls:base,discover:true})).ok);await new Promise(r=>setTimeout(r,15));assert.equal(store.job.tabId,5);
 await message({type:'pause'});assert.equal(store.job.running,false);tab.status='complete';await message({type:'resume'});await new Promise(r=>setTimeout(r,30));
 assert.equal(store.job.running,false);assert.equal(store.job.completed.length,1);assert.equal(cloudRows.length,2);assert.ok(!Object.keys(store).some(k=>k.startsWith('set:')),'new captures live in the cloud, not local set shards');
+assert.equal(store.collectorPaused,false,'an explicit Resume clears the independent pause latch');
 const manifest=JSON.parse(fs.readFileSync(new URL('../extensions/pricecharting-collector/manifest.json',import.meta.url)));assert.equal(manifest.manifest_version,3);assert.ok(!manifest.permissions.includes('cookies'));assert.ok(!manifest.host_permissions.includes('<all_urls>'));
 assert.ok(!manifest.permissions.includes('downloads'),'no file download capability in cloud edition');
 const panelPage=parseHTML('<html><body></body></html>'),panelMessages=[];

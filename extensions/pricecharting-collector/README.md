@@ -1,4 +1,4 @@
-# Mana Pocket Card Collector — cloud edition (1.2.0)
+# Mana Pocket Card Collector — cloud edition (1.2.1)
 
 ## Install once
 
