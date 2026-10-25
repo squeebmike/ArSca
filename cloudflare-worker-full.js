@@ -5644,6 +5644,27 @@ async function fetchEbayItemGroup(env, groupId) {
 // grant). Used by /dealscan/check to catch underpriced listings (fresh
 // listings the seller hasn't priced to market yet, or auctions about to
 // close still below value) instead of only ever looking at sold history.
+function normalizeEbayBrowseUsage(data) {
+  const number = v => v !== null && v !== undefined && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null;
+  return (data?.rateLimits || []).filter(api => api.apiName === 'browse' && api.apiContext === 'buy').flatMap(api =>
+    (api.resources || []).flatMap(resource => (resource.rates || []).map(rate => ({ resource:String(resource.name || ''), limit:number(rate.limit), count:number(rate.count), remaining:number(rate.remaining), reset:Number.isFinite(Date.parse(rate.reset)) ? new Date(rate.reset).toISOString() : null, timeWindow:number(rate.timeWindow) }))));
+}
+async function fetchEbayBrowseUsage(env, token) {
+  try {
+    return await cachedPublicCatalog(env, null, 'ebay-browse-usage-v1', async signal => {
+      const response = await fetch('https://api.ebay.com/developer/analytics/v1_beta/rate_limit/?api_context=buy&api_name=browse', { signal, headers:{ Authorization:'Bearer ' + token, Accept:'application/json' } });
+      const {data} = await readApiJson(response);
+      if (!response.ok) throw new Error('eBay usage unavailable');
+      return normalizeEbayBrowseUsage(data);
+    }, {freshMs:300000,maxAgeMs:300000,staleMs:300000,retryMs:300000,timeoutMs:2500});
+  } catch { return []; }
+}
+function ebayBrowseRetryAt(usage, retryAfter, now = Date.now()) {
+  const exhausted = usage.filter(r => /^(?:buy\.)?browse$|item_summary|search/i.test(r.resource) && r.remaining === 0).map(r => Date.parse(r.reset)).filter(t => t > now && t <= now + 86400000);
+  if (exhausted.length) return {retryAt:new Date(Math.max(...exhausted) + 5000).toISOString(),exhausted:true};
+  const headerTime = /^\d+$/.test(String(retryAfter || '')) ? now + Number(retryAfter) * 1000 : Date.parse(retryAfter);
+  return {retryAt:new Date(Math.min(now + 86400000, Math.max(now + 300000, Number.isFinite(headerTime) ? headerTime : 0))).toISOString(),exhausted:false};
+}
 async function fetchEbayActiveListings(env, query, opts = {}) {
   const token = await getEbayAppAccessToken(env).catch(() => '');
   if (!token) return { source: 'none', listings: [], warning: 'eBay app access token unavailable -- check EBAY_CLIENT_ID/EBAY_CLIENT_SECRET' };
@@ -5666,7 +5687,10 @@ async function fetchEbayActiveListings(env, query, opts = {}) {
     },
   });
   const { data } = await readApiJson(res);
-  if (!res.ok) return { source: 'ebay_active', listings: [], warning: 'eBay Browse API ' + res.status + (data?.errors?.[0]?.message ? ': ' + data.errors[0].message : '') };
+  if (!res.ok) {
+    const rateLimit = res.status === 429 && opts.campaignId ? ebayBrowseRetryAt(await fetchEbayBrowseUsage(env, token), res.headers.get('Retry-After')) : null;
+    return { source: 'ebay_active', listings: [], warning: 'eBay Browse API ' + res.status + (data?.errors?.[0]?.message ? ': ' + data.errors[0].message : ''), ...(rateLimit ? {rateLimit} : {}) };
+  }
   const items = Array.isArray(data.itemSummaries) ? data.itemSummaries : [];
   return { source: 'ebay_active', listings: items.map(normalizeBrowseListing).filter(Boolean), warning: null };
 }
@@ -10534,6 +10558,7 @@ async function routeRequest(request, env, ctx) {
         legacyUserToken: !!(await getStoredSecret(env, 'EBAY_USER_TOKEN')),
         ruNameConfigured: !!ruName,
         readyToList: hasClient && hasRefresh,
+        browseUsage: url.searchParams.get('usage') === '1' ? await fetchEbayBrowseUsage(env, await getEbayAppAccessToken(env)) : (await env.LBA_KV?.get('public-catalog:ebay-browse-usage-v1', 'json'))?.items || null,
       });
     }
 

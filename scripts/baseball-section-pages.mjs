@@ -6,7 +6,7 @@ import {sportsChecklistNavigation,sportsSectionCollections} from './sports-check
 import {sportsSectionFilters} from './sports-section-filters.mjs';
 import {checklistUrlCorrections} from './topps/checklist-url-corrections.mjs';
 import {footballSections} from './topps/football-sections.mjs';
-import {sportsListings,sportsListingMatches,sportsListingHtml,sportsLookupScript,sportsMarketplaceNotice} from './sports-card-marketplace.mjs';
+import {sportsListings,sportsListingMatches,sportsListingHtml,sportsLookupScript,sportsMarketplaceNotice,sportsMarketplaceFailure} from './sports-card-marketplace.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
 import {savedReferenceImage,sportsReferenceImage,referenceImageHtml} from './sports-reference-images.mjs';
 import {baseballSections} from './topps/baseball-sections.mjs';
@@ -90,14 +90,14 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
   // The main card photo needs the same marketplace fallback as its versions.
   // This path reads the shared eBay cache only; it never loads store inventory.
   try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card:chosenCard,wait:true});return Response.json({reference:null,listing:listings[0]||null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
-  catch(error){return Response.json({reference:null,listing:null,marketplaceUnavailable:true,providerStatus:Number(error.message?.match(/HTTP (\d{3})/)?.[1])||null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
+  catch(error){return Response.json({reference:null,listing:null,...await sportsMarketplaceFailure(env,error)},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
  }
  if(url.searchParams.has('market')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
   const card=chosenCard;
   if(!card)return new Response('Unknown card',{status:404});
   try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card,wait:true});const listing=listings.find(l=>sportsListingMatches(l,card,set,cardGroup))||null;const reference=listing?null:await sportsReferenceImage(env,deps.ctx,set,card,deps);return Response.json({listing,reference},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
-  catch(error){const reference=await sportsReferenceImage(env,deps.ctx,set,card,deps);return Response.json(reference?{listing:null,reference,marketplaceUnavailable:true}:{error:'Marketplace temporarily unavailable',providerStatus:Number(error.message?.match(/HTTP (\d{3})/)?.[1])||null},{status:reference?200:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
+  catch(error){const reference=await sportsReferenceImage(env,deps.ctx,set,card,deps);return Response.json({...(reference?{listing:null,reference}:{error:'Marketplace temporarily unavailable'}),...await sportsMarketplaceFailure(env,error)},{status:reference?200:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
  }
  const listings=activeGroup.aggregate||baseCard&&!parallelId?[]:await sportsListings(env,deps.ctx,set,activeGroup,deps,parallelId?{card:chosenCard}:{});
  let inventory;try{inventory=await deps.listItems();}catch{inventory=null;}

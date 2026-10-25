@@ -32,6 +32,8 @@ const mem=new Map(),tasks=[];let searches=0,inventoryLoads=0;
 const env={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async k=>mem.get(k)||null,put:async(k,v)=>mem.set(k,JSON.parse(v))}};
 const deps={ctx:{waitUntil:p=>tasks.push(p)},escape:esc,slug:s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-'),shell:p=>p.bodyHtml,available:i=>i.quantity>0,listItems:async()=>{inventoryLoads++;return [own];},searchEbay:async()=>{searches++;return {listings:[listing]};}};
 assert.deepEqual(await sportsListings(env,deps.ctx,set,group,deps),[]);await Promise.all(tasks);
+assert.equal(searches,0,'HTML and crawler requests must not initiate eBay searches');
+await sportsListings(env,deps.ctx,set,group,deps,{wait:true});
 const cached=await sportsListings(env,deps.ctx,set,group,deps);assert.equal(cached.length,1);assert.equal(searches,1);assert.ok(sportsListingHtml(cached[0],esc).includes('eBay asking price: $75.00 USD'));
 const root='/football/checklists/'+set.id,path=root+'/sections/kaiju';
 const request=async path=>handleFootballCatalog(new Request('https://www.themanapocket.com'+path),env,new URL('https://www.themanapocket.com'+path),deps);
@@ -52,6 +54,14 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  let requestUrl;
  context.fetch=async url=>{requestUrl=new URL(url);return {ok:true,json:async()=>({itemSummaries:[]})};};
  vm.runInNewContext(fn('normalizeBrowseListing')+'\nasync '+fn('fetchEbayActiveListings')+'\nthis.normalize=normalizeBrowseListing;this.search=fetchEbayActiveListings;',context);
+ vm.runInNewContext(fn('normalizeEbayBrowseUsage')+'\n'+fn('ebayBrowseRetryAt')+'\nthis.usage=normalizeEbayBrowseUsage;this.retry=ebayBrowseRetryAt;',context);
+ const now=Date.now(),reset=new Date(now+3600000).toISOString();
+ const usage=context.usage({rateLimits:[{apiName:'browse',apiContext:'buy',resources:[{name:'buy.browse',rates:[{limit:5000,count:5000,remaining:0,reset,timeWindow:86400}]}]},{apiName:'inventory',apiContext:'sell',resources:[{name:'inventory',rates:[{remaining:0,reset}]}]}]});
+ assert.equal(usage.length,1);assert.equal(usage[0].remaining,0);assert.equal(usage[0].count,5000);
+ assert.equal(context.retry(usage,null,now).retryAt,new Date(now+3605000).toISOString());assert.equal(context.retry(usage,null,now).exhausted,true);
+ assert.equal(context.retry([{resource:'getItems',remaining:0,reset}],null,now).exhausted,false,'an unrelated method quota cannot be treated as the search quota');
+ assert.equal(context.retry([],600,now).retryAt,new Date(now+600000).toISOString());
+ assert.equal(context.usage({rateLimits:[{apiName:'browse',apiContext:'buy',resources:[{name:'buy.browse',rates:[{}]}]}]})[0].remaining,null,'missing quota is unknown, not zero');
  const auction=context.normalize({itemId:'auction',buyingOptions:['AUCTION'],currentBidPrice:{value:'12.50',currency:'USD'}});
  assert.equal(auction.price,12.5);assert.equal(auction.currency,'USD');assert.equal(auction.priceKind,'currentBid');
  const both=context.normalize({buyingOptions:['AUCTION','FIXED_PRICE'],currentBidPrice:{value:'5',currency:'USD'},price:{value:'30',currency:'USD'}});
@@ -59,6 +69,17 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  await context.search({},'exact card',{listingType:'AllPurchasable',campaignId:'5339046175'});
  assert.equal(requestUrl.searchParams.get('filter'),'buyingOptions:{FIXED_PRICE|AUCTION}');
  assert.equal((worker.match(/listingType:'AllPurchasable',limit:50,signal/g)||[]).length,2,'both sports catalogs include auctions');
+ const {cachedPublicCatalog}=await import('../scripts/public-catalog-cache.mjs');context.cachedPublicCatalog=cachedPublicCatalog;
+ vm.runInNewContext('async '+fn('fetchEbayBrowseUsage'),context);
+ let analyticsCalls=0;const usageMemory=new Map();
+ const usageEnv={LBA_KV:{get:async k=>usageMemory.get(k)||null,put:async(k,v)=>usageMemory.set(k,JSON.parse(v))}};
+ context.fetch=async url=>{
+  if(String(url).includes('/developer/analytics/')){analyticsCalls++;return {ok:true,json:async()=>({rateLimits:[{apiName:'browse',apiContext:'buy',resources:[{name:'buy.browse',rates:[{limit:5000,count:5000,remaining:0,reset,timeWindow:86400}]}]}]})};}
+  return {ok:false,status:429,headers:{get:()=>null},json:async()=>({errors:[{message:'Too many requests'}]})};
+ };
+ const quota=await context.search(usageEnv,'exact card',{campaignId:'5339046175'});
+ assert.equal(quota.rateLimit.exhausted,true);assert.equal(quota.rateLimit.retryAt,new Date(now+3605000).toISOString());
+ await context.search(usageEnv,'other card',{campaignId:'5339046175'});assert.equal(analyticsCalls,1,'usage diagnostics share a five-minute cache');
  assert.match(sportsListingHtml({...cached[0],priceKind:'currentBid',price:12.5},esc),/eBay auction bid: \$12.50 USD/);
  const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
  const {selectedParallelCard}=await import('../scripts/sports-parallels.mjs');
@@ -117,6 +138,15 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
   const out=await(await handleBaseballCatalog(new Request(u),quotaEnv,u,quotaDeps)).json();assert.equal(out.providerStatus,429);assert.equal(out.marketplaceUnavailable,true);
  }
  assert.equal(rejectedSearches,1,'one rejected card pauses other photo searches for five minutes');
+ // Recent seller photos survive a brief provider outage, but ended auctions
+ // and listing data older than the six-hour display window never return.
+ const savedKey=[...memory.keys()].find(k=>k.startsWith('public-catalog:sports-checklist-listings-v15:'));
+ const saved=memory.get(savedKey),recent={...data.listing,endTime:new Date(Date.now()+3600000).toISOString()};
+ memory.set(savedKey,{at:Date.now()-4*3600000,items:[recent,{...recent,itemId:'ended',endTime:new Date(Date.now()-1000).toISOString()}]});
+ memory.set('sports-ebay-photo-pause',{until:Date.now()+3600000});
+ const retained=await sportsListings(e,null,s,g,d,{card:c,wait:true});assert.equal(retained.length,1);assert.equal(retained[0].itemId,recent.itemId);
+ memory.set(savedKey,{...saved,at:Date.now()-6*3600000});
+ await assert.rejects(sportsListings(e,null,s,g,d,{card:c,wait:true}),'expired listing data must not be served during an outage');
 }
 
 for(const section of groups){

@@ -5,7 +5,8 @@ import {listingMatchesRelease,ebayAffiliateListingUrl} from './article-marketpla
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const token=s=>fold(s).replace(/[^a-z0-9]/g,'');
 const escapeRegex=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-const FRESH=15*60*1000;
+const FRESH=3*60*60*1000;
+const RETAIN=(6*60-5)*60*1000;
 const baseballClubNames=['diamondbacks|d backs|dbacks','braves','orioles','red sox','cubs','white sox','reds','indians|guardians','rockies','tigers','astros','royals','angels','dodgers','marlins','brewers','twins','mets','yankees','athletics','phillies','pirates','padres','giants','mariners','cardinals','rays|devil rays','rangers','blue jays','nationals|expos'].map(s=>s.split('|'));
 function conflictingBaseballTeam(title,card,set){
  if(set.sport!=='baseball'&&!/baseball/i.test(set.displayName||''))return false;
@@ -64,7 +65,10 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
   const check=async result=>{
    if(!result.warning)return;
    const status=result.warning.match(/Browse API (\d{3})/)?.[1];
-   if(status==='429')await env.LBA_KV.put('sports-ebay-photo-pause',JSON.stringify({until:Date.now()+300000}),{expirationTtl:300});
+   if(status==='429'){
+    const reset=Date.parse(result.rateLimit?.retryAt),now=Date.now(),until=Number.isFinite(reset)&&reset>now&&reset<=now+86405000?Math.max(now+300000,reset):now+300000;
+    await env.LBA_KV.put('sports-ebay-photo-pause',JSON.stringify({until,quotaExhausted:result.rateLimit?.exhausted===true}),{expirationTtl:Math.ceil((until-now)/1000)});
+   }
    throw new Error('Marketplace unavailable'+(status?' HTTP '+status:''));
   };
   // Numeric card numbers recur across base, parallels and autographs. Keep
@@ -87,12 +91,20 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
   const checkedAt=Date.now();
   return matches.map(l=>({itemId:l.itemId,title:l.title,image:l.imageUrl,href:l.affiliateUrl,price:l.currency==='USD'&&Number.isFinite(Number(l.price))&&Number(l.price)>0?Number(l.price):null,priceKind:l.priceKind||'buyNow',checkedAt,endTime:l.endTime||null}));
  };
- if(wait)return cachedPublicCatalog(env,ctx,key,load,{freshMs:FRESH,maxAgeMs:FRESH,staleMs:FRESH,timeoutMs:6500});
+ const live=items=>items.filter(l=>!l.endTime||Date.parse(l.endTime)>Date.now());
+ if(wait)return live(await cachedPublicCatalog(env,ctx,key,load,{freshMs:FRESH,maxAgeMs:FRESH,staleMs:RETAIN,timeoutMs:9500}));
  let saved;try{saved=await env.LBA_KV.get('public-catalog:'+key,'json');}catch{}
  const age=Date.now()-Number(saved?.at);
- if(Array.isArray(saved?.items)&&age>=0&&age<FRESH)return saved.items;
- if(ctx?.waitUntil)ctx.waitUntil(cachedPublicCatalog(env,ctx,key,load,{freshMs:FRESH,maxAgeMs:FRESH,staleMs:FRESH,timeoutMs:6500}).catch(()=>{}));
+ if(Array.isArray(saved?.items)&&age>=0&&age<RETAIN)return live(saved.items);
+ // HTML requests, including crawler visits, only read cached marketplace data.
+ // Visible card controls perform bounded refreshes through the JSON endpoints.
  return [];
+}
+
+export async function sportsMarketplaceFailure(env,error){
+ let pause;try{pause=await env.LBA_KV?.get('sports-ebay-photo-pause','json');}catch{}
+ const active=Number(pause?.until)>Date.now();
+ return {marketplaceUnavailable:true,providerStatus:active?429:Number(error?.message?.match(/HTTP (\d{3})/)?.[1])||null,...(active?{retryAt:new Date(pause.until).toISOString(),quotaExhausted:pause.quotaExhausted===true}:{})};
 }
 
 export function sportsListingHtml(listing,escape){
@@ -103,6 +115,7 @@ export function sportsListingHtml(listing,escape){
 export const sportsMarketplaceNotice='<aside class="mp-seller-notice"><p class="mp-meta">eBay affiliate links may earn The Mana Pocket a commission. Listing photos, titles and prices come from sellers and are not independently verified.</p><details><summary>Check seller claims before buying</summary><p>A search match is not authentication or confirmation of the exact parallel, print run, serial number, autograph, grade, condition or ownership. Claims such as “1/1,” “eBay 1/1,” “only one,” jersey-number match and first/last print may be inaccurate or seller descriptions rather than publisher facts. Check the actual serial stamp, front/back photos, certification and full listing; ask the seller when unclear. Publisher checklist information is shown separately. Availability, price and shipping can change. Purchases are completed on eBay with the seller under eBay’s terms.</p></details></aside>';
 export const sportsLookupScript=manaLoaderStyle+`<script>(function(){
 /* data-mp-sports-lookup-runtime */
+function pausedPhotoText(data){var time=Date.parse(data.retryAt);return Number.isFinite(time)?'eBay photos paused until '+new Date(time).toLocaleString():'eBay photos temporarily unavailable';}
 function renderReference(target,ref){
  var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');
  img.src=ref.image;img.alt=ref.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';
@@ -115,9 +128,9 @@ async function loadReference(target){
  target.setAttribute('aria-live','polite');target.style.flexDirection='column';target.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Finding card photo…</span></span>';
  try{var r=await fetch(target.dataset.sportsReference,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
   if(d.reference||d.listing){var photo=d.reference||d.listing,img=document.createElement('img'),credit=document.createElement('small');img.src=photo.image;img.alt=photo.title+(d.listing?' — eBay seller photo':' — PriceCharting reference image');img.width=180;img.height=240;img.loading='lazy';img.decoding='async';credit.textContent=d.listing?'eBay seller photo':'PriceCharting reference';target.append(img,credit);img.onerror=function(){target.textContent='Reference photo unavailable';};
-   if(d.listing){var offer=document.createElement('a');offer.href=photo.href;offer.target='_blank';offer.rel='noopener sponsored';offer.textContent='View this copy on eBay'+(photo.price?' · '+(photo.priceKind==='currentBid'?'Auction bid ':'')+'$'+Number(photo.price).toFixed(2)+' USD':'');var details=target.closest('details.mp-card-parallels');if(details){var p=document.createElement('p');p.append(offer);details.querySelector('summary').after(p);}else{var link=document.createElement('a');link.href=photo.href;link.target='_blank';link.rel='noopener sponsored';link.append(img);target.prepend(link);target.append(offer);}}
+   if(d.listing){var offer=document.createElement('a');offer.href=photo.href;offer.target='_blank';offer.rel='noopener sponsored';offer.textContent='View this copy on eBay'+(photo.price?' · '+(photo.priceKind==='currentBid'?'Auction bid ':'')+'$'+Number(photo.price).toFixed(2)+' USD':'');var details=target.closest('details.mp-card-parallels');if(details){var p=document.createElement('p');p.append(offer);if(Number.isFinite(photo.checkedAt)){var checked=document.createElement('small');checked.style.display='block';checked.textContent='Price checked '+new Date(photo.checkedAt).toLocaleString();p.append(checked);}details.querySelector('summary').after(p);}else{var link=document.createElement('a');link.href=photo.href;link.target='_blank';link.rel='noopener sponsored';link.append(img);target.prepend(link);target.append(offer);}}
   }
-  else target.textContent=d.marketplaceUnavailable?'eBay photos temporarily unavailable':'No exact card photo found';
+  else target.textContent=d.marketplaceUnavailable?pausedPhotoText(d):'No exact card photo found';
  }catch(_){target.textContent='Card photo temporarily unavailable';}
 }
 function compactTarget(target){return !!(target.closest&&target.closest('.mp-parallel-card'));}
@@ -128,15 +141,15 @@ function renderListing(target,l){
  title.textContent=l.title;a.append(img,title);
  p.textContent=(l.price?(l.priceKind==='currentBid'?'eBay auction bid: $':compact?'eBay · $':'eBay asking price: $')+Number(l.price).toFixed(2)+' USD':'Price unavailable')+(compact?'':' · check shipping and condition');
  var grade=l.title.match(/\\b(PSA|BGS|SGC|CGC|CSG|TAG|HGA)\\s*(?:GEM\\s*MT\\s*|MINT\\s*)?(\\d{1,2}(?:\\.\\d)?)/i);
- note.className='mp-meta';note.textContent=compact?(grade?'Seller title: '+grade[1].toUpperCase()+' '+grade[2]+' · Seller photo':'Seller photo · Check serial stamp'):'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.';
+ note.className='mp-meta';note.textContent=(compact?(grade?'Seller title: '+grade[1].toUpperCase()+' '+grade[2]+' · Seller photo':'Seller photo · Check serial stamp'):'Seller-provided title and photo. Verify the exact card and serial stamp; one-of-one claims are not authenticated by us.')+(Number.isFinite(l.checkedAt)?' · Price checked '+new Date(l.checkedAt).toLocaleString():'');
  img.onerror=function(){img.hidden=true;note.textContent='Seller photo unavailable. Check the listing for photos and condition.';};
  target.append(a,p,note);
 }
 async function lookup(b){
  if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Checking eBay…</span></span>';
  var target=b.parentElement.querySelector('[data-sports-result]');
- try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
-  if(!d.listing){if(d.reference)renderReference(target,d.reference);else target.textContent=compactTarget(target)?'No exact listing or reference photo found. Try the finish search below.':'No matching live listing or reference photo found. The eBay search below may show other copies.';}
+ try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});var d=await r.json();if(!r.ok&&!d.marketplaceUnavailable)throw Error('unavailable');target.replaceChildren();
+  if(!d.listing){if(d.reference)renderReference(target,d.reference);else target.textContent=d.marketplaceUnavailable?pausedPhotoText(d):compactTarget(target)?'No exact listing or reference photo found. Try the finish search below.':'No matching live listing or reference photo found. The eBay search below may show other copies.';}
   else renderListing(target,d.listing);
  }catch(_){target.textContent='Listing lookup is temporarily unavailable. Open this finish for search links.';}
  b.textContent=compactTarget(target)?'Refresh listing':'Check eBay again';b.disabled=false;
