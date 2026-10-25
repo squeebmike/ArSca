@@ -12,7 +12,10 @@ test('dashboard html and worker scripts parse', async () => {
       expect(() => new Function(code), `${file} script ${index + 1}`).not.toThrow();
     }
   }
-  const worker = fs.readFileSync(path.join(root, 'cloudflare-worker-full.js'), 'utf8').replace(/^export default/m, 'const __worker =');
+  const worker = fs.readFileSync(path.join(root, 'cloudflare-worker-full.js'), 'utf8')
+    .replace(/^import\s*\{[^}]*\}\s*from\s*'[^']*';?\r?$/gm, '')
+    .replace(/^export\s+(?=class\s)/gm, '')
+    .replace(/^export default/m, 'const __worker =');
   expect(() => new Function(worker), 'cloudflare worker parse').not.toThrow();
 });
 
