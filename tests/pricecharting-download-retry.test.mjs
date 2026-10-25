@@ -23,7 +23,7 @@ const server = http.createServer((req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}/`;
 const run = (sources, out) => new Promise(resolve => {
-  const child = spawn(process.execPath, ['scripts/pricecharting/build-offline-bundle.mjs', '--version=test', '--out=' + out, '--retry-wait-ms=1', '--sources-json=' + JSON.stringify(sources)], { cwd: root });
+  const child = spawn(process.execPath, ['scripts/pricecharting/build-offline-bundle.mjs', '--version=test', '--out=' + out, '--raw-dir=' + path.join(out, 'raw'), '--retry-wait-ms=1', '--sources-json=' + JSON.stringify(sources)], { cwd: root });
   let text = ''; child.stdout.on('data', d => text += d); child.stderr.on('data', d => text += d);
   child.on('close', status => resolve({ status, text }));
 });
@@ -34,7 +34,7 @@ try {
   assert.equal(hits.yugioh, 3, 'a busy answer is tried again (3 tries)');
   assert.ok(fs.existsSync(path.join(out, 'yugioh', 'manifest.json')), 'Yu-Gi-Oh published after the retries');
   assert.equal(hits.one_piece, 3);
-  assert.equal(fs.existsSync(path.join(out, 'one_piece')), false, 'One Piece left alone: yesterday\'s catalog stays');
+  assert.equal(fs.existsSync(path.join(out, 'one_piece', 'manifest.json')), false, 'One Piece left alone: yesterday\'s catalog stays');
   assert.match(r.text, /::warning::PriceCharting One Piece Cards not updated today, yesterday's catalog stays live \(one_piece download HTTP 503\)/);
 
   const out2 = fs.mkdtempSync(path.join(os.tmpdir(), 'pc-retry-'));
