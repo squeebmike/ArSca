@@ -21,4 +21,18 @@ for(const [player,expected] of [['Adrian Gil','2026-bowman-baseball'],['Angeibel
 }
 assert.deepEqual(referenceMetadataCheck(bowman('baseball-cards-2026-bowman-paper-prospect','Aidan Miller','BP-49','Logo Pattern')).flags,[]);
 assert.ok(referenceMetadataCheck(bowman('baseball-cards-2026-bowman-chrome-prospect-autograph','Adrian Gil','CPA-AG','Peanuts Refractor')).flags.includes('no_exact_checklist_match'),'missing serial information cannot be invented from a photo');
+for(const [source,player,number,expected]of [
+ ['baseball-cards-2024-bowman-chrome-prospects','Abimelec Ortiz','BCP-16','2024-bowman-baseball'],
+ ['baseball-cards-2024-bowman-chrome-prospects','Adam Serwinowski','BCP-202','2024-bowman-chrome-baseball'],
+ ['baseball-cards-2024-bowman-prospects','Jacob Wilson','BP-3','2024-bowman-baseball'],
+ ['baseball-cards-2024-bowman-chrome-prospects-autograph','Anthony Baptist','CPA-AB','2024-bowman-baseball'],
+ ['baseball-cards-2024-bowman-chrome-prospects-autograph','Alfredo Alcantara','CPA-AA','2024-bowman-chrome-baseball'],
+ ['baseball-cards-2025-bowman-chrome-prospects','Walker Jenkins','BCP-1','2025-bowman-baseball'],
+ ['baseball-cards-2025-bowman-prospects','Walker Jenkins','BP-1','2025-bowman-baseball'],
+ ['baseball-cards-2025-bowman-chrome-prospect-autograph','Ashly Andujar','CPA-AA','2025-bowman-baseball'],
+ ['baseball-cards-2025-bowman-draft-chrome','Eli Willits','BDC-1','2025-bowman-draft-baseball'],
+ ['baseball-cards-2025-bowman-draft-chrome-prospect-autograph','Anthony Eyanson','CPA-AE','2025-bowman-draft-baseball']
+]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[],source+' '+number);assert.equal(check.matches[0].setId,expected);}
+assert.deepEqual(referenceMetadataCheck(bowman('baseball-cards-2024-bowman-chrome-prospects','Abimelec Ortiz','BCP-16','Aqua Lunar','/125')).flags,[]);
+assert.ok(referenceMetadataCheck(bowman('baseball-cards-2024-bowman-prospects','Abimelec Ortiz','BCP-16')).flags.includes('no_exact_checklist_match'),'paper and Chrome sources are not interchangeable');
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

@@ -1,7 +1,7 @@
 // Persistent public card identities/photo URLs, separate from expiring offers.
 // No image bytes, inventory, or customer data. Optional source estimates are
 // labeled separately from offers and retain their actual collection timestamp.
-import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,REFERENCE_AUDIT_VERSION} from './reference-validation.mjs';
+import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,REFERENCE_AUDIT_VERSION,REFERENCE_SOURCE_MAPPING_VERSION} from './reference-validation.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 // A few photographed serial stamps have been checked by hand. Reuse that
 // evidence only for the identical source URL, title and photo; never infer a
@@ -101,7 +101,11 @@ export class CardReferenceArchive {
    const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000}),cards=[],audit=await this.ctx.storage.get('audit'),archived=!!(await this.ctx.storage.get('meta'));
    if(audit?.phase==='metadata')return reply({cards:[],archived});
    for(const row of rows.values()){
-    const slug=new URL(row.url).pathname.split('/').pop(),check=await this.ctx.storage.get('validation:'+slug),id=referenceImageKey(row.image);
+    const slug=new URL(row.url).pathname.split('/').pop(),id=referenceImageKey(row.image);let check=await this.ctx.storage.get('validation:'+slug);
+    // Repair old unmapped-source results lazily, once per mapping release.
+    // This uses only the stored family and immutable publisher metadata.
+    // Image health, ambiguity, duplicates and owner holds still gate display.
+    if(check?.flags?.includes('unmapped_source_set')&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
     if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.length||check.matches.length!==1||!id)continue;
     const health=await this.ctx.storage.get('health:'+id);if(!health?.ok||Date.now()-health.checkedAt>7*86400000||await this.ctx.storage.get('hold:'+id))continue;
     const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(usage.size!==1)continue;

@@ -71,4 +71,17 @@ offline=false;await uploadReferences(chrome,local.pendingCloudBatch);assert.ok(!
 assert.ok(!isDashboard('https://squeebmike.github.io/Other/dashboard.html'));assert.ok(!isDashboard('https://evil.test/ArSca/dashboard.html'));
 const oldLocation=globalThis.location;globalThis.location={origin:'https://squeebmike.github.io',pathname:'/ArSca/dashboard.html'};
 await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/);globalThis.location=oldLocation;
-console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, cloud bridge and interrupted-upload recovery passed');
+{
+ const source='baseball-cards-2024-bowman-chrome-prospects',sample={consoleId:source,title:'Abimelec Ortiz #BCP-16',player:'Abimelec Ortiz',cardNumber:'BCP-16',parallel:'',run:'',image:'https://storage.googleapis.com/images.pricecharting.com/corrwxltjzov7mgb3xls/240.jpg',url:'https://www.sportscardspro.com/game/'+source+'/abimelec-ortiz-bcp-16',capturedAt:new Date().toISOString(),referencePrices:{currency:'USD',ungraded:1.23}};
+ await send([sample]);const object=instances.get('console:'+source);await object.alarm();
+ const key='validation:abimelec-ortiz-bcp-16';await object.ctx.storage.put(key,{version:'2026-10-25.2',flags:['unmapped_source_set'],matches:[]});
+ let external=0;object.env.REFERENCE_IMAGE_FETCH=async()=>{external++;throw Error('No external refresh allowed');};
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs'),{sectionsForSet}=await import('../scripts/baseball-section-pages.mjs');
+ const release=baseballSets.find(s=>s.id==='2024-bowman-baseball'),subject=sectionsForSet(release).flatMap(g=>g.cards).find(c=>c.cardNumber==='BCP-16');
+ const fixed=await sportsReferenceImage(env,{},release,subject);assert.equal(fixed.image,sample.image);assert.equal(fixed.referencePrices.ungraded,1.23);
+ assert.ok((await object.ctx.storage.get(key)).mappingVersion);assert.equal(external,0,'lazy mapping repair makes no source/image network calls');
+ await object.fetch(new Request('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:sample.url,reason:'Photo needs review'})}));
+ await object.ctx.storage.put(key,{version:'2026-10-25.2',flags:['unmapped_source_set'],matches:[]});
+ assert.equal(await sportsReferenceImage(env,{},release,subject),null,'mapping repair never bypasses an owner photo hold');
+}
+console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, cloud bridge and interrupted-upload recovery passed');

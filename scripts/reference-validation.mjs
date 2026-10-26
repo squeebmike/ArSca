@@ -4,6 +4,7 @@ import {sectionsForSet} from './baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-25.3-bowman';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
@@ -12,6 +13,23 @@ export function referenceConsoles(set,card=null){
  if(sport==='baseball'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
  if(sport==='baseball'&&/topps update series/i.test(set.displayName))ids.push('baseball-cards-'+name.replace('-update-series','-update'));
  if(set.id==='2024-topps-five-star-baseball')ids.push('baseball-cards-2024-topps-five-star-autograph');
+ // Actual collected source IDs use plural "prospects" in 2024/2025 and
+ // combine spring/fall Chrome subjects. Number, player and section still
+ // decide the exact published release; these aliases never publish a card.
+ if(['2024-bowman-baseball','2024-bowman-chrome-baseball'].includes(set.id)){
+  if(!card||card.section==='Chrome Prospects')ids.push('baseball-cards-2024-bowman-chrome-prospects');
+  if(!card||['Chrome Prospect Autographs I','Bowman Chrome Prospect Autographs'].includes(card.section))ids.push('baseball-cards-2024-bowman-chrome-prospects-autograph');
+  if(set.id==='2024-bowman-baseball'&&(!card||card.section==='Paper Prospects'))ids.push('baseball-cards-2024-bowman-prospects');
+ }
+ if(set.id==='2025-bowman-baseball'){
+  if(!card||card.section==='Chrome Prospects I')ids.push('baseball-cards-2025-bowman-chrome-prospects');
+  if(!card||card.section==='Chrome Prospects Autograph Variation')ids.push('baseball-cards-2025-bowman-chrome-prospect-autograph');
+  if(!card||card.section==='Paper Prospects')ids.push('baseball-cards-2025-bowman-prospects');
+ }
+ if(set.id==='2025-bowman-draft-baseball'){
+  if(!card||card.section==='Chrome Draft Picks')ids.push('baseball-cards-2025-bowman-draft-chrome');
+  if(!card||card.section==='Chrome Prospect Autograph Variation')ids.push('baseball-cards-2025-bowman-draft-chrome-prospect-autograph');
+ }
  if(set.id==='2026-bowman-baseball'){
   if(!card||card.section==='Paper Prospects')ids.push('baseball-cards-2026-bowman-paper-prospect');
   if(!card||card.section==='Chrome Prospects')ids.push('baseball-cards-2026-bowman-chrome-prospect');
@@ -60,7 +78,7 @@ export function referenceMetadataCheck(row){
   if(!matches.length)flags.push('no_exact_checklist_match');
   else if(matches.length>1)flags.push('ambiguous_checklist_match');
  }
- return {version:REFERENCE_AUDIT_VERSION,category:referenceCategory(row),flags,matches:matches.slice(0,5),metadataMatched:matches.length===1,visuallyReviewed:false,checkedAt:Date.now()};
+ return {version:REFERENCE_AUDIT_VERSION,mappingVersion:REFERENCE_SOURCE_MAPPING_VERSION,category:referenceCategory(row),flags,matches:matches.slice(0,5),metadataMatched:matches.length===1,visuallyReviewed:false,checkedAt:Date.now()};
 }
 export function referenceImageKey(image){return String(image||'').match(/images\.pricecharting\.com\/([a-z0-9]+)\//)?.[1]||'';}
 export async function checkReferenceImage(image,fetcher=fetch){
