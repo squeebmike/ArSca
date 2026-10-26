@@ -49,8 +49,8 @@ const cardsKey = name => 'public_pokemon:cards:v1:' + encodeURIComponent(name.to
 async function readCache(kv, key) {
   return kv ? kv.get(key, 'json').catch(() => null) : null;
 }
-async function writeCache(kv, key, data) {
-  if (kv) await kv.put(key, JSON.stringify({ cachedAt: Date.now(), data, paged: true }), { expirationTtl: KEEP_SECONDS }).catch(() => {});
+async function writeCache(kv, key, data, now = Date.now()) {
+  if (kv) await kv.put(key, JSON.stringify({ cachedAt: now, data, paged: true }), { expirationTtl: KEEP_SECONDS }).catch(() => {});
 }
 
 async function upstream(env, path, params) {
@@ -96,7 +96,7 @@ async function cached(env, key, freshMs, load, now, usable=()=>true, { refresh =
   if (hit && !refresh) return { data: hit.data, cache: 'stale', complete:usable(hit) };
   try {
     const data = await load();
-    if (data.length) await writeCache(env.LBA_KV, key, data);
+    if (data.length) await writeCache(env.LBA_KV, key, data, now);
     return { data, cache: 'miss', complete:true };
   } catch (error) {
     if (hit) return { data: hit.data, cache: 'stale', complete:usable(hit) };
