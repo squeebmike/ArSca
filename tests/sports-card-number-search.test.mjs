@@ -14,7 +14,7 @@ assert.equal(target.type,'autographs');
 assert.ok(sportsListingMatches({title:'2024 Topps Five Star Ken Griffey Jr FSA-G Auto Seattle Mariners'},target.card,target.set,{kind:'Autographs',name:'Base Autographs'}));
 for(const number of ['FSA-G','fsa-g','Fsa-g','#Fsa-g',' FSA–G ']){
  const data=result('number='+encodeURIComponent(number));
- assert.ok(data.robotsNoindex);assert.match(data.bodyHtml,/1 matching checklist entries/);
+ assert.ok(data.robotsNoindex);assert.match(data.bodyHtml,/1 matching checklist entry across 1 set/);
  assert.ok(data.bodyHtml.includes(target.href));
  assert.match(data.bodyHtml,/corrruru7z42freht4tg\/240.jpg/,'card-number results include the exact primary reference image');
  assert.match(data.bodyHtml,/Parallels &amp; numbered versions \(7\)/);
@@ -25,7 +25,7 @@ for(const input of ['q=fsa-g','player=Fsa-g'])assert.ok(result(input).bodyHtml.i
 assert.match(result('number=FSA-G&player=Mike+Trout').bodyHtml,/0 matching checklist entries/,'explicit filters remain combined');
 assert.match(result('number=FSA-G&sport=football').bodyHtml,/0 matching checklist entries/);
 const repeated=result('number=FSA-BW');assert.ok(repeated.bodyHtml.includes('Bobby Witt Jr.'));assert.ok(repeated.bodyHtml.includes('Billy Williams'),'same code does not collapse different players');
-assert.doesNotMatch(result('number=%22%3E%3Cscript%3E').bodyHtml,/<script>/);
+assert.ok(result('number=%22%3E%3Cscript%3E').bodyHtml.includes('&lt;script>'),'hostile input stays escaped inside its field');
 const family=cardParallelProgram(target.set,target.card);
 assert.deepEqual(family.variants.map(v=>v.printRun),[75,50,25,15,10,5,1]);
 assert.ok(savedReferenceImage(target.set,target.card));

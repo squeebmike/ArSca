@@ -14,7 +14,7 @@ const walk = file => {
   if (seen.has(file)) return;
   seen.add(file);
   const src = fs.readFileSync(file, 'utf8');
-  for (const m of src.matchAll(/^\s*import\s[^;]*?from\s+'(\.{1,2}\/[^']+)'/gm)) {
+  for (const m of src.matchAll(/^\s*(?:import\s[^;]*?|export\s+(?:\*|\{[^}]*\}))\s*from\s+'(\.{1,2}\/[^']+)'/gm)) {
     walk(path.posix.normalize(path.posix.join(path.posix.dirname(file), m[1])));
   }
 };
@@ -22,4 +22,5 @@ walk('cloudflare-worker-full.js');
 const missing = [...seen].filter(f => !paths.has(f));
 assert.deepEqual(missing, [], 'every module the Worker loads redeploys it when changed: missing ' + missing.join(', '));
 assert.ok(seen.has('scripts/orders-board.mjs') && seen.size > 20, 'the import walk found the Worker\'s modules');
+assert.ok(seen.has('scripts/sports-card-finder.mjs'),'re-exported search implementations also require deployment coverage');
 console.log('Worker deploy paths cover all ' + seen.size + ' Worker modules');
