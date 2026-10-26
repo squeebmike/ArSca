@@ -25,7 +25,7 @@ export function sportsListingMatches(listing,card,set,group){
  const release=/\bchrome\b/i.test(card.section||'')&&!/\bchrome\b/i.test(set.displayName)?{...set,displayName:set.displayName+' Chrome'}:set;
  if(!number||!card.player||!listingMatchesRelease(listing.title+(inferredFootball?' Football':''),release))return false;
  if(conflictingBaseballTeam(listing.title,card,set))return false;
- if(group.id==='base'&&!card.parallelRule){
+ if((group.id==='base'||group.kind==='Prospects')&&!card.parallelRule){
   // A photo for the ordinary base card must not silently show a parallel.
   const ordinary=title.replace(/\b(?:red sox|white sox|blue jays)\b/g,' ');
   const releaseWords=new Set(fold(set.displayName).split(/\W+/));
@@ -92,7 +92,9 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
   }
   return {at:checkedAt,items:matches.map(l=>({itemId:l.itemId,title:l.title,image:l.imageUrl,href:l.affiliateUrl,price:l.currency==='USD'&&Number.isFinite(Number(l.price))&&Number(l.price)>0?Number(l.price):null,priceKind:l.priceKind||'buyNow',checkedAt,endTime:l.endTime||null}))};
  };
- const live=items=>items.filter(l=>!l.endTime||Date.parse(l.endTime)>Date.now());
+ // Reapply exact identity rules to shared entries saved by older matchers.
+ // Rejecting an obsolete cached match must not trigger an API stampede.
+ const live=items=>items.filter(l=>(!l.endTime||Date.parse(l.endTime)>Date.now())&&(!card||sportsListingMatches(l,card,set,group)));
  if(wait)return live(await cachedPublicCatalog(env,ctx,key,load,{freshMs:FRESH,maxAgeMs:FRESH,staleMs:RETAIN,timeoutMs:9500}));
  let saved;try{saved=await env.LBA_KV.get('public-catalog:'+key,'json');}catch{}
  const age=Date.now()-Number(saved?.at);

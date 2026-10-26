@@ -56,6 +56,17 @@ assert.ok(!relatedParallelLinks(update20,update20.cards[0],esc).includes('parall
 const nfl=footballSets.find(s=>s.id==='2025-topps-chrome-football');assert.equal(cardParallelProgram(nfl,nfl.cards[0]).variants.find(v=>v.id==='blue-refractor').printRun,150);
 assert.match(relatedParallelLinks(nfl,nfl.cards[0],esc,{campaignId:'5339046175'}),/\/football\/checklists\//);
 const bowman24=baseballSets.find(s=>s.id==='2024-bowman-chrome-baseball'),bowmanProspect=sectionsForSet(bowman24).find(g=>g.id==='chrome-prospects').cards[0];
+{
+ const release=baseballSets.find(s=>s.id==='2024-bowman-baseball'),group=sectionsForSet(release).find(g=>g.id==='chrome-prospects'),subject=group.cards.find(c=>c.cardNumber==='BCP-16');
+ const wrong={title:'2024 Bowman Chrome Abimelec Ortiz 1st Purple RayWave Refractor /250 #BCP-16'};
+ assert.equal(sportsListingMatches(wrong,subject,release,group),false,'numbered parallels do not become the ordinary prospect offer');
+ const parallel=selectedParallelCard(release,subject,'purple-raywave-refractor');assert.ok(parallel);assert.equal(sportsListingMatches(wrong,parallel,release,group),true,'the listing belongs with its actual numbered parallel');
+ assert.equal(sportsListingMatches({title:'2024 Bowman Chrome Abimelec Ortiz 1st #BCP-16'},subject,release,group),true);
+ let calls=0;const cached={at:Date.now(),items:[wrong]};
+ const env={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async key=>key.startsWith('public-catalog:')?cached:null}};
+ const recovered=await sportsListings(env,{},release,group,{searchEbay:async()=>{calls++;throw Error('No fetch for fresh cache');}},{card:subject,wait:true});
+ assert.deepEqual(recovered,[]);assert.equal(calls,0,'old cached mismatches are discarded without more eBay requests');
+}
 const spring24=baseballSets.find(s=>s.id==='2024-bowman-baseball'),spring25=baseballSets.find(s=>s.id==='2025-bowman-baseball'),draft25=baseballSets.find(s=>s.id==='2025-bowman-draft-baseball');
 const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
 // Coverage means release-specific data exists, not that every print run is known.
