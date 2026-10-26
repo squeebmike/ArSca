@@ -60,6 +60,7 @@ on:
       - scripts/public-catalog-cache.mjs
       - scripts/cloud-card-references.mjs
       - scripts/reference-match.mjs
+      - scripts/reference-card-aliases.mjs
       - scripts/reference-validation.mjs
       - tests/item-seo-pages.test.mjs
       - scripts/reference-set-cache.mjs
