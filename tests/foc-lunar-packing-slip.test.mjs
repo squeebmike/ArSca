@@ -65,7 +65,7 @@ globalThis.fetch = async (input) => {
 };
 try {
   const { default: api } = await import('../cloudflare-worker-full.js');
-  const env = { SUPABASE_URL:'https://database.example', SUPABASE_SERVICE_ROLE_KEY:'test-only', ANTHROPIC_API_KEY:'test-key' };
+  const env = { OWNER_STORE_IDS: 'store-1', SUPABASE_URL:'https://database.example', SUPABASE_SERVICE_ROLE_KEY:'test-only', ANTHROPIC_API_KEY:'test-key' };
   const res = await api.fetch(new Request('https://api.example/foc/admin/read-slip', { method:'POST', headers:{ Authorization:'Bearer t', 'X-Store-Id':'store-1', 'Content-Type':'application/json' },
     body:JSON.stringify({ storeId:'store-1', invoice:'LUN895831', onSaleDate:'2026-10-21', lines:[
       { code:'', itemCode:'0826DC0141', title:'BATWOMAN #8 CVR D', qty:5, netUnitPrice:0 },

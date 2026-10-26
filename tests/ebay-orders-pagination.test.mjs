@@ -9,7 +9,7 @@ const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
 const kv = new Map([['secret:EBAY_ACCESS_TOKEN', 'tok'], ['secret:EBAY_ACCESS_EXPIRES', String(Date.now() + 3600e3)]]);
 const env = {
-  SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh',
+  OWNER_STORE_IDS: 'store-1,store-2', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh',
   LBA_KV: { get: async k => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } },
 };
 const order = (id, sku) => ({ orderId: id, creationDate: '2026-09-27T20:00:00Z', orderPaymentStatus: 'PAID', lineItems: [{ lineItemId: 'li-' + id, sku, title: 'He-Man #4 PRESALE', quantity: 1, lineItemCost: { value: '4.99' } }] });

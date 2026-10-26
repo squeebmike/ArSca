@@ -54,6 +54,7 @@ import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './sc
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
+import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -1224,6 +1225,15 @@ async function supabaseAdminFetchOnce(env, path, options = {}) {
   return { data, response };
 }
 
+// The store_features row the second-store pilot reads (scripts/store-features.mjs).
+function storeFeatureReader(env) {
+  return async storeId => {
+    const { data } = await supabaseAdminFetch(env, `store_features?store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+    return Array.isArray(data) ? data[0] || null : null;
+  };
+}
+function storeFeaturesFor(env, storeId) { return storeFeatures(env, storeId, storeFeatureReader(env)); }
+
 async function requirePlatformAdmin(request, env) {
   const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return { error: json({ ok:false, error:'Authentication required' }, 401) };
@@ -2177,6 +2187,27 @@ async function handlePlatformAdmin(request, env, url) {
       return { ...store, inventoryCount:count(inventory), memberCount:count(members), saleCount:count(sales), lastActivity:activity.data?.[0] || null };
     }));
     return json({ ok:true, stores:enriched, total:Number(String(response.headers.get('content-range') || '').split('/')[1] || enriched.length) });
+  }
+
+  // Second-store pilot: what each store may use (scripts/store-features.mjs).
+  // The Mana Pocket always has everything and can't be changed here.
+  const featureMatch = path.match(/^\/admin\/stores\/([0-9a-f-]{36})\/features$/i);
+  if (featureMatch && request.method === 'GET') {
+    const storeId = featureMatch[1];
+    return json({ ok:true, storeId, platform:isPlatformStore(storeId, env), keys:FEATURE_KEYS, features: await storeFeaturesFor(env, storeId) });
+  }
+  if (featureMatch && request.method === 'POST') {
+    const storeId = featureMatch[1];
+    if (isPlatformStore(storeId, env)) return json({ ok:false, error:'The Mana Pocket always has every feature' }, 400);
+    const body = await readJsonWithLimit(request, 8 * 1024).catch(() => null);
+    if (!body || typeof body.features !== 'object') return json({ ok:false, error:'features required' }, 400);
+    const before = await storeFeaturesFor(env, storeId);
+    const row = { ...rowFromFeatures(storeId, body.features), updated_at:new Date().toISOString(), updated_by:auth.user.id };
+    await supabaseAdminFetch(env, 'store_features?on_conflict=store_id', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(row) });
+    clearStoreFeatureCache(storeId);
+    const after = await storeFeaturesFor(env, storeId);
+    await writePlatformAudit(env, auth.user, 'store_features.update', storeId, 'store_features', storeId, before, after, body.reason || 'Store features changed').catch(() => {});
+    return json({ ok:true, storeId, features:after });
   }
 
   const storeMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)$/i);
@@ -4400,7 +4431,7 @@ async function storesWithEbayListings(env) {
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
   const listed = [];
-  for (const storeId of storeIds) {
+  for (const storeId of await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))) {
     const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&or=(data->>ebaySku.neq.,data->>ebayListingId.neq.)&select=id&limit=1`);
     if ((rows || []).length) listed.push(storeId);
   }
@@ -6097,6 +6128,23 @@ async function routeRequest(request, env, ctx) {
     }
     try {
     const url = new URL(request.url);
+
+    // Second-store pilot: eBay, Shopify, the comic/FOC workflow and website
+    // orders run on The Mana Pocket's own accounts. Another store's request
+    // for one is refused here, before any route runs -- whichever store the
+    // header, query or body names (scripts/store-features.mjs).
+    if (featureForPath(url.pathname)) {
+      const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') ? await request.clone().json().catch(() => null) : null;
+      const walled = await walledRequest(env, request, url, storeFeatureReader(env), peek);
+      if (walled) return json({ ok:false, error:'Not available for this store', featureDisabled:walled.feature }, 403);
+    }
+    // The dashboard asks which features its store has, to hide the rest.
+    if (url.pathname === '/store/features' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      return json({ ok:true, storeId, features: await storeFeaturesFor(env, storeId) });
+    }
 
     if(url.pathname.startsWith('/reference-collector/'))return handleCloudReferenceRequest(request,env,url,{json,requireStoreUser,readJsonWithLimit,storeId:ITEM_DETAIL_STORE_ID});
 
@@ -10662,6 +10710,11 @@ async function routeRequest(request, env, ctx) {
       const okState = await env.LBA_KV.get('ebay_oauth_state:' + state);
       if (!okState) return json({ error: 'Invalid or expired OAuth state' }, 400);
       await env.LBA_KV.delete('ebay_oauth_state:' + state);
+      // One eBay connection serves the whole system: only a store allowed
+      // eBay may replace it (never a pilot store's account over The Mana Pocket's).
+      let stateStore = '';
+      try { stateStore = String(JSON.parse(okState)?.storeId || ''); } catch (_) {}
+      if (!isPlatformStore(stateStore, env) && !(await storeFeaturesFor(env, stateStore)).ebay) return json({ error:'eBay is not available for this store' }, 403);
       const data = await ebayTokenRequest(env, new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -11668,6 +11721,7 @@ async function routeRequest(request, env, ctx) {
     async function syncEbayQuantityForItems(storeId, itemIds) {
       const ids = [...new Set((itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 50);
       if (!ids.length) return [];
+      if (!(await storeFeaturesFor(env, storeId)).ebay) return [];
       const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.join(',')})&select=id,status,data`);
       const live = (rows || []).filter(r => r.data?.ebayListingId && !r.data?.ebayWithdrawnAt && r.data?.source !== 'foc_presale_bundle');
       if (!live.length) return [];
@@ -13439,8 +13493,9 @@ async function routeRequest(request, env, ctx) {
         // item that's still separately live on eBay and/or mirrored to
         // Shopify/Whatnot -- pull both the same way the automated eBay and
         // Shopify sync paths already do for each other.
+        const saleFeatures = depleted ? await storeFeaturesFor(env, storeId) : null;
         if (depleted) {
-          if (d.ebayOfferId && !d.ebayWithdrawnAt) {
+          if (d.ebayOfferId && !d.ebayWithdrawnAt && saleFeatures.ebay) {
             try {
               const ebayToken = await getEbayUserAccessToken(env);
               if (ebayToken) {
@@ -13449,7 +13504,7 @@ async function routeRequest(request, env, ctx) {
               }
             } catch (e) { console.warn('Could not auto-end eBay listing after external sale:', invRow.id, e.message); }
           }
-          if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
+          if (d.shopifyProductId && !d.shopifyWithdrawnAt && saleFeatures.shopify) {
             try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
             catch (e) { console.warn('Could not auto-end Shopify listing after external sale:', invRow.id, e.message); }
           }
@@ -19163,7 +19218,7 @@ async function runScheduledFocAutoList(env) {
   // waits for it before finishing.
   const pending = [], ctx = { waitUntil: p => pending.push(Promise.resolve(p).catch(() => {})), passThroughOnException() {} };
   try { await runScheduledFocCoverSwap(env, ctx); } catch (e) { console.error('FOC cover swap failed:', e.message); }
-  for (const storeId of stores) {
+  for (const storeId of await storesWithFeature(env, stores, 'comics', storeFeatureReader(env))) {
     try { await runFocAutoListForStore(env, ctx, storeId); }
     catch (e) { console.error('FOC auto-list failed for', storeId, e.message); }
   }
@@ -19234,7 +19289,9 @@ async function runScheduledPokemonServerSync(env) {
   if (quotaUntil && Date.now() < quotaUntil) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  for (const storeId of storeIds) {
+  // Until a store has its own PokemonPriceTracker key, only stores allowed
+  // the shared one are priced (The Mana Pocket always is).
+  for (const storeId of await storesWithFeature(env, storeIds, 'sharedPricingKeys', storeFeatureReader(env))) {
     const deps = {
       db: (path, opts) => supabaseAdminFetch(env, path, opts),
       kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
@@ -19493,7 +19550,7 @@ async function runScheduledEbayReprice(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  for (const storeId of storeIds) {
+  for (const storeId of await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))) {
     const summary = { checked: 0, repriced: 0, skipped: 0, errors: 0, ranAt: new Date().toISOString() };
     try {
       const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings`);
@@ -20127,7 +20184,7 @@ async function runScheduledDealScans(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  for (const storeId of storeIds) {
+  for (const storeId of await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))) {
     try {
       const { data: rows, response } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status,created_at,updated_at&order=id.asc`);
       if (!response?.ok) continue;
