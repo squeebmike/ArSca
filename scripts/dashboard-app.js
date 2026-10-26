@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.26.2-store-features';
+const APP_VERSION = '2026.10.26.3-store-api-keys';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4215,7 +4215,44 @@ function renderPriceChartingDataPanel(){
         <button class="hbtn" onclick="loadPptUsageReport(24 * 7)">LAST 7 DAYS</button>
       </div>
       <div id="ppt-usage-body" style="font-family:monospace;font-size:10px;color:var(--dim)">What spent the credits and when. TODAY starts when PokemonPriceTracker's daily credits reset (midnight UTC).</div>
-    </div>`;
+    </div>
+    <div class="item-metric" id="store-api-keys-panel" style="margin-bottom:12px;display:none"></div>`;
+  loadStoreApiKeysPanel();
+}
+
+// A store's own pricing API keys (second-store pilot; scripts/store-api-keys.mjs).
+// The Mana Pocket uses the built-in keys and never sees this panel. Keys are
+// saved on the server, encrypted; only their last 4 characters come back.
+async function loadStoreApiKeysPanel(){
+  const panel = document.getElementById('store-api-keys-panel');
+  if(!panel || !requireOwnerAdmin()) return;
+  let data = {};
+  try { const res = await storeWorkerFetch('/store/api-keys', { cache:'no-store' }); data = await res.json().catch(() => ({})); if(!res.ok) return; } catch(e) { return; }
+  if(data.builtIn) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  panel.innerHTML = `<div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;margin-bottom:6px">YOUR API KEYS</div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Price lookups use your own keys and your own credits. A provider without a key is off until you add one.</div>
+    ${(data.providers || []).map(p => `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-family:monospace;font-size:10px">
+      <b style="min-width:150px;color:var(--text)">${escHtml(p.label)}</b>
+      <span style="color:${p.set ? 'var(--g)' : 'var(--gold)'}">${p.set ? 'Saved ••••' + escHtml(p.last4) : 'Not set'}</span>
+      <input class="tsi" id="store-key-${escHtml(p.provider)}" type="password" autocomplete="off" placeholder="Paste ${escHtml(p.label)} key" style="width:220px;margin:0">
+      <button class="hbtn" onclick="saveStoreApiKey('${escHtml(p.provider)}')">SAVE</button>
+      ${p.set ? `<button class="hbtn danger" onclick="saveStoreApiKey('${escHtml(p.provider)}', true)">REMOVE</button>` : ''}
+    </div>`).join('')}`;
+}
+async function saveStoreApiKey(provider, remove = false){
+  const input = document.getElementById('store-key-' + provider);
+  const key = remove ? '' : String(input?.value || '').trim();
+  if(!remove && !key) return toast_dash('Paste the key first');
+  if(remove && !confirm('Remove this key? Lookups from this provider stop until a new one is added.')) return;
+  try {
+    const res = await storeWorkerFetch('/store/api-keys', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ provider, key }) });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not save the key');
+    if(input) input.value = '';
+    toast_dash(remove ? 'Key removed' : 'Key saved');
+    loadStoreApiKeysPanel();
+  } catch(e) { toast_dash(e.message || String(e)); }
 }
 
 // Settings -> PRICING APIS -> CREDIT USE: the Worker logs every PPT call

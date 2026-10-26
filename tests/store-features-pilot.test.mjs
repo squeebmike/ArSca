@@ -103,6 +103,23 @@ try {
   assert.equal((await res.json()).features.ebay, false, 'the dashboard learns what to hide');
   res = await call('/store/features', PLATFORM_STORE_ID);
   assert.equal((await res.json()).features.ebay, true);
+
+  // Platform admin turns a feature on; your store can't be switched.
+  let upsert = null;
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.includes('/rest/v1/platform_admins')) return new Response(JSON.stringify([{ user_id: 'user-1', role: 'super_admin' }]), { headers: { 'Content-Type': 'application/json' } });
+    if (url.includes('/rest/v1/store_features?on_conflict=store_id')) { upsert = JSON.parse(init.body); return new Response(null, { status: 201 }); }
+    return prevFetch(input, init);
+  };
+  try {
+    res = await call('/admin/stores/' + OTHER + '/features', '', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ features: { whatnot: true, feeFixedCents: 15 }, reason: 'test' }) });
+    assert.equal(res.status, 200, 'admin save works');
+    assert.equal(upsert.whatnot, true); assert.equal(upsert.platform_fee_fixed_cents, 15); assert.equal(upsert.updated_by, 'user-1');
+    res = await call('/admin/stores/' + PLATFORM_STORE_ID + '/features', '', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ features: { ebay: false } }) });
+    assert.equal(res.status, 400, 'your store cannot be switched off');
+  } finally { globalThis.fetch = prevFetch; }
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 
 // ── Wiring ──
@@ -119,7 +136,7 @@ for (const fn of ['runScheduledDealScans', 'runScheduledEbayReprice', 'storesWit
   assert.ok(body.includes("await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))"), fn + ' skips stores without eBay');
 }
 assert.ok(worker.includes("await storesWithFeature(env, stores, 'comics', storeFeatureReader(env))"), 'FOC auto-list skips stores without comics');
-assert.ok(worker.includes("await storesWithFeature(env, storeIds, 'sharedPricingKeys', storeFeatureReader(env))"), 'overnight Pokémon pricing only on allowed keys');
+assert.ok(worker.includes('const storeEnv = await pricingEnvForStore(env, storeId);') && worker.includes('    if (!key) continue;'), 'overnight Pokémon pricing: each store on its own key, none = skipped');
 assert.ok(worker.includes('if (!(await storeFeaturesFor(env, storeId)).ebay) return [];'), 'eBay quantity follow-ups only for eBay stores');
 assert.ok(worker.includes('d.ebayOfferId && !d.ebayWithdrawnAt && saleFeatures.ebay') && worker.includes('d.shopifyProductId && !d.shopifyWithdrawnAt && saleFeatures.shopify'), 'a recorded sale only ends listings on accounts the store has');
 assert.ok(worker.includes("if (isPlatformStore(storeId, env)) return json({ ok:false, error:'The Mana Pocket always has every feature' }, 400);"), 'admin can never switch your store off');
