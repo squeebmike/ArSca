@@ -45,7 +45,7 @@ const { default: api } = await import('../cloudflare-worker-full.js');
 const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
 const kv = new Map([['secret:EBAY_ACCESS_TOKEN', 'tok'], ['secret:EBAY_ACCESS_EXPIRES', String(Date.now() + 3600e3)]]);
-const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'r',
+const env = { OWNER_STORE_IDS: 'store-1', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'r',
   LBA_KV: { get: async k => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } } };
 const db = { pos_sales: [], pos_sale_lines: [], pos_payments: [] };
 let ebayOrders = [], financeTxns = [];

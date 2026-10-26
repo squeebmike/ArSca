@@ -19,7 +19,7 @@ const order = (id, legacy, sku, title = '247 COMICS Presents / Spotlight #1 Cove
 
 async function sync({ open = [], byId = {}, rows = [], unlinked = [], earlier = [], synced = [] }) {
   const kv = new Map([['secret:EBAY_ACCESS_TOKEN', 'tok'], ['secret:EBAY_ACCESS_EXPIRES', String(Date.now() + 3600e3)], ...synced.map(k => [k, '1'])]);
-  const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh',
+  const env = { OWNER_STORE_IDS: 'store-1', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh',
     LBA_KV: { get: async k => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } } };
   const seen = { saleLines: [], linePatches: [], itemPatches: [] };
   globalThis.fetch = async (input, init = {}) => {
@@ -168,7 +168,7 @@ try {
       if (url.includes('/rest/v1/consignment_alerts') && init.method === 'POST') { alerts.push(JSON.parse(init.body)); return ok([]); }
       return ok([]);
     };
-    const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k' };
+    const env = { OWNER_STORE_IDS: 'store-1', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k' };
     const res = await api.fetch(new Request('https://api.example/inventory/record-external-sale', { method: 'POST', headers: { Authorization: 'Bearer t', 'X-Store-Id': 'store-1', 'Content-Type': 'application/json' },
       body: JSON.stringify({ itemId: 'item-c', channel: 'Whatnot', salePrice: 140, feeAmount: 14 }) }), env, { waitUntil() {} });
     const d = await res.json();

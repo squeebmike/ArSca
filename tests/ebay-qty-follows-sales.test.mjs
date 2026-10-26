@@ -72,7 +72,7 @@ function mockEbay(seen, { item, offers = {}, active = '', recentOrders = [] }) {
     return ok([]);
   };
 }
-const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh', TWILIO_ACCOUNT_SID: 'a', TWILIO_AUTH_TOKEN: 'b', TWILIO_EMAIL_FROM_ADDRESS: 'shop@example.com' };
+const env = { OWNER_STORE_IDS: 'store-1', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh', TWILIO_ACCOUNT_SID: 'a', TWILIO_AUTH_TOKEN: 'b', TWILIO_EMAIL_FROM_ADDRESS: 'shop@example.com' };
 const kvEnv = () => { const kv = new Map([['secret:EBAY_ACCESS_TOKEN', 'tok'], ['secret:EBAY_ACCESS_EXPIRES', String(Date.now() + 3600e3)]]); return { ...env, LBA_KV: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } }, kv }; };
 const sale = (e, body) => api.fetch(new Request('https://api.example/inventory/record-external-sale', { method: 'POST', headers: { Authorization: 'Bearer t', 'X-Store-Id': 'store-1', 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), e, { waitUntil() {} });
 const fresh = () => ({ trading: [], bulk: [], withdrawn: [], emails: [], patches: [], rows: [], recentLookups: 0 });

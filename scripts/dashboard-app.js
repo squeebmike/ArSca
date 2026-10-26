@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.26.1-server-owns-pokemon';
+const APP_VERSION = '2026.10.26.2-store-features';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -349,7 +349,33 @@ function roleCanAccessTab(tab){
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice','database'].includes(tab);
   else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','backlist','phone','cardintake','tasks'].includes(tab);
-  return allowed && planCanAccessTab(tab);
+  return allowed && planCanAccessTab(tab) && featureCanAccessTab(tab);
+}
+// Second-store pilot (scripts/store-features.mjs): tabs tied to The Mana
+// Pocket's own accounts or workflow are hidden for a store that doesn't
+// have them. Not known yet, or the check failed = nothing hidden, so The
+// Mana Pocket never loses a tab to an outage; the Worker enforces the walls
+// on its own either way.
+const TAB_STORE_FEATURE = { foc:'comics', backlist:'comics', pulllists:'comics', channels:'ebay', orders:'website', phone:'sms', consign:'consignment', whatnot:'whatnot' };
+const STORE_FEATURES_CACHE_KEY = 'store_features_v1';
+function currentStoreFeatures(){
+  if(window._storeFeatures) return window._storeFeatures;
+  try { const saved = JSON.parse(localStorage.getItem(STORE_FEATURES_CACHE_KEY) || 'null'); if(saved?.storeId && saved.storeId === getActiveStoreId()) return saved.features || null; } catch(e) {}
+  return null;
+}
+function storeFeatureEnabled(feature){ const f = currentStoreFeatures(); return !f || f[feature] !== false; }
+function featureCanAccessTab(tab){ const feature = TAB_STORE_FEATURE[tab]; return !feature || storeFeatureEnabled(feature); }
+async function loadStoreFeatures(storeId = getActiveStoreId()){
+  window._storeFeatures = null;
+  try {
+    const res = await storeWorkerFetch('/store/features', { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.features) return null;
+    window._storeFeatures = data.features;
+    try { localStorage.setItem(STORE_FEATURES_CACHE_KEY, JSON.stringify({ storeId, features:data.features })); } catch(e) {}
+    document.body?.classList.toggle('store-no-ebay', data.features.ebay === false);
+    return data.features;
+  } catch(e) { return null; }
 }
 
 (function installStoreScopedStorage(){
@@ -534,6 +560,7 @@ async function checkAndApplySubscriptionState(){
   } catch(_){ subCheckFailed = true; }
 
   window._subStatus = sub;
+  await loadStoreFeatures(storeId);
   setupAppShell();
   renderSubscriptionPanel();
   renderOnboardingPanel();
