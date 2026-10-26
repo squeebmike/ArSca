@@ -56,6 +56,7 @@ import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './sc
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
+import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -2231,6 +2232,16 @@ async function handlePlatformAdmin(request, env, url) {
     const after = await storeFeaturesFor(env, storeId);
     await writePlatformAudit(env, auth.user, 'store_features.update', storeId, 'store_features', storeId, before, after, body.reason || 'Store features changed').catch(() => {});
     return json({ ok:true, storeId, features:after });
+  }
+  // What a store has used of your paid services (scripts/shared-service-usage.mjs).
+  const usageMatch = path.match(/^\/admin\/stores\/([0-9a-f-]{36})\/usage$/i);
+  if (usageMatch && request.method === 'GET') {
+    const storeId = usageMatch[1];
+    if (isPlatformStore(storeId, env)) return json({ ok:true, storeId, platform:true });
+    const days = Math.max(1, Math.min(400, Number(url.searchParams.get('days')) || 30));
+    const since = new Date(Date.now() - days * 86400 * 1000).toISOString();
+    const { data } = await supabaseAdminFetch(env, 'rpc/shared_service_usage_summary', { method:'POST', body:JSON.stringify({ p_store_id:storeId, p_since:since }) });
+    return json({ ok:true, storeId, days, usage:data || {} });
   }
 
   const storeMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)$/i);
@@ -18918,7 +18929,11 @@ export default {
     if (sitemap) return sitemap;
     // Before routing, so every Worker-rendered page on www gets the real nav.
     if(!new URL(request.url).pathname.startsWith('/public/'))await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
-    return injectComicSearch(await routeRequest(request, env, ctx), request);
+    const response = await routeRequest(request, env, ctx);
+    // Another store's AI, CardSight, SoldComps and PSA calls on your accounts
+    // (scripts/shared-service-usage.mjs); yours are never logged.
+    trackSharedServiceUsage(env, ctx, request, response);
+    return injectComicSearch(response, request);
   },
 
   // Runs the same deal scan the SCAN EBAY FOR DEALS button triggers, on a
