@@ -26,7 +26,7 @@ export async function handleBaseballCatalog(request,env,url,deps) {
  const teams=baseballTeams(sets);
  const html=(data,status=200)=>new Response(request.method==='HEAD'?null:shell(withSportsLookups(data)),{status,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store'}});
  const missing=()=>html({title:'Baseball checklist not found | The Mana Pocket',description:'Browse verified baseball checklists.',canonicalPath:url.pathname,robotsNoindex:true,bodyHtml:'<h1>Checklist page not found</h1><p><a href="/baseball">Browse baseball checklists</a></p>'},404);
- if(url.pathname==='/sports/checklists'){const data=sportsPlayerTeamSearch(url,esc);return data?html(data):missing();}
+ if(url.pathname==='/sports/checklists'){const data=sportsPlayerTeamSearch(url,esc,{campaignId:env.EBAY_PARTNER_CAMPAIGN_ID});return data?html(data):missing();}
  if(url.pathname==='/sitemap-baseball.xml') {
   const paths=['/baseball','/sports/checklists','/baseball/players',...baseballPlayers(sets).map(baseballPlayerPath),...teams.map(baseballTeamPath),...sets.flatMap(s=>[baseballSetPath(s),...s.cards.map(c=>baseballCardPath(s,c))]),...baseballSectionSitemapPaths(sets)];
   const size=40000,parts=Math.ceil(paths.length/size),partText=url.searchParams.get('part');

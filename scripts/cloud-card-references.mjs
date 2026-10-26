@@ -2,6 +2,11 @@
 // No image bytes, inventory, or customer data. Optional source estimates are
 // labeled separately from offers and retain their actual collection timestamp.
 import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,REFERENCE_AUDIT_VERSION} from './reference-validation.mjs';
+import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
+// A few photographed serial stamps have been checked by hand. Reuse that
+// evidence only for the identical source URL, title and photo; never infer a
+// denominator just from a finish name, or overwrite a conflicting capture.
+const reviewedNumbering=new Map(Object.values(referenceImageSeeds).flat().filter(r=>r.run).map(r=>[r.url,r]));
 export function normalizeCloudReference(row){
  if(!row||typeof row!=='object')return null;
  let u;try{u=new URL(row.url);}catch{return null;}
@@ -14,10 +19,12 @@ export function normalizeCloudReference(row){
  const image=String(row.image||'');
  if(image&&!/^https:\/\/storage\.googleapis\.com\/images\.pricecharting\.com\/[a-z0-9]+\/(60|240|300|400|1600)\.jpg$/.test(image))return null;
  u.hostname=u.hostname.replace(/^(?!www\.)/,'www.');u.search='';u.hash='';u.pathname=u.pathname.replace(/\/$/,'');
+ const reviewed=reviewedNumbering.get(u.href),photo=image.replace(/\/60\.jpg$/,'/240.jpg');
+ const run=String(row.run||'').replace(/\s+/g,' ').trim().slice(0,40)||(reviewed?.title===title&&reviewed.image===photo?reviewed.run:'');
  const prices={},input=row.referencePrices,seenAt=Date.parse(row.capturedAt);
  if(input?.currency==='USD'&&Number.isFinite(seenAt)&&seenAt>=Date.UTC(2020,0,1)&&seenAt<=Date.now()+300000){for(const field of ['ungraded','grade9','psa10']){const value=input[field];if(typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=100000000)prices[field]=value;}}
  const referencePrices=Object.keys(prices).length?{...prices,currency:'USD',capturedAt:new Date(seenAt).toISOString()}:null;
- return {consoleId:parts[1],setName:String(row.setName||parts[1]).replace(/\s+/g,' ').trim().slice(0,200),productId:/^\d{1,20}$/.test(String(row.productId||''))?String(row.productId):'',title,cardNumber:number,player:String(row.player||'').slice(0,200),parallel:String(row.parallel||'').slice(0,120),run:String(row.run||'').replace(/\s+/g,' ').trim().slice(0,40),image:image.replace(/\/60\.jpg$/,'/240.jpg'),url:u.href,capturedAt:new Date().toISOString(),...(referencePrices?{referencePrices}:{})};
+ return {consoleId:parts[1],setName:String(row.setName||parts[1]).replace(/\s+/g,' ').trim().slice(0,200),productId:/^\d{1,20}$/.test(String(row.productId||''))?String(row.productId):'',title,cardNumber:number,player:String(row.player||'').slice(0,200),parallel:String(row.parallel||'').slice(0,120),run,image:photo,url:u.href,capturedAt:new Date().toISOString(),...(referencePrices?{referencePrices}:{})};
 }
 const reply=data=>Response.json(data);
 // Fetch-only DO class; authorization is enforced before calling this binding.
