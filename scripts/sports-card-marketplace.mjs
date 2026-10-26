@@ -135,7 +135,7 @@ function renderEstimate(figure,ref){
  function choose(pair){label.textContent='PriceCharting estimate · '+pair[1];amount.textContent=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(prices[pair[0]])+' USD';}
  choose(fields[0]);box.append(label,amount);
  if(fields.length>1){var select=document.createElement('select');select.setAttribute('aria-label','PriceCharting grade for '+ref.title);fields.forEach(function(pair){var option=document.createElement('option');option.value=pair[0];option.textContent=pair[1];select.append(option);});select.onchange=function(){choose(fields.find(function(pair){return pair[0]===select.value;})||fields[0]);};box.append(select);}
- var date=Date.parse(prices.capturedAt);note.textContent=(Number.isFinite(date)?'Collected '+new Date(date).toISOString().slice(0,10)+' · ':'')+'Estimate only; condition matters. Excludes shipping.';box.append(note);figure.append(box);
+ var date=Date.parse(prices.capturedAt);note.textContent=(Number.isFinite(date)?'Collected '+new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric'}).format(new Date(date))+' · ':'')+'Estimate only; condition matters. Excludes shipping.';box.append(note);figure.append(box);
 }
 function renderReference(target,ref){
  var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');

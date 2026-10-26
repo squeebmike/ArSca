@@ -27,7 +27,7 @@ assert.match(document.querySelector('[data-sports-result]').textContent,/8\.00 U
 assert.match(document.querySelector('.mp-reference-estimate').textContent,/Ungraded\$7.50 USD/);
 const grades=document.querySelector('.mp-reference-estimate select');grades.querySelector('option[value="psa10"]').selected=true;grades.onchange();
 assert.match(document.querySelector('.mp-reference-estimate').textContent,/PSA 10\$80.00 USD/);
-assert.match(document.querySelector('.mp-reference-estimate').textContent,/Collected 2026-10-25/);
+assert.match(document.querySelector('.mp-reference-estimate').textContent,/Collected Oct 25, 2026/);
 payload={reference,listing:null};button.dispatchEvent(new window.Event('click',{bubbles:true}));await new Promise(resolve=>setImmediate(resolve));
 assert.equal(document.querySelector('[data-sports-reference-result] img').src,reference.image,'a disappeared listing does not remove the independent reference');
 assert.equal(document.querySelector('[data-sports-result] img'),null);
