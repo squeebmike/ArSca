@@ -84,4 +84,13 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  await object.ctx.storage.put(key,{version:'2026-10-25.2',flags:['unmapped_source_set'],matches:[]});
  assert.equal(await sportsReferenceImage(env,{},release,subject),null,'mapping repair never bypasses an owner photo hold');
 }
+{
+ const sample={...card,title:'American League Leaders HRs #38',player:'American League Leaders HRs',cardNumber:'38',image:'https://storage.googleapis.com/images.pricecharting.com/leaders38/240.jpg',url:'https://www.sportscardspro.com/game/'+consoleId+'/american-league-leaders-hrs-38'};
+ await send([sample]);const object=instances.get('console:'+consoleId);await object.alarm();
+ const key='validation:american-league-leaders-hrs-38';await object.ctx.storage.put(key,{version:'2026-10-25.2',mappingVersion:'older',flags:['no_exact_checklist_match'],matches:[]});
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs'),release=baseballSets.find(s=>s.id==='2026-topps-series-1-baseball'),subject=release.cards.find(c=>c.cardNumber==='38');
+ assert.equal((await sportsReferenceImage(env,{},release,subject)).image,sample.image,'existing caption mismatch repairs from stored cloud data without re-collection');
+ await object.fetch(new Request('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:sample.url,reason:'Review requested'})}));
+ assert.equal(await sportsReferenceImage(env,{},release,subject),null,'caption repair preserves owner holds');
+}
 console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, cloud bridge and interrupted-upload recovery passed');

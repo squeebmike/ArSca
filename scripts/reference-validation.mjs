@@ -3,8 +3,9 @@ import {footballSets} from './topps/football-seed.mjs';
 import {sectionsForSet} from './baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
+import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.1-subsets';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.2-base-captions';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
@@ -58,7 +59,7 @@ function cardIndex(set){
  if(indexes.has(set))return indexes.get(set);
  const index=new Map();
  for(const card of [...set.cards,...sectionsForSet(set).flatMap(g=>g.cards)]){
-  const key=String(card.cardNumber)+'|'+fold(card.player);if(!index.has(key))index.set(key,[]);index.get(key).push(card);
+  for(const name of referenceCardNames(card)){const key=String(card.cardNumber)+'|'+fold(name);if(!index.has(key))index.set(key,[]);if(!index.get(key).includes(card))index.get(key).push(card);}
  }
  indexes.set(set,index);return index;
 }

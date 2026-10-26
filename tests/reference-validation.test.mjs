@@ -15,6 +15,13 @@ assert.equal((await checkReferenceImage(base.image,async()=>new Response('HTML',
 let external=0;assert.equal((await checkReferenceImage('https://evil.test/photo.jpg',async()=>{external++;})).reason,'invalid_image_host');assert.equal(external,0,'no SSRF or arbitrary host probing');
 assert.equal(referenceMetadataCheck(base).visuallyReviewed,false,'metadata checks never claim visual authentication');
 const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,consoleId,player,cardNumber,parallel,run,url:'https://www.sportscardspro.com/game/'+consoleId+'/sample',title:player+(parallel?' ['+parallel+']':'')+' #'+cardNumber});
+for(const [number,caption]of [['11','National League Leaders RBI'],['38','American League Leaders HRs'],['52','It Takes Two']]){
+ const row=bowman(base.consoleId,caption,number),check=referenceMetadataCheck(row);
+ assert.deepEqual(check.flags,[],caption);assert.equal(check.matches[0].path,'/baseball/checklists/2026-topps-series-1-baseball/cards/2026-topps-series-1-baseball-'+number);
+ assert.ok(referenceMetadataCheck({...row,cardNumber:'1',title:caption+' #1'}).flags.includes('no_exact_checklist_match'),'caption is not a wildcard for other card numbers');
+ assert.ok(referenceMetadataCheck({...row,consoleId:'baseball-cards-2025-topps',url:row.url.replace('2026-topps','2025-topps')}).flags.includes('no_exact_checklist_match'),'caption does not leak across years');
+ assert.ok(referenceMetadataCheck({...row,parallel:'Gold',title:caption+' [Gold] #'+number,run:'/10'}).flags.includes('no_exact_checklist_match'),'caption cannot bypass serial checks');
+}
 for(const [player,expected] of [['Adrian Gil','2026-bowman-baseball'],['Angeibel Gomez','2026-bowman-chrome-baseball']]){
  const check=referenceMetadataCheck(bowman('baseball-cards-2026-bowman-chrome-prospect-autograph',player,'CPA-AG'));
  assert.deepEqual(check.flags,[]);assert.equal(check.matches.length,1);assert.equal(check.matches[0].setId,expected,'same autograph number needs the correct player and release');

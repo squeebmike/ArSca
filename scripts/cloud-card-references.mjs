@@ -105,7 +105,7 @@ export class CardReferenceArchive {
     // Repair old unmapped-source results lazily, once per mapping release.
     // This uses only the stored family and immutable publisher metadata.
     // Image health, ambiguity, duplicates and owner holds still gate display.
-    if(check?.flags?.includes('unmapped_source_set')&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
+    if(check?.flags?.some(flag=>['unmapped_source_set','no_exact_checklist_match'].includes(flag))&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
     if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.length||check.matches.length!==1||!id)continue;
     const health=await this.ctx.storage.get('health:'+id);if(!health?.ok||Date.now()-health.checkedAt>7*86400000||await this.ctx.storage.get('hold:'+id))continue;
     const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(usage.size!==1)continue;
