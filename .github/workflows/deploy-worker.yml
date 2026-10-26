@@ -53,6 +53,7 @@ on:
       - scripts/ppt-usage.mjs
       - scripts/pokemon-daily-sync.mjs
       - scripts/store-features.mjs
+      - scripts/shared-service-usage.mjs
       - scripts/store-api-keys.mjs
       - scripts/catalog-inventory.mjs
       - scripts/catalog-highlights.mjs

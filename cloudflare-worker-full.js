@@ -56,6 +56,7 @@ import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './sc
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
+import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -2232,6 +2233,16 @@ async function handlePlatformAdmin(request, env, url) {
     await writePlatformAudit(env, auth.user, 'store_features.update', storeId, 'store_features', storeId, before, after, body.reason || 'Store features changed').catch(() => {});
     return json({ ok:true, storeId, features:after });
   }
+  // What a store has used of your paid services (scripts/shared-service-usage.mjs).
+  const usageMatch = path.match(/^\/admin\/stores\/([0-9a-f-]{36})\/usage$/i);
+  if (usageMatch && request.method === 'GET') {
+    const storeId = usageMatch[1];
+    if (isPlatformStore(storeId, env)) return json({ ok:true, storeId, platform:true });
+    const days = Math.max(1, Math.min(400, Number(url.searchParams.get('days')) || 30));
+    const since = new Date(Date.now() - days * 86400 * 1000).toISOString();
+    const { data } = await supabaseAdminFetch(env, 'rpc/shared_service_usage_summary', { method:'POST', body:JSON.stringify({ p_store_id:storeId, p_since:since }) });
+    return json({ ok:true, storeId, days, usage:data || {} });
+  }
 
   const storeMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)$/i);
   if (storeMatch && request.method === 'GET') {
@@ -3637,6 +3648,17 @@ async function buyTrayIsClosed(env, storeId, id) {
   const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
   if (!raw) return false;
   try { return JSON.parse(raw)?.status === 'closed'; } catch (e) { return false; }
+}
+
+// Same for a customer cart that's been checked out: a save still in flight
+// from before checkout (or from another register that joined it) must not
+// reopen it with its trade-in credit (pilot dry run, 2026-10-26).
+async function saleCartIsComplete(env, storeId, id) {
+  if (!id) return false;
+  const scopedKey = `lba:${safeStoreKey(storeId)}:sale_cart_${String(id).replace(/[^a-zA-Z0-9:_-]/g, '-')}`;
+  const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+  if (!raw) return false;
+  try { return JSON.parse(raw)?.status === 'complete'; } catch (e) { return false; }
 }
 
 function safeStoreKey(s) {
@@ -9422,8 +9444,11 @@ async function routeRequest(request, env, ctx) {
       if (url.pathname.endsWith('/upsert')) {
         const entry = body.entry;
         if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
-        const idx = index.findIndex(e => e.id === entry.id);
-        if (idx >= 0) index[idx] = entry; else index.push(entry);
+        if (await saleCartIsComplete(env, storeId, entry.id)) index = index.filter(e => e.id !== entry.id);
+        else {
+          const idx = index.findIndex(e => e.id === entry.id);
+          if (idx >= 0) index[idx] = entry; else index.push(entry);
+        }
       } else {
         const id = body.id;
         if (!id) return json({ ok: false, error: 'id is required' }, 400);
@@ -9615,6 +9640,10 @@ async function routeRequest(request, env, ctx) {
         if (key.startsWith('buy_tray_') && await buyTrayIsClosed(env, storeId, key.slice('buy_tray_'.length))) {
           let incoming = null; try { incoming = JSON.parse(body); } catch (e) {}
           if (incoming?.status !== 'closed') return json({ ok: true, closed: true });
+        }
+        if (key.startsWith('sale_cart_') && await saleCartIsComplete(env, storeId, key.slice('sale_cart_'.length))) {
+          let incoming = null; try { incoming = JSON.parse(body); } catch (e) {}
+          if (incoming?.status !== 'complete') return json({ ok: true, complete: true });
         }
         if (env.LBA_KV) {
           // Confirmed barcode matches are store memory, not session state.
@@ -18900,7 +18929,11 @@ export default {
     if (sitemap) return sitemap;
     // Before routing, so every Worker-rendered page on www gets the real nav.
     if(!new URL(request.url).pathname.startsWith('/public/'))await ensureSiteChrome(request, new URL(request.url), ctx).catch(() => {});
-    return injectComicSearch(await routeRequest(request, env, ctx), request);
+    const response = await routeRequest(request, env, ctx);
+    // Another store's AI, CardSight, SoldComps and PSA calls on your accounts
+    // (scripts/shared-service-usage.mjs); yours are never logged.
+    trackSharedServiceUsage(env, ctx, request, response);
+    return injectComicSearch(response, request);
   },
 
   // Runs the same deal scan the SCAN EBAY FOR DEALS button triggers, on a

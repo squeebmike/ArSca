@@ -51,6 +51,8 @@ for (const [path, feature] of [
   ['/shopify/sync', 'shopify'],
   ['/foc/admin/cycles', 'comics'], ['/backlist/admin/picks', 'comics'], ['/comic/pricing', 'comics'], ['/preorders/pull-list', 'comics'],
   ['/store/storefront-orders', 'website'], ['/store/stuck-payments/resolve', 'website'],
+  ['/proxy/sites', 'website'], ['/proxy/collections/abc/items', 'website'],
+  ['/pricing/sportscardspro/products', 'sharedPricingKeys'], ['/pricing/sportscardspro/image', 'sharedPricingKeys'],
   ['/inventory/record-external-sale', null], ['/pricing/pokemon/cards', null], ['/pos/sale', null], ['/store/features', null], ['/public/preorders', null],
 ]) assert.equal(featureForPath(path), feature, path);
 
@@ -92,6 +94,25 @@ try {
   assert.equal(res.status, 403, 'pilot store: FOC refused');
   res = await call('/ebay/list', '', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ storeId: OTHER }) });
   assert.equal(res.status, 403, 'pilot store named in the body: refused');
+
+  // Your Webflow site and your SportsCardsPro token (pilot dry run).
+  const wfEnv = { ...env, WEBFLOW_TOKEN: 'wf-secret', SCP_ACCESS_TOKEN: 'scp-secret' };
+  const callWith = (e, path, store, init = {}) => api.fetch(new Request('https://w.example' + path, { ...init, headers: { Authorization: 'Bearer t', ...(store ? { 'X-Store-Id': store } : {}), ...(init.headers || {}) } }), e, { waitUntil() {}, passThroughOnException() {} });
+  seen.length = 0;
+  for (const [method, path] of [['GET', '/proxy/sites'], ['PATCH', '/proxy/collections/abc/items/1'], ['DELETE', '/proxy/collections/abc/items/1']]) {
+    res = await callWith(wfEnv, path, OTHER, { method });
+    assert.equal(res.status, 403, method + ' ' + path + ': pilot store refused');
+    assert.equal((await res.json()).featureDisabled, 'website');
+  }
+  res = await callWith(wfEnv, '/pricing/sportscardspro/products?q=trout', OTHER);
+  assert.equal(res.status, 403, 'pilot store: SportsCardsPro refused');
+  assert.equal((await res.json()).featureDisabled, 'sharedPricingKeys');
+  assert.ok(!seen.some(u => u.includes('webflow.com') || u.includes('sportscardspro.com')), 'nothing reaches Webflow or SportsCardsPro for the pilot store');
+  res = await callWith(wfEnv, '/proxy/sites', PLATFORM_STORE_ID);
+  assert.ok(seen.some(u => u.includes('api.webflow.com')), 'your store still reaches Webflow');
+  seen.length = 0;
+  res = await callWith(wfEnv, '/pricing/sportscardspro/products?q=trout', PLATFORM_STORE_ID);
+  assert.ok(seen.some(u => u.includes('sportscardspro.com/api/products')), 'your store still reaches SportsCardsPro');
 
   seen.length = 0;
   res = await call('/ebay/status', PLATFORM_STORE_ID);
