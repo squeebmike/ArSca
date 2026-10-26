@@ -9,9 +9,28 @@ export function sourceUrl(raw, base) {
   } catch { return ''; }
 }
 export function eligibleSet(url, licensedOnly = true) {
-  if (!licensedOnly || !/\/(?:console|game)\/(?:baseball|football)-cards-/.test(url)) return true;
-  const year = Number(url.match(/-cards-(\d{4})-/)?.[1]);
-  return year >= 2019 && /-(topps|bowman)(?:-|\/)/.test(url);
+  let path;try{path=new URL(url).pathname;}catch{return false;}
+  if (!licensedOnly || !/\/(?:console|game)\/(?:baseball|football)-cards-/.test(path)) return true;
+  const year = Number(path.match(/-cards-(\d{4})-/)?.[1]);
+  return year >= 2019 && /-(topps|bowman)(?:-|\/|$)/.test(path);
+}
+export function recheckSourceDirectories(job){
+ if(!job)throw Error('Start a collection before rechecking directories.');
+ const seen=[...(job.seen||[])],queue=[...(job.queue||[])],queued=new Set(queue.map(q=>q.url));
+ let roots=[...new Set(seen.map(u=>sourceUrl(u)).filter(u=>u&&new URL(u).pathname.startsWith('/category/')))];
+ if(!roots.length)roots=['https://www.sportscardspro.com/category/baseball-cards','https://www.sportscardspro.com/category/football-cards'];
+ const additions=roots.filter(u=>!queued.has(u)).map(url=>({url,pages:0}));
+ // Keep the active source's page/signature/navigation position. Only the
+ // pending tail is reordered; already saved cards and estimates are untouched.
+ const next=queue.length?[queue[0],...newestSetQueue([...queue.slice(1),...additions])]:newestSetQueue(additions);
+ return {...job,queue:next,seen:[...new Set([...seen,...roots])],discover:true,message:'Directory recheck queued; saved records and the existing queue are preserved.'};
+}
+export function queueEarlierPriceBackfill(job,sets){
+ if(!job)throw Error('Start a collection before queuing a price backfill.');
+ if(job.priceBackfill)return job;
+ const urls=[...new Set((sets||[]).filter(s=>Number(s.cards)>0&&/^(?:baseball|football)-cards-202[56]-(?:topps|bowman)(?:-|$)/.test(s.consoleId||'')).map(s=>sourceUrl('https://www.sportscardspro.com/console/'+s.consoleId)).filter(u=>u&&eligibleSet(u,true)))];
+ if(!urls.length)throw Error('No earlier 2025/2026 cloud sources were found.');
+ return {...job,priceBackfill:{queue:newestSetQueue(urls.slice(0,500).map(url=>({url,pages:0}))),planned:Math.min(urls.length,500),active:false,complete:false},message:'Earlier price revisit queued after the current collection; existing progress is preserved.'};
 }
 // Sort by set year, then verified release date where available. The provider's
 // New Releases list breaks ties before alphabetical fallback; import/write

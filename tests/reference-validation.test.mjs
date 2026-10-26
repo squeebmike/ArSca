@@ -22,6 +22,15 @@ for(const [player,expected] of [['Adrian Gil','2026-bowman-baseball'],['Angeibel
 assert.deepEqual(referenceMetadataCheck(bowman('baseball-cards-2026-bowman-paper-prospect','Aidan Miller','BP-49','Logo Pattern')).flags,[]);
 assert.ok(referenceMetadataCheck(bowman('baseball-cards-2026-bowman-chrome-prospect-autograph','Adrian Gil','CPA-AG','Peanuts Refractor')).flags.includes('no_exact_checklist_match'),'missing serial information cannot be invented from a photo');
 for(const [source,player,number,expected]of [
+ ['baseball-cards-2023-bowman-chrome-prospects','Abdias De La Cruz','BCP-34','2023-bowman'],
+ ['baseball-cards-2023-bowman-chrome-prospects','Adan Sanchez','BCP-219','2023-bowman-chrome'],
+ ['baseball-cards-2023-bowman-chrome-prospect-autographs','Abel Bastidas','CPA-AB','2023-bowman'],
+ ['baseball-cards-2023-bowman-chrome-prospect-autographs','Abner Uribe','CPA-AU','2023-bowman-chrome'],
+ ['baseball-cards-2023-topps-all-aces','Nolan Ryan','AA-1','2023-topps-series-1'],
+ ['baseball-cards-2023-topps-all-aces','Tom Glavine','AA-26','2023-topps-series-2'],
+ ['baseball-cards-2023-topps-all-aces','Nolan Ryan','AA-51','2023-topps-update'],
+ ['baseball-cards-2023-topps-chrome-rookie-autographs','Alec Burleson','RA-AB','2023-topps-chrome'],
+ ['baseball-cards-2023-topps-chrome-update-autographs','Alec Burleson','AC-AB','2023-topps-chrome-update-series-baseball'],
  ['baseball-cards-2024-bowman-chrome-prospects','Abimelec Ortiz','BCP-16','2024-bowman-baseball'],
  ['baseball-cards-2024-bowman-chrome-prospects','Adam Serwinowski','BCP-202','2024-bowman-chrome-baseball'],
  ['baseball-cards-2024-bowman-prospects','Jacob Wilson','BP-3','2024-bowman-baseball'],
@@ -35,4 +44,6 @@ for(const [source,player,number,expected]of [
 ]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[],source+' '+number);assert.equal(check.matches[0].setId,expected);}
 assert.deepEqual(referenceMetadataCheck(bowman('baseball-cards-2024-bowman-chrome-prospects','Abimelec Ortiz','BCP-16','Aqua Lunar','/125')).flags,[]);
 assert.ok(referenceMetadataCheck(bowman('baseball-cards-2024-bowman-prospects','Abimelec Ortiz','BCP-16')).flags.includes('no_exact_checklist_match'),'paper and Chrome sources are not interchangeable');
+assert.ok(referenceConsoles({sport:'baseball',displayName:'2023 Topps Chrome Update Series Baseball'}).includes('baseball-cards-2023-topps-chrome-update'));
+assert.ok(referenceConsoles({sport:'baseball',displayName:'2022 Topps Chrome Updates Baseball'}).includes('baseball-cards-2022-topps-chrome-update'));
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

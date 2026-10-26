@@ -4,7 +4,7 @@ import {sectionsForSet} from './baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-25.3-bowman';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.1-subsets';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
@@ -12,6 +12,15 @@ export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
  if(sport==='baseball'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
  if(sport==='baseball'&&/topps update series/i.test(set.displayName))ids.push('baseball-cards-'+name.replace('-update-series','-update'));
+ if(sport==='baseball'&&/topps chrome updates?(?: series)? baseball/i.test(set.displayName))ids.push('baseball-cards-'+name.replace(/-updates$/,'-update').replace(/-update-series$/,'-update'));
+ if(['2023-bowman','2023-bowman-chrome'].includes(set.id)){
+  if(!card||['Chrome Prospects','Bowman Chrome Prospects','Extended Bowman Chrome Prospects'].includes(card.section))ids.push('baseball-cards-2023-bowman-chrome-prospects');
+  if(!card||['Chrome Prospect Autographs','Bowman Chrome Prospects Autographs'].includes(card.section))ids.push('baseball-cards-2023-bowman-chrome-prospect-autographs');
+ }
+ if(['2023-topps-series-1','2023-topps-series-2','2023-topps-update'].includes(set.id)&&(!card||card.section==='All Aces'))ids.push('baseball-cards-2023-topps-all-aces');
+ if(set.id==='2023-topps-chrome'&&(!card||card.section==='Rookie Autographs'))ids.push('baseball-cards-2023-topps-chrome-rookie-autographs');
+ if(set.id==='2023-topps-chrome-update-series-baseball'&&(!card||card.section==='Autograph Cards'))ids.push('baseball-cards-2023-topps-chrome-update-autographs');
+ if(set.id==='2024-topps-chrome-update-series-baseball'&&(!card||card.section==='Autograph Cards'))ids.push('baseball-cards-2024-topps-chrome-update-autograph');
  if(set.id==='2024-topps-five-star-baseball')ids.push('baseball-cards-2024-topps-five-star-autograph');
  // Actual collected source IDs use plural "prospects" in 2024/2025 and
  // combine spring/fall Chrome subjects. Number, player and section still

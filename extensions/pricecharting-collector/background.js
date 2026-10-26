@@ -1,4 +1,4 @@
-import {sourceUrl,eligibleSet,inspectPage,newestSetQueue} from './core.mjs';
+import {sourceUrl,eligibleSet,inspectPage,newestSetQueue,recheckSourceDirectories,queueEarlierPriceBackfill} from './core.mjs';
 import {cloudRequest,uploadReferences,DASHBOARD} from './cloud.mjs';
 let pumping;
 const read = async () => {const job=(await chrome.storage.local.get('job')).job;const paused=(await chrome.storage.local.get('collectorPaused')).collectorPaused;return paused&&job?{...job,running:false,message:typeof paused==='string'?paused:'Paused. Uploaded references are safe in the cloud.'}:job;};
@@ -17,13 +17,27 @@ async function capture(job, data) {
   job.queue=[job.queue[0],...newestSetQueue(job.queue.slice(1))];
 }
 async function pause(message){await chrome.storage.local.set({collectorPaused:message});const job=await read();if(job){job.running=false;job.message=message;await save(job);}}
+async function preserveAndUpdateQueue(transform){
+ const before=await read();if(!before)throw Error('Start a collection first.');
+ const marker='Pausing briefly to preserve the active source while updating the queue.';
+ if(before.running)await pause(marker);await pumping;
+ const latch=(await chrome.storage.local.get('collectorPaused')).collectorPaused;
+ const resume=before.running&&latch===marker||!before.queue.length&&!latch;
+ const job=transform(await read());job.running=!!resume;
+ if(resume)await chrome.storage.local.set({collectorPaused:false});
+ await save(job);await schedule();if(resume)void run();
+}
 async function run(){
   if(pumping)return pumping;
   pumping=(async()=>{
     for(let step=0;step<6;step++){
       let job=await read(); if(!job?.running)return;
       if(Number(job.notBefore)>Date.now())return;
-      if(!job.queue.length){job.running=false;job.message='Collection complete. References are saved in the cloud and available to the website.';await save(job);return;}
+      if(!job.queue.length){
+       if(job.priceBackfill?.queue?.length&&!job.priceBackfill.active){job.queue=job.priceBackfill.queue;job.priceBackfill.queue=[];job.priceBackfill.active=true;job.message='Initial collection complete. Revisiting earlier sources for available prices.';await save(job);continue;}
+       job.running=false;if(job.priceBackfill?.active)job.priceBackfill.complete=true;
+       job.message='Collection complete. Stored references still need website matching; missing source prices remain unavailable.';await save(job);return;
+      }
       const current=job.queue[0];let tab;
       try{tab=job.tabId?await chrome.tabs.get(job.tabId):null;}catch{}
       if(!tab){tab=await chrome.tabs.create({url:current.url,active:false});job.tabId=tab.id;job.navigating=current.url;await save(job);return;}
@@ -71,7 +85,7 @@ async function run(){
         if(!more?.done){job=await read();job.navigating=current.url;await save(job);return;}
       }
       job=await read();if(!job.running)return;
-      job.completed.push(job.queue.shift().url);await save(job);
+      const completedUrl=job.queue.shift().url;if(!job.completed.includes(completedUrl))job.completed.push(completedUrl);await save(job);
     }
   })().catch(async error=>{await pause('Collection paused: '+String(error.message).slice(0,180));}).finally(()=>{pumping=null;});
   return pumping;
@@ -82,7 +96,7 @@ chrome.tabs.onUpdated.addListener((_id,change)=>{if(change.status==='complete')v
 chrome.runtime.onStartup.addListener(()=>{void schedule().then(run);});
 chrome.runtime.onInstalled.addListener(()=>{void schedule();void chrome.tabs.query({url:DASHBOARD+'*'}).then(tabs=>Promise.all(tabs.map(tab=>chrome.scripting.executeScript({target:{tabId:tab.id},files:['dashboard-controls.js']})))).catch(()=>{});});
 chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
-  if(!['start','pause','resume','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier','collector-status'].includes(message.type))return;
+  if(!['start','pause','resume','rescan-directories','queue-price-backfill','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier','collector-status'].includes(message.type))return;
   (async()=>{
     if(message.type==='start'){
       const old=await read();if(old?.running)throw new Error('Pause the existing collection first.');
@@ -95,6 +109,11 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       await chrome.storage.local.set({collectorPaused:false});
       await save({running:true,queue:newestSetQueue(eligible.map(url=>({url,pages:0}))),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting newest-first collection…'});
       await schedule();void run();
+    }else if(message.type==='rescan-directories'){
+      await preserveAndUpdateQueue(recheckSourceDirectories);
+    }else if(message.type==='queue-price-backfill'){
+      const data=await cloudRequest(chrome,'/reference-collector/sets');
+      await preserveAndUpdateQueue(job=>queueEarlierPriceBackfill(job,data.sets));
     }else if(message.type==='collector-status'){const job=await read();return {job:job||null,pending:((await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch||[]).length};}
     else if(message.type==='pause')await pause('Paused. Uploaded references are safe in the cloud.');
     else if(message.type==='resume'){const job=await read();if(!job?.queue.length)throw new Error('Start a new collection first.');const pending=(await chrome.storage.local.get('pendingCloudBatch')).pendingCloudBatch;if(pending?.length)await uploadReferences(chrome,pending);await chrome.storage.local.set({collectorPaused:false});job.running=true;await save(job);void run();}

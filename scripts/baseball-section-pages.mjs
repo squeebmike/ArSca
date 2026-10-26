@@ -18,10 +18,23 @@ const sportFor=s=>s.sport==='football'||/football/i.test(s.displayName)?'footbal
 const setPath=s=>'/'+sportFor(s)+'/checklists/'+s.id;
 const sectionPath=(s,g)=>setPath(s)+'/sections/'+g.id;
 const cardPath=(s,c)=>setPath(s)+'/cards/'+c.id;
+function correctPublishedGroup(setId,group){
+ if(setId!=='2023-topps-update')return group;
+ // Publisher PDF: MLB2303-2023ToppsUpdateSeriesBBChecklistFinal_20-Revised.pdf.
+ // AA-51, T88CU-97, TS-20 and BSDA-RJO print "Nolan Ryan California
+ // Angels". The legacy parser recognized only "Angels" as the team.
+ let changed=false;
+ const cards=group.cards.map(card=>{
+  if(!card.subjects?.some(s=>s.name==='Nolan Ryan California'&&s.team==='Angels'))return card;
+  changed=true;const subjects=card.subjects.map(s=>s.name==='Nolan Ryan California'&&s.team==='Angels'?{...s,name:'Nolan Ryan',team:'California Angels'}:s);
+  return {...card,subjects,player:subjects.map(s=>s.name).join(' / '),team:[...new Set(subjects.map(s=>s.team))].join(' / ')};
+ });
+ return changed?{...group,cards}:group;
+}
 const sectionsBySet=new Map();
 for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections,...bowmanProspectSections]){
  const groups=sectionsBySet.get(source.setId)||[];
- for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(group);
+ for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(correctPublishedGroup(source.setId,group));
  sectionsBySet.set(source.setId,groups);
 }
 // Older imports split prospect blocks by PDF column or used alternate headings.

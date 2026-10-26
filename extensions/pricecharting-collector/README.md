@@ -1,4 +1,4 @@
-# Mana Pocket Card Collector — cloud edition (1.2.2)
+# Mana Pocket Card Collector — cloud edition (1.3.1)
 
 ## Install once
 
@@ -11,6 +11,14 @@ This is an unpacked extension, not a Chrome Web Store listing. Permissions cover
 Open the signed-in [ArSca dashboard](https://squeebmike.github.io/ArSca/dashboard.html), then click **Connect cloud** in the collector. The dashboard's existing session authorizes cloud requests as The Mana Pocket's owner/admin. No Supabase access token is copied into the extension. Keep Chrome and that dashboard tab open while collecting. If sign-in expires, collection pauses with a recoverable pending metadata batch.
 
 You can now use the **Cloud card collector** panel on the regular ArSca dashboard. Click **Start newest first** to discover baseball and football directories together, then collect linked eligible sets in descending set-year order. Known release dates and the provider's New Releases list help order sets within a year; undated same-year sets fall back to alphabetical order. Article writing dates are never used. The panel shows live cloud counts, the current set, and Pause/Resume controls. If it is missing after installation, reload the dashboard.
+
+## Update from 1.3.0 without losing progress
+
+Click **Reload** for this existing extension in Chrome, then reload the dashboard. The current source position, pending upload, completed sources and cloud records are preserved. No new permissions are requested.
+
+Version 1.3.1 fixes a discovery filter that omitted unsuffixed flagship sources such as `2026-topps` and `2023-bowman`. Click **Recheck source directories** to revisit the saved directory roots while keeping the active source and pending queue. Already-seen set URLs are skipped; newly eligible source links are added in newest-first order after the current source. Do not click Start to repair an existing job: Start creates a replacement job.
+
+Click **Queue earlier price backfill** to schedule one revisit of the actual 2025/2026 sources already saved in the cloud. It starts automatically after the main queue finishes, uses the current price-aware parser, and upserts the same records. Blank source prices remain unavailable; old values are not invented or represented as store offers. The panel distinguishes queued, active and completed price revisits. Both controls preserve an explicit owner/source pause.
 
 ## Minimal-work collection
 
