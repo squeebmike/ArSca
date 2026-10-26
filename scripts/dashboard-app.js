@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.26.3-store-api-keys';
+const APP_VERSION = '2026.10.26.4-store-branding';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -362,6 +362,13 @@ function currentStoreFeatures(){
   if(window._storeFeatures) return window._storeFeatures;
   try { const saved = JSON.parse(localStorage.getItem(STORE_FEATURES_CACHE_KEY) || 'null'); if(saved?.storeId && saved.storeId === getActiveStoreId()) return saved.features || null; } catch(e) {}
   return null;
+}
+// The name printed on this store's labels and statements: The Mana Pocket's
+// own wording for it (and while features aren't known), else the store's name.
+function storeBrandName(){
+  const f = currentStoreFeatures();
+  if(!f || f.platform !== false) return 'The Mana Pocket';
+  return String(getActiveStore()?.displayName || getVendorProfile()?.storeName || '').trim() || 'Our store';
 }
 function storeFeatureEnabled(feature){ const f = currentStoreFeatures(); return !f || f[feature] !== false; }
 function featureCanAccessTab(tab){ const feature = TAB_STORE_FEATURE[tab]; return !feature || storeFeatureEnabled(feature); }
@@ -23474,7 +23481,7 @@ function consignDay(v){ return v ? new Date(v).toLocaleDateString([], { month:'s
 function consignorStatementText(st, storeName){
   const m = n => '$' + Number(n || 0).toFixed(2);
   const line = c => '- ' + c.item + ' -- sold ' + m(consignSaleValue(c)) + (consignFee(c) ? ', ' + m(consignFee(c)) + ' marketplace fees' : '') + ', store ' + consignMoney(c.split) + '% (' + m(consignStoreCut(c)) + '), you get ' + m(consignOwnerCut(c)) + (c.soldAt ? ' -- ' + consignDay(c.soldAt) : '');
-  const out = [(storeName || 'The Mana Pocket') + ' -- consignment statement for ' + st.owner + ', ' + consignDay(new Date().toISOString()), ''];
+  const out = [(storeName || storeBrandName()) + ' -- consignment statement for ' + st.owner + ', ' + consignDay(new Date().toISOString()), ''];
   out.push('OWED TO YOU: ' + m(st.owedTotal));
   if(st.owed.length) out.push(...st.owed.map(line));
   if(st.paid.length) out.push('', 'ALREADY PAID (' + m(st.paidTotal) + '):', ...st.paid.map(c => line(c) + (c.paidOutAt ? ' -- paid ' + consignDay(c.paidOutAt) : '')));
@@ -23494,7 +23501,7 @@ function consignorStatementHtml(st){
 }
 function openConsignorStatement(encoded){
   const owner = decodeURIComponent(encoded), st = consignorStatementData(owner);
-  const storeName = getActiveStore()?.displayName || 'The Mana Pocket';
+  const storeName = getActiveStore()?.displayName || storeBrandName();
   const text = consignorStatementText(st, storeName);
   const phone = /\d{7,}/.test(String(st.contact).replace(/\D/g, '')) && !String(st.contact).includes('@') ? String(st.contact).replace(/[^\d+]/g, '') : '';
   const email = String(st.contact).includes('@') ? String(st.contact).trim() : '';
@@ -24358,7 +24365,7 @@ function publicInventoryDescription(item={}, updates={}) {
     d.issue ? 'Issue: '+d.issue : '',
     d.grader || d.grading_company || d.grade ? 'Grade: '+[d.grader||d.grading_company,d.grade].filter(Boolean).join(' ') : '',
     d.is_signed ? 'Signed'+(d.signed_by?' by '+d.signed_by:'') : '',
-    'Available from The Mana Pocket.'
+    'Available from ' + storeBrandName() + '.'
   ].filter(Boolean).join('\n');
 }
 
@@ -45126,7 +45133,7 @@ async function printInventoryLabels(){
           <div class="wrap-bottom-row"><span class="wrap-condition">${escHtml(b.condition || '')}</span><span class="wrap-meta">${escHtml(b.meta || '')}</span></div>
         </div>
         <div class="wrap-back">
-          <div class="wrap-shopname">THE MANA POCKET</div>
+          <div class="wrap-shopname">${escHtml(storeBrandName().toUpperCase())}</div>
           ${barcodeImg}
         </div>
       </div>` : `<div class="label">
@@ -45446,7 +45453,7 @@ async function renderInventoryLabelCanvas(b, opts = labelRenderOptions()){
     // .wrap-shopname { 8px bold; one line }
     setFont(8);
     const shopH = metrics(8).normal;
-    drawLines(['THE MANA POCKET'], bx + backW / 2, fy + bPadT, 8, shopH, 'center');
+    drawLines([storeBrandName().toUpperCase()], bx + backW / 2, fy + bPadT, 8, shopH, 'center');
     // The code image: width:100%, flex:1, object-fit:contain -- the largest
     // square that fits in what's left of the face.
     const boxTop = fy + bPadT + shopH + 4, boxBottom = fy + iH - bPadB;

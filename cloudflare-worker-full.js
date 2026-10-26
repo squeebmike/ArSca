@@ -1705,6 +1705,15 @@ async function getStripeAccountRow(env, storeId, mode) {
   return data?.[0] || null;
 }
 
+// Second-store pilot: the platform's cut of another store's card sale is
+// that store's own fee (store_features; 10 cents a sale by default). The
+// Mana Pocket keeps the Worker-wide setting below, as before.
+async function storeApplicationFee(env, storeId, amount) {
+  if (isPlatformStore(storeId, env)) return stripeApplicationFee(env, amount);
+  const f = await storeFeaturesFor(env, storeId);
+  return Math.max(0, Math.min(Math.max(0, amount - 1), Math.round(amount * (Number(f.feeBps) || 0) / 10000) + Math.round(Number(f.feeFixedCents) || 0)));
+}
+
 function stripeApplicationFee(env, amount) {
   if (String(env.ARSCA_PLATFORM_FEE_ENABLED || '').toLowerCase() !== 'true') return 0;
   const bps = Math.max(0, Number(env.ARSCA_PLATFORM_FEE_PERCENT_BPS || 0));
@@ -2033,7 +2042,7 @@ async function handleStripeFoundation(request, env, url) {
     const row=await getStripeAccountRow(env,storeId,mode);if(!row?.connected_account_id)return json({ok:false,error:'Stripe setup required for this store'},409);
     if(!row.charges_enabled)return json({ok:false,error:'Stripe onboarding is incomplete or charges are disabled'},409);
     if(mode==='live'&&!row.fee_payer_verified)return json({ok:false,error:'Live card charging is blocked until Stripe confirms this connected account pays processing fees'},409);
-    const fee=stripeApplicationFee(env,amount);const params=new URLSearchParams({amount:String(amount),currency:String(body.currency||'usd').toLowerCase(),'automatic_payment_methods[enabled]':'true','metadata[arsca_sale_id]':saleId,'metadata[arsca_store_id]':storeId,'metadata[arsca_register_id]':String(body.metadata?.arscaRegisterId||''),'metadata[arsca_user_id]':auth.user.id});if(fee)params.set('application_fee_amount',String(fee));
+    const fee=await storeApplicationFee(env,storeId,amount);const params=new URLSearchParams({amount:String(amount),currency:String(body.currency||'usd').toLowerCase(),'automatic_payment_methods[enabled]':'true','metadata[arsca_sale_id]':saleId,'metadata[arsca_store_id]':storeId,'metadata[arsca_register_id]':String(body.metadata?.arscaRegisterId||''),'metadata[arsca_user_id]':auth.user.id});if(fee)params.set('application_fee_amount',String(fee));
     const pi=await stripeApi(env,mode,'payment_intents',{method:'POST',params,account:row.connected_account_id,idempotencyKey:`arsca-pay-${mode}-${saleId}-${Math.max(1,Number(body.attemptNumber||1))}`});
     const paymentId=body.paymentId||crypto.randomUUID();await supabaseAdminFetch(env,'pos_payments?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:paymentId,sale_id:saleId,store_id:storeId,method:'Stripe Card',amount:amount/100,status:pi.status,provider:'stripe',stripe_mode:mode,stripe_connected_account_id:row.connected_account_id,stripe_payment_intent_id:pi.id,currency:pi.currency,amount_cents:amount,application_fee_amount_cents:fee,processing_fee_paid_by:'connected_account',confirmed_by:auth.user.id,created_at:new Date().toISOString(),updated_at:new Date().toISOString()})});
     return json({ok:true,clientSecret:pi.client_secret,paymentIntentId:pi.id,paymentId,stripeAccount:row.connected_account_id,amountCents:amount,currency:pi.currency,applicationFeeAmount:fee,mode,publishableKey:stripeConfig(env,mode).publishableKey});
@@ -12534,7 +12543,7 @@ async function routeRequest(request, env, ctx) {
         const channel = await sendContactNotification(env, storeId, contact, String(body.subject || 'Message from your store').slice(0, 200), message, body.consent === true);
         return json({ ok:true, channel });
       } catch (e) {
-        const status = e.code === 'opted_out' ? 409 : e.code === 'no_consent' ? 403 : 502;
+        const status = e.code === 'opted_out' ? 409 : e.code === 'no_consent' || e.code === 'sms_off' ? 403 : 502;
         return json({ ok:false, error:e.message }, status);
       }
     }
@@ -19685,11 +19694,32 @@ function emailTextToHtml(text) {
   return `<div style="font-family:Arial,sans-serif;line-height:1.6;white-space:normal">${escaped.replace(/\r?\n/g, '<br>')}</div>`;
 }
 
-async function sendEmail(env, to, subject, text) {
+// Second-store pilot: an email sent for another store carries that store's
+// name as the sender and ends with how to reach it, so a reply never lands in
+// The Mana Pocket's inbox by mistake. Best effort: a failed lookup sends as before.
+async function storeEmailBrand(env, storeId) {
+  try {
+    const id = encodeURIComponent(storeId);
+    const [{ data: stores }, { data: settings }] = await Promise.all([
+      supabaseAdminFetch(env, `stores?id=eq.${id}&select=display_name,name&limit=1`),
+      supabaseAdminFetch(env, `store_settings?store_id=eq.${id}&select=receipt_settings&limit=1`),
+    ]);
+    const name = String(stores?.[0]?.display_name || stores?.[0]?.name || settings?.[0]?.receipt_settings?.storeName || '').trim().slice(0, 80);
+    const email = String(settings?.[0]?.receipt_settings?.email || '').trim();
+    return { name, email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : '' };
+  } catch (_) { return { name: '', email: '' }; }
+}
+
+async function sendEmail(env, to, subject, text, opts = {}) {
   // SENDGRID_FROM_* remains as a backwards-compatible sender-address alias
   // while the site migrates providers. It is not used for authentication.
   const fromAddress = env.TWILIO_EMAIL_FROM_ADDRESS || env.SENDGRID_FROM_EMAIL;
-  const fromName = env.TWILIO_EMAIL_FROM_NAME || env.SENDGRID_FROM_NAME || 'The Mana Pocket';
+  let fromName = env.TWILIO_EMAIL_FROM_NAME || env.SENDGRID_FROM_NAME || 'The Mana Pocket';
+  if (opts.storeId && !isPlatformStore(opts.storeId, env)) {
+    const brand = await storeEmailBrand(env, opts.storeId);
+    fromName = brand.name || 'Store notification';
+    if (brand.email) text = String(text || '') + `\n\nQuestions? Contact ${brand.name || 'the store'} at ${brand.email}.`;
+  }
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !fromAddress) throw new Error('Email is not configured yet');
   const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
   const res = await fetch('https://comms.twilio.com/v1/Emails', {
@@ -19824,9 +19854,11 @@ async function sendContactNotification(env, storeId, contact, subject, message, 
     const contactRow = await emailNotifyContact(env, storeId, clean);
     if (contactRow.optedOut) { const err = new Error('This customer has unsubscribed from emails. Contact them another way.'); err.code = 'opted_out'; throw err; }
     const footer = await emailUnsubscribeFooter(env, storeId, contactRow.unsubscribeToken);
-    await sendEmail(env, clean, subject, message + footer);
+    await sendEmail(env, clean, subject, message + footer, { storeId });
     return 'email';
   }
+  // Texts go out from The Mana Pocket's own number: only for stores allowed it.
+  if (!(await storeFeaturesFor(env, storeId)).sms) { const err = new Error('Texts are off for this store. Use the customer\'s email address instead.'); err.code = 'sms_off'; throw err; }
   const status = await smsConsentStatus(env, storeId, clean);
   if (status.optedOut) { const err = new Error('This customer has opted out of text messages (replied STOP). Contact them another way.'); err.code = 'opted_out'; throw err; }
   if (!hasConsent) { const err = new Error('No SMS consent on file for this contact -- check the consent box before texting them.'); err.code = 'no_consent'; throw err; }
@@ -19856,7 +19888,7 @@ async function emailUnsubscribeFooter(env, storeId, unsubscribeToken) {
   try {
     const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
     const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
-    if (completeShippoOrigin(origin)) addressLine = `${origin.name || 'The Mana Pocket'}, ${origin.street1}${origin.street2 ? ', ' + origin.street2 : ''}, ${origin.city}, ${origin.state} ${origin.zip}\n`;
+    if (completeShippoOrigin(origin)) addressLine = `${origin.name || (isPlatformStore(storeId, env) ? 'The Mana Pocket' : 'Our store')}, ${origin.street1}${origin.street2 ? ', ' + origin.street2 : ''}, ${origin.city}, ${origin.state} ${origin.zip}\n`;
   } catch (e) { /* best-effort -- a missing address must never block the send */ }
   const unsubscribeLine = unsubscribeToken
     ? `Don't want emails like this? Unsubscribe: https://still-resonance-4f87.swarnerauto.workers.dev/notify/email-unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`
