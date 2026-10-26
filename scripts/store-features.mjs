@@ -79,7 +79,12 @@ export function featureForPath(pathname = '') {
   // Texts and calls go out from The Mana Pocket's own Twilio number.
   if (p.startsWith('/phone/') || p.startsWith('/twilio/')) return 'sms';
   if (p.startsWith('/foc/') || p.startsWith('/backlist/admin/') || p.startsWith('/comic/') || p === '/preorders/pull-list' || p.startsWith('/preorders/pull-list/')) return 'comics';
-  if (p.startsWith('/store/storefront-orders') || p.startsWith('/store/stuck-payments')) return 'website';
+  // /proxy/* is the Webflow API on The Mana Pocket's own token: its whole
+  // website, read and write (pilot dry run, 2026-10-26).
+  if (p.startsWith('/store/storefront-orders') || p.startsWith('/store/stuck-payments') || p.startsWith('/proxy/')) return 'website';
+  // SportsCardsPro runs on The Mana Pocket's paid token, and a store can't
+  // add its own in PRICING APIS, so only stores sharing its keys reach it.
+  if (p.startsWith('/pricing/sportscardspro/')) return 'sharedPricingKeys';
   return null;
 }
 
