@@ -3869,7 +3869,7 @@ export async function runScheduledStockHealth(env,deps,now=Date.now()){
       if(await env.LBA_KV.get(key))continue;
       await env.LBA_KV.put(key,'1',{expirationTtl:2*86400});
       const {subject,body}=stockHealthEmail(report);
-      try{await deps.sendEmail(env,to,subject,body);}catch(e){await env.LBA_KV.delete(key).catch(()=>{});console.error('Stock health email failed',st.store_id,e.message);}
+      try{await deps.sendEmail(env,to,subject,body,{storeId:st.store_id});}catch(e){await env.LBA_KV.delete(key).catch(()=>{});console.error('Stock health email failed',st.store_id,e.message);}
     }catch(e){console.error('Stock health check failed for store',st.store_id,e.message);}
   }
 }

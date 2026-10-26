@@ -6,7 +6,7 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 
 // ── Worker: send helpers ────────────────────────────────────────────
 assert.match(worker, /async function sendSms\(env, to, body\) \{/, 'missing sendSms');
-assert.match(worker, /async function sendEmail\(env, to, subject, text\) \{/, 'missing sendEmail');
+assert.match(worker, /async function sendEmail\(env, to, subject, text, opts = \{\}\) \{/, 'missing sendEmail');
 assert.match(worker, /async function sendContactNotification\(env, storeId, contact, subject, message, hasConsent\) \{/, 'missing sendContactNotification (storeId + hasConsent are required for SMS consent/opt-out gating)');
 
 // SMS goes through Twilio's Messages API with Basic auth (Account SID/Auth Token).
@@ -42,7 +42,7 @@ assert.match(worker, /if \(!hasConsent\) \{ const err = new Error\('No SMS conse
 assert.match(worker, /async function emailNotifyContact\(env, storeId, email\) \{/, 'missing emailNotifyContact helper');
 assert.match(worker, /if \(contactRow\.optedOut\) \{ const err = new Error\('This customer has unsubscribed from emails\. Contact them another way\.'\); err\.code = 'opted_out'; throw err; \}/, 'sendContactNotification must refuse to email an address that has unsubscribed');
 assert.match(worker, /const footer = await emailUnsubscribeFooter\(env, storeId, contactRow\.unsubscribeToken\);/, 'every promotional email sent through this path must get an unsubscribe footer appended');
-assert.match(worker, /await sendEmail\(env, clean, subject, message \+ footer\);/, 'the unsubscribe footer must actually be included in the sent message, not just built');
+assert.match(worker, /await sendEmail\(env, clean, subject, message \+ footer, \{ storeId \}\);/, 'the unsubscribe footer must actually be included in the sent message, not just built');
 assert.match(worker, /async function emailUnsubscribeFooter\(env, storeId, unsubscribeToken\) \{/, 'missing emailUnsubscribeFooter helper');
 assert.match(worker, /if \(url\.pathname === '\/notify\/email-unsubscribe' && request\.method === 'GET'\) \{/, 'missing /notify/email-unsubscribe route');
 assert.match(worker, /await supabaseAdminFetch\(env, `email_notify_contacts\?id=eq\.\$\{encodeURIComponent\(row\.id\)\}`, \{ method: 'PATCH', headers: \{ Prefer: 'return=minimal' \}, body: JSON\.stringify\(\{ opted_out: true, opted_out_at: new Date\(\)\.toISOString\(\) \}\) \}\);/, 'the unsubscribe route must actually flip the opted_out flag');
@@ -55,7 +55,7 @@ assert.match(worker, /const auth = await requireStoreUser\(request, env, storeId
 assert.match(worker, /const rateError = await enforceUsageLimit\(env, `notify-send:\$\{storeId\}`, 100, 3600\);/, 'notify/send must be rate-limited to prevent runaway SMS/email costs from a bug or abuse');
 assert.match(worker, /if \(!contact \|\| !message\) return json\(\{ ok:false, error:'contact and message are required' \}, 400\);/, 'notify/send must require both contact and message');
 assert.match(worker, /const channel = await sendContactNotification\(env, storeId, contact, String\(body\.subject \|\| 'Message from your store'\)\.slice\(0, 200\), message, body\.consent === true\);/, 'notify/send must pass the caller-asserted consent flag through, not assume consent');
-assert.match(worker, /const status = e\.code === 'opted_out' \? 409 : e\.code === 'no_consent' \? 403 : 502;/, 'notify/send must map opted-out/no-consent to distinct status codes so the UI never falls back to a bypass');
+assert.match(worker, /const status = e\.code === 'opted_out' \? 409 : e\.code === 'no_consent' \|\| e\.code === 'sms_off' \? 403 : 502;/, 'notify/send must map opted-out/no-consent to distinct status codes so the UI never falls back to a bypass');
 
 console.log('/notify/send route checks passed');
 

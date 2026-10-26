@@ -48,7 +48,7 @@ assert.match(dashboard, /const isWrap = layout === 'wrap';/, 'printInventoryLabe
 // inventory record.
 assert.match(dashboard, /<div class="wrap-front">\s*\n\s*<div class="wrap-name">\$\{escHtml\(labelNameKeepNumber\(b\.name, b\.badge \? 24 : 36\)\)\}<\/div>\s*\n\s*\$\{b\.badge \? `<div class="wrap-badge">\$\{escHtml\(b\.badge\)\}<\/div>` : ''\}\s*\n\s*<div class="wrap-price">\$\{escHtml\(fdLabelPrice\$\(b\.price\)\.slice\(1\)\)\}<\/div>\s*\n\s*<div class="wrap-bottom-row"><span class="wrap-condition">\$\{escHtml\(b\.condition \|\| ''\)\}<\/span><span class="wrap-meta">\$\{escHtml\(b\.meta \|\| ''\)\}<\/span><\/div>\s*\n\s*<\/div>/, 'the front face must show the item name, an optional badge, a whole-dollar price with no "$" glyph, and a condition+meta row in that order');
 assert.ok(!/<div class="wrap-front">[\s\S]{0,20}label-store/.test(dashboard), 'the wrap front face must not carry the store name header the standard layout uses');
-assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">THE MANA POCKET<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no separate SKU text (the SKU lives on the front face now)');
+assert.match(dashboard, /<div class="wrap-back">\s*\n\s*<div class="wrap-shopname">\$\{escHtml\(storeBrandName\(\)\.toUpperCase\(\)\)\}<\/div>\s*\n\s*\$\{barcodeImg\}\s*\n\s*<\/div>/, 'the back face must carry only the shop name as plain text and the scan code -- no image logo, no separate SKU text (the SKU lives on the front face now)');
 assert.ok(!/wrap-logo/.test(dashboard), 'the illustrated logo image class must be fully removed -- it was confirmed unreadable on a real printed label');
 assert.match(dashboard, /const codeStyle = isWrap \? 'qr' : \(document\.getElementById\('label-print-code-style'\)\?\.value \|\| 'qr'\);/, 'the wrap back face must always use QR regardless of the barcode-style dropdown -- a linear barcode reads worse than a QR at that size, and QR is now the default for the standard layout too');
 assert.match(dashboard, /const codeGenSize = isWrap \? 500 : 260;/, 'the wrap QR must be generated at a much bigger native size than the standard layout\'s code -- undersized generation followed by scaling is what made a confirmed-real QR fail to scan');
@@ -155,7 +155,7 @@ assert.ok(!/wrapLogoImg/.test(dashboard), 'no wrap-logo-image variable may remai
   assert.match(fn, /setFont\(11\);/, 'condition: 11px bold');
   assert.match(fn, /setFont\(6, false\);\s*\n\s*t\.fillStyle = LABEL_PNG_MUTED;/, 'meta: 6px regular, muted');
   assert.match(fn, /const bPadT = 6, bPadX = 4, bPadB = 4;/, 'back face: padding 6px 4px 4px, same as .wrap-back');
-  assert.match(fn, /drawLines\(\['THE MANA POCKET'\], bx \+ backW \/ 2, fy \+ bPadT, 8, shopH, 'center'\);/, 'shop name: one line of 8px bold text');
+  assert.match(fn, /drawLines\(\[storeBrandName\(\)\.toUpperCase\(\)\], bx \+ backW \/ 2, fy \+ bPadT, 8, shopH, 'center'\);/, 'shop name: one line of 8px bold text');
   assert.match(fn, /const size = Math\.min\(boxW, boxH\);/, 'the QR is the largest square left in the back face, like object-fit:contain');
   assert.ok(!/tctx\.fillText\(b\.sku|t\.fillText\(b\.sku/.test(fn), 'the SKU digits must not be drawn on the label');
   assert.ok(!/`900 /.test(fn), 'no label text may request a synthesized 900 weight');

@@ -12,7 +12,7 @@ export const PLATFORM_STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9'; // The 
 // Account-tied features are enforced by the Worker; the rest only shape the
 // dashboard (nothing of the platform's is reachable through them).
 export const FEATURE_KEYS = ['ebay', 'shopify', 'comics', 'website', 'sms', 'sharedPricingKeys', 'consignment', 'whatnot'];
-export const SERVER_FEATURES = ['ebay', 'shopify', 'comics', 'website'];
+export const SERVER_FEATURES = ['ebay', 'shopify', 'comics', 'website', 'sms'];
 
 export const PLATFORM_FEATURES = Object.freeze({
   ...Object.fromEntries(FEATURE_KEYS.map(k => [k, true])),
@@ -76,6 +76,8 @@ export function featureForPath(pathname = '') {
   const p = String(pathname);
   if (p.startsWith('/ebay/') || p.startsWith('/foc/ebay/') || p.startsWith('/dealscan')) return 'ebay';
   if (p.startsWith('/shopify/')) return 'shopify';
+  // Texts and calls go out from The Mana Pocket's own Twilio number.
+  if (p.startsWith('/phone/') || p.startsWith('/twilio/')) return 'sms';
   if (p.startsWith('/foc/') || p.startsWith('/backlist/admin/') || p.startsWith('/comic/') || p === '/preorders/pull-list' || p.startsWith('/preorders/pull-list/')) return 'comics';
   if (p.startsWith('/store/storefront-orders') || p.startsWith('/store/stuck-payments')) return 'website';
   return null;
