@@ -141,7 +141,7 @@ assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.i
 assert.ok(worker.includes("source: 'server-daily-sync'"), 'server calls are logged');
 assert.ok(worker.includes("url.pathname === '/price-sync/review'"), 'review queue route');
 assert.ok(deploy.includes('scripts/ppt-usage.mjs') && deploy.includes('scripts/pokemon-daily-sync.mjs'), 'deploys on change');
-assert.ok(ui.includes('if(dailyPriceSyncRunning) items = items.filter(i => !serverPriceCheckedToday(i));'), 'dashboard daily run skips server-checked cards');
+assert.ok(ui.includes('if(dailyPriceSyncRunning) items = items.filter(i => !serverHandlesPokemonPrice(i) && !serverPriceCheckedToday(i));'), 'dashboard daily run leaves the server its cards');
 assert.ok(ui.includes("storeWorkerFetch('/price-sync/review'"), 'server review queue shown in PRICE SYNC');
 
 console.log('pokemon server sync + credit log tests passed');
