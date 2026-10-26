@@ -76,7 +76,7 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  const set=sets.find(s=>url.pathname.startsWith(setPath(s)+'/'));if(!set)return null;
  const groups=sectionsForSet(set),group=[...groups,...sportsSectionCollections(groups,set)].find(g=>url.pathname===sectionPath(set,g));
  const baseCard=(url.searchParams.has('parallel')||url.searchParams.has('market')||url.searchParams.has('reference'))?set.cards.find(c=>cardPath(set,c)===url.pathname):null;
- const cardGroup=groups.find(g=>g.cards.some(c=>cardPath(set,c)===url.pathname))||(baseCard?{id:'base',name:'Base',kind:'Base',cards:set.cards}:null);
+ const cardGroup=groups.find(g=>g.cards.some(c=>cardPath(set,c)===url.pathname))||(baseCard?{id:'base',name:set.baseChecklistLabel||'Base',kind:/auto/i.test(set.baseChecklistLabel||'')?'Autographs':'Base',cards:set.cards}:null);
  if(!group&&!cardGroup)return url.pathname.startsWith(setPath(set)+'/sections/')?missing():null;
  const esc=deps.escape;
  const activeGroup=group||cardGroup;

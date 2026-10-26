@@ -11,6 +11,7 @@ export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
  if(sport==='baseball'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
  if(sport==='baseball'&&/topps update series/i.test(set.displayName))ids.push('baseball-cards-'+name.replace('-update-series','-update'));
+ if(set.id==='2024-topps-five-star-baseball')ids.push('baseball-cards-2024-topps-five-star-autograph');
  if(set.id==='2026-bowman-baseball'){
   if(!card||card.section==='Paper Prospects')ids.push('baseball-cards-2026-bowman-paper-prospect');
   if(!card||card.section==='Chrome Prospects')ids.push('baseball-cards-2026-bowman-chrome-prospect');

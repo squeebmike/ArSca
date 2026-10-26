@@ -17,6 +17,7 @@ on:
       - scripts/web-loyalty.mjs
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
+      - scripts/topps/five-star-2024.mjs
       - scripts/sports-player-team-search.mjs
       - scripts/sports-parallels.mjs
       - scripts/sports-reference-images.mjs

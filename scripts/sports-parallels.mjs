@@ -32,6 +32,9 @@ const cosmicGreen=()=>variants([['Green Space Dust Refractor',75]]).concat(cosmi
 const bowman23Paper=()=>variants([['Sky Blue Border',499],['Neon Green Border',399],['Fuchsia Border',299],['Purple Border',250],['Purple Pattern',199],['Pink Border',175],['Blue Border',150],['Blue Pattern',125],['Yellow Border',75],['Gold Border',50],['Orange Border',25],['Black Pattern',15],['Red Border',5],['Platinum Border',1],['Printing Plates',1,['printing plate','printing plates']]]);
 const bowman23Insert=()=>variants([['Atomic Refractor',150],['Aqua Refractor',125],['Gold Refractor',50],['Orange Refractor',25],['Red Refractor',5],['SuperFractor',1]]);
 const config={
+ '2024-topps-five-star-baseball':program('https://baseballcardpedia.com/index.php/2024_Topps_Five_Star',[],{
+  'five-star-base-autographs':{variants:variants([['Aqua',75],['Purple',50],['Blue',25],['Green',15],['Gold',10],['Orange',5],['Red',1]])}
+ }),
  ...Object.fromEntries(Object.entries(remainingParallelSpecs).map(([id,p])=>[id,{...p,base:variants(p.base),baseRanges:p.baseRanges?.map(r=>({...r,variants:variants(r.variants)})),sections:Object.fromEntries(Object.entries(p.sections||{}).map(([key,spec])=>[key,{...spec,variants:variants(spec.variants||[])}]))}])),
  '2024-bowman-baseball':program('https://ripped.topps.com/2024-bowman-baseball-checklist-spotlight/',bowman23Paper(),{
   'paper-prospects':{variants:bowman23Paper()},

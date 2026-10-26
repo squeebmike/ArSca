@@ -60,7 +60,7 @@ const spring24=baseballSets.find(s=>s.id==='2024-bowman-baseball'),spring25=base
 const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
 // Coverage means release-specific data exists, not that every print run is known.
 assert.equal(Object.keys(remainingParallelSpecs).length,33);
-assert.equal(Object.keys(parallelPrograms).length,62);
+assert.equal(Object.keys(parallelPrograms).length,63);
 for(const release of [...baseballSets,...footballSets]){
  const p=parallelPrograms[release.id];assert.ok(p,release.id);
  for(const card of release.cards)assert.ok(cardParallelProgram(release,card).variants.length,release.id+'/'+card.cardNumber);
@@ -192,7 +192,7 @@ assert.ok(disclosurePanel.indexOf('Affiliate links may earn')<disclosurePanel.in
 for(const [id,p] of Object.entries(parallelPrograms)){
  const release=[...baseballSets,...footballSets].find(s=>s.id===id);assert.ok(release,id);
  assert.match(p.source,/^https:\/\/(?:ripped\.topps\.com|www\.blowoutcards\.net|www\.topps\.com|cdn\.shopify\.com|gogts\.net|www\.beckett\.com|www\.cardboardconnection\.com|baseballcardpedia\.com)\//);
- const sections=new Set(sectionsForSet(release).map(g=>g.id));
+ const sections=new Set([...sectionsForSet(release).map(g=>g.id),...release.cards.map(c=>(c.section||'Base').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''))]);
  for(const [section,spec] of Object.entries(p.sections)){assert.ok(sections.has(section),id+'/'+section);assert.equal(new Set((spec.variants||[]).map(v=>v.id)).size,(spec.variants||[]).length);}
 }
 assert.ok(!cardParallelProgram(set,{section:'Unknown Insert'}).variants.length,'do not inherit the base rainbow into unrelated inserts');
