@@ -53,8 +53,10 @@ for (const [path, feature] of [
   ['/store/storefront-orders', 'website'], ['/store/stuck-payments/resolve', 'website'],
   ['/proxy/sites', 'website'], ['/proxy/collections/abc/items', 'website'],
   ['/public/storefront', 'website'], ['/public/storefront/item', 'website'], ['/public/storefront/checkout', 'website'], ['/public/storefronts', null],
+  ['/public/account/me', 'website'], ['/public/fan-club/join', 'website'], ['/public/shipping/quotes', 'website'],
+  ['/public/preorders', 'comics'], ['/public/preorders/checkout', 'comics'], ['/preorders/catalog', 'comics'], ['/public/comics/new-releases', 'comics'], ['/public/backlist/search', 'comics'],
   ['/pricing/sportscardspro/products', 'sharedPricingKeys'], ['/pricing/sportscardspro/image', 'sharedPricingKeys'],
-  ['/inventory/record-external-sale', null], ['/pricing/pokemon/cards', null], ['/pos/sale', null], ['/store/features', null], ['/public/preorders', null],
+  ['/inventory/record-external-sale', null], ['/pricing/pokemon/cards', null], ['/pos/sale', null], ['/store/features', null], ['/public/products', null],
 ]) assert.equal(featureForPath(path), feature, path);
 
 // ── The guard: any store the request names ──
@@ -119,6 +121,14 @@ try {
     assert.equal(res.status, 403, 'checkout for another store refused (' + contentType + ')');
   }
   assert.ok(!seen.some(u => u.includes('inventory_items') || u.includes('storefront_inventory')), 'and its inventory is never read');
+  // Nor its customers through your website's accounts, fan club or comic preorders.
+  for (const [path, feature] of [['/public/account/me?store_id=' + OTHER, 'website'], ['/public/preorders?store_id=' + OTHER, 'comics']]) {
+    res = await callWith(wfEnv, path, '');
+    assert.equal(res.status, 403, path);
+    assert.equal((await res.json()).featureDisabled, feature);
+  }
+  res = await callWith(wfEnv, '/public/fan-club/join', '', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ storeId: OTHER, email: 'a@example.com' }) });
+  assert.equal(res.status, 403, 'fan club signup for another store refused');
   res = await callWith(wfEnv, '/public/storefront?store_id=' + PLATFORM_STORE_ID, '');
   assert.notEqual((await res.clone().json().catch(() => ({}))).featureDisabled, 'website', 'your storefront goes through as before');
   res = await callWith(wfEnv, '/proxy/sites', PLATFORM_STORE_ID);
