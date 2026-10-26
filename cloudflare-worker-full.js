@@ -54,6 +54,8 @@ import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './sc
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
+import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
+import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -1224,6 +1226,26 @@ async function supabaseAdminFetchOnce(env, path, options = {}) {
   return { data, response };
 }
 
+// The store_features row the second-store pilot reads (scripts/store-features.mjs).
+function storeFeatureReader(env) {
+  return async storeId => {
+    const { data } = await supabaseAdminFetch(env, `store_features?store_id=eq.${encodeURIComponent(storeId)}&select=*&limit=1`);
+    return Array.isArray(data) ? data[0] || null : null;
+  };
+}
+function storeFeaturesFor(env, storeId) { return storeFeatures(env, storeId, storeFeatureReader(env)); }
+function storeKeyReader(env) {
+  return async storeId => (await supabaseAdminFetch(env, `store_api_keys?store_id=eq.${encodeURIComponent(storeId)}&select=provider,ciphertext`)).data || [];
+}
+// The pricing keys a store's requests run on (scripts/store-api-keys.mjs):
+// The Mana Pocket's own for it and for a store allowed to share them,
+// otherwise the store's own -- blank where it has none, never yours.
+async function pricingEnvForStore(env, storeId) {
+  if (!storeId || isPlatformStore(storeId, env)) return env;
+  if ((await storeFeaturesFor(env, storeId)).sharedPricingKeys) return env;
+  return envWithStoreKeys(env, storeId, await storeApiKeys(env, storeId, storeKeyReader(env)));
+}
+
 async function requirePlatformAdmin(request, env) {
   const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
   if (!token) return { error: json({ ok:false, error:'Authentication required' }, 401) };
@@ -1683,6 +1705,15 @@ async function getStripeAccountRow(env, storeId, mode) {
   return data?.[0] || null;
 }
 
+// Second-store pilot: the platform's cut of another store's card sale is
+// that store's own fee (store_features; 10 cents a sale by default). The
+// Mana Pocket keeps the Worker-wide setting below, as before.
+async function storeApplicationFee(env, storeId, amount) {
+  if (isPlatformStore(storeId, env)) return stripeApplicationFee(env, amount);
+  const f = await storeFeaturesFor(env, storeId);
+  return Math.max(0, Math.min(Math.max(0, amount - 1), Math.round(amount * (Number(f.feeBps) || 0) / 10000) + Math.round(Number(f.feeFixedCents) || 0)));
+}
+
 function stripeApplicationFee(env, amount) {
   if (String(env.ARSCA_PLATFORM_FEE_ENABLED || '').toLowerCase() !== 'true') return 0;
   const bps = Math.max(0, Number(env.ARSCA_PLATFORM_FEE_PERCENT_BPS || 0));
@@ -2011,7 +2042,7 @@ async function handleStripeFoundation(request, env, url) {
     const row=await getStripeAccountRow(env,storeId,mode);if(!row?.connected_account_id)return json({ok:false,error:'Stripe setup required for this store'},409);
     if(!row.charges_enabled)return json({ok:false,error:'Stripe onboarding is incomplete or charges are disabled'},409);
     if(mode==='live'&&!row.fee_payer_verified)return json({ok:false,error:'Live card charging is blocked until Stripe confirms this connected account pays processing fees'},409);
-    const fee=stripeApplicationFee(env,amount);const params=new URLSearchParams({amount:String(amount),currency:String(body.currency||'usd').toLowerCase(),'automatic_payment_methods[enabled]':'true','metadata[arsca_sale_id]':saleId,'metadata[arsca_store_id]':storeId,'metadata[arsca_register_id]':String(body.metadata?.arscaRegisterId||''),'metadata[arsca_user_id]':auth.user.id});if(fee)params.set('application_fee_amount',String(fee));
+    const fee=await storeApplicationFee(env,storeId,amount);const params=new URLSearchParams({amount:String(amount),currency:String(body.currency||'usd').toLowerCase(),'automatic_payment_methods[enabled]':'true','metadata[arsca_sale_id]':saleId,'metadata[arsca_store_id]':storeId,'metadata[arsca_register_id]':String(body.metadata?.arscaRegisterId||''),'metadata[arsca_user_id]':auth.user.id});if(fee)params.set('application_fee_amount',String(fee));
     const pi=await stripeApi(env,mode,'payment_intents',{method:'POST',params,account:row.connected_account_id,idempotencyKey:`arsca-pay-${mode}-${saleId}-${Math.max(1,Number(body.attemptNumber||1))}`});
     const paymentId=body.paymentId||crypto.randomUUID();await supabaseAdminFetch(env,'pos_payments?on_conflict=id',{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify({id:paymentId,sale_id:saleId,store_id:storeId,method:'Stripe Card',amount:amount/100,status:pi.status,provider:'stripe',stripe_mode:mode,stripe_connected_account_id:row.connected_account_id,stripe_payment_intent_id:pi.id,currency:pi.currency,amount_cents:amount,application_fee_amount_cents:fee,processing_fee_paid_by:'connected_account',confirmed_by:auth.user.id,created_at:new Date().toISOString(),updated_at:new Date().toISOString()})});
     return json({ok:true,clientSecret:pi.client_secret,paymentIntentId:pi.id,paymentId,stripeAccount:row.connected_account_id,amountCents:amount,currency:pi.currency,applicationFeeAmount:fee,mode,publishableKey:stripeConfig(env,mode).publishableKey});
@@ -2177,6 +2208,29 @@ async function handlePlatformAdmin(request, env, url) {
       return { ...store, inventoryCount:count(inventory), memberCount:count(members), saleCount:count(sales), lastActivity:activity.data?.[0] || null };
     }));
     return json({ ok:true, stores:enriched, total:Number(String(response.headers.get('content-range') || '').split('/')[1] || enriched.length) });
+  }
+
+  // Second-store pilot: what each store may use (scripts/store-features.mjs).
+  // The Mana Pocket always has everything and can't be changed here.
+  const featureMatch = path.match(/^\/admin\/stores\/([0-9a-f-]{36})\/features$/i);
+  if (featureMatch && request.method === 'GET') {
+    const storeId = featureMatch[1];
+    return json({ ok:true, storeId, platform:isPlatformStore(storeId, env), keys:FEATURE_KEYS, features: await storeFeaturesFor(env, storeId) });
+  }
+  if (featureMatch && request.method === 'POST') {
+    const storeId = featureMatch[1];
+    if (isPlatformStore(storeId, env)) return json({ ok:false, error:'The Mana Pocket always has every feature' }, 400);
+    const parsed = await readJsonWithLimit(request, 8 * 1024);
+    if (parsed.error) return parsed.error;
+    const body = parsed.data;
+    if (!body || typeof body.features !== 'object') return json({ ok:false, error:'features required' }, 400);
+    const before = await storeFeaturesFor(env, storeId);
+    const row = { ...rowFromFeatures(storeId, body.features), updated_at:new Date().toISOString(), updated_by:auth.user.id };
+    await supabaseAdminFetch(env, 'store_features?on_conflict=store_id', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify(row) });
+    clearStoreFeatureCache(storeId);
+    const after = await storeFeaturesFor(env, storeId);
+    await writePlatformAudit(env, auth.user, 'store_features.update', storeId, 'store_features', storeId, before, after, body.reason || 'Store features changed').catch(() => {});
+    return json({ ok:true, storeId, features:after });
   }
 
   const storeMatch = path.match(/^\/admin\/stores\/([0-9a-f-]+)$/i);
@@ -4400,7 +4454,7 @@ async function storesWithEbayListings(env) {
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
   const listed = [];
-  for (const storeId of storeIds) {
+  for (const storeId of await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))) {
     const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&or=(data->>ebaySku.neq.,data->>ebayListingId.neq.)&select=id&limit=1`);
     if ((rows || []).length) listed.push(storeId);
   }
@@ -6097,6 +6151,62 @@ async function routeRequest(request, env, ctx) {
     }
     try {
     const url = new URL(request.url);
+
+    // Second-store pilot: eBay, Shopify, the comic/FOC workflow and website
+    // orders run on The Mana Pocket's own accounts. Another store's request
+    // for one is refused here, before any route runs -- whichever store the
+    // header, query or body names (scripts/store-features.mjs).
+    if (featureForPath(url.pathname)) {
+      const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') ? await request.clone().json().catch(() => null) : null;
+      const walled = await walledRequest(env, request, url, storeFeatureReader(env), peek);
+      if (walled) return json({ ok:false, error:'Not available for this store', featureDisabled:walled.feature }, 403);
+    }
+    // Second-store pilot: a store prices on its own API keys. For a request
+    // naming another store, its keys replace The Mana Pocket's in env, so
+    // every pricing lookup below uses them (scripts/store-api-keys.mjs).
+    {
+      let keyStore = request.headers.get('X-Store-Id') || url.searchParams.get('store') || url.searchParams.get('store_id') || '';
+      if (!keyStore && ['POST','PUT','PATCH'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') && Number(request.headers.get('Content-Length') || 0) <= 1e6) {
+        const body = await request.clone().json().catch(() => null);
+        keyStore = String(body?.storeId || body?.store_id || '');
+      }
+      env = await pricingEnvForStore(env, keyStore.trim());
+    }
+    // A store's own pricing keys, set in Settings -> PRICING APIS. Only the
+    // last 4 characters ever come back.
+    if (url.pathname === '/store/api-keys') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const platform = isPlatformStore(storeId, env);
+      const shared = !platform && (await storeFeaturesFor(env, storeId)).sharedPricingKeys;
+      if (request.method === 'POST') {
+        if (platform || shared) return json({ ok:false, error:'This store uses the built-in pricing keys' }, 400);
+        const parsed = await readJsonWithLimit(request, 4096);
+        if (parsed.error) return parsed.error;
+        const body = parsed.data;
+        const provider = String(body?.provider || '');
+        if (!KEY_PROVIDERS[provider]) return json({ ok:false, error:'Unknown provider' }, 400);
+        const key = cleanApiKey(body?.key);
+        if (key === null) return json({ ok:false, error:'That doesn\'t look like an API key' }, 400);
+        const where = `store_api_keys?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.${encodeURIComponent(provider)}`;
+        if (key) await supabaseAdminFetch(env, 'store_api_keys?on_conflict=store_id,provider', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify({ store_id:storeId, provider, ciphertext: await sealApiKey(env, key, storeId, provider), last4:lastFour(key), updated_at:new Date().toISOString(), updated_by:auth.user.id }) });
+        else await supabaseAdminFetch(env, where, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+        clearStoreKeyCache(storeId);
+      } else if (request.method !== 'GET') return json({ ok:false, error:'GET or POST' }, 405);
+      const { data: rows } = (platform || shared) ? { data: [] } : await supabaseAdminFetch(env, `store_api_keys?store_id=eq.${encodeURIComponent(storeId)}&select=provider,last4,updated_at`);
+      return json({ ok:true, builtIn: platform || shared, providers: Object.entries(KEY_PROVIDERS).map(([provider, spec]) => {
+        const row = (rows || []).find(r => r.provider === provider);
+        return { provider, label:spec.label, set: platform || shared ? true : !!row, last4: row?.last4 || '', updatedAt: row?.updated_at || null };
+      }) });
+    }
+    // The dashboard asks which features its store has, to hide the rest.
+    if (url.pathname === '/store/features' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId);
+      if (auth.error) return auth.error;
+      return json({ ok:true, storeId, features: await storeFeaturesFor(env, storeId) });
+    }
 
     if(url.pathname.startsWith('/reference-collector/'))return handleCloudReferenceRequest(request,env,url,{json,requireStoreUser,readJsonWithLimit,storeId:ITEM_DETAIL_STORE_ID});
 
@@ -10662,6 +10772,11 @@ async function routeRequest(request, env, ctx) {
       const okState = await env.LBA_KV.get('ebay_oauth_state:' + state);
       if (!okState) return json({ error: 'Invalid or expired OAuth state' }, 400);
       await env.LBA_KV.delete('ebay_oauth_state:' + state);
+      // One eBay connection serves the whole system: only a store allowed
+      // eBay may replace it (never a pilot store's account over The Mana Pocket's).
+      let stateStore = '';
+      try { stateStore = String(JSON.parse(okState)?.storeId || ''); } catch (_) {}
+      if (!isPlatformStore(stateStore, env) && !(await storeFeaturesFor(env, stateStore)).ebay) return json({ error:'eBay is not available for this store' }, 403);
       const data = await ebayTokenRequest(env, new URLSearchParams({
         grant_type: 'authorization_code',
         code,
@@ -11668,6 +11783,7 @@ async function routeRequest(request, env, ctx) {
     async function syncEbayQuantityForItems(storeId, itemIds) {
       const ids = [...new Set((itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 50);
       if (!ids.length) return [];
+      if (!(await storeFeaturesFor(env, storeId)).ebay) return [];
       const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.join(',')})&select=id,status,data`);
       const live = (rows || []).filter(r => r.data?.ebayListingId && !r.data?.ebayWithdrawnAt && r.data?.source !== 'foc_presale_bundle');
       if (!live.length) return [];
@@ -12427,7 +12543,7 @@ async function routeRequest(request, env, ctx) {
         const channel = await sendContactNotification(env, storeId, contact, String(body.subject || 'Message from your store').slice(0, 200), message, body.consent === true);
         return json({ ok:true, channel });
       } catch (e) {
-        const status = e.code === 'opted_out' ? 409 : e.code === 'no_consent' ? 403 : 502;
+        const status = e.code === 'opted_out' ? 409 : e.code === 'no_consent' || e.code === 'sms_off' ? 403 : 502;
         return json({ ok:false, error:e.message }, status);
       }
     }
@@ -13439,8 +13555,9 @@ async function routeRequest(request, env, ctx) {
         // item that's still separately live on eBay and/or mirrored to
         // Shopify/Whatnot -- pull both the same way the automated eBay and
         // Shopify sync paths already do for each other.
+        const saleFeatures = depleted ? await storeFeaturesFor(env, storeId) : null;
         if (depleted) {
-          if (d.ebayOfferId && !d.ebayWithdrawnAt) {
+          if (d.ebayOfferId && !d.ebayWithdrawnAt && saleFeatures.ebay) {
             try {
               const ebayToken = await getEbayUserAccessToken(env);
               if (ebayToken) {
@@ -13449,7 +13566,7 @@ async function routeRequest(request, env, ctx) {
               }
             } catch (e) { console.warn('Could not auto-end eBay listing after external sale:', invRow.id, e.message); }
           }
-          if (d.shopifyProductId && !d.shopifyWithdrawnAt) {
+          if (d.shopifyProductId && !d.shopifyWithdrawnAt && saleFeatures.shopify) {
             try { await withdrawShopifyListing(env, d); nextData.shopifyWithdrawnAt = soldAt; }
             catch (e) { console.warn('Could not auto-end Shopify listing after external sale:', invRow.id, e.message); }
           }
@@ -14347,7 +14464,7 @@ async function routeRequest(request, env, ctx) {
     // JustTCG pricing proxy. Keep JUSTTCG_API_KEY in Worker secrets only.
     if (url.pathname.startsWith('/pricing/justtcg')) {
       const key = env.JUSTTCG_API_KEY;
-      if (!key) return json({ ok: false, needsKey: true, source: 'justtcg', error: 'JUSTTCG_API_KEY not set in Worker secrets' }, 501);
+      if (!key) return json({ ok: false, needsKey: true, source: 'justtcg', error: env.STORE_KEYS_OWNER ? 'Add your JustTCG API key in Settings → PRICING APIS' : 'JUSTTCG_API_KEY not set in Worker secrets' }, 501);
 
       const conditionCode = s => {
         const v = String(s || '').toLowerCase();
@@ -15936,7 +16053,7 @@ async function routeRequest(request, env, ctx) {
           }
           return json({ ok: true, source: 'PriceCharting CSV', query: q, matches: matches.slice(0, 25), products: matches.slice(0, 25) });
         }
-        if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
+        if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: env.STORE_KEYS_OWNER ? 'Add your PriceCharting API key in Settings → PRICING APIS' : 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
         if (url.pathname === '/pricing/pricecharting/comic-sweep' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
           // A broad sweep (buildSweepQueries broad=true) sends up to 24
@@ -16272,7 +16389,7 @@ async function routeRequest(request, env, ctx) {
         ? url.pathname.replace('/pricing/pokemon/', '/pricing/pokemonpricetracker/')
         : url.pathname;
       const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
-      if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
+      if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: env.STORE_KEYS_OWNER ? 'Add your PokemonPriceTracker API key in Settings → PRICING APIS' : 'POKEMONPRICE_API_KEY not configured', needsStoreKey: !!env.STORE_KEYS_OWNER }, 501);
 
       // Pass E: subscription gate + daily usage counter. A missing/blank
       // X-Store-Id must NOT skip this block -- it used to be treated as a
@@ -16354,13 +16471,15 @@ async function routeRequest(request, env, ctx) {
         // and v2 held for an hour, so credits bought after running out
         // (store: "added prepaid credits, still not working") sat unused.
         // Out of credits now pauses 5 minutes, then PPT is asked again.
-        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3').catch(() => null) || 0);
+        // Per key: another store running out never pauses The Mana Pocket's lookups.
+        const pptScope = env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : '';
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + pptScope).catch(() => null) || 0);
         if (quotaUntil && Date.now() < quotaUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'exhausted', retryAt:new Date(quotaUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
           return json({ ok: false, source: 'pokemonpricetracker', error: 'PokemonPriceTracker quota exhausted', providerStatus: 429, providerQuotaState: 'exhausted', retryAt: new Date(quotaUntil).toISOString() }, 429);
         }
-        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2').catch(() => null) || 0);
+        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2' + pptScope).catch(() => null) || 0);
         if (rateLimitUntil && Date.now() < rateLimitUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'rate_limited', retryAt:new Date(rateLimitUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
@@ -16401,9 +16520,9 @@ async function routeRequest(request, env, ctx) {
           || (upstream.status === 403 && /quota|credits?|exhaust/i.test(providerMessage));
         const transientRateLimited = upstream.status === 429 && !dailyQuotaBlocked;
         if (dailyQuotaBlocked && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3', String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
+          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
         } else if (transientRateLimited && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_rate_limited_until_v2', String(Date.now() + 60 * 1000), { expirationTtl: 60 });
+          await env.LBA_KV.put('ppt_rate_limited_until_v2' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 60 * 1000), { expirationTtl: 60 });
         }
         const stale = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
         if ((dailyQuotaBlocked || transientRateLimited) && stale) {
@@ -19163,7 +19282,7 @@ async function runScheduledFocAutoList(env) {
   // waits for it before finishing.
   const pending = [], ctx = { waitUntil: p => pending.push(Promise.resolve(p).catch(() => {})), passThroughOnException() {} };
   try { await runScheduledFocCoverSwap(env, ctx); } catch (e) { console.error('FOC cover swap failed:', e.message); }
-  for (const storeId of stores) {
+  for (const storeId of await storesWithFeature(env, stores, 'comics', storeFeatureReader(env))) {
     try { await runFocAutoListForStore(env, ctx, storeId); }
     catch (e) { console.error('FOC auto-list failed for', storeId, e.message); }
   }
@@ -19228,13 +19347,17 @@ async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {
 // PRICE SYNC (GET /price-sync/review).
 const POKEMON_SYNC_CRON = '17 * * * *';
 async function runScheduledPokemonServerSync(env) {
-  const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
-  if (!key || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
-  const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3').catch(() => null) || 0);
-  if (quotaUntil && Date.now() < quotaUntil) return;
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
   for (const storeId of storeIds) {
+    // Each store on its own key (The Mana Pocket on its own); a store without
+    // one is skipped, and one key running out pauses only that key.
+    const storeEnv = await pricingEnvForStore(env, storeId);
+    const key = storeEnv.POKEMONPRICE_API_KEY || storeEnv.POKEMON_PRICE_TRACKER_API_KEY;
+    if (!key) continue;
+    const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + (storeEnv.STORE_KEYS_OWNER ? ':' + storeEnv.STORE_KEYS_OWNER : '')).catch(() => null) || 0);
+    if (quotaUntil && Date.now() < quotaUntil) continue;
     const deps = {
       db: (path, opts) => supabaseAdminFetch(env, path, opts),
       kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
@@ -19251,7 +19374,7 @@ async function runScheduledPokemonServerSync(env) {
     try {
       const result = await runPokemonServerSync(storeId, deps);
       if (result.checked) console.log('Pokemon server sync', storeId, JSON.stringify(result));
-      if (result.failed && !result.checked) break; // out of credits: every store would fail the same way
+      if (result.failed && !result.checked) continue; // this key is out of credits; another store's may not be
     } catch (e) { console.error('Pokemon server sync failed for store', storeId, e.message); }
   }
 }
@@ -19493,7 +19616,7 @@ async function runScheduledEbayReprice(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  for (const storeId of storeIds) {
+  for (const storeId of await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))) {
     const summary = { checked: 0, repriced: 0, skipped: 0, errors: 0, ranAt: new Date().toISOString() };
     try {
       const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings`);
@@ -19571,11 +19694,32 @@ function emailTextToHtml(text) {
   return `<div style="font-family:Arial,sans-serif;line-height:1.6;white-space:normal">${escaped.replace(/\r?\n/g, '<br>')}</div>`;
 }
 
-async function sendEmail(env, to, subject, text) {
+// Second-store pilot: an email sent for another store carries that store's
+// name as the sender and ends with how to reach it, so a reply never lands in
+// The Mana Pocket's inbox by mistake. Best effort: a failed lookup sends as before.
+async function storeEmailBrand(env, storeId) {
+  try {
+    const id = encodeURIComponent(storeId);
+    const [{ data: stores }, { data: settings }] = await Promise.all([
+      supabaseAdminFetch(env, `stores?id=eq.${id}&select=display_name,name&limit=1`),
+      supabaseAdminFetch(env, `store_settings?store_id=eq.${id}&select=receipt_settings&limit=1`),
+    ]);
+    const name = String(stores?.[0]?.display_name || stores?.[0]?.name || settings?.[0]?.receipt_settings?.storeName || '').trim().slice(0, 80);
+    const email = String(settings?.[0]?.receipt_settings?.email || '').trim();
+    return { name, email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : '' };
+  } catch (_) { return { name: '', email: '' }; }
+}
+
+async function sendEmail(env, to, subject, text, opts = {}) {
   // SENDGRID_FROM_* remains as a backwards-compatible sender-address alias
   // while the site migrates providers. It is not used for authentication.
   const fromAddress = env.TWILIO_EMAIL_FROM_ADDRESS || env.SENDGRID_FROM_EMAIL;
-  const fromName = env.TWILIO_EMAIL_FROM_NAME || env.SENDGRID_FROM_NAME || 'The Mana Pocket';
+  let fromName = env.TWILIO_EMAIL_FROM_NAME || env.SENDGRID_FROM_NAME || 'The Mana Pocket';
+  if (opts.storeId && !isPlatformStore(opts.storeId, env)) {
+    const brand = await storeEmailBrand(env, opts.storeId);
+    fromName = brand.name || 'Store notification';
+    if (brand.email) text = String(text || '') + `\n\nQuestions? Contact ${brand.name || 'the store'} at ${brand.email}.`;
+  }
   if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !fromAddress) throw new Error('Email is not configured yet');
   const auth = btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`);
   const res = await fetch('https://comms.twilio.com/v1/Emails', {
@@ -19710,9 +19854,11 @@ async function sendContactNotification(env, storeId, contact, subject, message, 
     const contactRow = await emailNotifyContact(env, storeId, clean);
     if (contactRow.optedOut) { const err = new Error('This customer has unsubscribed from emails. Contact them another way.'); err.code = 'opted_out'; throw err; }
     const footer = await emailUnsubscribeFooter(env, storeId, contactRow.unsubscribeToken);
-    await sendEmail(env, clean, subject, message + footer);
+    await sendEmail(env, clean, subject, message + footer, { storeId });
     return 'email';
   }
+  // Texts go out from The Mana Pocket's own number: only for stores allowed it.
+  if (!(await storeFeaturesFor(env, storeId)).sms) { const err = new Error('Texts are off for this store. Use the customer\'s email address instead.'); err.code = 'sms_off'; throw err; }
   const status = await smsConsentStatus(env, storeId, clean);
   if (status.optedOut) { const err = new Error('This customer has opted out of text messages (replied STOP). Contact them another way.'); err.code = 'opted_out'; throw err; }
   if (!hasConsent) { const err = new Error('No SMS consent on file for this contact -- check the consent box before texting them.'); err.code = 'no_consent'; throw err; }
@@ -19742,7 +19888,7 @@ async function emailUnsubscribeFooter(env, storeId, unsubscribeToken) {
   try {
     const { data: settingsRows } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
     const origin = settingsRows?.[0]?.receipt_settings?.shippingOrigin;
-    if (completeShippoOrigin(origin)) addressLine = `${origin.name || 'The Mana Pocket'}, ${origin.street1}${origin.street2 ? ', ' + origin.street2 : ''}, ${origin.city}, ${origin.state} ${origin.zip}\n`;
+    if (completeShippoOrigin(origin)) addressLine = `${origin.name || (isPlatformStore(storeId, env) ? 'The Mana Pocket' : 'Our store')}, ${origin.street1}${origin.street2 ? ', ' + origin.street2 : ''}, ${origin.city}, ${origin.state} ${origin.zip}\n`;
   } catch (e) { /* best-effort -- a missing address must never block the send */ }
   const unsubscribeLine = unsubscribeToken
     ? `Don't want emails like this? Unsubscribe: https://still-resonance-4f87.swarnerauto.workers.dev/notify/email-unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`
@@ -20127,7 +20273,7 @@ async function runScheduledDealScans(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`);
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  for (const storeId of storeIds) {
+  for (const storeId of await storesWithFeature(env, storeIds, 'ebay', storeFeatureReader(env))) {
     try {
       const { data: rows, response } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=neq.sold&select=id,data,status,created_at,updated_at&order=id.asc`);
       if (!response?.ok) continue;

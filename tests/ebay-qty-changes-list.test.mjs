@@ -53,7 +53,7 @@ globalThis.fetch = async (input) => {
 };
 try {
   const kv = new Map([['ebay-qty-fixes:store-1', JSON.stringify([{ at: 'x', name: 'Booster Box', to: 2, why: 'sale' }])]]);
-  const env = { SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', LBA_KV: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async () => {} } };
+  const env = { OWNER_STORE_IDS: 'store-1', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', LBA_KV: { get: async (k, t) => { const v = kv.get(k); return v == null ? null : t === 'json' ? JSON.parse(v) : v; }, put: async () => {} } };
   const res = await api.fetch(new Request('https://api.example/ebay/qty-changes', { headers: { Authorization: 'Bearer t', 'X-Store-Id': 'store-1' } }), env, { waitUntil() {} });
   const d = await res.json();
   assert.equal(res.status, 200, JSON.stringify(d));

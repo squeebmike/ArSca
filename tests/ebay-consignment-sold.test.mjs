@@ -15,7 +15,7 @@ const goblin = { id: ITEM, status: 'in_stock', data: { name: 'Goblin Storm', eba
 async function run({ newSale, soldItem = null }) {
   const kv = new Map([['secret:EBAY_ACCESS_TOKEN', 'tok'], ['secret:EBAY_ACCESS_EXPIRES', String(Date.now() + 3600e3)]]);
   const env = {
-    SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh',
+    OWNER_STORE_IDS: 'store-1', SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_ROLE_KEY: 'k', EBAY_REFRESH_TOKEN: 'refresh',
     LBA_KV: { get: async k => kv.get(k) ?? null, put: async (k, v) => { kv.set(k, v); }, delete: async k => { kv.delete(k); } },
   };
   const seen = { consignPatches: [], alerts: [], sales: [] };

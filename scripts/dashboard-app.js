@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.25.6-audit-in-settings';
+const APP_VERSION = '2026.10.26.4-store-branding';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -349,7 +349,40 @@ function roleCanAccessTab(tab){
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice','database'].includes(tab);
   else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','backlist','phone','cardintake','tasks'].includes(tab);
-  return allowed && planCanAccessTab(tab);
+  return allowed && planCanAccessTab(tab) && featureCanAccessTab(tab);
+}
+// Second-store pilot (scripts/store-features.mjs): tabs tied to The Mana
+// Pocket's own accounts or workflow are hidden for a store that doesn't
+// have them. Not known yet, or the check failed = nothing hidden, so The
+// Mana Pocket never loses a tab to an outage; the Worker enforces the walls
+// on its own either way.
+const TAB_STORE_FEATURE = { foc:'comics', backlist:'comics', pulllists:'comics', channels:'ebay', orders:'website', phone:'sms', consign:'consignment', whatnot:'whatnot' };
+const STORE_FEATURES_CACHE_KEY = 'store_features_v1';
+function currentStoreFeatures(){
+  if(window._storeFeatures) return window._storeFeatures;
+  try { const saved = JSON.parse(localStorage.getItem(STORE_FEATURES_CACHE_KEY) || 'null'); if(saved?.storeId && saved.storeId === getActiveStoreId()) return saved.features || null; } catch(e) {}
+  return null;
+}
+// The name printed on this store's labels and statements: The Mana Pocket's
+// own wording for it (and while features aren't known), else the store's name.
+function storeBrandName(){
+  const f = currentStoreFeatures();
+  if(!f || f.platform !== false) return 'The Mana Pocket';
+  return String(getActiveStore()?.displayName || getVendorProfile()?.storeName || '').trim() || 'Our store';
+}
+function storeFeatureEnabled(feature){ const f = currentStoreFeatures(); return !f || f[feature] !== false; }
+function featureCanAccessTab(tab){ const feature = TAB_STORE_FEATURE[tab]; return !feature || storeFeatureEnabled(feature); }
+async function loadStoreFeatures(storeId = getActiveStoreId()){
+  window._storeFeatures = null;
+  try {
+    const res = await storeWorkerFetch('/store/features', { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.features) return null;
+    window._storeFeatures = data.features;
+    try { localStorage.setItem(STORE_FEATURES_CACHE_KEY, JSON.stringify({ storeId, features:data.features })); } catch(e) {}
+    document.body?.classList.toggle('store-no-ebay', data.features.ebay === false);
+    return data.features;
+  } catch(e) { return null; }
 }
 
 (function installStoreScopedStorage(){
@@ -534,6 +567,7 @@ async function checkAndApplySubscriptionState(){
   } catch(_){ subCheckFailed = true; }
 
   window._subStatus = sub;
+  await loadStoreFeatures(storeId);
   setupAppShell();
   renderSubscriptionPanel();
   renderOnboardingPanel();
@@ -4188,7 +4222,44 @@ function renderPriceChartingDataPanel(){
         <button class="hbtn" onclick="loadPptUsageReport(24 * 7)">LAST 7 DAYS</button>
       </div>
       <div id="ppt-usage-body" style="font-family:monospace;font-size:10px;color:var(--dim)">What spent the credits and when. TODAY starts when PokemonPriceTracker's daily credits reset (midnight UTC).</div>
-    </div>`;
+    </div>
+    <div class="item-metric" id="store-api-keys-panel" style="margin-bottom:12px;display:none"></div>`;
+  loadStoreApiKeysPanel();
+}
+
+// A store's own pricing API keys (second-store pilot; scripts/store-api-keys.mjs).
+// The Mana Pocket uses the built-in keys and never sees this panel. Keys are
+// saved on the server, encrypted; only their last 4 characters come back.
+async function loadStoreApiKeysPanel(){
+  const panel = document.getElementById('store-api-keys-panel');
+  if(!panel || !requireOwnerAdmin()) return;
+  let data = {};
+  try { const res = await storeWorkerFetch('/store/api-keys', { cache:'no-store' }); data = await res.json().catch(() => ({})); if(!res.ok) return; } catch(e) { return; }
+  if(data.builtIn) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  panel.innerHTML = `<div style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px;margin-bottom:6px">YOUR API KEYS</div>
+    <div style="font-family:monospace;font-size:10px;color:var(--dim);margin-bottom:8px">Price lookups use your own keys and your own credits. A provider without a key is off until you add one.</div>
+    ${(data.providers || []).map(p => `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;font-family:monospace;font-size:10px">
+      <b style="min-width:150px;color:var(--text)">${escHtml(p.label)}</b>
+      <span style="color:${p.set ? 'var(--g)' : 'var(--gold)'}">${p.set ? 'Saved ••••' + escHtml(p.last4) : 'Not set'}</span>
+      <input class="tsi" id="store-key-${escHtml(p.provider)}" type="password" autocomplete="off" placeholder="Paste ${escHtml(p.label)} key" style="width:220px;margin:0">
+      <button class="hbtn" onclick="saveStoreApiKey('${escHtml(p.provider)}')">SAVE</button>
+      ${p.set ? `<button class="hbtn danger" onclick="saveStoreApiKey('${escHtml(p.provider)}', true)">REMOVE</button>` : ''}
+    </div>`).join('')}`;
+}
+async function saveStoreApiKey(provider, remove = false){
+  const input = document.getElementById('store-key-' + provider);
+  const key = remove ? '' : String(input?.value || '').trim();
+  if(!remove && !key) return toast_dash('Paste the key first');
+  if(remove && !confirm('Remove this key? Lookups from this provider stop until a new one is added.')) return;
+  try {
+    const res = await storeWorkerFetch('/store/api-keys', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ provider, key }) });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not save the key');
+    if(input) input.value = '';
+    toast_dash(remove ? 'Key removed' : 'Key saved');
+    loadStoreApiKeysPanel();
+  } catch(e) { toast_dash(e.message || String(e)); }
 }
 
 // Settings -> PRICING APIS -> CREDIT USE: the Worker logs every PPT call
@@ -9481,8 +9552,12 @@ async function cancelPendingTrade(){
 function pendingTradeAmounts(total, cartData = null){
   const pending = getPendingTradePurchase(cartData);
   const purchaseTotal = Math.max(0, Number(total || 0));
-  const applied = pending ? Math.min(purchaseTotal, Number(pending.credit.remainingBalance || 0)) : 0;
-  return { pending, applied:Math.round(applied * 100) / 100, due:Math.round((purchaseTotal - applied) * 100) / 100 };
+  const tradeValue = pending ? Math.max(0, Number(pending.credit.remainingBalance || 0)) : 0;
+  const applied = pending ? Math.min(purchaseTotal, tradeValue) : 0;
+  // What checkout pays back in cash (payTradeInLeftoverAsCash) -- shown on
+  // the cart so it's clear before confirming (store, 2026-10-25).
+  const cashBack = Math.max(0, Math.round((tradeValue - applied) * 100) / 100);
+  return { pending, applied:Math.round(applied * 100) / 100, due:Math.round((purchaseTotal - applied) * 100) / 100, tradeValue:Math.round(tradeValue * 100) / 100, cashBack };
 }
 function redeemStoreCredit(id, amount){
   const credits = getStoreCredits();
@@ -10908,7 +10983,7 @@ async function buildLivePokemonPriceSyncProposal(options = {}){
     const st = i.lifecycle || i.status || 'in_stock';
     return st !== 'sold' && st !== 'archived' && isPokemonInventorySyncItem(i) && (!options.restrictToIds || options.restrictToIds.has(i.id));
   });
-  if(dailyPriceSyncRunning) items = items.filter(i => !serverPriceCheckedToday(i));
+  if(dailyPriceSyncRunning) items = items.filter(i => !serverHandlesPokemonPrice(i) && !serverPriceCheckedToday(i));
   items = items.sort((a, b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
   const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, reusedLookups:0, sealedChecked:items.filter(isPokemonSealedInventorySyncItem).length, sealedMatched:0, requests:[], issues:[] };
@@ -11292,6 +11367,26 @@ function mergePendingPriceSyncProposals(previous = [], fresh = []){
 function serverPriceCheckedToday(item = {}){
   const at = item.priceSyncCheckedAt || item.raw?.priceSyncCheckedAt;
   return !!at && localDayKey(new Date(at)) === localDayKey(new Date());
+}
+// The cards the server's update owns -- same rules as isServerSyncItem in
+// scripts/pokemon-daily-sync.mjs. The dashboard's daily run leaves them all
+// to it, checked yet or not: a dashboard left open re-priced every one at
+// 3:12 AM, five minutes before the server's first batch (~600 credits).
+const SERVER_SYNC_CATEGORY_RE = /^pok[eé]mon(\s+(tcg|cards?|trading card game|singles|sealed))?$/i;
+const SERVER_SYNC_SLAB_RE = /\b(PSA|BGS|BECKETT|CGC|SGC|TAG|HGA)\s*(?:GEM\s*(?:MINT|MT)\s*|MINT\s*|PRISTINE\s*)?(10|[1-9](?:\.5)?)(?![\d.])/i;
+const SERVER_SYNC_UNPRICED_LANGUAGE_RE = /traditional chinese|chinese|\bkorean\b|\bthai\b|\bindonesian\b|\bgerman\b|\bfrench\b|\bitalian\b|\bspanish\b|\bportuguese\b|繁體|简体|中文|한국어/i;
+function serverHandlesPokemonPrice(item = {}){
+  const d = item.raw || item;
+  if((item.lifecycle || item.status || d.status || 'in_stock') !== 'in_stock' || d.archivedAt) return false;
+  if(!SERVER_SYNC_CATEGORY_RE.test(String(d.category || '').trim())) return false;
+  if(d.dropship === true || d.ownershipType === 'supplier') return false;
+  let refs = d.externalRefs; if(typeof refs === 'string'){ try { refs = JSON.parse(refs); } catch(e) { refs = null; } }
+  const id = String(d.tcgPlayerId || d.tcgplayerId || d.tcgplayerProductId || refs?.tcgPlayerId || '').trim();
+  if(!/^\d+$/.test(id) && !/tcgplayer\.com\/product\/\d+/i.test(String(d.tcgPlayerUrl || refs?.tcgPlayerUrl || ''))) return false;
+  if((String(d.grader || '').trim() && String(d.grade || '').trim()) || SERVER_SYNC_SLAB_RE.test(String(d.selectedGrade || '')) || SERVER_SYNC_SLAB_RE.test(String(d.name || ''))) return false;
+  const language = String(d.language || d.selectedLanguage || '');
+  if(SERVER_SYNC_UNPRICED_LANGUAGE_RE.test([d.language, d.selectedLanguage].filter(Boolean).join(' ')) && !/japanese|english/i.test(language)) return false;
+  return true;
 }
 // Its big changes come here for review, same as the dashboard's own.
 async function claimServerPriceSyncReview(){
@@ -23386,7 +23481,7 @@ function consignDay(v){ return v ? new Date(v).toLocaleDateString([], { month:'s
 function consignorStatementText(st, storeName){
   const m = n => '$' + Number(n || 0).toFixed(2);
   const line = c => '- ' + c.item + ' -- sold ' + m(consignSaleValue(c)) + (consignFee(c) ? ', ' + m(consignFee(c)) + ' marketplace fees' : '') + ', store ' + consignMoney(c.split) + '% (' + m(consignStoreCut(c)) + '), you get ' + m(consignOwnerCut(c)) + (c.soldAt ? ' -- ' + consignDay(c.soldAt) : '');
-  const out = [(storeName || 'The Mana Pocket') + ' -- consignment statement for ' + st.owner + ', ' + consignDay(new Date().toISOString()), ''];
+  const out = [(storeName || storeBrandName()) + ' -- consignment statement for ' + st.owner + ', ' + consignDay(new Date().toISOString()), ''];
   out.push('OWED TO YOU: ' + m(st.owedTotal));
   if(st.owed.length) out.push(...st.owed.map(line));
   if(st.paid.length) out.push('', 'ALREADY PAID (' + m(st.paidTotal) + '):', ...st.paid.map(c => line(c) + (c.paidOutAt ? ' -- paid ' + consignDay(c.paidOutAt) : '')));
@@ -23406,7 +23501,7 @@ function consignorStatementHtml(st){
 }
 function openConsignorStatement(encoded){
   const owner = decodeURIComponent(encoded), st = consignorStatementData(owner);
-  const storeName = getActiveStore()?.displayName || 'The Mana Pocket';
+  const storeName = getActiveStore()?.displayName || storeBrandName();
   const text = consignorStatementText(st, storeName);
   const phone = /\d{7,}/.test(String(st.contact).replace(/\D/g, '')) && !String(st.contact).includes('@') ? String(st.contact).replace(/[^\d+]/g, '') : '';
   const email = String(st.contact).includes('@') ? String(st.contact).trim() : '';
@@ -24270,7 +24365,7 @@ function publicInventoryDescription(item={}, updates={}) {
     d.issue ? 'Issue: '+d.issue : '',
     d.grader || d.grading_company || d.grade ? 'Grade: '+[d.grader||d.grading_company,d.grade].filter(Boolean).join(' ') : '',
     d.is_signed ? 'Signed'+(d.signed_by?' by '+d.signed_by:'') : '',
-    'Available from The Mana Pocket.'
+    'Available from ' + storeBrandName() + '.'
   ].filter(Boolean).join('\n');
 }
 
@@ -42954,7 +43049,7 @@ function renderDealerCartTools(cartData = getCartDataLocal()){
     }).join('');
   }
   if(totalEl) totalEl.innerHTML = trade.pending
-    ? `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">SUBTOTAL $${Number(totals.subtotal||0).toFixed(2)}</span>${Number(totals.discountAmount||0)>0?`<span>DISCOUNT −$${Number(totals.discountAmount).toFixed(2)}</span>`:''}${Number(totals.tax||0)>0?`<span>TAX $${Number(totals.tax).toFixed(2)}</span>`:''}<span style="color:var(--gold)">TRADE CREDIT −$${trade.applied.toFixed(2)}</span><b style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g)">BALANCE $${trade.due.toFixed(2)}</b></div>`
+    ? `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">SUBTOTAL $${Number(totals.subtotal||0).toFixed(2)}</span>${Number(totals.discountAmount||0)>0?`<span>DISCOUNT −$${Number(totals.discountAmount).toFixed(2)}</span>`:''}${Number(totals.tax||0)>0?`<span>TAX $${Number(totals.tax).toFixed(2)}</span>`:''}<span style="color:var(--gold)">TRADE CREDIT −$${trade.applied.toFixed(2)}</span>${trade.cashBack>0?`<span style="color:var(--gold)">TRADE-IN $${trade.tradeValue.toFixed(2)} · <b>CASH BACK TO CUSTOMER $${trade.cashBack.toFixed(2)}</b></span>`:''}<b style="font-family:'Orbitron',monospace;font-size:18px;color:var(--g)">BALANCE $${trade.due.toFixed(2)}</b></div>`
     : `<div style="display:grid;gap:3px;font-family:var(--font-mono);font-size:11px"><span style="color:var(--dim)">SUBTOTAL $${Number(totals.subtotal||0).toFixed(2)}</span>${Number(totals.discountAmount||0)>0?`<span>DISCOUNT −$${Number(totals.discountAmount).toFixed(2)}</span>`:''}${Number(totals.tax||0)>0?`<span>TAX $${Number(totals.tax).toFixed(2)}</span>`:''}<b>$${total.toFixed(2)}</b></div>`;
   if(actions) {
     actions.innerHTML = locked
@@ -42979,7 +43074,7 @@ async function lockCheckoutForPayment(){
     const remaining = remainingCheckoutDue();
     if(remaining <= 0.009) {
       const wb = document.getElementById('customer-payment-workbench');
-      if(wb) wb.innerHTML = `<div style="text-align:center;color:var(--g);font-family:var(--font-mono);font-size:13px;margin-bottom:12px">Trade credit covers the full $${trade.applied.toFixed(2)} purchase.</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM TRADE PURCHASE</button><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`;
+      if(wb) wb.innerHTML = `<div style="text-align:center;color:var(--g);font-family:var(--font-mono);font-size:13px;margin-bottom:12px">Trade credit covers the full $${trade.applied.toFixed(2)} purchase.${trade.cashBack>0?`<br><b style="color:var(--gold)">Pay the customer $${trade.cashBack.toFixed(2)} cash back</b> -- the rest of their $${trade.tradeValue.toFixed(2)} trade-in.`:''}</div><div class="payment-confirm-row"><button class="hbtn" style="min-height:52px;font-size:14px" onclick="confirmTradeOnlyCheckout()">CONFIRM TRADE PURCHASE</button><button class="hbtn danger" onclick="removeTradeCreditTender()">REMOVE</button></div>`;
       toast_dash('Trade credit covers this purchase — confirm to finish');
     } else {
       toast_dash('$' + trade.applied.toFixed(2) + ' trade credit applied — choose payment for $' + remaining.toFixed(2));
@@ -45038,7 +45133,7 @@ async function printInventoryLabels(){
           <div class="wrap-bottom-row"><span class="wrap-condition">${escHtml(b.condition || '')}</span><span class="wrap-meta">${escHtml(b.meta || '')}</span></div>
         </div>
         <div class="wrap-back">
-          <div class="wrap-shopname">THE MANA POCKET</div>
+          <div class="wrap-shopname">${escHtml(storeBrandName().toUpperCase())}</div>
           ${barcodeImg}
         </div>
       </div>` : `<div class="label">
@@ -45358,7 +45453,7 @@ async function renderInventoryLabelCanvas(b, opts = labelRenderOptions()){
     // .wrap-shopname { 8px bold; one line }
     setFont(8);
     const shopH = metrics(8).normal;
-    drawLines(['THE MANA POCKET'], bx + backW / 2, fy + bPadT, 8, shopH, 'center');
+    drawLines([storeBrandName().toUpperCase()], bx + backW / 2, fy + bPadT, 8, shopH, 'center');
     // The code image: width:100%, flex:1, object-fit:contain -- the largest
     // square that fits in what's left of the face.
     const boxTop = fy + bPadT + shopH + 4, boxBottom = fy + iH - bPadB;
