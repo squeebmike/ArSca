@@ -6,7 +6,7 @@ let page;
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 const deps={escape,slug:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>[],shell:p=>{page=p;return p.bodyHtml;}};
 const get=path=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path),{},new URL('https://www.themanapocket.com'+path),deps);
-const players=baseballPlayers(baseballSets);assert.equal(players.length,2222);
+const players=baseballPlayers(baseballSets);assert.equal(players.length,2232);
 const index=await(await get('/baseball/players')).text();const xml=await(await get('/sitemap-baseball.xml?part=1')).text();
 for(const player of players){
  const path=baseballPlayerPath(player);assert.ok(index.includes('href="'+path+'"'));assert.ok(xml.includes('https://www.themanapocket.com'+path));

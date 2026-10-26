@@ -18,6 +18,9 @@ on:
       - scripts/database-edits.mjs
       - scripts/database-explorer.mjs
       - scripts/topps/five-star-2024.mjs
+      - tests/baseball-player-pages.test.mjs
+      - tests/baseball-team-pages.test.mjs
+      - tests/sports-card-number-search.test.mjs
       - scripts/sports-player-team-search.mjs
       - scripts/sports-parallels.mjs
       - scripts/sports-reference-images.mjs
