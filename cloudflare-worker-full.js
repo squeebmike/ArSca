@@ -54,6 +54,7 @@ import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './sc
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
+import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
@@ -1233,6 +1234,17 @@ function storeFeatureReader(env) {
   };
 }
 function storeFeaturesFor(env, storeId) { return storeFeatures(env, storeId, storeFeatureReader(env)); }
+function storeKeyReader(env) {
+  return async storeId => (await supabaseAdminFetch(env, `store_api_keys?store_id=eq.${encodeURIComponent(storeId)}&select=provider,ciphertext`)).data || [];
+}
+// The pricing keys a store's requests run on (scripts/store-api-keys.mjs):
+// The Mana Pocket's own for it and for a store allowed to share them,
+// otherwise the store's own -- blank where it has none, never yours.
+async function pricingEnvForStore(env, storeId) {
+  if (!storeId || isPlatformStore(storeId, env)) return env;
+  if ((await storeFeaturesFor(env, storeId)).sharedPricingKeys) return env;
+  return envWithStoreKeys(env, storeId, await storeApiKeys(env, storeId, storeKeyReader(env)));
+}
 
 async function requirePlatformAdmin(request, env) {
   const token = String(request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
@@ -2199,7 +2211,9 @@ async function handlePlatformAdmin(request, env, url) {
   if (featureMatch && request.method === 'POST') {
     const storeId = featureMatch[1];
     if (isPlatformStore(storeId, env)) return json({ ok:false, error:'The Mana Pocket always has every feature' }, 400);
-    const body = await readJsonWithLimit(request, 8 * 1024).catch(() => null);
+    const parsed = await readJsonWithLimit(request, 8 * 1024);
+    if (parsed.error) return parsed.error;
+    const body = parsed.data;
     if (!body || typeof body.features !== 'object') return json({ ok:false, error:'features required' }, 400);
     const before = await storeFeaturesFor(env, storeId);
     const row = { ...rowFromFeatures(storeId, body.features), updated_at:new Date().toISOString(), updated_by:auth.user.id };
@@ -6137,6 +6151,45 @@ async function routeRequest(request, env, ctx) {
       const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') ? await request.clone().json().catch(() => null) : null;
       const walled = await walledRequest(env, request, url, storeFeatureReader(env), peek);
       if (walled) return json({ ok:false, error:'Not available for this store', featureDisabled:walled.feature }, 403);
+    }
+    // Second-store pilot: a store prices on its own API keys. For a request
+    // naming another store, its keys replace The Mana Pocket's in env, so
+    // every pricing lookup below uses them (scripts/store-api-keys.mjs).
+    {
+      let keyStore = request.headers.get('X-Store-Id') || url.searchParams.get('store') || url.searchParams.get('store_id') || '';
+      if (!keyStore && ['POST','PUT','PATCH'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') && Number(request.headers.get('Content-Length') || 0) <= 1e6) {
+        const body = await request.clone().json().catch(() => null);
+        keyStore = String(body?.storeId || body?.store_id || '');
+      }
+      env = await pricingEnvForStore(env, keyStore.trim());
+    }
+    // A store's own pricing keys, set in Settings -> PRICING APIS. Only the
+    // last 4 characters ever come back.
+    if (url.pathname === '/store/api-keys') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      const platform = isPlatformStore(storeId, env);
+      const shared = !platform && (await storeFeaturesFor(env, storeId)).sharedPricingKeys;
+      if (request.method === 'POST') {
+        if (platform || shared) return json({ ok:false, error:'This store uses the built-in pricing keys' }, 400);
+        const parsed = await readJsonWithLimit(request, 4096);
+        if (parsed.error) return parsed.error;
+        const body = parsed.data;
+        const provider = String(body?.provider || '');
+        if (!KEY_PROVIDERS[provider]) return json({ ok:false, error:'Unknown provider' }, 400);
+        const key = cleanApiKey(body?.key);
+        if (key === null) return json({ ok:false, error:'That doesn\'t look like an API key' }, 400);
+        const where = `store_api_keys?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.${encodeURIComponent(provider)}`;
+        if (key) await supabaseAdminFetch(env, 'store_api_keys?on_conflict=store_id,provider', { method:'POST', headers:{ Prefer:'resolution=merge-duplicates,return=minimal' }, body:JSON.stringify({ store_id:storeId, provider, ciphertext: await sealApiKey(env, key, storeId, provider), last4:lastFour(key), updated_at:new Date().toISOString(), updated_by:auth.user.id }) });
+        else await supabaseAdminFetch(env, where, { method:'DELETE', headers:{ Prefer:'return=minimal' } });
+        clearStoreKeyCache(storeId);
+      } else if (request.method !== 'GET') return json({ ok:false, error:'GET or POST' }, 405);
+      const { data: rows } = (platform || shared) ? { data: [] } : await supabaseAdminFetch(env, `store_api_keys?store_id=eq.${encodeURIComponent(storeId)}&select=provider,last4,updated_at`);
+      return json({ ok:true, builtIn: platform || shared, providers: Object.entries(KEY_PROVIDERS).map(([provider, spec]) => {
+        const row = (rows || []).find(r => r.provider === provider);
+        return { provider, label:spec.label, set: platform || shared ? true : !!row, last4: row?.last4 || '', updatedAt: row?.updated_at || null };
+      }) });
     }
     // The dashboard asks which features its store has, to hide the rest.
     if (url.pathname === '/store/features' && request.method === 'GET') {
@@ -14402,7 +14455,7 @@ async function routeRequest(request, env, ctx) {
     // JustTCG pricing proxy. Keep JUSTTCG_API_KEY in Worker secrets only.
     if (url.pathname.startsWith('/pricing/justtcg')) {
       const key = env.JUSTTCG_API_KEY;
-      if (!key) return json({ ok: false, needsKey: true, source: 'justtcg', error: 'JUSTTCG_API_KEY not set in Worker secrets' }, 501);
+      if (!key) return json({ ok: false, needsKey: true, source: 'justtcg', error: env.STORE_KEYS_OWNER ? 'Add your JustTCG API key in Settings → PRICING APIS' : 'JUSTTCG_API_KEY not set in Worker secrets' }, 501);
 
       const conditionCode = s => {
         const v = String(s || '').toLowerCase();
@@ -15991,7 +16044,7 @@ async function routeRequest(request, env, ctx) {
           }
           return json({ ok: true, source: 'PriceCharting CSV', query: q, matches: matches.slice(0, 25), products: matches.slice(0, 25) });
         }
-        if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
+        if (!token) return json({ ok: false, needsKey: true, source: 'PriceCharting', error: env.STORE_KEYS_OWNER ? 'Add your PriceCharting API key in Settings → PRICING APIS' : 'PRICECHARTING_TOKEN not set in Worker secrets' }, 501);
         if (url.pathname === '/pricing/pricecharting/comic-sweep' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
           // A broad sweep (buildSweepQueries broad=true) sends up to 24
@@ -16327,7 +16380,7 @@ async function routeRequest(request, env, ctx) {
         ? url.pathname.replace('/pricing/pokemon/', '/pricing/pokemonpricetracker/')
         : url.pathname;
       const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
-      if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: 'POKEMONPRICE_API_KEY not configured' }, 501);
+      if (!key) return json({ ok: false, source: 'pokemonpricetracker', error: env.STORE_KEYS_OWNER ? 'Add your PokemonPriceTracker API key in Settings → PRICING APIS' : 'POKEMONPRICE_API_KEY not configured', needsStoreKey: !!env.STORE_KEYS_OWNER }, 501);
 
       // Pass E: subscription gate + daily usage counter. A missing/blank
       // X-Store-Id must NOT skip this block -- it used to be treated as a
@@ -16409,13 +16462,15 @@ async function routeRequest(request, env, ctx) {
         // and v2 held for an hour, so credits bought after running out
         // (store: "added prepaid credits, still not working") sat unused.
         // Out of credits now pauses 5 minutes, then PPT is asked again.
-        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3').catch(() => null) || 0);
+        // Per key: another store running out never pauses The Mana Pocket's lookups.
+        const pptScope = env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : '';
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + pptScope).catch(() => null) || 0);
         if (quotaUntil && Date.now() < quotaUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'exhausted', retryAt:new Date(quotaUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
           return json({ ok: false, source: 'pokemonpricetracker', error: 'PokemonPriceTracker quota exhausted', providerStatus: 429, providerQuotaState: 'exhausted', retryAt: new Date(quotaUntil).toISOString() }, 429);
         }
-        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2').catch(() => null) || 0);
+        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2' + pptScope).catch(() => null) || 0);
         if (rateLimitUntil && Date.now() < rateLimitUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'rate_limited', retryAt:new Date(rateLimitUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
@@ -16456,9 +16511,9 @@ async function routeRequest(request, env, ctx) {
           || (upstream.status === 403 && /quota|credits?|exhaust/i.test(providerMessage));
         const transientRateLimited = upstream.status === 429 && !dailyQuotaBlocked;
         if (dailyQuotaBlocked && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3', String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
+          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
         } else if (transientRateLimited && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_rate_limited_until_v2', String(Date.now() + 60 * 1000), { expirationTtl: 60 });
+          await env.LBA_KV.put('ppt_rate_limited_until_v2' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 60 * 1000), { expirationTtl: 60 });
         }
         const stale = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
         if ((dailyQuotaBlocked || transientRateLimited) && stale) {
@@ -19283,15 +19338,17 @@ async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {
 // PRICE SYNC (GET /price-sync/review).
 const POKEMON_SYNC_CRON = '17 * * * *';
 async function runScheduledPokemonServerSync(env) {
-  const key = env.POKEMONPRICE_API_KEY || env.POKEMON_PRICE_TRACKER_API_KEY;
-  if (!key || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
-  const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3').catch(() => null) || 0);
-  if (quotaUntil && Date.now() < quotaUntil) return;
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
-  // Until a store has its own PokemonPriceTracker key, only stores allowed
-  // the shared one are priced (The Mana Pocket always is).
-  for (const storeId of await storesWithFeature(env, storeIds, 'sharedPricingKeys', storeFeatureReader(env))) {
+  for (const storeId of storeIds) {
+    // Each store on its own key (The Mana Pocket on its own); a store without
+    // one is skipped, and one key running out pauses only that key.
+    const storeEnv = await pricingEnvForStore(env, storeId);
+    const key = storeEnv.POKEMONPRICE_API_KEY || storeEnv.POKEMON_PRICE_TRACKER_API_KEY;
+    if (!key) continue;
+    const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + (storeEnv.STORE_KEYS_OWNER ? ':' + storeEnv.STORE_KEYS_OWNER : '')).catch(() => null) || 0);
+    if (quotaUntil && Date.now() < quotaUntil) continue;
     const deps = {
       db: (path, opts) => supabaseAdminFetch(env, path, opts),
       kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
@@ -19308,7 +19365,7 @@ async function runScheduledPokemonServerSync(env) {
     try {
       const result = await runPokemonServerSync(storeId, deps);
       if (result.checked) console.log('Pokemon server sync', storeId, JSON.stringify(result));
-      if (result.failed && !result.checked) break; // out of credits: every store would fail the same way
+      if (result.failed && !result.checked) continue; // this key is out of credits; another store's may not be
     } catch (e) { console.error('Pokemon server sync failed for store', storeId, e.message); }
   }
 }

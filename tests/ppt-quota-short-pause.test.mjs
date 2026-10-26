@@ -8,8 +8,8 @@ import { readFileSync } from 'node:fs';
 const worker = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
 const ui = readFileSync(new URL('../scripts/dashboard-app.js', import.meta.url), 'utf8');
 
-assert.ok(worker.includes("await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3', String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });"), 'worker pauses 5 minutes');
-assert.ok(worker.includes("env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3')"), 'reads the new key');
+assert.ok(worker.includes("await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });"), 'worker pauses 5 minutes');
+assert.ok(worker.includes("env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + pptScope)"), 'reads the new key (kept per store key)');
 assert.ok(!worker.includes('ppt_daily_quota_exhausted_until_v2'), 'the hour-long lock already set is ignored');
 
 const src = ui.slice(ui.indexOf('function pptQuotaPauseUntil('), ui.indexOf('function migratePokemonPriceTrackerQuotaState('));
