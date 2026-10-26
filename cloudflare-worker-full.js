@@ -6179,7 +6179,9 @@ async function routeRequest(request, env, ctx) {
     // for one is refused here, before any route runs -- whichever store the
     // header, query or body names (scripts/store-features.mjs).
     if (featureForPath(url.pathname)) {
-      const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') ? await request.clone().json().catch(() => null) : null;
+      // Public storefront posts are read whatever their Content-Type says:
+      // the route parses the body as JSON either way.
+      const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && (/json/i.test(request.headers.get('Content-Type') || '') || url.pathname.startsWith('/public/storefront/')) ? await request.clone().json().catch(() => null) : null;
       const walled = await walledRequest(env, request, url, storeFeatureReader(env), peek);
       if (walled) return json({ ok:false, error:'Not available for this store', featureDisabled:walled.feature }, 403);
     }

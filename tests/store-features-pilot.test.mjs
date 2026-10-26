@@ -52,6 +52,7 @@ for (const [path, feature] of [
   ['/foc/admin/cycles', 'comics'], ['/backlist/admin/picks', 'comics'], ['/comic/pricing', 'comics'], ['/preorders/pull-list', 'comics'],
   ['/store/storefront-orders', 'website'], ['/store/stuck-payments/resolve', 'website'],
   ['/proxy/sites', 'website'], ['/proxy/collections/abc/items', 'website'],
+  ['/public/storefront', 'website'], ['/public/storefront/item', 'website'], ['/public/storefront/checkout', 'website'], ['/public/storefronts', null],
   ['/pricing/sportscardspro/products', 'sharedPricingKeys'], ['/pricing/sportscardspro/image', 'sharedPricingKeys'],
   ['/inventory/record-external-sale', null], ['/pricing/pokemon/cards', null], ['/pos/sale', null], ['/store/features', null], ['/public/preorders', null],
 ]) assert.equal(featureForPath(path), feature, path);
@@ -108,6 +109,18 @@ try {
   assert.equal(res.status, 403, 'pilot store: SportsCardsPro refused');
   assert.equal((await res.json()).featureDisabled, 'sharedPricingKeys');
   assert.ok(!seen.some(u => u.includes('webflow.com') || u.includes('sportscardspro.com')), 'nothing reaches Webflow or SportsCardsPro for the pilot store');
+  // No other store's stock or orders on your website (store, 2026-10-26).
+  for (const path of ['/public/storefront?store_id=' + OTHER, '/public/storefront/item?store_id=' + OTHER + '&id=x']) {
+    res = await callWith(wfEnv, path, '');
+    assert.equal(res.status, 403, path + ': another store never shows on your storefront');
+  }
+  for (const contentType of ['application/json', 'text/plain']) {
+    res = await callWith(wfEnv, '/public/storefront/checkout', '', { method: 'POST', headers: { 'Content-Type': contentType }, body: JSON.stringify({ storeId: OTHER, items: [] }) });
+    assert.equal(res.status, 403, 'checkout for another store refused (' + contentType + ')');
+  }
+  assert.ok(!seen.some(u => u.includes('inventory_items') || u.includes('storefront_inventory')), 'and its inventory is never read');
+  res = await callWith(wfEnv, '/public/storefront?store_id=' + PLATFORM_STORE_ID, '');
+  assert.notEqual((await res.clone().json().catch(() => ({}))).featureDisabled, 'website', 'your storefront goes through as before');
   res = await callWith(wfEnv, '/proxy/sites', PLATFORM_STORE_ID);
   assert.ok(seen.some(u => u.includes('api.webflow.com')), 'your store still reaches Webflow');
   seen.length = 0;

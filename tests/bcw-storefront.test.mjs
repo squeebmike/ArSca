@@ -58,7 +58,8 @@ const originalFetch=globalThis.fetch,originalCaches=globalThis.caches;
 const requests=[];
 globalThis.caches={default:{match:async()=>null,put:async()=>{}}};
 globalThis.fetch=async input=>{requests.push(String(input));return new Response(JSON.stringify([incoming]),{headers:{'Content-Type':'application/json'}});};
-const env={SUPABASE_URL:'https://database.example',SUPABASE_SERVICE_ROLE_KEY:'test-only'},edge={waitUntil:()=>{}};
+// 'test' stands in for The Mana Pocket: the public storefront is its website (store-features.mjs).
+const env={SUPABASE_URL:'https://database.example',SUPABASE_SERVICE_ROLE_KEY:'test-only',OWNER_STORE_IDS:'test'},edge={waitUntil:()=>{}};
 try{
  const res=await api.fetch(new Request('https://still-resonance-4f87.swarnerauto.workers.dev/bcw'),env,edge);
  assert.equal(res.status,200);assert.match(await res.text(),/BCW bags/);
