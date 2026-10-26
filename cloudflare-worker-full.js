@@ -4779,6 +4779,8 @@ async function processShopifyOrder(env, order) {
       const { data: rows } = await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&select=id,data,status,store_id&limit=1`);
       const invRow = rows?.[0];
       if (!invRow || invRow.status === 'sold') { if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 }); continue; }
+      // Your Shopify orders only ever touch stock of a store on your Shopify.
+      if (!(await storeFeaturesFor(env, invRow.store_id)).shopify) { if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 }); continue; }
       const d = invRow.data || {};
       const quantitySold = Math.max(1, Number(li.quantity || 1));
       const salePrice = Number(li.price || 0) * quantitySold;
@@ -6179,7 +6181,9 @@ async function routeRequest(request, env, ctx) {
     // for one is refused here, before any route runs -- whichever store the
     // header, query or body names (scripts/store-features.mjs).
     if (featureForPath(url.pathname)) {
-      const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && /json/i.test(request.headers.get('Content-Type') || '') ? await request.clone().json().catch(() => null) : null;
+      // Public website posts are read whatever their Content-Type says: those
+      // routes parse the body as JSON either way.
+      const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && (/json/i.test(request.headers.get('Content-Type') || '') || url.pathname.startsWith('/public/')) ? await request.clone().json().catch(() => null) : null;
       const walled = await walledRequest(env, request, url, storeFeatureReader(env), peek);
       if (walled) return json({ ok:false, error:'Not available for this store', featureDisabled:walled.feature }, 403);
     }

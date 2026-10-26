@@ -82,6 +82,15 @@ export function featureForPath(pathname = '') {
   // /proxy/* is the Webflow API on The Mana Pocket's own token: its whole
   // website, read and write (pilot dry run, 2026-10-26).
   if (p.startsWith('/store/storefront-orders') || p.startsWith('/store/stuck-payments') || p.startsWith('/proxy/')) return 'website';
+  // The public storefront (catalog, item, checkout, notify...) is your
+  // website: another store's stock and orders never go through it, even if
+  // that store marks its storefront published (store, 2026-10-26).
+  if (p === '/public/storefront' || p.startsWith('/public/storefront/')) return 'website';
+  // Your website's customer accounts and fan club, and its comic preorder,
+  // new-release and back-list pages: the second store is completely separate
+  // from all of it (store, 2026-10-26).
+  if (p.startsWith('/public/account/') || p.startsWith('/public/fan-club/') || p === '/public/shipping/quotes') return 'website';
+  if (p === '/public/preorders' || p.startsWith('/public/preorders/') || p === '/preorders/catalog' || p.startsWith('/public/comics/') || p.startsWith('/public/backlist/')) return 'comics';
   // SportsCardsPro runs on The Mana Pocket's paid token, and a store can't
   // add its own in PRICING APIS, so only stores sharing its keys reach it.
   if (p.startsWith('/pricing/sportscardspro/')) return 'sharedPricingKeys';
