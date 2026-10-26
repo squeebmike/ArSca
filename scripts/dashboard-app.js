@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.26.4-store-branding';
+const APP_VERSION = '2026.10.26.5-trade-cart-closes';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -9148,6 +9148,9 @@ async function completeActiveSaleCartAfterCheckout(saleId){
   cart.status = 'complete';
   cart.saleId = saleId || '';
   cart.completedAt = new Date().toISOString();
+  // The trade-in was spent on this sale (any leftover paid in cash), so
+  // nothing on a finished cart can offer it again.
+  cart.tradeCredit = null;
   if(!getAccountContext().isDemo) await storeWorkerFetch(scopedWorkerPath(saleCartWorkerKey(cart.cartId)), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(cart) }).catch(()=>{});
   await removeSaleCartFromIndex(cart.cartId);
   saveSaleCartsLocal(getSaleCarts().filter(c => c.cartId !== cart.cartId));
@@ -43577,7 +43580,10 @@ async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomi
   localStorage.setItem('pos_transactions', JSON.stringify(txLog.slice(0,1000)));
   const empty = { items:[], discount:0, savedAt:paidAt, clearedAt:paidAt, lastTxId:bundle.sale.id, storeId:getActiveStoreId(), registerId:REGISTER_ID, appVersion:APP_VERSION };
   localStorage.setItem('pos_cart_v2', JSON.stringify(empty));
-  postCartToWorker(empty);
+  // Awaited: left running, its "open" save of this cart landed after the
+  // cart was completed below and re-listed it with its trade-in credit
+  // (pilot dry run, 2026-10-26).
+  await postCartToWorker(empty);
   if(drawerState && bundle.drawerMovements.length) {
     const cashAdded = bundle.drawerMovements.reduce((a,m) => a + Number(m.amount || 0), 0);
     drawerState.cashSales = Number(drawerState.cashSales || 0) + cashAdded;

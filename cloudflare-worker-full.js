@@ -3639,6 +3639,17 @@ async function buyTrayIsClosed(env, storeId, id) {
   try { return JSON.parse(raw)?.status === 'closed'; } catch (e) { return false; }
 }
 
+// Same for a customer cart that's been checked out: a save still in flight
+// from before checkout (or from another register that joined it) must not
+// reopen it with its trade-in credit (pilot dry run, 2026-10-26).
+async function saleCartIsComplete(env, storeId, id) {
+  if (!id) return false;
+  const scopedKey = `lba:${safeStoreKey(storeId)}:sale_cart_${String(id).replace(/[^a-zA-Z0-9:_-]/g, '-')}`;
+  const raw = env.LBA_KV ? await env.LBA_KV.get(scopedKey) : (globalThis['_' + scopedKey] || null);
+  if (!raw) return false;
+  try { return JSON.parse(raw)?.status === 'complete'; } catch (e) { return false; }
+}
+
 function safeStoreKey(s) {
   return String(s || 'main').replace(/[^a-zA-Z0-9:_-]/g, '-').slice(0, 80);
 }
@@ -9422,8 +9433,11 @@ async function routeRequest(request, env, ctx) {
       if (url.pathname.endsWith('/upsert')) {
         const entry = body.entry;
         if (!entry || !entry.id) return json({ ok: false, error: 'entry.id is required' }, 400);
-        const idx = index.findIndex(e => e.id === entry.id);
-        if (idx >= 0) index[idx] = entry; else index.push(entry);
+        if (await saleCartIsComplete(env, storeId, entry.id)) index = index.filter(e => e.id !== entry.id);
+        else {
+          const idx = index.findIndex(e => e.id === entry.id);
+          if (idx >= 0) index[idx] = entry; else index.push(entry);
+        }
       } else {
         const id = body.id;
         if (!id) return json({ ok: false, error: 'id is required' }, 400);
@@ -9615,6 +9629,10 @@ async function routeRequest(request, env, ctx) {
         if (key.startsWith('buy_tray_') && await buyTrayIsClosed(env, storeId, key.slice('buy_tray_'.length))) {
           let incoming = null; try { incoming = JSON.parse(body); } catch (e) {}
           if (incoming?.status !== 'closed') return json({ ok: true, closed: true });
+        }
+        if (key.startsWith('sale_cart_') && await saleCartIsComplete(env, storeId, key.slice('sale_cart_'.length))) {
+          let incoming = null; try { incoming = JSON.parse(body); } catch (e) {}
+          if (incoming?.status !== 'complete') return json({ ok: true, complete: true });
         }
         if (env.LBA_KV) {
           // Confirmed barcode matches are store memory, not session state.
