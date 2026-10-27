@@ -32,4 +32,11 @@ payload={reference,listing:null};button.dispatchEvent(new window.Event('click',{
 assert.equal(document.querySelector('[data-sports-reference-result] img').src,reference.image,'a disappeared listing does not remove the independent reference');
 assert.equal(document.querySelector('[data-sports-result] img'),null);
 assert.match(document.querySelector('[data-sports-result]').textContent,/No exact eBay listing/);
-console.log('Reference-first shopping: both exact photos, separate source labels, affiliate offer, no inventory query and expired-listing isolation passed');
+const pageUrl=new URL(url);pageUrl.search='';let pageData,unexpectedSourceReads=0;
+const pageResponse=await handleBaseballCatalog(new Request(pageUrl),env,pageUrl,{...deps,shell:d=>{pageData=d;return d.bodyHtml;},referenceFetch:async()=>{unexpectedSourceReads++;throw Error('No live provider fetch on HTML request');}});
+const initialHtml=await pageResponse.text();
+assert.ok(initialHtml.includes('src="'+reference.image+'"'),'verified cloud photo is present without JavaScript');
+assert.equal(pageData.jsonLd.image,reference.image,'structured page image matches visible reference');
+assert.equal(unexpectedSourceReads,0,'HTML rendering does not crawl the provider');
+assert.equal(inventoryReads,1,'one existing inventory load, no per-image inventory reads');
+console.log('Reference-first shopping: both exact photos, separate source labels, affiliate offer, crawlable initial photo and expired-listing isolation passed');

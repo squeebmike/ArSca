@@ -35,6 +35,7 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
  // An unchecked or rejected photo must not reappear from that older cache.
  if(archived)return null;
  const saved=savedReferenceImage(set,card);if(saved)return saved;
+ if(deps.archiveOnly)return null;
  // No database/API-key lookup. One cached public family page covers every finish.
  if(!env.LBA_KV)return null;
  try{
