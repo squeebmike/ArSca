@@ -37,6 +37,7 @@ const pageResponse=await handleBaseballCatalog(new Request(pageUrl),env,pageUrl,
 const initialHtml=await pageResponse.text();
 assert.ok(initialHtml.includes('src="'+reference.image+'"'),'verified cloud photo is present without JavaScript');
 assert.equal(pageData.jsonLd.image,reference.image,'structured page image matches visible reference');
+assert.ok(initialHtml.includes('aria-label="Card checklist navigation"'),'card pages expose ordinary previous/next HTML links');
 assert.equal(unexpectedSourceReads,0,'HTML rendering does not crawl the provider');
 assert.equal(inventoryReads,1,'one existing inventory load, no per-image inventory reads');
 console.log('Reference-first shopping: both exact photos, separate source labels, affiliate offer, crawlable initial photo and expired-listing isolation passed');

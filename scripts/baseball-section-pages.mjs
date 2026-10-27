@@ -59,6 +59,12 @@ for(const [setId,groups] of sectionsBySet){
  sectionsBySet.set(setId,kept);
 }
 export const sectionsForSet=set=>sectionsBySet.get(set.id)||[];
+export function checklistCardNavigation(set,cards,card,esc){
+ const index=cards.findIndex(c=>c.id===card.id);if(index<0)return '';
+ const links=[['Previous',cards[index-1]],['Next',cards[index+1]]].filter(([,c])=>c);
+ if(!links.length)return '';
+ return '<nav aria-label="Card checklist navigation" style="display:flex;flex-wrap:wrap;gap:12px;margin:16px 0">'+links.map(([label,c])=>'<a href="'+cardPath(set,c)+'" style="display:block;min-height:44px;padding:8px 12px;border:1px solid currentColor;border-radius:8px">'+label+': #'+esc(c.cardNumber)+' · '+esc(c.player)+'</a>').join('')+'</nav>';
+}
 export function baseballSectionSitemapPaths(sets){return sets.flatMap(s=>[...sportsSectionCollections(sectionsForSet(s)).map(g=>sectionPath(s,g)),...sectionsForSet(s).flatMap(g=>[sectionPath(s,g),...g.cards.map(c=>cardPath(s,c))])]);}
 export function relatedParallelLinks(set,card,esc,options={}){
  const identity=c=>(c.subjects?.length?c.subjects.map(s=>s.name):[c.player]).map(n=>String(n).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')).sort().join('|');
@@ -121,7 +127,7 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  if(cardGroup){
   const reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,{...deps,archiveOnly:true});
   const c=chosenCard,numbering=cardNumberingLabel(set,c),name=c.player+' #'+c.cardNumber+' — '+set.displayName+' '+cardGroup.name+(parallelId?' · '+c.variant:'')+(numbering?' '+numbering:'');
-  return html({title:name+' | The Mana Pocket',description:name+'. Official checklist reference and shopping links.',canonicalPath:cardPath(set,c),robotsNoindex:!!parallelId,jsonLd:{'@context':'https://schema.org','@type':'WebPage',name,...(reference?{image:reference.image}:{}),citation:c.parallelSource||set.sourceUrl},bodyHtml:parallelFamilyStyle+checklistStyles+nav+'<h1>'+esc(name)+'</h1><p>'+esc(c.team)+' · '+esc(cardGroup.kind)+(numbering?' · Publisher numbering '+numbering:'')+' · Check the listing’s exact finish and condition.</p>'+relatedParallelLinks(set,parallelId?chosenCard:originalCard,esc,{reference,inventory,deps,campaignId:env.EBAY_PARTNER_CAMPAIGN_ID})+sportsMarketplaceNotice+availability+baseballShoppingHtml(inventory,c,set,env,deps,activeGroup,listings)+sportsLookupScript+'<p><a href="'+(baseCard?setPath(set):sectionPath(set,cardGroup))+'">Back to '+esc(cardGroup.name)+'</a> · <a href="'+esc(c.parallelSource||set.sourceUrl)+'">Publisher reference</a></p>'});
+  return html({title:name+' | The Mana Pocket',description:name+'. Official checklist reference and shopping links.',canonicalPath:cardPath(set,c),robotsNoindex:!!parallelId,jsonLd:{'@context':'https://schema.org','@type':'WebPage',name,...(reference?{image:reference.image}:{}),citation:c.parallelSource||set.sourceUrl},bodyHtml:parallelFamilyStyle+checklistStyles+nav+'<h1>'+esc(name)+'</h1><p>'+esc(c.team)+' · '+esc(cardGroup.kind)+(numbering?' · Publisher numbering '+numbering:'')+' · Check the listing’s exact finish and condition.</p>'+checklistCardNavigation(set,cardGroup.cards,originalCard,esc)+relatedParallelLinks(set,parallelId?chosenCard:originalCard,esc,{reference,inventory,deps,campaignId:env.EBAY_PARTNER_CAMPAIGN_ID})+sportsMarketplaceNotice+availability+baseballShoppingHtml(inventory,c,set,env,deps,activeGroup,listings)+sportsLookupScript+'<p><a href="'+(baseCard?setPath(set):sectionPath(set,cardGroup))+'">Back to '+esc(cardGroup.name)+'</a> · <a href="'+esc(c.parallelSource||set.sourceUrl)+'">Publisher reference</a></p>'});
  }
  const filters=sportsSectionFilters(url,group,sectionPath(set,group),esc);if(!filters)return missing();
  const {cards,page,href}=filters;
