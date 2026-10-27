@@ -41,6 +41,8 @@ const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,console
 assert.ok(validReferenceConsoleId('baseball-cards-2023-bowman%27s-best'));for(const bad of ['bad%2fsource','bad%2527source','bad/source','bad?source','bad%00source'])assert.equal(validReferenceConsoleId(bad),false);
 for(const [source,player,number,setId]of [['baseball-cards-2023-bowman%27s-best','Taj Bradley','1','2023-bowman-s-best-baseball'],['baseball-cards-2022-stadium-club-chrome','Shohei Ohtani','1','2022-topps-stadium-club-chrome']]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[]);assert.equal(check.matches[0].setId,setId);}
 for(const [source,player,number,setId]of [
+ ['baseball-cards-2023-topps-finest-autographs','Alec Burleson','FA-AB','2023-topps-finest-baseball'],
+ ['baseball-cards-2024-topps-cosmic-chrome-autograph','Andrew Abbott','CCA-AA','2024-topps-cosmic-chrome-baseball'],
  ['baseball-cards-2024-topps-chrome-rookie-autograph','Andrew Abbott','RA-AA','2024-topps-chrome-baseball'],
  ['baseball-cards-2025-topps-chrome-rookie-autograph','Adael Amador','RA-AA','2025-topps-chrome-baseball'],
  ['baseball-cards-2026-topps-chrome-rookie-autograph','Andrew Alvarez','RA-AA','2026-topps-chrome-baseball'],
