@@ -5,6 +5,10 @@ import {dashboardCloudRequest,cloudRequest,uploadReferences,isDashboard} from '.
 const consoleId='baseball-cards-2026-topps',image='https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg';
 const card={consoleId,title:'Aaron Judge #1',cardNumber:'1',image,url:'https://www.sportscardspro.com/game/'+consoleId+'/aaron-judge-1',setName:'2026 Topps',player:'Aaron Judge'};
 assert.ok(normalizeCloudReference(card));
+const apostropheCard={...card,title:"Logan O'Hoppe #BSR-23",player:"Logan O'Hoppe",cardNumber:'BSR-23',consoleId:'baseball-cards-2023-bowman-sterling',url:'https://www.sportscardspro.com/game/baseball-cards-2023-bowman-sterling/logan-o%27hoppe-bsr-23'};
+assert.ok(normalizeCloudReference(apostropheCard),'verified apostrophe in player URL is accepted');
+assert.equal(normalizeCloudReference({...apostropheCard,url:apostropheCard.url.replace('%27',"'")}).url,apostropheCard.url,'literal and encoded apostrophes canonicalize identically');
+for(const bad of ['%2f','%2527','%00','%3f'])assert.equal(normalizeCloudReference({...apostropheCard,url:apostropheCard.url.replace('%27',bad)}),null,'encoded separators and other escapes stay rejected');
 for(const row of [{...card,url:'https://evil.test/game/'+consoleId+'/x'},{...card,image:'https://evil.test/a.jpg'},{...card,cardNumber:'2'},{...card,consoleId:'other'}])assert.equal(normalizeCloudReference(row),null);
 assert.equal(normalizeCloudReference({...card,image:''}).image,'','missing images retain identities');
 function storage(){let values=new Map(),queue=Promise.resolve();return {delete:async k=>values.delete(k),setAlarm:async()=>{},get:async k=>structuredClone(values.get(k)),put:async(k,v)=>values.set(k,structuredClone(v)),list:async({prefix,limit,startAfter=''})=>new Map([...values].filter(([k])=>k.startsWith(prefix)&&k>startAfter).sort(([a],[b])=>a.localeCompare(b)).slice(0,limit)),transaction(callback){const run=queue.then(async()=>{const copy=new Map(values),tx={get:async k=>structuredClone(copy.get(k)),put:async(k,v)=>copy.set(k,structuredClone(v)),delete:async k=>copy.delete(k)};const result=await callback(tx);values=copy;return result;});queue=run.catch(()=>{});return run;}};}
@@ -106,5 +110,12 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  const second=await(await status('?offset=20')).json();assert.equal(second.nextOffset,null);assert.equal(first.sets.length+second.sets.length,first.total);
  assert.equal(new Set([...first.sets,...second.sets].map(s=>s.consoleId)).size,first.total,'all source audit results are reachable once without duplicates');
  assert.equal((await status('?offset=-1')).status,400);
+}
+{
+ const first=await(await send([apostropheCard])).json();assert.equal(first.accepted,1);assert.equal(first.rejected,0,'apostrophe no longer blocks acknowledgement');
+ const replay=await(await send([apostropheCard])).json();assert.equal(replay.summary.cards,first.summary.cards,'retrying a previously partial batch remains idempotent');
+ const archive=instances.get('console:'+apostropheCard.consoleId),slug=new URL(apostropheCard.url).pathname.split('/').pop();
+ const page=await archive.fetch(new Request('https://archive.internal/cards?cursor='+encodeURIComponent('row:'+slug)));assert.equal(page.status,200,'encoded apostrophe is a valid paging cursor');
+ const bad=await archive.fetch(new Request('https://archive.internal/cards?cursor='+encodeURIComponent('row:logan%2fhoppe')));assert.equal(bad.status,400);
 }
 console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');

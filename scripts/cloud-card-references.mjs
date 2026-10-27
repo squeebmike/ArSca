@@ -7,12 +7,13 @@ import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 // evidence only for the identical source URL, title and photo; never infer a
 // denominator just from a finish name, or overwrite a conflicting capture.
 const reviewedNumbering=new Map(Object.values(referenceImageSeeds).flat().filter(r=>r.run).map(r=>[r.url,r]));
+const validCardSlug=value=>typeof value==='string'&&value.length<=250&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);
 export function normalizeCloudReference(row){
  if(!row||typeof row!=='object')return null;
  let u;try{u=new URL(row.url);}catch{return null;}
  if(u.protocol!=='https:'||u.username||u.password||!['www.pricecharting.com','pricecharting.com','www.sportscardspro.com','sportscardspro.com'].includes(u.hostname))return null;
  u.pathname=u.pathname.replace(/'/g,'%27');
- const parts=u.pathname.match(/^\/game\/([^/]{1,160})\/([a-z0-9-]{1,250})\/?$/);if(!parts||!validReferenceConsoleId(parts[1])||row.consoleId!==parts[1])return null;
+ const parts=u.pathname.match(/^\/game\/([^/]{1,160})\/([^/]{1,250})\/?$/);if(!parts||!validReferenceConsoleId(parts[1])||!validCardSlug(parts[2])||row.consoleId!==parts[1])return null;
  const title=String(row.title||'').replace(/\s+/g,' ').trim();if(!title||title.length>350)return null;
  const number=title.match(/#([^\s]+)\s*$/)?.[1]||String(row.cardNumber||'');
  if(number&&!/^[a-z0-9.-]{1,40}$/i.test(number))return null;
@@ -71,7 +72,7 @@ export class CardReferenceArchive {
   }
   if(request.method==='GET'&&url.pathname==='/cards'){
    const cursor=url.searchParams.get('cursor')||'';
-   if(cursor&&!/^row:[a-z0-9-]{1,250}$/.test(cursor))return new Response('Invalid cursor',{status:400});
+   if(cursor&&(!cursor.startsWith('row:')||!validCardSlug(cursor.slice(4))))return new Response('Invalid cursor',{status:400});
    const rows=await this.ctx.storage.list({prefix:'row:',limit:100,...(cursor?{startAfter:cursor}:{})});
    const cards=[];for(const [key,row]of rows)cards.push({...row,validation:await this.ctx.storage.get('validation:'+key.slice(4))||null});
    return reply({cards,cursor:rows.size===100?[...rows.keys()].at(-1):null});

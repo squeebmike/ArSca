@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.6-cosmic-autographs';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.7-cosmic-supernova';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
@@ -16,6 +16,7 @@ export function referenceConsoles(set,card=null){
  if(set.id==='2023-topps-cosmic-chrome-baseball'){
   const sources={'Cosmic Chrome Autograph Variation':'autographs','Extraterrestrial Talent Autograph Variation':'extraterrestrial-talent-autographs','Launched Into Orbit Autograph Variation':'launched-into-orbit-autographs'};
   for(const [section,suffix]of Object.entries(sources))if(!card||card.section===section)ids.push('baseball-cards-2023-topps-cosmic-chrome-'+suffix);
+  if(!card||card.section==='Supernova')ids.push('baseball-cards-2023-topps-cosmic-chrome-supernova');
  }
  if(set.id==='2022-topps-stadium-club-chrome'){
   ids.push('baseball-cards-2022-stadium-club-chrome');

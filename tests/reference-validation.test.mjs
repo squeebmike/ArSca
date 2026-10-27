@@ -22,6 +22,7 @@ const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,console
 {
  const set=baseballSets.find(s=>s.id==='2023-topps-cosmic-chrome-baseball');
  for(const [section,suffix,player,number]of [
+  ['Supernova','supernova','Aaron Judge','SN-1'],
   ['Cosmic Chrome Autograph Variation','autographs','Andres Gimenez','CCA-AG'],
   ['Extraterrestrial Talent Autograph Variation','extraterrestrial-talent-autographs','Julio Rodriguez','ETA-Jr.'],
   ['Launched Into Orbit Autograph Variation','launched-into-orbit-autographs','Aaron Judge','LIOA-AJ']
