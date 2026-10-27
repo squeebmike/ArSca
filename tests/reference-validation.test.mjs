@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import {referenceMetadataCheck,referenceConsoles,checkReferenceImage} from '../scripts/reference-validation.mjs';
+import {matchReferenceImage} from '../scripts/reference-match.mjs';
+import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
+import {sectionsForSet} from '../scripts/baseball-section-pages.mjs';
 const base={consoleId:'baseball-cards-2026-topps',title:'Aaron Judge #1',player:'Aaron Judge',parallel:'',run:'',cardNumber:'1',image:'https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg',url:'https://www.sportscardspro.com/game/baseball-cards-2026-topps/aaron-judge-1'};
 assert.deepEqual(referenceMetadataCheck(base).flags,[]);assert.equal(referenceMetadataCheck(base).matches.length,1);
 assert.ok(referenceMetadataCheck({...base,player:'Different Player'}).flags.includes('player_conflict'));
@@ -15,6 +18,22 @@ assert.equal((await checkReferenceImage(base.image,async()=>new Response('HTML',
 let external=0;assert.equal((await checkReferenceImage('https://evil.test/photo.jpg',async()=>{external++;})).reason,'invalid_image_host');assert.equal(external,0,'no SSRF or arbitrary host probing');
 assert.equal(referenceMetadataCheck(base).visuallyReviewed,false,'metadata checks never claim visual authentication');
 const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,consoleId,player,cardNumber,parallel,run,url:'https://www.sportscardspro.com/game/'+consoleId+'/sample',title:player+(parallel?' ['+parallel+']':'')+' #'+cardNumber});
+for(const [source,player,number,setId]of [
+ ['baseball-cards-2019-topps','Jarrod Dyson','351','2019-topps-series-2-baseball'],
+ ['baseball-cards-2020-topps','Gerrit Cole','351','2020-topps-baseball-series-2'],
+ ['baseball-cards-2021-topps','Jose Abreu','331','2021-topps-series-2-baseball'],
+ ['baseball-cards-2024-topps','Clayton Kershaw','351','2024-topps-baseball-series-2'],
+ ['baseball-cards-2020-topps-update','Aaron Bummer','U-12','2020-topps-updates-baseball'],
+ ['baseball-cards-2021-topps-update','Francisco Lindor','US1','2021-topps-updates-baseball'],
+ ['baseball-cards-2021-bowman-draft-chrome','Harry Ford','BDC-1','2021-bowman-draft-baseball']
+]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[],source+' '+number);assert.equal(check.matches[0].setId,setId);}
+assert.ok(referenceMetadataCheck(bowman('baseball-cards-2021-bowman-draft-chrome','Harry Ford','BD-1')).flags.includes('no_exact_checklist_match'),'Chrome source never supplies the paper BD-1 card');
+{
+ const set=baseballSets.find(s=>s.id==='2026-topps-holiday-baseball'),regular=set.cards.find(c=>c.cardNumber==='H1'),variation=sectionsForSet(set).flatMap(g=>g.cards).find(c=>c.cardNumber==='H1');
+ const row=bowman('baseball-cards-2026-topps-holiday','Bobby Witt Jr.','H1'),check=referenceMetadataCheck(row);
+ assert.deepEqual(check.flags,[]);assert.equal(check.matches.length,1);assert.ok(check.matches[0].path.endsWith('/'+regular.id));
+ assert.ok(matchReferenceImage([row],set,regular));assert.equal(matchReferenceImage([row],set,variation),null,'a plain base reference must not illustrate the short print');
+}
 for(const [number,caption]of [['11','National League Leaders RBI'],['38','American League Leaders HRs'],['52','It Takes Two']]){
  const row=bowman(base.consoleId,caption,number),check=referenceMetadataCheck(row);
  assert.deepEqual(check.flags,[],caption);assert.equal(check.matches[0].path,'/baseball/checklists/2026-topps-series-1-baseball/cards/2026-topps-series-1-baseball-'+number);
