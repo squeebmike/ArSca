@@ -110,4 +110,10 @@ for(const finish of ["Mother's Day Pink","Father's Day Blue"]){
 for(const [finish,run]of [['Memorial Day Camo','/26'],['Printing Plates','/4']]){
  assert.ok(referenceMetadataCheck(bowman('baseball-cards-2023-topps','Juan Soto','1',finish,run)).flags.includes('no_exact_checklist_match'));
 }
+{
+ const row=bowman('baseball-cards-2023-topps','Los Angeles Angels','93',"Mother's Day Pink",'/50');
+ assert.deepEqual(referenceMetadataCheck(row).flags,[],'verified full team caption matches publisher team card');
+ assert.ok(referenceMetadataCheck({...row,title:"Los Angeles Dodgers [Mother's Day Pink] #93",player:'Los Angeles Dodgers'}).flags.includes('no_exact_checklist_match'));
+ assert.ok(referenceMetadataCheck({...row,run:'/25'}).flags.includes('no_exact_checklist_match'));
+}
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

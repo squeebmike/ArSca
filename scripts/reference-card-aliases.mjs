@@ -5,4 +5,7 @@ const captions={
  '2026-topps-series-1-baseball-38':['American League Leaders HRs'],
  '2026-topps-series-1-baseball-52':['It Takes Two']
 };
-export function referenceCardNames(card){return [card.player,...(captions[card.id]||[])];}
+export function referenceCardNames(card){
+ const teamCaption=card.player==='Angels®'&&card.team==='Angels'&&card.subjects?.some(s=>s.note==='Team Card')?['Los Angeles Angels']:[];
+ return [card.player,...(captions[card.id]||[]),...teamCaption];
+}
