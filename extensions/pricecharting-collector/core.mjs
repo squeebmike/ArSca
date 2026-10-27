@@ -2,17 +2,26 @@ export function sourceUrl(raw, base) {
   try {
     const u = new URL(raw, base);
     if (u.protocol !== 'https:' || !/^(www\.)?(pricecharting|sportscardspro)\.com$/.test(u.hostname) || u.username || u.password) return '';
-    if (!/^\/(?:console|game|category)\/[a-z0-9/-]+\/?$/.test(u.pathname)) return '';
+    u.pathname=u.pathname.replace(/'/g,'%27');
+    if (!/^\/(?:console|game|category)\/(?:[a-z0-9/-]|%27)+\/?$/.test(u.pathname)) return '';
     u.hash = ''; u.search = '';
     if (u.pathname.startsWith('/console/')) { u.searchParams.set('exclude-variants', 'false'); u.searchParams.set('sort', 'model-number'); }
     return u.href;
   } catch { return ''; }
 }
 export function eligibleSet(url, licensedOnly = true) {
-  let path;try{path=new URL(url).pathname;}catch{return false;}
+  let path;try{path=new URL(url).pathname.replace(/'/g,'%27');}catch{return false;}
   if (!licensedOnly || !/\/(?:console|game)\/(?:baseball|football)-cards-/.test(path)) return true;
   const year = Number(path.match(/-cards-(\d{4})-/)?.[1]);
-  return year >= 2019 && /-(topps|bowman)(?:-|\/|$)/.test(path);
+  return year >= 2019 && (/-(topps|bowman(?:%27s)?)(?:-|\/|$)/.test(path)||/^\/(?:console|game)\/baseball-cards-\d{4}-stadium-club(?:-|\/|$)/.test(path));
+}
+export function queueVerifiedSources(job,raw){
+ if(!job)throw Error('Connect to the existing collector job first.');
+ const urls=[...new Set(String(raw||'').split(/\s+/).filter(Boolean).map(value=>{const url=sourceUrl(value);if(!url||!new URL(url).pathname.startsWith('/console/')||!eligibleSet(url,true))throw Error('Use verified licensed set URLs from the allowed source hosts.');return url;}))];
+ if(!urls.length||urls.length>100)throw Error('Queue 1–100 verified set URLs.');
+ const seen=new Set([...(job.seen||[]),...(job.completed||[]),...(job.queue||[]).map(item=>item.url)]),added=urls.filter(url=>!seen.has(url)).map(url=>({url,pages:0}));
+ const queue=job.queue?.length?[job.queue[0],...newestSetQueue([...job.queue.slice(1),...added])]:newestSetQueue(added);
+ return {...job,queue,seen:[...new Set([...(job.seen||[]),...urls])],...(job.queue?.length?{}:{navigating:'',notBefore:0}),message:added.length+' verified sources appended; saved records and existing queue preserved.'};
 }
 export function recheckSourceDirectories(job){
  if(!job)throw Error('Start a collection before rechecking directories.');
@@ -60,7 +69,7 @@ export async function inspectPage(advance = false) {
   const clean = s => String(s || '').replace(/\s+/g, ' ').trim();
   const blocked = /just a moment|access denied|verify (?:that )?you are human|too many requests|captcha|unusual traffic/i.test(document.title + ' ' + (document.querySelector('h1')?.textContent || '')) || !!document.querySelector('iframe[src*="captcha"],#challenge-running');
   if (blocked) return {blocked: true, message: 'Source site requested a pause. Open the collector tab and review it.'};
-  const safe = raw => { try { const u = new URL(raw, location.href); return u.protocol === 'https:' && /^(www\.)?(pricecharting|sportscardspro)\.com$/.test(u.hostname) && /^\/(console|game|category)\/[a-z0-9/-]+\/?$/.test(u.pathname) ? u.href : ''; } catch { return ''; } };
+  const safe = raw => { try { const u = new URL(raw, location.href);u.pathname=u.pathname.replace(/'/g,'%27'); return u.protocol === 'https:' && !u.username&&!u.password&&/^(www\.)?(pricecharting|sportscardspro)\.com$/.test(u.hostname) && /^\/(console|game|category)\/(?:[a-z0-9/-]|%27)+\/?$/.test(u.pathname) ? u.href : ''; } catch { return ''; } };
   const photo = img => {
     for (const raw of [img?.getAttribute('data-src'),img?.getAttribute('data-original'),img?.currentSrc,img?.src]) {
       if (/^https:\/\/storage\.googleapis\.com\/images\.pricecharting\.com\/[a-z0-9]+\/(60|240|300|400|1600)\.jpg$/i.test(raw || '')) return raw.replace(/\/60\.jpg$/, '/240.jpg');
@@ -114,7 +123,7 @@ export async function inspectPage(advance = false) {
     const img = document.querySelector('#product_details img, #product-image img, img[itemprop="image"]');
     const og = document.querySelector('meta[property="og:image"]')?.content;
     const number = title.match(/#([a-z0-9][a-z0-9.-]*)\b/i)?.[1] || '';
-    cards.push({consoleId:location.pathname.split('/')[2],setName:'',productId:'',title,player:clean(title.replace(/\[[^\]]+\]/g,'').replace(/#.*$/,'')),cardNumber:number,parallel:title.match(/\[([^\]]+)\]/)?.[1] || '',run:clean(document.querySelector('.list-print-run')?.textContent),image:photo(img) || photo({src:og}),url:safe(location.href),capturedAt:new Date().toISOString()});
+    cards.push({consoleId:location.pathname.split('/')[2].replace(/'/g,'%27'),setName:'',productId:'',title,player:clean(title.replace(/\[[^\]]+\]/g,'').replace(/#.*$/,'')),cardNumber:number,parallel:title.match(/\[([^\]]+)\]/)?.[1] || '',run:clean(document.querySelector('.list-print-run')?.textContent),image:photo(img) || photo({src:og}),url:safe(location.href),capturedAt:new Date().toISOString()});
   }
   const sets = [...new Set([...document.querySelectorAll('a[href*="/console/"]')].map(a=>safe(a.href)).filter(Boolean))];
   const recentSets=[];

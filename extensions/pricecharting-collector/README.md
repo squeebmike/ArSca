@@ -1,4 +1,6 @@
-# Mana Pocket Card Collector — cloud edition (1.3.1)
+# Mana Pocket Card Collector — cloud edition (1.3.2)
+
+Version 1.3.2 accepts the provider's encoded apostrophe in Bowman’s Best source URLs and its Topps Stadium Club naming without a Topps prefix. Other percent-encoded path characters remain rejected. It adds **Queue verified sources** on the ordinary HTTPS dashboard: paste verified console URLs and append them without replacing the current queue, completed history, cloud records or price-backfill state. Repeated additions are idempotent; owner pauses and unacknowledged uploads remain intact. No new browser permissions or image-file downloads are added. Reload the installed collector once to load this version; do not use Start to apply the update.
 
 ## Install once
 

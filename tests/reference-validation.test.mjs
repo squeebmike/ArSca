@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {referenceMetadataCheck,referenceConsoles,checkReferenceImage} from '../scripts/reference-validation.mjs';
+import {referenceMetadataCheck,referenceConsoles,checkReferenceImage,validReferenceConsoleId} from '../scripts/reference-validation.mjs';
 import {matchReferenceImage} from '../scripts/reference-match.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {sectionsForSet} from '../scripts/baseball-section-pages.mjs';
@@ -18,6 +18,8 @@ assert.equal((await checkReferenceImage(base.image,async()=>new Response('HTML',
 let external=0;assert.equal((await checkReferenceImage('https://evil.test/photo.jpg',async()=>{external++;})).reason,'invalid_image_host');assert.equal(external,0,'no SSRF or arbitrary host probing');
 assert.equal(referenceMetadataCheck(base).visuallyReviewed,false,'metadata checks never claim visual authentication');
 const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,consoleId,player,cardNumber,parallel,run,url:'https://www.sportscardspro.com/game/'+consoleId+'/sample',title:player+(parallel?' ['+parallel+']':'')+' #'+cardNumber});
+assert.ok(validReferenceConsoleId('baseball-cards-2023-bowman%27s-best'));for(const bad of ['bad%2fsource','bad%2527source','bad/source','bad?source','bad%00source'])assert.equal(validReferenceConsoleId(bad),false);
+for(const [source,player,number,setId]of [['baseball-cards-2023-bowman%27s-best','Taj Bradley','1','2023-bowman-s-best-baseball'],['baseball-cards-2022-stadium-club-chrome','Shohei Ohtani','1','2022-topps-stadium-club-chrome']]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[]);assert.equal(check.matches[0].setId,setId);}
 for(const [source,player,number,setId]of [
  ['baseball-cards-2019-topps','Jarrod Dyson','351','2019-topps-series-2-baseball'],
  ['baseball-cards-2020-topps','Gerrit Cole','351','2020-topps-baseball-series-2'],

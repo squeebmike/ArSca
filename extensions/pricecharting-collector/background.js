@@ -1,4 +1,4 @@
-import {sourceUrl,eligibleSet,inspectPage,newestSetQueue,recheckSourceDirectories,queueEarlierPriceBackfill} from './core.mjs';
+import {sourceUrl,eligibleSet,inspectPage,newestSetQueue,recheckSourceDirectories,queueEarlierPriceBackfill,queueVerifiedSources} from './core.mjs';
 import {cloudRequest,uploadReferences,DASHBOARD} from './cloud.mjs';
 let pumping;
 const read = async () => {const job=(await chrome.storage.local.get('job')).job;const paused=(await chrome.storage.local.get('collectorPaused')).collectorPaused;return paused&&job?{...job,running:false,message:typeof paused==='string'?paused:'Paused. Uploaded references are safe in the cloud.'}:job;};
@@ -96,7 +96,7 @@ chrome.tabs.onUpdated.addListener((_id,change)=>{if(change.status==='complete')v
 chrome.runtime.onStartup.addListener(()=>{void schedule().then(run);});
 chrome.runtime.onInstalled.addListener(()=>{void schedule();void chrome.tabs.query({url:DASHBOARD+'*'}).then(tabs=>Promise.all(tabs.map(tab=>chrome.scripting.executeScript({target:{tabId:tab.id},files:['dashboard-controls.js']})))).catch(()=>{});});
 chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
-  if(!['start','pause','resume','rescan-directories','queue-price-backfill','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier','collector-status'].includes(message.type))return;
+  if(!['start','pause','resume','rescan-directories','queue-price-backfill','queue-verified-sources','open-source','connect-cloud','cloud-sets','cloud-cards','sync-earlier','collector-status'].includes(message.type))return;
   (async()=>{
     if(message.type==='start'){
       const old=await read();if(old?.running)throw new Error('Pause the existing collection first.');
@@ -109,6 +109,8 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       await chrome.storage.local.set({collectorPaused:false});
       await save({running:true,queue:newestSetQueue(eligible.map(url=>({url,pages:0}))),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting newest-first collection…'});
       await schedule();void run();
+    }else if(message.type==='queue-verified-sources'){
+      await preserveAndUpdateQueue(job=>queueVerifiedSources(job,message.urls));
     }else if(message.type==='rescan-directories'){
       await preserveAndUpdateQueue(recheckSourceDirectories);
     }else if(message.type==='queue-price-backfill'){
@@ -123,7 +125,7 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       return await cloudRequest(chrome,'/reference-collector/sets');
     }else if(message.type==='cloud-sets')return await cloudRequest(chrome,'/reference-collector/sets');
     else if(message.type==='cloud-cards'){
-      if(!/^[a-z0-9-]{1,160}$/.test(message.console||'')||message.cursor&&!/^row:[a-z0-9-]{1,250}$/.test(message.cursor))throw Error('Invalid source set or cursor.');
+      if(typeof message.console!=='string'||message.console.length>160||!/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(message.console)||message.cursor&&!/^row:[a-z0-9-]{1,250}$/.test(message.cursor))throw Error('Invalid source set or cursor.');
       return await cloudRequest(chrome,'/reference-collector/cards?console='+encodeURIComponent(message.console)+'&cursor='+encodeURIComponent(message.cursor||''));
     }else if(message.type==='sync-earlier'){
       if((await read())?.running)throw Error('Pause collection before syncing earlier captures.');

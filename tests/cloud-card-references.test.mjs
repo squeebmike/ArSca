@@ -94,6 +94,12 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  assert.equal(await sportsReferenceImage(env,{},release,subject),null,'caption repair preserves owner holds');
 }
 {
+ const bestId='baseball-cards-2023-bowman%27s-best',best={...card,consoleId:bestId,title:'Taj Bradley #1',player:'Taj Bradley',image:'https://storage.googleapis.com/images.pricecharting.com/best1/240.jpg',url:'https://www.sportscardspro.com/game/'+bestId+'/taj-bradley-1'};
+ assert.ok(normalizeCloudReference(best));assert.equal(normalizeCloudReference({...best,consoleId:bestId.replace('%27','%2f'),url:best.url.replace('%27','%2f')}),null,'encoded separators never become source IDs');
+ await send([best]);await instances.get('console:'+bestId).alarm();
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs'),bestSet=baseballSets.find(s=>s.id==='2023-bowman-s-best-baseball');
+ assert.equal((await sportsReferenceImage(env,{},bestSet,bestSet.cards[0])).image,best.image,'encoded source survives cloud upload and exact website lookup');
+ const bestUrl=new URL('https://worker.example/reference-collector/cards?console='+encodeURIComponent(bestId));const bestResponse=await handleCloudReferenceRequest(new Request(bestUrl,{headers:{Authorization:'Bearer owner'}}),env,bestUrl,deps);assert.equal(bestResponse.status,200);assert.equal((await bestResponse.json()).cards[0].consoleId,bestId);
  const catalog=binding.get('catalog');for(let n=0;n<23;n++)await catalog.fetch('https://archive.internal/summary',{method:'POST',body:JSON.stringify({consoleId:'fixture-source-'+n,name:'Fixture',cards:0,photos:0,updatedAt:Date.now()})});
  async function status(query=''){const url=new URL('https://worker.example/reference-collector/audit/status'+query);return handleCloudReferenceRequest(new Request(url,{headers:{Authorization:'Bearer owner'}}),env,url,deps);}
  const first=await(await status()).json();assert.equal(first.sets.length,20);assert.equal(first.nextOffset,20);assert.ok(first.total>20);

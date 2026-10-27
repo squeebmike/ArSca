@@ -5,12 +5,18 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.4-base-finish';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.5-provider-names';
+export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
 export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
+ if(set.id==='2023-bowman-s-best-baseball')ids.push('baseball-cards-2023-bowman%27s-best');
+ if(set.id==='2022-topps-stadium-club-chrome'){
+  ids.push('baseball-cards-2022-stadium-club-chrome');
+  if(!card||/auto/i.test(card.section||''))ids.push('baseball-cards-2022-stadium-club-chrome-autographs');
+ }
  // The provider's flagship console also holds Series 2 card numbers. Exact
  // player/number/finish matching still separates the two published releases.
  if(sport==='baseball'&&/topps.*series [12]/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');

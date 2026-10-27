@@ -1,7 +1,7 @@
 // Persistent public card identities/photo URLs, separate from expiring offers.
 // No image bytes, inventory, or customer data. Optional source estimates are
 // labeled separately from offers and retain their actual collection timestamp.
-import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,REFERENCE_AUDIT_VERSION,REFERENCE_SOURCE_MAPPING_VERSION} from './reference-validation.mjs';
+import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,validReferenceConsoleId,REFERENCE_AUDIT_VERSION,REFERENCE_SOURCE_MAPPING_VERSION} from './reference-validation.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 // A few photographed serial stamps have been checked by hand. Reuse that
 // evidence only for the identical source URL, title and photo; never infer a
@@ -11,7 +11,8 @@ export function normalizeCloudReference(row){
  if(!row||typeof row!=='object')return null;
  let u;try{u=new URL(row.url);}catch{return null;}
  if(u.protocol!=='https:'||u.username||u.password||!['www.pricecharting.com','pricecharting.com','www.sportscardspro.com','sportscardspro.com'].includes(u.hostname))return null;
- const parts=u.pathname.match(/^\/game\/([a-z0-9-]{1,160})\/([a-z0-9-]{1,250})\/?$/);if(!parts||row.consoleId!==parts[1])return null;
+ u.pathname=u.pathname.replace(/'/g,'%27');
+ const parts=u.pathname.match(/^\/game\/([^/]{1,160})\/([a-z0-9-]{1,250})\/?$/);if(!parts||!validReferenceConsoleId(parts[1])||row.consoleId!==parts[1])return null;
  const title=String(row.title||'').replace(/\s+/g,' ').trim();if(!title||title.length>350)return null;
  const number=title.match(/#([^\s]+)\s*$/)?.[1]||String(row.cardNumber||'');
  if(number&&!/^[a-z0-9.-]{1,40}$/i.test(number))return null;
@@ -62,7 +63,7 @@ export class CardReferenceArchive {
    return reply({ok:true,accepted:rows.length,rejected:input.cards.length-rows.length,summary});
   }
   if(request.method==='POST'&&url.pathname==='/summary'){
-   const summary=await request.json();if(!/^[a-z0-9-]{1,160}$/.test(summary.consoleId||''))return new Response('Invalid set',{status:400});
+   const summary=await request.json();if(!validReferenceConsoleId(summary.consoleId))return new Response('Invalid set',{status:400});
    await this.ctx.storage.transaction(async tx=>{const key='set:'+summary.consoleId,old=await tx.get(key);if(!old||summary.updatedAt>=old.updatedAt)await tx.put(key,summary);});return reply({ok:true});
   }
   if(request.method==='GET'&&url.pathname==='/sets'){
@@ -176,19 +177,19 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
   return deps.json({sets:results,total:sets.length,nextOffset:offset+page.length<sets.length?offset+page.length:null,running:results.some(s=>s.audit.running)},200,{'Cache-Control':'no-store'});
  }
  if(url.pathname==='/reference-collector/samples'&&request.method==='GET'){
-  const id=url.searchParams.get('console')||'';if(!/^[a-z0-9-]{1,160}$/.test(id))return deps.json({error:'Invalid source set'},400);
+  const id=url.searchParams.get('console')||'';if(!validReferenceConsoleId(id))return deps.json({error:'Invalid source set'},400);
   const data=await(await archive(id).fetch('https://archive.internal/samples')).json();return deps.json(data,200,{'Cache-Control':'no-store'});
  }
  if(url.pathname==='/reference-collector/hold'&&request.method==='POST'){
   const input=await deps.readJsonWithLimit(request,4096);if(input.error)return input.error;
-  const id=input.data.consoleId;if(!/^[a-z0-9-]{1,160}$/.test(id||''))return deps.json({error:'Invalid source set'},400);
+  const id=input.data.consoleId;if(!validReferenceConsoleId(id))return deps.json({error:'Invalid source set'},400);
   const r=await archive(id).fetch('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:input.data.url,reason:input.data.reason})});return r.ok?deps.json(await r.json(),200,{'Cache-Control':'no-store'}):deps.json({error:'Unknown source reference'},r.status);
  }
  if(request.method==='GET'&&url.pathname==='/reference-collector/sets'){
   const r=await archive('catalog',true).fetch('https://archive.internal/sets');return deps.json(await r.json(),r.status,{'Cache-Control':'no-store'});
  }
  if(request.method==='GET'&&url.pathname==='/reference-collector/cards'){
-  const id=url.searchParams.get('console')||'';if(!/^[a-z0-9-]{1,160}$/.test(id))return deps.json({error:'Invalid source set'},400);
+  const id=url.searchParams.get('console')||'';if(!validReferenceConsoleId(id))return deps.json({error:'Invalid source set'},400);
   const target=new URL('https://archive.internal/cards');target.searchParams.set('cursor',url.searchParams.get('cursor')||'');
   const r=await archive(id).fetch(target.href);return r.ok?deps.json(await r.json(),200,{'Cache-Control':'no-store'}):deps.json({error:'Invalid cursor'},r.status);
  }
@@ -197,7 +198,7 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
   const input=parsed.data;
   if(!Array.isArray(input.cards)||!input.cards.length||input.cards.length>200)return deps.json({error:'Send 1–200 cards per batch'},400);
   const id=input.cards[0]?.consoleId;
-  if(!/^[a-z0-9-]{1,160}$/.test(id||'')||input.cards.some(r=>r.consoleId!==id))return deps.json({error:'One source set per batch'},400);
+  if(!validReferenceConsoleId(id)||input.cards.some(r=>r.consoleId!==id))return deps.json({error:'One source set per batch'},400);
   const response=await archive(id).fetch('https://archive.internal/batch',{method:'POST',body:JSON.stringify({cards:input.cards})});
   if(!response.ok)return deps.json({error:'The reference batch was invalid'},response.status);
   const data=await response.json();
