@@ -7,6 +7,9 @@ export function referenceIdentityMatches(row,card){
  if(!m||!referenceCardNames(card).some(name=>fold(m[1])===fold(name))||m[3]!==number)return false;
  if(!rule){
   if(!card.section||card.section==='Base')return !m[2]&&!row.run;
+  // An alphanumeric Update number alone does not identify the Clear/image
+  // variation. Those explicit base variations need a matching finish label.
+  if(!m[2]&&/^base\b.*\b(?:variation|parallel)/i.test(card.section))return false;
   const section=fold(card.section).replace(/\b(?:base|cards?|variations?|parallels?)\b/g,' ').replace(/\s+/g,' ').trim();
   return m[2]?finishName(section)===finishName(m[2]):/[a-z]/i.test(number);
  }

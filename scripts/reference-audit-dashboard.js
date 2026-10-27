@@ -29,7 +29,9 @@
   }
  }
  let timer;
- async function auditStatus(){const data=await request('audit/status');fill(data.sets);progress.replaceChildren();let records=0,photos=0,checked=0,ok=0,eligible=0,held=0;
+ async function auditStatus(){const data={sets:[],running:false};let offset=0;
+  do{const page=await request('audit/status?offset='+offset);data.sets.push(...page.sets);data.running ||= page.running;offset=page.nextOffset;status.textContent='Loading audit status: '+data.sets.length+' / '+page.total+' source sets. No new image scan is being started.';}while(offset!==null&&data.sets.length<500);
+  fill(data.sets);progress.replaceChildren();let records=0,photos=0,checked=0,ok=0,eligible=0,held=0;
   for(const set of data.sets){const a=set.audit;records+=a.records||0;photos+=a.photos||0;checked+=a.imagesChecked||0;ok+=a.imagesOk||0;eligible+=a.eligible||0;held+=a.held||0;const p=document.createElement('p');p.textContent=set.consoleId+': '+a.phase+' · '+(a.records||0)+' records · '+(a.imagesChecked||0)+' image URLs checked · '+(a.eligible||0)+' eligible · flags '+JSON.stringify(a.flags||{});progress.append(p);}
   status.textContent=(data.running?'Audit running. ':'Audit status: ')+records+' records scanned; '+photos+' photo references; '+checked+' unique image URLs checked; '+ok+' reachable; '+eligible+' eligible; '+held+' held after final checks.';
   clearTimeout(timer);if(data.running)timer=setTimeout(()=>{if(!document.hidden)void auditStatus().catch(error=>status.textContent=error.message);},30000);

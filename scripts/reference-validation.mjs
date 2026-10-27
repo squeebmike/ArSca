@@ -5,13 +5,16 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.2-base-captions';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.3-flagship-update';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
 export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
- if(sport==='baseball'&&/topps.*series 1/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
+ // The provider's flagship console also holds Series 2 card numbers. Exact
+ // player/number/finish matching still separates the two published releases.
+ if(sport==='baseball'&&/topps.*series [12]/i.test(set.displayName)&&set.year>=2019&&set.year<=2026)ids.push('baseball-cards-'+set.year+'-topps');
+ if(sport==='baseball'&&/topps updates?(?: series)? baseball/i.test(set.displayName))ids.push('baseball-cards-'+name.replace(/-updates?(?:-series)?$/,'-update'));
  if(sport==='baseball'&&/topps update series/i.test(set.displayName))ids.push('baseball-cards-'+name.replace('-update-series','-update'));
  if(sport==='baseball'&&/topps chrome updates?(?: series)? baseball/i.test(set.displayName))ids.push('baseball-cards-'+name.replace(/-updates$/,'-update').replace(/-update-series$/,'-update'));
  if(['2023-bowman','2023-bowman-chrome'].includes(set.id)){
@@ -40,6 +43,7 @@ export function referenceConsoles(set,card=null){
   if(!card||card.section==='Chrome Draft Picks')ids.push('baseball-cards-2025-bowman-draft-chrome');
   if(!card||card.section==='Chrome Prospect Autograph Variation')ids.push('baseball-cards-2025-bowman-draft-chrome-prospect-autograph');
  }
+ if(set.id==='2021-bowman-draft-baseball'&&(!card||card.section==='Chrome Draft Picks'))ids.push('baseball-cards-2021-bowman-draft-chrome');
  if(set.id==='2026-bowman-baseball'){
   if(!card||card.section==='Paper Prospects')ids.push('baseball-cards-2026-bowman-paper-prospect');
   if(!card||card.section==='Chrome Prospects')ids.push('baseball-cards-2026-bowman-chrome-prospect');

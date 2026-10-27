@@ -105,7 +105,7 @@ export class CardReferenceArchive {
     // Repair old unmapped-source results lazily, once per mapping release.
     // This uses only the stored family and immutable publisher metadata.
     // Image health, ambiguity, duplicates and owner holds still gate display.
-    if(check?.flags?.some(flag=>['unmapped_source_set','no_exact_checklist_match'].includes(flag))&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
+    if(check?.flags?.some(flag=>['unmapped_source_set','no_exact_checklist_match','ambiguous_checklist_match'].includes(flag))&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
     if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.length||check.matches.length!==1||!id)continue;
     const health=await this.ctx.storage.get('health:'+id);if(!health?.ok||Date.now()-health.checkedAt>7*86400000||await this.ctx.storage.get('hold:'+id))continue;
     const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(usage.size!==1)continue;
@@ -169,9 +169,11 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
   return deps.json({ok:true,sets:sets.length},200,{'Cache-Control':'no-store'});
  }
  if(url.pathname==='/reference-collector/audit/status'&&request.method==='GET'){
-  const sets=(await(await archive('catalog',true).fetch('https://archive.internal/sets')).json()).sets,results=[];
-  for(const set of sets){const status=await(await archive(set.consoleId).fetch('https://archive.internal/audit-status')).json();results.push({...set,audit:status});}
-  return deps.json({sets:results,running:results.some(s=>s.audit.running)},200,{'Cache-Control':'no-store'});
+  const offsetText=url.searchParams.get('offset')||'0';
+  if(!/^(0|[1-9]\d{0,3})$/.test(offsetText))return deps.json({error:'Invalid audit offset'},400);
+  const sets=(await(await archive('catalog',true).fetch('https://archive.internal/sets')).json()).sets,offset=Number(offsetText),page=sets.slice(offset,offset+20),results=[];
+  for(let i=0;i<page.length;i+=4)results.push(...await Promise.all(page.slice(i,i+4).map(async set=>({...set,audit:await(await archive(set.consoleId).fetch('https://archive.internal/audit-status')).json()}))));
+  return deps.json({sets:results,total:sets.length,nextOffset:offset+page.length<sets.length?offset+page.length:null,running:results.some(s=>s.audit.running)},200,{'Cache-Control':'no-store'});
  }
  if(url.pathname==='/reference-collector/samples'&&request.method==='GET'){
   const id=url.searchParams.get('console')||'';if(!/^[a-z0-9-]{1,160}$/.test(id))return deps.json({error:'Invalid source set'},400);

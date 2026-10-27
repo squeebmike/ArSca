@@ -93,4 +93,12 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  await object.fetch(new Request('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:sample.url,reason:'Review requested'})}));
  assert.equal(await sportsReferenceImage(env,{},release,subject),null,'caption repair preserves owner holds');
 }
-console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, cloud bridge and interrupted-upload recovery passed');
+{
+ const catalog=binding.get('catalog');for(let n=0;n<23;n++)await catalog.fetch('https://archive.internal/summary',{method:'POST',body:JSON.stringify({consoleId:'fixture-source-'+n,name:'Fixture',cards:0,photos:0,updatedAt:Date.now()})});
+ async function status(query=''){const url=new URL('https://worker.example/reference-collector/audit/status'+query);return handleCloudReferenceRequest(new Request(url,{headers:{Authorization:'Bearer owner'}}),env,url,deps);}
+ const first=await(await status()).json();assert.equal(first.sets.length,20);assert.equal(first.nextOffset,20);assert.ok(first.total>20);
+ const second=await(await status('?offset=20')).json();assert.equal(second.nextOffset,null);assert.equal(first.sets.length+second.sets.length,first.total);
+ assert.equal(new Set([...first.sets,...second.sets].map(s=>s.consoleId)).size,first.total,'all source audit results are reachable once without duplicates');
+ assert.equal((await status('?offset=-1')).status,400);
+}
+console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');
