@@ -27,7 +27,7 @@ const key=(job,path)=>'coverage:'+job.startedAt+':path:'+path;
 export async function coverageArchiveRequest(object,request){
  const {ctx,env}=object,storage=ctx.storage,url=new URL(request.url);
  if(url.pathname==='/coverage-start'&&request.method==='POST'){
-  let job=await storage.get('coverage-job');if(job?.running)return json(job);
+  let job=await storage.get('coverage-job');if(job?.running){if(!await storage.getAlarm())await storage.setAlarm(Date.now()+1000);return json(job);}
   // Repeated clicks resume the same census, including completed results.
   if(job){if(job.phase!=='complete'){job.running=true;delete job.error;await storage.put('coverage-job',job);await storage.setAlarm(Date.now()+1000);}return json(job);}
   const sets=[...(await storage.list({prefix:'set:',limit:500})).values()];
@@ -35,7 +35,13 @@ export async function coverageArchiveRequest(object,request){
   job={running:true,phase:'sources',startedAt:Date.now(),mappingVersion:REFERENCE_SOURCE_MAPPING_VERSION,sources:sets.filter(s=>mapped.has(s.consoleId)).map(s=>s.consoleId),unmappedSources:sets.filter(s=>!mapped.has(s.consoleId)).map(s=>({consoleId:s.consoleId,records:s.cards,photos:s.photos})),sourceIndex:0,cursor:'',recordsScanned:0,setIndex:0,offset:0,total:0,withReference:0,missing:0,reasons:{},pages:0};
   await storage.put('coverage-job',job);await storage.setAlarm(Date.now()+1000);return json(job);
  }
- if(url.pathname==='/coverage-status'&&request.method==='GET')return json(await storage.get('coverage-job')||{running:false,phase:'not_started'});
+ if(url.pathname==='/coverage-status'&&request.method==='GET'){
+  const job=await storage.get('coverage-job');
+  // An interrupted alarm can exhaust platform retries without reaching our
+  // catch. Rearm its saved cursor; never reset counts or a completed census.
+  if(job?.running&&Date.now()-Number(job.updatedAt||job.startedAt)>120000&&!await storage.getAlarm())await storage.setAlarm(Date.now()+1000);
+  return json(job||{running:false,phase:'not_started'});
+ }
  if(url.pathname==='/coverage-report'&&request.method==='GET'){
   const page=Number(url.searchParams.get('page')||0);if(!Number.isInteger(page)||page<0||page>100000)return new Response('Invalid page',{status:400});
   const job=await storage.get('coverage-job'),items=job?await storage.get('coverage:'+job.startedAt+':report:'+page):null;
@@ -69,7 +75,7 @@ export async function coverageAlarm(object){
    if(!id){job.phase='checklists';}
    else{
     const url=new URL('https://archive.internal/coverage-source-page');url.searchParams.set('cursor',job.cursor);
-    const response=await source(env,id).fetch(url.href);if(!response.ok)throw Error('Source coverage read failed');const data=await response.json();
+    const response=await source(env,id).fetch(url.href,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('Source coverage read failed');const data=await response.json();
     const paths=[...new Set(data.candidates.map(c=>key(job,c.path)))],prior=await getMany(storage,paths),writes={};
     for(const candidate of data.candidates){const k=key(job,candidate.path),old=writes[k]||prior.get(k);if(!old||candidate.eligible&&!old.eligible)writes[k]=candidate;}
     await putMany(storage,writes);job.recordsScanned+=data.records;job.cursor=data.cursor||'';if(!data.cursor)job.sourceIndex++;
