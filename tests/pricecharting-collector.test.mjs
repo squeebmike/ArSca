@@ -19,6 +19,13 @@ const complete=queueVerifiedSources({...oldJob,running:false,queue:[],priceBackf
 assert.throws(()=>queueVerifiedSources(oldJob,'https://evil.test/console/a'));assert.throws(()=>queueVerifiedSources(oldJob,base.replace('topps','panini')));
 const rescanned=recheckSourceDirectories(oldJob);assert.deepEqual(rescanned.queue[0],oldJob.queue[0]);assert.ok(rescanned.queue.some(x=>x.url===oldJob.queue[1].url));assert.equal(rescanned.queue.length,3);assert.deepEqual(rescanned.sets,oldJob.sets);assert.deepEqual(rescanned.completed,oldJob.completed);assert.equal(rescanned.navigating,base);assert.equal(rescanned.notBefore,123);assert.equal(oldJob.queue.length,2,'rescan does not mutate the running snapshot');assert.equal(recheckSourceDirectories(rescanned).queue.length,3,'directory additions are idempotent');
 const followup=queueEarlierPriceBackfill(oldJob,[{consoleId:'baseball-cards-2026-topps',cards:2},{consoleId:'baseball-cards-2026-topps',cards:2},{consoleId:'baseball-cards-2025-bowman',cards:2},{consoleId:'baseball-cards-2024-topps',cards:2},{consoleId:'baseball-cards-2025-panini',cards:2}]);
+const recoveryJob={...oldJob,queue:[],seen:[sourceUrl(base)],completed:[sourceUrl(base)]};
+assert.equal(queueVerifiedSources(recoveryJob,base).queue.length,0,'normal queue still deduplicates history');
+const recoveredJob=queueVerifiedSources(recoveryJob,base,true);
+assert.equal(recoveredJob.queue.length,1,'explicit recovery revisits an old source automatically');
+assert.deepEqual(recoveredJob.completed,recoveryJob.completed,'history preserved');
+assert.equal(queueVerifiedSources({...recoveredJob,queue:[]},base,true).queue.length,0,'recovery is one pass, not a repeated crawl');
+assert.deepEqual(queueVerifiedSources({...oldJob,referenceRecoverySources:[]},base,true).queue[0],oldJob.queue[0],'active page and cursor preserved');
 assert.deepEqual(followup.queue,oldJob.queue,'price revisit does not replace or reorder active collection');assert.equal(followup.priceBackfill.queue.length,2);assert.equal(followup.priceBackfill.active,false);assert.deepEqual(queueEarlierPriceBackfill(followup,[]),followup,'one queued revisit is idempotent');
 const ordered=newestSetQueue([{url:base.replace('2022','2019')},{url:'https://www.sportscardspro.com/console/baseball-cards-2026-topps'},{url:'https://www.sportscardspro.com/category/football-cards'},{url:'https://www.sportscardspro.com/console/baseball-cards-2026-topps-holiday'},{url:base.replace('2022','2025')}]);
 assert.ok(ordered[0].url.includes('/category/'),'directories are discovered before collecting cards');assert.ok(ordered[1].url.endsWith('2026-topps-holiday'),'verified latest release first in its year');assert.ok(ordered.at(-1).url.includes('2019'),'oldest known year last');

@@ -142,20 +142,26 @@ function renderEstimate(figure,ref){
  if(fields.length>1){var select=document.createElement('select');select.setAttribute('aria-label','PriceCharting grade for '+ref.title);fields.forEach(function(pair){var option=document.createElement('option');option.value=pair[0];option.textContent=pair[1];select.append(option);});select.onchange=function(){choose(fields.find(function(pair){return pair[0]===select.value;})||fields[0]);};box.append(select);}
  var date=Date.parse(prices.capturedAt);note.textContent=(Number.isFinite(date)?'Collected '+new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric'}).format(new Date(date))+' · ':'')+'Estimate only; condition matters. Excludes shipping.';box.append(note);figure.append(box);
 }
+function missingReference(target,temporary){
+ target.replaceChildren();var box=document.createElement('span');box.className='mp-reference-unavailable';box.setAttribute('role','img');box.setAttribute('aria-label',temporary?'Card photo temporarily unavailable':'Reference photo unavailable');
+ box.style.cssText='display:flex;box-sizing:border-box;flex-direction:column;align-items:center;justify-content:center;gap:12px;width:180px;max-width:100%;aspect-ratio:3/4;margin:auto;padding:18px;border:1px solid currentColor;border-radius:12px;background:var(--wo-surface,transparent);color:var(--wo-accent,inherit);text-align:center;font:600 13px/1.5 system-ui';
+ box.innerHTML='<svg viewBox="0 0 64 80" width="48" height="60" aria-hidden="true"><rect x="8" y="3" width="48" height="74" rx="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M25 22h14m-11 0v13L18 54q-3 8 7 8h14q10 0 7-8L36 35V22M22 49h20" fill="none" stroke="currentColor" stroke-width="3"/></svg><strong>THE MANA POCKET</strong>';
+ var label=document.createElement('span');label.textContent=temporary?'Photo temporarily unavailable':'Reference photo unavailable';box.append(label);target.append(box);
+}
 function renderReference(target,ref){
  var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');
  img.src=ref.image;img.alt=ref.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';
  link.href=ref.url;link.target='_blank';link.rel='noopener';link.textContent='PriceCharting reference';
  figure.className='mp-reference-figure';caption.append(link,document.createTextNode(' · Not a copy for sale.'));figure.append(img,caption);renderEstimate(figure,ref);target.append(figure);
- img.onerror=function(){figure.replaceChildren(document.createTextNode('Reference photo unavailable.'));};
+ img.onerror=function(){missingReference(figure,true);};
 }
 async function loadReference(target){
  if(target.dataset.referenceLoaded)return;target.dataset.referenceLoaded='true';
  target.setAttribute('aria-live','polite');target.style.flexDirection='column';target.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Finding card photo…</span></span>';
  try{var r=await fetch(target.dataset.sportsReference,{headers:{Accept:'application/json'}});if(!r.ok)throw Error('unavailable');var d=await r.json();target.replaceChildren();
   if(d.reference)renderReference(target,d.reference);
-  else target.textContent='Reference photo unavailable.';
- }catch(_){target.textContent='Card photo temporarily unavailable';}
+  else missingReference(target,false);
+ }catch(_){missingReference(target,true);}
 }
 function compactTarget(target){return !!(target.closest&&target.closest('.mp-parallel-card'));}
 function renderListing(target,l){
@@ -173,7 +179,7 @@ async function lookup(b){
  if(b.disabled)return;b.disabled=true;b.innerHTML='<span class="mp-mana-wait"><span class="mp-mana-vial" aria-hidden="true"></span><span>Checking eBay…</span></span>';
  var target=b.parentElement.querySelector('[data-sports-result]'),reference=b.parentElement.querySelector('[data-sports-reference-result]');
  try{var r=await fetch(b.dataset.sportsLookup,{headers:{Accept:'application/json'}});var d=await r.json();if(!r.ok&&!d.marketplaceUnavailable)throw Error('unavailable');target.replaceChildren();
-  if(reference){reference.replaceChildren();if(d.reference)renderReference(reference,d.reference);else reference.textContent='Reference photo unavailable.';}
+  if(reference){reference.replaceChildren();if(d.reference)renderReference(reference,d.reference);else missingReference(reference,false);}
   if(!d.listing){target.textContent=d.marketplaceUnavailable?pausedPhotoText(d):compactTarget(target)?'No exact eBay listing found. Try the finish search below.':'No matching live eBay listing found. The eBay search below may show other copies.';}
   else renderListing(target,d.listing);
  }catch(_){target.textContent='Listing lookup is temporarily unavailable. Open this finish for search links.';}

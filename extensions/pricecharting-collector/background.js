@@ -110,7 +110,7 @@ chrome.runtime.onMessage.addListener((message,_sender,respond)=>{
       await save({running:true,queue:newestSetQueue(eligible.map(url=>({url,pages:0}))),seen:eligible,completed:[],sets:old?.sets||{},discover:message.discover!==false,licensedOnly,tabId:old?.tabId||null,message:'Starting newest-first collection…'});
       await schedule();void run();
     }else if(message.type==='queue-verified-sources'){
-      await preserveAndUpdateQueue(job=>queueVerifiedSources(job,message.urls));
+      await preserveAndUpdateQueue(job=>queueVerifiedSources(job,message.urls,message.revisitCompleted===true));
     }else if(message.type==='rescan-directories'){
       await preserveAndUpdateQueue(recheckSourceDirectories);
     }else if(message.type==='queue-price-backfill'){

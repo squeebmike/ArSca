@@ -15,13 +15,13 @@ export function eligibleSet(url, licensedOnly = true) {
   const year = Number(path.match(/-cards-(\d{4})-/)?.[1]);
   return year >= 2019 && (/-(topps|bowman(?:%27s)?)(?:-|\/|$)/.test(path)||/^\/(?:console|game)\/baseball-cards-\d{4}-stadium-club(?:-|\/|$)/.test(path));
 }
-export function queueVerifiedSources(job,raw){
+export function queueVerifiedSources(job,raw,revisitCompleted=false){
  if(!job)throw Error('Connect to the existing collector job first.');
  const urls=[...new Set(String(raw||'').split(/\s+/).filter(Boolean).map(value=>{const url=sourceUrl(value);if(!url||!new URL(url).pathname.startsWith('/console/')||!eligibleSet(url,true))throw Error('Use verified licensed set URLs from the allowed source hosts.');return url;}))];
  if(!urls.length||urls.length>100)throw Error('Queue 1–100 verified set URLs.');
- const seen=new Set([...(job.seen||[]),...(job.completed||[]),...(job.queue||[]).map(item=>item.url)]),added=urls.filter(url=>!seen.has(url)).map(url=>({url,pages:0}));
+ const recovered=job.referenceRecoverySources||[],seen=new Set([...(revisitCompleted?recovered:[...(job.seen||[]),...(job.completed||[])]),...(job.queue||[]).map(item=>item.url)]),added=urls.filter(url=>!seen.has(url)).map(url=>({url,pages:0}));
  const queue=job.queue?.length?[job.queue[0],...newestSetQueue([...job.queue.slice(1),...added])]:newestSetQueue(added);
- return {...job,queue,seen:[...new Set([...(job.seen||[]),...urls])],...(job.queue?.length?{}:{navigating:'',notBefore:0}),message:added.length+' verified sources appended; saved records and existing queue preserved.'};
+ return {...job,queue,seen:[...new Set([...(job.seen||[]),...urls])],...(revisitCompleted?{referenceRecoverySources:[...new Set([...recovered,...added.map(item=>item.url)])]}:{}),...(job.queue?.length?{}:{navigating:'',notBefore:0}),message:added.length+' verified sources appended; saved records and existing queue preserved.'};
 }
 export function recheckSourceDirectories(job){
  if(!job)throw Error('Start a collection before rechecking directories.');
