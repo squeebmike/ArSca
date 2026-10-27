@@ -66,7 +66,7 @@ const out2 = await res2.json();
 assert.ok(out2.failed.some(f => f.listingId === '257810593521'));
 assert.ok(!patches.some(p => p.path.includes('id=eq.sonic')), 'not marked ended when eBay refused');
 
-// Runs hourly, right after the eBay order sync brings in the sales.
+// Runs every 6 hours, right after the eBay order sync brings in the sales.
 const worker = fs.readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
 const sync = worker.slice(worker.indexOf('async function runScheduledEbayOrderSync'), worker.indexOf('async function ebayFetchWithRetry'));
 assert.ok(sync.indexOf("'/foc/admin/end-sold-out-ebay-presales'") > sync.indexOf('syncEbayOrdersForStore('), 'after the sales are in');
