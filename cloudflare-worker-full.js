@@ -8816,6 +8816,15 @@ async function routeRequest(request, env, ctx) {
     // "www.themanapocket.com", which IS stably proxied. The apex now just
     // redirects to www (a Cloudflare Redirect Rule, not code in this file).
     if (url.hostname === 'www.themanapocket.com' && url.pathname.startsWith('/shop')) {
+      // Consolidate a plain legacy category link onto its crawlable category.
+      // Preserve compound filter, search, item and pagination requests.
+      if (url.pathname === '/shop' && ['GET','HEAD'].includes(request.method) && url.searchParams.size === 1) {
+        const category = url.searchParams.get('cat') || url.searchParams.get('category');
+        const slug = category && storefrontCategorySlug(category);
+        if (['comics','pokemon','sports-cards','mtg','collectibles'].includes(slug)) {
+          return new Response(null,{status:301,headers:{Location:'https://www.themanapocket.com/category/'+slug,'Cache-Control':'public,max-age=3600'}});
+        }
+      }
       const originResponse = await fetch(request);
       if(request.method !== 'GET' || !originResponse.headers.get('Content-Type')?.includes('text/html')) return originResponse;
       // Progressive HTML: crawlers/no-JS visitors get real product links.
