@@ -286,17 +286,19 @@ jobs:
             body: JSON.stringify({ ok: true, probeKey, at: new Date().toISOString() }),
           }, res => res.status === 401 || res.status === 403);
           await request('anonymous kv read rejected', '/kv/' + probeKey, {}, res => res.status === 401 || res.status === 403);
-          await request('PriceCharting CSV status', '/pricing/pricecharting/csv/status', {}, res => res.ok || res.status === 410);
+          // Paid price lookups now require staff login. These anonymous
+          // probes must verify that protection, without spending API keys.
+          await request('anonymous PriceCharting CSV status rejected', '/pricing/pricecharting/csv/status', {}, res => res.status === 401 || res.status === 403);
           await request('PriceCharting CSV test route', '/pricing/pricecharting/csv/test-url', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ categoryKey: 'pokemon-cards' }),
-          }, res => res.status === 400 || res.status === 410);
+          }, res => res.status === 401 || res.status === 403);
           await request('PriceCharting CSV sync route', '/pricing/pricecharting/csv/sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ categoryKey: 'deploy-probe-' + Date.now() }),
-          }, res => res.status === 400 || res.status === 410 || res.ok);
+          }, res => res.status === 401 || res.status === 403);
           await request('offline cache manifest', '/offline/cache/manifest');
           await request('MTG R2 manifest', '/catalog/mtg/manifest', {}, res => res.ok || res.status === 404);
           await request('MTG R2 file validation', '/catalog/mtg/download?file=invalid', {}, res => res.status === 400);
