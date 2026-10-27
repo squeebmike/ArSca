@@ -16420,6 +16420,9 @@ async function routeRequest(request, env, ctx) {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
+      // The log is The Mana Pocket's own PokemonPriceTracker account: no
+      // other store sees it.
+      if (!isPlatformStore(storeId, env)) return json({ ok:false, error:'Credit use is only shown for the built-in keys' }, 403);
       const askedHours = Number(url.searchParams.get('hours')) || 0;
       const hours = askedHours > 0 ? Math.min(24 * 30, Math.max(1, askedHours)) : 0;
       const now = new Date();

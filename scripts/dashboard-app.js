@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.27.2-lookup-login';
+const APP_VERSION = '2026.10.27.3-settings-reorg';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -381,6 +381,8 @@ async function loadStoreFeatures(storeId = getActiveStoreId()){
     window._storeFeatures = data.features;
     try { localStorage.setItem(STORE_FEATURES_CACHE_KEY, JSON.stringify({ storeId, features:data.features })); } catch(e) {}
     document.body?.classList.toggle('store-no-ebay', data.features.ebay === false);
+    if(typeof refreshSettingsSectionVisibility === 'function') refreshSettingsSectionVisibility();
+    if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel();
     return data.features;
   } catch(e) { return null; }
 }
@@ -2738,34 +2740,63 @@ function moveNode(id, target){
   if(el && target && el.parentElement !== target) target.appendChild(el);
 }
 
-const SETTINGS_SECTIONS = [
-  {id:'overview',label:'Overview',subtitle:'Store readiness and health at a glance.',keywords:'status health setup stripe refunds sync consignments pokemon mtg pricecharting theme imports users cash bag debug'},
-  {id:'whatsnew',label:"What's New",subtitle:'Every feature in ArSca, grouped by area -- what it does, and what\'s still on the roadmap.',keywords:'changelog updates new features roadmap planned history log release notes whats new feature log'},
-  {id:'device',label:'This Device',subtitle:'Display size, the tab this device opens on, and the startup timer -- saved on this device only.',keywords:'this device default tab landing open start startup timer speed slow loading load time display size zoom text scale phone tablet'},
-  {id:'profile',label:'Store Profile',subtitle:'Store identity, receipts, operational defaults, and public contact details.',keywords:'store vendor profile logo name website phone email location tax buy markdown receipt shipping venmo paypal cash app'},
-  {id:'payments',label:'Checkout & Payments',subtitle:'Tender methods, QR payment links, Stripe Connect status, and refund access.',keywords:'checkout payments cash card stripe qr venmo paypal cash app refunds fee payer webhook cash bag receipt customer display'},
-  {id:'sync',label:'Data Sync',subtitle:'Store Data Sync keeps inventory, sales, settings, users, queues, and consignment data consistent across devices and cloud.',keywords:'sync queue cloud inventory pull push pending failed conflicts consignments sql device webflow'},
-  {id:'catalogs',label:'Catalogs & Pricing',subtitle:'Research reference catalogs, provider pricing, and optional offline data.',keywords:'catalog pricing pokemon pokémon ppt mtg scryfall pricecharting comics sports topps csv cache research offline'},
-  {id:'inventory',label:'Inventory & Imports',subtitle:'Add, import, export, and inspect store-owned inventory data.',keywords:'inventory imports csv spreadsheet export ebay buy offers quick add template threshold data health'},
-  {id:'users',label:'Users & Permissions',subtitle:'Store members, invitations, roles, and access boundaries.',keywords:'users members invites owner admin staff cashier scanner refunds permissions roles'},
-  {id:'devices',label:'Devices & Hardware',subtitle:'Register identity and the hardware surfaces used around the store.',keywords:'device hardware barcode scanner phone inbox printer cash drawer customer display stripe reader vending register'},
-  {id:'theme',label:'Theme & Branding',subtitle:'Colors, fonts, layout radius, logo, and customer-screen appearance.',keywords:'theme branding colors fonts logo background preview radius'},
-  {id:'subscription',label:'Subscription & Billing',subtitle:'ArSca software plan and subscription status—not customer checkout payments.',keywords:'subscription billing trial plan subscribe renewal portal'},
-  {id:'advanced',label:'Advanced / Diagnostics',subtitle:'Diagnostics, readiness checks, raw IDs, caches, QA.',keywords:'advanced diagnostics qa debug rls account data mode cache api health flags reset price rules markup over market percent category pricing'}
+// Settings, reorganized (store, 2026-10-27: "re organize all the settings to
+// make it make more sense"). Grouped by what a store is doing -- running the
+// store, selling online, data, team and devices, account and help -- with one
+// home per setting. `feature` hides a section from a store without it (the
+// second-store pilot: no eBay, website or texts).
+const SETTINGS_GROUPS = [
+  { id:'store', label:'Store' },
+  { id:'online', label:'Selling Online' },
+  { id:'data', label:'Data & Pricing' },
+  { id:'team', label:'Team & Devices' },
+  { id:'account', label:'Account & Help' },
 ];
+const SETTINGS_SECTIONS = [
+  {id:'overview',group:'store',label:'Overview',subtitle:'Store readiness and health at a glance.',keywords:'status health setup readiness summary'},
+  {id:'profile',group:'store',label:'Store Profile',subtitle:'Your store name, logo, location and contact details.',keywords:'store vendor profile name short name logo location address website phone email contact export import'},
+  {id:'payments',group:'store',label:'Checkout & Payments',subtitle:'Tax, receipts, the payment methods you take, Venmo/PayPal/Cash App handles, and Stripe card payments.',keywords:'checkout payments tax sales tax receipt footer cash card stripe qr venmo paypal cash app handle tender refunds cash bag customer display payment text'},
+  {id:'buying',group:'store',label:'Buying & Pricing',subtitle:'What you pay for cards, how you price what you sell, and the floor you never sell below.',keywords:'buy offer percent buy targets trade credit markdown show discount price rules markup over market category pricing floor minimum profit never sell at a loss fees'},
+  {id:'customers',group:'store',label:'Customers & Loyalty',subtitle:'Customer list, want history and loyalty points.',keywords:'customers contacts want list history loyalty points rewards events played match won'},
+  {id:'inventory',group:'store',label:'Inventory & Imports',subtitle:'Where inventory lives, categories, imports and exports, stock alerts and data health.',keywords:'inventory source imports csv spreadsheet export tcgplayer collectr categories low stock alert threshold price mover data health template'},
+  {id:'website',group:'online',feature:'website',label:'Website & Online Sales',subtitle:'Your public storefront, the "Sell to us" page, shipping origin and rates, reviews, events and Webflow.',keywords:'website storefront online store public inventory sell to us buylist shipping origin ship from rates shippo reviews event calendar webflow'},
+  {id:'ebay',group:'online',feature:'ebay',label:'eBay',subtitle:'Listing categories, shipping lines, description templates, shipping policy, auto-reprice and promoted listings.',keywords:'ebay listing category id shipping line description template shipping policy auto reprice aged listings promoted listings ads'},
+  {id:'phone',group:'online',feature:'sms',label:'Phone & Texts',subtitle:'Call forwarding and the text relay on your store number.',keywords:'phone call forwarding text relay sms twilio numbers voicemail'},
+  {id:'catalogs',group:'data',label:'Catalogs & Price Lookups',subtitle:'Research defaults, offline catalogs, pricing API keys and credit use.',keywords:'catalog pricing pokemon pokémon ppt pokemonpricetracker mtg scryfall pricecharting justtcg api key credits comics sports topps research offline'},
+  {id:'sync',group:'data',label:'Data Sync',subtitle:'Keeps inventory, sales, settings and consignments the same on every device and in the cloud.',keywords:'sync queue cloud pending failed conflicts consignments devices offline'},
+  {id:'users',group:'team',label:'Users & Permissions',subtitle:'Store members, invitations, roles and what each role can do.',keywords:'users members staff employee cashier invite owner admin manager scanner roles permissions password access'},
+  {id:'device',group:'team',label:'This Device & Hardware',subtitle:'Screens shown on this register, display size, startup, and the hardware around the store.',keywords:'this device register modules screens display size zoom text default tab startup timer barcode scanner printer cash drawer customer display stripe reader hardware'},
+  {id:'theme',group:'team',label:'Theme & Branding',subtitle:'Colors, fonts, logo, and the customer screen background.',keywords:'theme branding colors fonts logo background dark light customer screen radius'},
+  {id:'subscription',group:'account',label:'Subscription & Billing',subtitle:'Your ArSca plan and billing -- not customer checkout payments.',keywords:'subscription billing trial plan subscribe renewal portal invoice'},
+  {id:'whatsnew',group:'account',label:"What's New",subtitle:'Every feature in ArSca, grouped by area -- what it does, and what\'s still on the roadmap.',keywords:'changelog updates new features roadmap planned history log release notes whats new feature log'},
+  {id:'help',group:'account',label:'Help & Setup',subtitle:'Setup wizard, walkthrough and help buttons.',keywords:'help walkthrough tutorial setup wizard guide how to'},
+  {id:'advanced',group:'account',label:'Advanced / Diagnostics',subtitle:'Debug switches, QA checks, backups, the operations log and role locks. Use carefully.',keywords:'advanced diagnostics qa debug backup restore operations log data mode role lock raw ids cache'}
+];
+// Old names still open the right place (links, saved state, help steps).
+const SETTINGS_SECTION_ALIASES = { devices:'device', store:'profile', vendor:'profile', worker:'advanced', catalog:'catalogs', pricing:'buying', loyalty:'customers' };
 
+// Panels by home section. "settings-block-*" panels hold one part of the
+// store profile or vendor config, moved there by distributeSettingsBlocks().
 const SETTINGS_PANEL_MAP = {
   profile:['vendor-profile-panel'],
-  payments:['payment-settings-panel'],
+  payments:['settings-block-checkout','payment-settings-panel'],
+  buying:['settings-block-buying','settings-block-pricing-rules'],
+  customers:['settings-block-loyalty','customer-panel'],
+  inventory:['settings-block-source','inventory-tools-panel','spreadsheet-panel','settings-block-categories','settings-block-alerts','data-health-panel'],
+  website:['settings-block-storefront','settings-block-shipping-origin','settings-block-buylist','customer-reviews-panel','event-calendar-panel','webflow-integration-panel'],
+  ebay:['settings-block-ebay'],
+  phone:['settings-block-phone'],
+  catalogs:['backoffice-research-panel','pricing-apis-panel','offline-catalog-manager-panel'],
   sync:['inventory-sync-panel','sync-queue-panel'],
-  catalogs:['backoffice-research-panel','offline-catalog-manager-panel'],
-  inventory:['inventory-tools-panel','spreadsheet-panel'],
   users:['store-members-panel'],
-  device:['this-device-panel'],
+  device:['this-device-panel','vendor-config-panel','devices-hardware-summary'],
   theme:['branding-theme-panel'],
   subscription:['subscription-panel'],
-  advanced:['admin-lock-panel','vendor-config-panel','backoffice-system-panel','backoffice-ops-panel','pricing-qa-panel','data-mode-panel','customer-panel','data-health-panel','help-walkthrough-panel']
+  help:['settings-block-setup','help-walkthrough-panel'],
+  advanced:['admin-lock-panel','settings-block-debug','pricing-qa-panel','data-mode-panel','backoffice-system-panel','backoffice-ops-panel']
 };
+// Titles for block panels whose content has no heading of its own.
+const SETTINGS_BLOCK_TITLES = { source:'INVENTORY SOURCE', categories:'INVENTORY CATEGORIES', debug:'DEBUG SWITCHES', setup:'SETUP WIZARD' };
 
 // A running record of what ArSca actually does, in plain language, so staff
 // can answer "does it do X?" themselves instead of guessing or asking the
@@ -2774,6 +2805,11 @@ const SETTINGS_PANEL_MAP = {
 // or a real gap is identified -- it's meant to stay accurate, not be written
 // once and forgotten.
 const FEATURE_LOG = [
+  { area:'Settings', items:[
+    { title:'Settings reorganized', status:'new', desc:'Settings are grouped by what you are doing: Store (profile, checkout, buying and pricing, customers, inventory), Selling Online (website, eBay, phone and texts), Data & Pricing, Team & Devices, and Account & Help. Each setting has one home: tax, receipt text and Venmo/PayPal/Cash App handles live under Checkout & Payments; buy percentages, buy targets, price rules and the automatic floor under Buying & Pricing; the customer list and loyalty points under Customers & Loyalty; the storefront, "Sell to us" page and shipping origin under Website & Online Sales.' },
+    { title:'Search finds the setting itself', status:'new', desc:'The search box in Settings now looks through every field, checkbox and panel, not just section names. Type "tax", "venmo", "logo", "staff", "floor" or "low stock" and pick a result to jump straight to that setting, highlighted. Press Enter to open the top result.' },
+    { title:'Pricing API keys and credit use are back', status:'new', desc:'Settings -> Catalogs & Price Lookups -> PRICING APIS shows PokemonPriceTracker credit use, and lets any other store enter its own pricing API keys. Both had been unreachable.' },
+  ]},
   { area:'eBay Multi-Cover Listings', items:[
     { title:'Real per-cover photo switching', status:'new', desc:'New multi-cover eBay listings ("LIST ALL COVERS") are now built on eBay\'s older Trading API end-to-end instead of the newer REST API -- the only way to get eBay to actually bind a specific photo to a specific cover in the dropdown. eBay itself blocks the two systems from ever mixing on the same listing ("Inventory-based listing management is not currently supported by this tool," confirmed against a live listing), so getting real photo-switching means the whole listing, not just the photo step, has to be Trading-API-native from creation onward. Listings already live keep working exactly as they do today -- only a NEW listing gets built this way.' },
   ]},
@@ -3024,16 +3060,37 @@ function renderSettingsGeneratedPanels(){
   const overview=document.getElementById('settings-panels-overview');if(overview&&!document.getElementById('settings-overview-grid'))overview.innerHTML='<div id="settings-overview-grid" class="settings-overview-grid"></div>';
   const whatsnew=document.getElementById('settings-panels-whatsnew');if(whatsnew&&!document.getElementById('feature-log-search'))whatsnew.innerHTML=`<input id="feature-log-search" class="settings-search" placeholder="Search features (e.g. scan to cart, discount, labels)..." oninput="renderWhatsNewPanel()" style="margin-bottom:12px"><div id="feature-log-list"></div>`;
   if(whatsnew)renderWhatsNewPanel();
-  const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);if(sync&&!document.getElementById('webflow-integration-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();if(sync&&!document.getElementById('event-calendar-panel'))sync.insertAdjacentHTML('afterbegin','<div class="settings-generated-panel" id="event-calendar-panel"></div>');renderEventCalendarPanel?.();
+  const sync=document.getElementById('settings-panels-sync');if(sync&&!document.getElementById('cloud-consignment-settings-status'))sync.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="cloud-consignment-settings-status"><div class="ph">CLOUD CONSIGNMENTS ${settingsStatus(consignmentCloudReady?'Working':'Local Fallback',consignmentCloudReady?'working':'local-fallback')}</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">${consignmentCloudReady?'Per-store consignors, inventory, and sale alerts are syncing through Supabase.':'This device is using its store-scoped local cache. Apply the cloud migration and reconnect to activate cross-device sync.'}<br>People: ${consignorPeople.length} · Items: ${consignItems.length} · Sale alerts: ${getConsignmentAlerts().length}</div></div>`);const website=document.getElementById('settings-panels-website');if(website&&!document.getElementById('webflow-integration-panel'))website.insertAdjacentHTML('beforeend','<div class="settings-generated-panel" id="webflow-integration-panel"></div>');renderWebflowIntegrationPanel?.();if(website&&!document.getElementById('event-calendar-panel'))website.insertAdjacentHTML('beforeend','<div class="settings-generated-panel" id="event-calendar-panel"></div>');renderEventCalendarPanel?.();
   const catalogs=document.getElementById('settings-panels-catalogs');if(catalogs&&!document.getElementById('catalog-data-concepts'))catalogs.insertAdjacentHTML('afterbegin',`<div class="settings-explainer" id="catalog-data-concepts"><b style="color:var(--text)">Three different data concepts</b><br>1. Store Data Sync — your inventory, sales, settings, users, queues, and consignments.<br>2. Offline Catalog Sync — reference catalogs downloaded to this device; they never create inventory.<br>3. Live Provider Pricing — live or scheduled candidate prices from PriceCharting, Scryfall, and PokemonPriceTracker.<br><br><b style="color:var(--g)">MTG Offline Catalog: Working.</b> Scryfall cards + PriceCharting snapshot; pipeline and image cache remain untouched.<br><b style="color:var(--text)">Pokémon: Live pricing only.</b> PokemonPriceTracker is queried live per search; there is no offline catalog for Pokémon.<br>PriceCharting shared offline catalogs cover Video Games, Yu-Gi-Oh, and One Piece. Comics use live Metron records with server-side caching and PriceCharting values after selection; no device comic catalog is searched.</div>`);
-  const devices=document.getElementById('settings-panels-devices');if(devices&&!document.getElementById('devices-hardware-summary'))devices.innerHTML=`<div class="settings-overview-grid" id="devices-hardware-summary">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`;
+  const devices=document.getElementById('settings-panels-device');if(devices&&!document.getElementById('devices-hardware-summary'))devices.insertAdjacentHTML('beforeend',`<div class="settings-overview-grid" id="devices-hardware-summary" style="margin-top:14px">${[['Barcode Scanner','Working','Camera/USB barcode evidence input'],['Phone Scan Inbox','Working','Scanner queue and tablet handoff'],['Receipt Printer','Planned','Browser print workflow; no dedicated driver'],['Cash Drawer','Working','Cash Bag tracking through checkout'],['Customer Display','Working','Cart and payment-method display'],['Stripe Reader','Planned','Coming later; no Terminal integration'],['Vending Hardware','Planned','Future hardware integration'],['Register / Device ID','Working',getDealerDeviceId()]].map(([a,b,c])=>`<article class="settings-overview-card"><div>${settingsStatus(b,b==='Working'?'working':'planned')}</div><h3>${a}</h3><p>${escHtml(c)}</p></article>`).join('')}</div>`);
   const users=document.getElementById('settings-panels-users');if(users&&!document.getElementById('permissions-summary'))users.insertAdjacentHTML('afterbegin',`<div class="settings-generated-panel" id="permissions-summary"><div class="ph">PERMISSION SUMMARY</div><div style="font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)">Owner/Admin: payment setup, refunds, members, store configuration, and advanced tools.<br>Manager/Staff: inventory and checkout according to existing role gates.<br>Scanner Only: phone scanner workflow. Stripe refunds remain Owner/Admin only.</div></div>`);
   const advanced=document.getElementById('settings-panels-advanced');if(advanced&&!document.getElementById('advanced-settings-warning'))advanced.insertAdjacentHTML('afterbegin','<div class="settings-explainer" id="advanced-settings-warning" style="border-color:rgba(255,209,102,.35)"><b style="color:var(--gold)">Advanced tools can affect local data, caches, sync queues, and diagnostics. Use carefully.</b></div>');
   renderSettingsOverview();
 }
 
+function settingsSectionVisible(section){ return !!section && (!section.feature || storeFeatureEnabled(section.feature)); }
+function resolveSettingsSectionId(id){
+  const key = SETTINGS_SECTION_ALIASES[id] || id;
+  const section = SETTINGS_SECTIONS.find(s => s.id === key);
+  return settingsSectionVisible(section) ? key : 'overview';
+}
+// Hides sections (and their sidebar buttons) for features this store doesn't
+// have. Runs again whenever the store's features load.
+function refreshSettingsSectionVisibility(){
+  SETTINGS_SECTIONS.forEach(s => {
+    const visible = settingsSectionVisible(s);
+    document.querySelectorAll(`.settings-nav-btn[data-settings-target="${s.id}"]`).forEach(el => { el.hidden = !visible; });
+    const option = document.querySelector(`#settings-mobile-section option[value="${s.id}"]`); if(option) option.hidden = !visible;
+    if(!visible) document.getElementById('settings-section-'+s.id)?.classList.remove('on');
+  });
+  SETTINGS_GROUPS.forEach(g => {
+    const any = SETTINGS_SECTIONS.some(s => s.group === g.id && settingsSectionVisible(s));
+    document.querySelectorAll(`.settings-nav-group[data-settings-group="${g.id}"]`).forEach(el => { el.hidden = !any; });
+  });
+}
 function selectSettingsSection(id='overview'){
-  if(!SETTINGS_SECTIONS.some(s=>s.id===id))id='overview';
+  id = resolveSettingsSectionId(id);
+  refreshSettingsSectionVisibility();
   document.querySelectorAll('.settings-section').forEach(el=>el.classList.toggle('on',el.dataset.settingsSection===id));
   document.querySelectorAll('.settings-nav-btn').forEach(el=>el.classList.toggle('on',el.dataset.settingsTarget===id));
   const select=document.getElementById('settings-mobile-section');if(select)select.value=id;
@@ -3042,23 +3099,143 @@ function selectSettingsSection(id='overview'){
   if(id==='sync'){renderInventorySyncPanel();renderSyncQueue();}
   if(id==='payments'){renderPaymentSettingsPanel();}
   if(id==='users'){renderStoreMembersPanel();}
-  if(id==='catalogs')refreshOfflineCatalogManagerPanel();
+  if(id==='catalogs'){refreshOfflineCatalogManagerPanel();loadStoreApiKeysPanel();}
   document.getElementById('settings-shell')?.scrollIntoView({block:'start'});
 }
-function openSettingsSection(id,targetId){switchTab('backoffice');selectSettingsSection(id);setTimeout(()=>document.getElementById(targetId||('settings-section-'+id))?.scrollIntoView({behavior:'smooth',block:'start'}),80);}
+// Opens Settings at a panel or a single setting. The section is found from
+// where that panel lives now, so links keep working when things move; `id`
+// is a fallback section (old names are accepted).
+function openSettingsSection(id, targetId){
+  switchTab('backoffice');
+  const target = targetId ? (document.getElementById(String(targetId).replace(/^#/,'')) || document.querySelector(targetId)) : null;
+  const home = target?.closest?.('.settings-section')?.dataset.settingsSection;
+  selectSettingsSection(home || id || 'overview');
+  if(target) setTimeout(() => highlightElement(target), 120);
+}
 
+// Settings search: every setting on every page -- panel titles, field
+// labels, checkboxes and buttons -- not just section names. Each word typed
+// must match (a word's start is enough); a few everyday words map to the
+// names used on screen.
+const SETTINGS_SEARCH_SYNONYMS = {
+  password:['members','invite'], staff:['members'], employee:['members'], employees:['members'], cashier:['members'], login:['members','invite'], team:['members'],
+  markup:['rules','markup'], margin:['profit','floor'], fee:['fees','fee'], fees:['fees','fee'], loss:['floor'],
+  logo:['logo'], address:['location','street','ship'], hours:['location'], tax:['tax'], receipt:['receipt'],
+  website:['storefront','website','webflow'], online:['storefront'], shop:['storefront'], buylist:['sell','buylist'], sell:['sell','buylist'],
+  twilio:['forwarding','relay'], texts:['text','relay'], sms:['text','relay'], calls:['forwarding'],
+  colors:['theme','color'], colour:['color'], dark:['theme'], font:['font'],
+  keys:['key','api'], key:['key','api'], credits:['credit'], backup:['backup'], restore:['backup','import'],
+  promote:['promote','promoted'], ads:['promote','promoted'], reprice:['reprice'],
+  points:['loyalty'], rewards:['loyalty'], wizard:['setup','wizard'], tutorial:['walkthrough'],
+};
+function settingsSearchWords(text){ return String(text||'').toLowerCase().replace(/&amp;/g,'&').normalize('NFD').replace(/[̀-ͯ]/g,'').split(/[^a-z0-9%$]+/).filter(Boolean); }
+function settingsWordMatches(words, term){
+  const stem = term.length > 3 ? term.replace(/(es|s)$/,'') : term;
+  return words.some(w => w.startsWith(term) || (stem.length > 2 && w.startsWith(stem)));
+}
+function settingsOwnText(el){
+  // A label's own words, not the option list of a select inside it.
+  let text = '';
+  el.childNodes.forEach(n => { if(n.nodeType === 3) text += ' ' + n.textContent; else if(n.nodeType === 1 && !n.matches('input,select,textarea,option,button')) text += ' ' + n.textContent; });
+  return text.replace(/\s+/g,' ').trim();
+}
+function settingsBlockHeading(el, section){
+  const box = el.closest('[data-settings-block],.panel,.settings-generated-panel,.item-metric');
+  const head = box?.querySelector('.ph,[style*="Orbitron"]');
+  const t = head && head !== el ? settingsOwnText(head) || head.textContent : '';
+  return t.replace(/\s+/g,' ').trim().slice(0,60) || section.label;
+}
+function buildSettingsSearchIndex(){
+  const entries = [];
+  SETTINGS_SECTIONS.filter(settingsSectionVisible).forEach(section => {
+    entries.push({ section, el:null, title:section.label, context:section.subtitle, words:settingsSearchWords(section.label+' '+section.subtitle+' '+section.keywords), weight:1 });
+    const root = document.getElementById('settings-panels-'+section.id);
+    if(!root) return;
+    root.querySelectorAll('.ph,[style*="Orbitron"],label,button,summary,th').forEach(el => {
+      if(el.closest('[hidden],.settings-search-results')) return;
+      let title = el.matches('label') ? settingsOwnText(el) : el.matches('.ph') ? settingsOwnText(el) || el.textContent : el.textContent;
+      title = String(title||'').replace(/\s+/g,' ').trim();
+      if(!title || title.length > 90 || title.length < 3) return;
+      if(el.matches('button') && /^(save|x|×|remove|ok|cancel)\b|log ?out|sign ?out/i.test(title)) return;
+      const context = settingsBlockHeading(el, section);
+      entries.push({ section, el, title, context, words:settingsSearchWords(title+' '+context), weight:el.matches('label') ? 3 : el.matches('button') ? 1.5 : 2.5 });
+    });
+  });
+  return entries;
+}
 function searchSettings(value){
-  const q=String(value||'').trim().toLowerCase(),host=document.getElementById('settings-search-results');if(!host)return;
-  if(!q){host.classList.remove('on');host.innerHTML='';return;}
-  const matches=SETTINGS_SECTIONS.filter(s=>(s.label+' '+s.subtitle+' '+s.keywords).toLowerCase().includes(q));
-  host.innerHTML=matches.length?matches.map(s=>`<button class="settings-search-result" onclick="selectSettingsSection('${s.id}');document.getElementById('settings-search-results').classList.remove('on')"><b>${escHtml(s.label)}</b><br><span style="color:var(--dim)">${escHtml(s.subtitle)}</span></button>`).join(''):'<div style="padding:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">No matching settings section.</div>';host.classList.add('on');
+  const host=document.getElementById('settings-search-results');if(!host)return;
+  const terms=settingsSearchWords(value);
+  if(!terms.length){host.classList.remove('on');host.innerHTML='';window._settingsSearchHits=[];return;}
+  const scored=[];
+  buildSettingsSearchIndex().forEach(entry => {
+    let score=0;
+    for(const term of terms){
+      const options=[term,...(SETTINGS_SEARCH_SYNONYMS[term]||[])];
+      const hit=options.find(t=>settingsWordMatches(entry.words,t));
+      if(!hit)return;
+      const titleWords=settingsSearchWords(entry.title);
+      score+=settingsWordMatches(titleWords,hit)?(titleWords.includes(hit)?3:2):0.5;
+    }
+    scored.push({ entry, score:score*entry.weight });
+  });
+  const seen=new Set();
+  const hits=scored.sort((a,b)=>b.score-a.score).map(h=>h.entry).filter(e=>{const k=e.section.id+'|'+e.title.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;}).slice(0,12);
+  window._settingsSearchHits=hits;
+  host.innerHTML=hits.length?hits.map((e,i)=>`<button class="settings-search-result" onclick="openSettingsSearchHit(${i})"><b>${escHtml(e.title)}</b><br><span style="color:var(--dim)">${escHtml(e.section.label)}${e.el && e.context && e.context!==e.section.label?' › '+escHtml(e.context):''}</span></button>`).join(''):'<div style="padding:8px;font-family:var(--font-mono);font-size:10px;color:var(--dim)">No matching setting. Try another word, like "tax", "logo" or "staff".</div>';
+  host.classList.add('on');
+}
+function openSettingsSearchHit(i){
+  const hit=(window._settingsSearchHits||[])[i]; if(!hit) return;
+  document.getElementById('settings-search-results')?.classList.remove('on');
+  selectSettingsSection(hit.section.id);
+  if(hit.el) setTimeout(()=>{ const field=hit.el.matches('label')?hit.el.querySelector('input,select,textarea'):null; highlightElement(hit.el); field?.focus?.({preventScroll:true}); },120);
+}
+
+// Panels holding one part of a bigger form (the store profile, the vendor
+// config) live in their own section. Each render marks its parts with
+// data-settings-block; this moves them into a panel per block, replacing what
+// the last render put there.
+function settingsBlockHost(name){
+  const id='settings-block-'+name;
+  let host=document.getElementById(id);
+  if(!host){
+    host=document.createElement('div');
+    host.className='panel settings-block-panel';host.id=id;host.style.marginBottom='14px';
+    const title=SETTINGS_BLOCK_TITLES[name];
+    host.innerHTML=(title?`<div class="ph">${escHtml(title)}</div>`:'')+'<div class="settings-block-body"></div>';
+    const section=Object.keys(SETTINGS_PANEL_MAP).find(k=>SETTINGS_PANEL_MAP[k].includes(id));
+    const target=section&&document.getElementById('settings-panels-'+section);
+    (target||document.getElementById('backoffice-panels')||document.body).appendChild(host);
+    if(target)orderSettingsPanels(section);
+  }
+  return host;
+}
+function distributeSettingsBlocks(root){
+  if(!root)return;
+  const groups={};
+  root.querySelectorAll('[data-settings-block]').forEach(el=>{(groups[el.dataset.settingsBlock] ||= []).push(el);});
+  Object.entries(groups).forEach(([name,els])=>{const body=settingsBlockHost(name).querySelector('.settings-block-body');body.replaceChildren(...els);});
+}
+// Keeps a section's panels in the order SETTINGS_PANEL_MAP lists them.
+function orderSettingsPanels(section){
+  const target=document.getElementById('settings-panels-'+section);if(!target)return;
+  (SETTINGS_PANEL_MAP[section]||[]).forEach(id=>{const el=document.getElementById(id);if(el&&el.parentElement===target)target.appendChild(el);});
 }
 
 function ensureSettingsShell(backoffice){
   if(!backoffice)return;let shell=document.getElementById('settings-shell'),isNew=!shell;
-  if(!shell){shell=document.createElement('div');shell.id='settings-shell';shell.className='settings-shell';shell.innerHTML=`<aside class="settings-sidebar"><input id="settings-search" class="settings-search" placeholder="Search settings…" oninput="searchSettings(this.value)"><div id="settings-search-results" class="settings-search-results"></div><select id="settings-mobile-section" class="settings-mobile-select" onchange="selectSettingsSection(this.value)">${SETTINGS_SECTIONS.map(s=>`<option value="${s.id}">${escHtml(s.label)}</option>`).join('')}</select><nav class="settings-nav">${SETTINGS_SECTIONS.map(s=>`<button class="settings-nav-btn" data-settings-target="${s.id}" onclick="selectSettingsSection('${s.id}')">${escHtml(s.label)}</button>`).join('')}</nav></aside><main class="settings-content">${SETTINGS_SECTIONS.map(settingsSectionMarkup).join('')}</main>`;backoffice.appendChild(shell);}
+  if(!shell){
+    const nav=SETTINGS_GROUPS.map(g=>`<div class="settings-nav-group" data-settings-group="${g.id}"><div class="settings-nav-group-label">${escHtml(g.label)}</div>${SETTINGS_SECTIONS.filter(s=>s.group===g.id).map(s=>`<button class="settings-nav-btn" data-settings-target="${s.id}" onclick="selectSettingsSection('${s.id}')">${escHtml(s.label)}</button>`).join('')}</div>`).join('');
+    const options=SETTINGS_GROUPS.map(g=>`<optgroup label="${escHtml(g.label)}">${SETTINGS_SECTIONS.filter(s=>s.group===g.id).map(s=>`<option value="${s.id}">${escHtml(s.label)}</option>`).join('')}</optgroup>`).join('');
+    shell=document.createElement('div');shell.id='settings-shell';shell.className='settings-shell';
+    shell.innerHTML=`<aside class="settings-sidebar"><input id="settings-search" class="settings-search" placeholder="Search settings (tax, logo, staff...)" oninput="searchSettings(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();openSettingsSearchHit(0);}"><div id="settings-search-results" class="settings-search-results"></div><select id="settings-mobile-section" class="settings-mobile-select" onchange="selectSettingsSection(this.value)">${options}</select><nav class="settings-nav">${nav}</nav></aside><main class="settings-content">${SETTINGS_SECTIONS.map(settingsSectionMarkup).join('')}</main>`;
+    backoffice.appendChild(shell);
+  }
   Object.entries(SETTINGS_PANEL_MAP).forEach(([section,ids])=>{const target=document.getElementById('settings-panels-'+section);ids.forEach(id=>moveNode(id,target));});
-  renderSettingsGeneratedPanels();selectSettingsSection(isNew?'overview':(localStorage.getItem('settings_active_section_v1')||'overview'));
+  renderSettingsGeneratedPanels();
+  Object.keys(SETTINGS_PANEL_MAP).forEach(orderSettingsPanels);
+  selectSettingsSection(isNew?'overview':(localStorage.getItem('settings_active_section_v1')||'overview'));
 }
 
 function organizeRegisterLayout(){
@@ -3110,6 +3287,7 @@ function organizeRegisterLayout(){
   ensureBrandingPanel(backoffice);
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
+  ensurePricingApisPanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
@@ -3256,7 +3434,7 @@ function ensureVendorProfilePanel(backoffice){
   panel.className = 'panel';
   panel.id = 'vendor-profile-panel';
   panel.style.marginBottom = '14px';
-  panel.innerHTML = '<div class="ph">VENDOR INFO / PREFERENCES <span style="font-size:9px;color:var(--dim)">brand, receipts, defaults</span></div><div id="vendor-profile-body"></div>';
+  panel.innerHTML = '<div class="ph">STORE PROFILE <span style="font-size:9px;color:var(--dim)">name, logo and contact details</span></div><div id="vendor-profile-body"></div>';
   backoffice.prepend(panel);
   renderVendorProfilePanel();
 }
@@ -3284,36 +3462,56 @@ function renderVendorProfilePanel(){
         ${vendorInput('website','Website',p.website)}
         ${vendorInput('phone','Phone',p.phone)}
         ${vendorInput('email','Email',p.email)}
-        ${vendorInput('taxRate','Tax %',p.taxRate,'number')}
-        ${vendorInput('loyaltyRate','Loyalty pts % of $',p.loyaltyRate,'number')}
-        ${vendorInput('eventLoyaltyPerPlayed','Loyalty pts per event played (0=off)',p.eventLoyaltyPerPlayed,'number')}
-        ${vendorInput('eventLoyaltyPerWin','+ Loyalty pts per match won',p.eventLoyaltyPerWin,'number')}
-        ${vendorInput('defaultBuyPct','Buy % default',p.defaultBuyPct,'number')}
-        ${vendorInput('defaultShowMarkdown','Show markdown %',p.defaultShowMarkdown,'number')}
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">RECEIPT FOOTER<textarea id="vp-receiptFooter" class="tsi" style="height:58px">${escHtml(p.receiptFooter)}</textarea></label>
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">EBAY SHIPPING LINE<textarea id="vp-ebayShippingLine" class="tsi" style="height:58px">${escHtml(p.ebayShippingLine)}</textarea></label>
-      <label style="font-family:monospace;font-size:9px;color:var(--dim)">CUSTOMER PAYMENT TEXT<textarea id="vp-paymentMethods" class="tsi" style="height:58px">${escHtml(p.paymentMethods)}</textarea></label>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">${vendorInput('venmo','Venmo handle',p.venmo,'text','YourVenmoHandle')}${vendorInput('paypal','PayPal handle',p.paypal,'text','paypal.me/yourname or email')}${vendorInput('cashapp','Cash App tag',p.cashapp,'text','YourCashtag')}</div>
-      <div style="font-family:monospace;font-size:9px;color:var(--dim);grid-column:1/-1">This is what powers the exact-amount Venmo/PayPal/Cash App QR at checkout — the "QR Image" fields on the Payments tab are only for an optional custom picture, not your handle.</div>
-    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE VENDOR PROFILE</button>
+      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE STORE PROFILE</button>
       <button class="hbtn" onclick="exportVendorProfile()">EXPORT PROFILE</button>
       <button class="hbtn" onclick="document.getElementById('vendor-profile-import').click()">IMPORT PROFILE</button>
       <input id="vendor-profile-import" type="file" accept="application/json,.json" style="display:none" onchange="importVendorProfile(event)">
     </div>
-    ${buyTargetsSettingsHtml()}
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="checkout" style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2);margin-top:0;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">TAX, RECEIPT &amp; PAYMENT HANDLES</div>
+      <div style="display:grid;grid-template-columns:minmax(120px,180px) 1fr 1fr;gap:8px;margin-bottom:8px">
+        ${vendorInput('taxRate','Tax %',p.taxRate,'number')}
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">RECEIPT FOOTER<textarea id="vp-receiptFooter" class="tsi" style="height:58px">${escHtml(p.receiptFooter)}</textarea></label>
+        <label style="font-family:monospace;font-size:9px;color:var(--dim)">CUSTOMER PAYMENT TEXT<textarea id="vp-paymentMethods" class="tsi" style="height:58px">${escHtml(p.paymentMethods)}</textarea></label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">${vendorInput('venmo','Venmo handle',p.venmo,'text','YourVenmoHandle')}${vendorInput('paypal','PayPal handle',p.paypal,'text','paypal.me/yourname or email')}${vendorInput('cashapp','Cash App tag',p.cashapp,'text','YourCashtag')}</div>
+      <div style="font-family:monospace;font-size:9px;color:var(--dim);margin:6px 0 10px">This is what powers the exact-amount Venmo/PayPal/Cash App QR at checkout — the "QR Image" fields below are only for an optional custom picture, not your handle.</div>
+      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE</button>
+    </div>
+    <div data-settings-block="buying" style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2);margin-top:0;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">BUYING DEFAULTS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,220px));gap:8px;margin-bottom:10px">
+        ${vendorInput('defaultBuyPct','Buy % default',p.defaultBuyPct,'number')}
+        ${vendorInput('defaultShowMarkdown','Show markdown %',p.defaultShowMarkdown,'number')}
+      </div>
+      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE</button>
+    </div>
+    <div data-settings-block="buying">${buyTargetsSettingsHtml()}</div>
+    <div data-settings-block="loyalty" style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2);margin-top:0;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">LOYALTY POINTS</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-bottom:10px">
+        ${vendorInput('loyaltyRate','Loyalty pts % of $',p.loyaltyRate,'number')}
+        ${vendorInput('eventLoyaltyPerPlayed','Loyalty pts per event played (0=off)',p.eventLoyaltyPerPlayed,'number')}
+        ${vendorInput('eventLoyaltyPerWin','+ Loyalty pts per match won',p.eventLoyaltyPerWin,'number')}
+      </div>
+      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE</button>
+    </div>
+    <div data-settings-block="ebay" style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2);margin-top:0;margin-bottom:14px">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">EBAY SHIPPING LINE</div>
+      <label style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-bottom:10px">ADDED TO EVERY LISTING THAT HAS NO CATEGORY LINE BELOW<textarea id="vp-ebayShippingLine" class="tsi" style="height:58px">${escHtml(p.ebayShippingLine)}</textarea></label>
+      <button class="hbtn" onclick="saveVendorProfileFromForm()">SAVE</button>
+    </div>
+    <div data-settings-block="storefront" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">PUBLIC INVENTORY STOREFRONT</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Publish a customer-safe catalog. Cost, profit, consignor, internal notes, and sold inventory are never included.</div>
       <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="vp-storefrontEnabled" type="checkbox" ${p.storefrontEnabled?'checked':''}> Publish this store's available inventory</label>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WELCOME MESSAGE<input id="vp-storefrontMessage" class="tsi" value="${escHtml(p.storefrontMessage||'')}" placeholder="Browse what is available now" style="margin-top:4px"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn" onclick="saveStorefrontSettings()">SAVE STOREFRONT</button><button class="hbtn" onclick="window.open('${escHtml(storefrontUrl.href)}','_blank')">OPEN PUBLIC PAGE</button><button class="hbtn" onclick="copyStorefrontLink('${encodeURIComponent(storefrontUrl.href)}')">COPY LINK</button><button class="hbtn" onclick="showStorefrontQr('${encodeURIComponent(storefrontUrl.href)}')">SHOW QR CODE</button><code style="font-size:9px;color:var(--dim);word-break:break-all">${escHtml(storefrontUrl.href)}</code></div>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="shipping-origin" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">SHIPPING ORIGIN &amp; REAL RATES</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Storefront checkout uses live Shippo carrier rates only. This address is the explicit ship-from override. If it is blank, checkout uses the most recently updated address in your Shippo Address Book. A saved Shippo bubble-mailer template is used automatically for small, light orders; larger orders use a conservative box. If neither source has a complete address, shipping stays unavailable and local pickup remains available.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -3326,14 +3524,14 @@ function renderVendorProfilePanel(){
       </div>
       <button class="hbtn" onclick="saveShippingOriginSettings()">SAVE SHIPPING ORIGIN</button>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="buylist" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);margin-bottom:7px">PUBLIC "SELL TO US" PAGE</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">A public page where customers submit a list of items they want to sell, no login required. Submissions show up under BUY &gt; BUYLIST SUBMISSIONS for staff to review and reach out.</div>
       <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;margin-bottom:10px"><input id="vp-buylistEnabled" type="checkbox" ${p.buylistEnabled?'checked':''}> Accept public buylist submissions</label>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WELCOME MESSAGE<input id="vp-buylistMessage" class="tsi" value="${escHtml(p.buylistMessage||'')}" placeholder="Tell us what you have -- we'll review it and reach out with an offer" style="margin-top:4px"></label>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="hbtn" onclick="saveBuylistSettings()">SAVE BUYLIST PAGE</button><button class="hbtn" onclick="window.open('${escHtml(buylistUrl.href)}','_blank')">OPEN PUBLIC PAGE</button><button class="hbtn" onclick="copyStorefrontLink('${encodeURIComponent(buylistUrl.href)}')">COPY LINK</button><button class="hbtn" onclick="showStorefrontQr('${encodeURIComponent(buylistUrl.href)}')">SHOW QR CODE</button><code style="font-size:9px;color:var(--dim);word-break:break-all">${escHtml(buylistUrl.href)}</code></div>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="phone" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">CALL FORWARDING &amp; TEXT RELAY</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">One Twilio number handles both -- calls ring all 3 phones at once (whoever answers first gets it), and texts sent to the number get relayed to all 3 as well. Requires TWILIO_AUTH_TOKEN to already be set up (see the SMS/email setup you were given separately).</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:10px">
@@ -3346,7 +3544,7 @@ function renderVendorProfilePanel(){
         <div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap"><b style="color:var(--text)">SMS:</b><code style="word-break:break-all">${escHtml(twilioSmsUrl)}</code><button class="hbtn" style="min-height:26px;padding:2px 8px;font-size:8px" onclick="copyStorefrontLink('${encodeURIComponent(twilioSmsUrl)}')">COPY</button></div>
       </div>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="ebay" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">EBAY LISTING SETTINGS</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Map each of your inventory categories to the exact eBay category ID it should list under -- leave one blank to use the built-in Sports/TCG/Comics guess or be asked for an ID at listing time.</div>
       <div style="display:grid;grid-template-columns:1fr 140px;gap:8px;margin-bottom:12px;align-items:center">
@@ -3360,13 +3558,13 @@ function renderVendorProfilePanel(){
       ${getInventoryCategories().map(c => ebayDescriptionTemplateEditorHtml(c, c, p)).join('')}
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayListingSettings()">SAVE EBAY LISTING SETTINGS</button></div>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="ebay" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">SHIPPING POLICY FOR IN-STOCK LISTINGS</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">A FOC presale listing publishes under a long "FOC 40D Handling" policy so eBay's delivery estimate doesn't promise the book before it's released. Once the shipment arrives and the listing converts to in-stock, it should switch to your normal fast-handling policy instead -- pick which one here.</div>
       <label style="font-family:var(--font-mono);font-size:9px;color:var(--dim);display:block">SHIPPING POLICY<select id="vp-ebay-normal-policy" class="tsi" style="margin-top:4px"><option value="">Loading your eBay shipping policies…</option></select></label>
       <div style="display:flex;gap:8px;margin-top:8px"><button class="hbtn" onclick="saveEbayNormalPolicySettings()">SAVE SHIPPING POLICY</button></div>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="ebay" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">AUTO-REPRICE AGED LISTINGS</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:10px">Automatically drops the price on eBay listings that have sat unsold for a while. Off by default. Only ever touches price (never title, condition, description, or images), never drops below cost plus a margin you set, and stops after a max number of drops per item.</div>
       ${ebayAutoRepriceSettingsHtml(p)}
@@ -3375,11 +3573,12 @@ function renderVendorProfilePanel(){
         <span id="ebay-reprice-status" style="font-family:var(--font-mono);font-size:9px;color:var(--dim)"></span>
       </div>
     </div>
-    <div style="margin-top:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
+    <div data-settings-block="ebay" style="margin-top:0;margin-bottom:14px;padding:14px;border:1px solid var(--border);border-radius:10px;background:var(--surf2)">
       <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--gold);margin-bottom:7px">AUTO-PROMOTE NEW LISTINGS</div>
       ${ebayAutoPromoteListingsSettingsHtml(p)}
       <button class="hbtn" onclick="saveEbayAutoPromoteListingsSettings()">SAVE AUTO-PROMOTE SETTINGS</button>
     </div>`;
+  distributeSettingsBlocks(body);
   loadEbayRepriceStatus();
   loadEbayNormalPolicyOptions(p.ebayNormalFulfillmentPolicyId || '');
 }
@@ -3658,7 +3857,7 @@ function renderPaymentSettingsPanel(){
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
       <div class="item-metric">${payToggle('cash','Cash',s.cash.enabled)}${payToggle('card','Card',s.card.enabled)}<label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim);margin-top:8px"><input id="pay-cash-drawer" type="checkbox" ${s.cash.trackCashDrawer?'checked':''}> track Cash Bag</label></div>
-      <div class="item-metric">${payToggle('venmo','Venmo',s.venmo.enabled)}${payToggle('paypal','PayPal',s.paypal.enabled)}<span style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-top:6px">Handles are set in <a href="#" onclick="openSettingsSection('profile','vendor-profile-panel');return false" style="color:var(--g)">Vendor Info</a>, not the QR Image fields below</span></div>
+      <div class="item-metric">${payToggle('venmo','Venmo',s.venmo.enabled)}${payToggle('paypal','PayPal',s.paypal.enabled)}<span style="font-family:monospace;font-size:9px;color:var(--dim);display:block;margin-top:6px">Handles are set in <a href="#" onclick="openSettingsSection('payments','vp-venmo');return false" style="color:var(--g)">Tax, receipt &amp; payment handles</a> above, not the QR Image fields below</span></div>
       <div class="item-metric">${payToggle('cashapp','Cash App',s.cashApp.enabled)}${payToggle('showmethods','Show on customer display',s.customerDisplay.showPaymentMethods)}</div>
     </div>
     <div style="font-family:monospace;font-size:9px;color:var(--gold);margin-bottom:4px">Optional — a picture link only. Checkout always builds its own QR with the exact amount from the handle above; leave these blank unless you specifically want a custom image.</div>
@@ -3677,7 +3876,7 @@ function renderPaymentSettingsPanel(){
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-receipt-capture" type="checkbox" ${s.receipt.captureEnabled!==false?'checked':''}> receipt capture</label>
       <label style="display:flex;gap:8px;align-items:center;font-family:monospace;font-size:10px;color:var(--dim)"><input id="pay-wants-capture" type="checkbox" ${s.customerDisplay.askWantsAfterPayment===true?'checked':''}> ask "what are you looking for?" after payment</label>
     </div>
-    <div style="font-family:monospace;font-size:9px;color:var(--dim);padding:4px 0">Receipt footer set in Vendor Info</div>
+    <div style="font-family:monospace;font-size:9px;color:var(--dim);padding:4px 0">Receipt footer is set in Tax, receipt &amp; payment handles above</div>
     <div style="margin-top:12px"><div class="ph" style="padding-left:0">RECENT STRIPE PAYMENTS</div><div id="stripe-payment-history" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Loading…</div></div>
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
       <button class="hbtn" onclick="savePaymentSettingsFromForm()" ${canEdit?'':'disabled'}>SAVE PAYMENTS</button>
@@ -4199,13 +4398,17 @@ async function clearPokemonExactCache(){
   if(document.getElementById('pricecharting-data-body')) renderPriceChartingDataPanel('Pokemon exact cache cleared.');
 }
 
-function ensurePriceChartingDataPanel(backoffice){
-  if(document.getElementById('pricecharting-data-panel')) return;
+// Settings -> Catalogs & Price Lookups -> PRICING APIS: lookup options, the
+// credit log (The Mana Pocket's built-in keys only) and, for any other store,
+// its own API keys. The old PRICECHARTING DATA panel that held these was
+// retired, which left both the credit log and the key entry unreachable.
+function ensurePricingApisPanel(backoffice){
+  if(document.getElementById('pricing-apis-panel')) return;
   const panel = document.createElement('div');
   panel.className = 'panel';
-  panel.id = 'pricecharting-data-panel';
+  panel.id = 'pricing-apis-panel';
   panel.style.marginBottom = '14px';
-  panel.innerHTML = '<div class="ph">PRICECHARTING DATA <span style="font-size:9px;color:var(--dim)">Grade guides, dealer buy/sell values, pricing API settings</span></div><div id="pricecharting-data-body"></div>';
+  panel.innerHTML = '<div class="ph">PRICING APIS <span style="font-size:9px;color:var(--dim)">lookup options, credit use and API keys</span></div><div id="pricecharting-data-body"></div>';
   backoffice.prepend(panel);
   renderPriceChartingDataPanel();
 }
@@ -4231,7 +4434,7 @@ function renderPriceChartingDataPanel(){
         <button class="hbtn" onclick="clearPokemonExactCache()">CLEAR POKEMON EXACT CACHE</button>
       </div>
     </div>
-    <div class="item-metric" style="margin-bottom:12px">
+    ${window._storeFeatures?.platform === false ? '' : `<div class="item-metric" style="margin-bottom:12px">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
         <span style="font-family:'Orbitron',monospace;color:var(--blue);font-size:10px">CREDIT USE - PokemonPriceTracker</span>
         <button class="hbtn" onclick="loadPptUsageReport(0)">TODAY</button>
@@ -4239,7 +4442,7 @@ function renderPriceChartingDataPanel(){
         <button class="hbtn" onclick="loadPptUsageReport(24 * 7)">LAST 7 DAYS</button>
       </div>
       <div id="ppt-usage-body" style="font-family:monospace;font-size:10px;color:var(--dim)">What spent the credits and when. TODAY starts when PokemonPriceTracker's daily credits reset (midnight UTC).</div>
-    </div>
+    </div>`}
     <div class="item-metric" id="store-api-keys-panel" style="margin-bottom:12px;display:none"></div>`;
   loadStoreApiKeysPanel();
 }
@@ -4659,7 +4862,7 @@ function ensureVendorConfigPanel(backoffice){
   panel.className = 'panel';
   panel.id = 'vendor-config-panel';
   panel.style.marginBottom = '14px';
-  panel.innerHTML = '<div class="ph">MODULAR VENDOR CONFIG <span style="font-size:9px;color:var(--dim)">local to this register</span></div><div id="vendor-config-body"></div>';
+  panel.innerHTML = '<div class="ph">DASHBOARD SCREENS <span style="font-size:9px;color:var(--dim)">local to this register</span></div><div id="vendor-config-body"></div>';
   backoffice.prepend(panel);
   renderVendorConfigPanel();
 }
@@ -4762,9 +4965,9 @@ function renderVendorConfigPanel(){
   };
   body.innerHTML = `
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px;line-height:1.55">
-      Turn screens on/off for this vendor setup. Pick where inventory lives: built-in, spreadsheet, Webflow, or hybrid.
+      Turn screens on or off for this register.
     </div>
-    <div style="display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:10px;align-items:end;margin-bottom:12px">
+    <div data-settings-block="source" style="display:grid;grid-template-columns:minmax(220px,320px) 1fr;gap:10px;align-items:end">
       <label style="font-family:monospace;font-size:9px;color:var(--dim)">INVENTORY SOURCE
         <select id="inventory-source-select" class="tsi" onchange="setInventorySource(this.value)">
           <option value="built_in" ${cfg.inventorySource==='built_in'?'selected':''}>Built-in inventory</option>
@@ -4780,16 +4983,16 @@ function renderVendorConfigPanel(){
     <div class="module-grid">
       ${Object.entries(moduleLabels).map(([key,label]) => `<label class="module-toggle"><input type="checkbox" ${cfg.modules[key]?'checked':''} onchange="toggleVendorModule('${key}',this.checked)"> ${label}</label>`).join('')}
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <div data-settings-block="categories"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <input class="tsi" id="new-category-name" placeholder="New category/filter name" style="flex:1;min-width:220px;margin-bottom:0">
       <button class="hbtn" onclick="addVendorCategory()">ADD CATEGORY</button>
     </div>
     <div>${getInventoryCategories().map(c => {
       const isStandard = STANDARD_INVENTORY_CATEGORIES.includes(c);
       return `<span class="category-chip">${escHtml(c)}${isStandard ? ' <span style="color:var(--dim);font-size:9px">(standard)</span>' : `<button onclick="removeVendorCategory('${String(c).replace(/'/g,"\\'")}')">x</button>`}</span>`;
-    }).join('')}</div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:6px">CATEGORY PRICE RULES</div>
+    }).join('')}</div></div>
+    <div data-settings-block="pricing-rules">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);letter-spacing:.04em;margin-bottom:6px">CATEGORY PRICE RULES &amp; FLOOR</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--dim);line-height:1.55;margin-bottom:8px">
         Sell above market per category: market + the percent or the flat dollars, whichever is more, rounded up to the dollar (10% or $2: $8 market sells at $10, $50 sells at $55). Saved for the whole store, so every device uses it. New items in that category get the rule automatically; APPLY TO IN-STOCK prices what you already have (it asks before touching 🔒 locked prices), CLEAR puts in-stock items back to plain market. Prices keep following market on every price sync.
       </div>
@@ -4809,7 +5012,7 @@ function renderVendorConfigPanel(){
         }).join('')}
       </tbody></table></div>
     </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+    <div data-settings-block="debug" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:8px;font-family:monospace;font-size:10px;color:var(--dim);cursor:pointer">
         <input type="checkbox" ${localStorage.getItem('qa_debug')==='1'?'checked':''} onchange="localStorage.setItem('qa_debug',this.checked?'1':'0');toast_dash(this.checked?'Debug mode ON':'Debug mode OFF')">
         <span>Debug Mode <span style="color:var(--dim);font-size:9px">(shows pricing IDs, cache paths, lookup details — off by default)</span></span>
@@ -4819,8 +5022,8 @@ function renderVendorConfigPanel(){
         <span>Inventory Debug <span style="color:var(--dim);font-size:9px">(shows dedup counts in status bar)</span></span>
       </label>
     </div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
-      <div style="font-family:'Orbitron',monospace;font-size:10px;color:var(--dim);letter-spacing:.04em;margin-bottom:8px">ALERT THRESHOLDS</div>
+    <div data-settings-block="alerts">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;color:var(--g);letter-spacing:.04em;margin-bottom:8px">STOCK &amp; PRICE ALERTS</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;font-family:monospace;font-size:10px;color:var(--dim)">
         <label>LOW STOCK QTY AT OR BELOW
           <input type="number" min="1" max="99" value="${getAlertSettings().lowStockQty}" class="tsi" style="width:70px;margin-top:4px" onchange="saveAlertSettings({lowStockQty:Math.max(1,parseInt(this.value,10)||1)})">
@@ -4840,10 +5043,11 @@ function renderVendorConfigPanel(){
         <span style="font-size:9px;line-height:1.5">A price sync that moves an item's market price by at least one of these flags it as a mover so you know to update the sticker. Alert thresholds are saved for the whole store, so every device uses them.</span>
       </div>
     </div>
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
+    <div data-settings-block="setup" style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="hbtn" onclick="openSetupWizard(1)">${isSetupComplete()?'EDIT SETUP':'SETUP WIZARD'}</button>
       <button class="hbtn" onclick="startWalkthrough('first-time')">START WALKTHROUGH</button>
     </div>`;
+  distributeSettingsBlocks(body);
 }
 
 function setInventorySource(source){
@@ -5497,7 +5701,7 @@ function onboardingTasks(){
       detail:(cfg.inventorySource || 'built_in').replace('_',' ') + ' selected',
       done:!!cfg.inventorySource,
       action:'SET SOURCE',
-      run:() => openSettingsSection('advanced','vendor-config-panel')
+      run:() => openSettingsSection('inventory','inventory-source-select')
     },
     {
       key:'payments',
@@ -5638,8 +5842,8 @@ function betaSetupChecklist(){
     detail
   });
   return [
-    item('storeName','Store name set', !!profile.storeName, profile.storeName || 'Add this in Vendor Info.'),
-    item('storeLocation','Store location set', !!profile.location, profile.location || 'Add this in Vendor Info.'),
+    item('storeName','Store name set', !!profile.storeName, profile.storeName || 'Add this in Settings → Store Profile.'),
+    item('storeLocation','Store location set', !!profile.location, profile.location || 'Add this in Settings → Store Profile.'),
     item('workerUrl','Worker URL configured', hasWorker, hasWorker ? 'Worker URL is present.' : 'Worker URL missing.'),
     item('workerHealth','Worker/API health OK', healthOk, healthOk ? 'Last health check passed.' : 'Use System / Backup health check.'),
     item('payments','Payment handles or cash-only', hasPaymentHandle || cashOnly, hasPaymentHandle ? 'At least one QR handle is set.' : cashOnly ? 'Cash is enabled.' : 'Add Venmo, PayPal, Cash App, or confirm cash-only.'),
@@ -5823,17 +6027,6 @@ function betaGoToTab(tabName){
   betaTrackAction('tab switched', tabName);
 }
 
-function openSettingsSection(sectionName){
-  betaGoToTab('backoffice');
-  const map = {
-    store:'#vendor-profile-panel',
-    payments:'#payment-settings-panel',
-    worker:'#backoffice-system-panel',
-    catalog:'#offline-catalog-manager-panel',
-    inventory:'#spreadsheet-panel'
-  };
-  setTimeout(() => highlightElement(map[sectionName] || sectionName), 120);
-}
 
 function scrollElementIntoView(el){
   const node = typeof el === 'string' ? document.querySelector(el) : el;

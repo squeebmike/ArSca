@@ -12,8 +12,8 @@ assert.match(dashboard, /storeWorkerFetch\(`\/proxy\/collections\/\$\{WF_POCKET_
 assert.match(dashboard, /storeWorkerFetch\(`\/proxy\/collections\/\$\{WF_POCKET_EVENTS\}\/items\/\$\{itemId\}`, \{ method:'PATCH'/, 'editing an event must PATCH the same item, not create a duplicate');
 assert.match(dashboard, /storeWorkerFetch\(`\/proxy\/collections\/\$\{WF_POCKET_EVENTS\}\/items\/publish`, \{ method:'POST'/, 'a saved event must be published so the live website actually shows it, not left in draft');
 
-// ── Contract: mounted in the same Settings/Sync location as the existing Webflow integration panel ──
-assert.match(dashboard, /if\(sync&&!document\.getElementById\('event-calendar-panel'\)\)sync\.insertAdjacentHTML\('afterbegin','<div class="settings-generated-panel" id="event-calendar-panel"><\/div>'\);renderEventCalendarPanel\?\.\(\);/, 'the calendar panel must mount in the settings-panels-sync section alongside Webflow sync, following the established generated-panel convention');
+// ── Contract: mounted in Settings -> Website & Online Sales, beside the Webflow integration panel ──
+assert.match(dashboard, /if\(website&&!document\.getElementById\('event-calendar-panel'\)\)website\.insertAdjacentHTML\('beforeend','<div class="settings-generated-panel" id="event-calendar-panel"><\/div>'\);renderEventCalendarPanel/, 'the calendar panel is mounted in the Website & Online Sales section');
 
 console.log('Pocket Events calendar contract checks passed');
 

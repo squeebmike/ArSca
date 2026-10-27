@@ -17,7 +17,7 @@
     "test:comic-hub": "node tests/comic-issue-hub.test.js",
     "test:consignment": "node tests/consignment-owner-ledger.test.js",
     "test:stripe-foundation": "node tests/stripe-connect-foundation.test.mjs",
-    "test:settings-architecture": "node tests/settings-information-architecture.test.mjs",
+    "test:settings-architecture": "node tests/settings-information-architecture.test.mjs && node tests/settings-reorganized.test.mjs",
     "test:subscription-plans": "node tests/subscription-plan-gates.test.mjs",
     "test:storefront": "node tests/public-storefront.test.mjs",
     "test:storefront-multiple-images": "node tests/storefront-multiple-images.test.mjs",
