@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.27.1-idle-polling';
+const APP_VERSION = '2026.10.27.2-lookup-login';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -9905,7 +9905,7 @@ async function fetchPinnedSlabPrice(item, grader, grade){
   const bucket = pcGradeBucket(grader, grade);
   if(!pcId || !bucket) return null;
   try {
-    const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const price = Number(data?.product?.prices?.[bucket] || 0);
     if(!res.ok || !data.ok || !(price > 0)) return null;
@@ -9932,7 +9932,7 @@ async function fetchGradedSlabPriceForItem(item = {}){
     setName:inventorySetName(item) || '',
   });
   try {
-    const res = await fetch(WORKER + '/pricing/pricecharting/slab-prices?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/slab-prices?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     if(!res.ok || !data.ok || !(Number(data.selectedValue) > 0)) return null;
     return {
@@ -11805,7 +11805,7 @@ async function resolveSportsPcProductId(link = {}){
   if(_sportsPcUrlIdCache.has(link.url)) return _sportsPcUrlIdCache.get(link.url);
   let id = '';
   try {
-    const res = await fetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:link.url }).toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:link.url }).toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     id = res.ok && data.ok ? String(data.match?.productId || '').trim() : '';
   } catch(e) { id = ''; }
@@ -11873,7 +11873,7 @@ async function searchSportsPcProduct(item = {}){
   if(!_sportsPcSearchCache.has(q)){
     let products = [];
     try {
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q }).toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       products = res.ok && data.ok !== false ? (data.products || data.matches || []) : [];
     } catch(e) { products = []; }
@@ -11919,7 +11919,7 @@ async function fetchOtherTcgOrSportsLivePrice(item){
     if(found.how && !link.id) link.how = found.how;
     const linkFields = { pricechartingProductId:pcId, ...(link.url && !String(item.providerUrl || '').trim() ? { providerUrl:link.url } : {}) };
     try {
-      const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(pcId), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       const prices = data?.product?.prices || {};
       const productUrl = data?.product?.url || link.url || '';
@@ -11974,7 +11974,7 @@ async function fetchOtherTcgOrSportsLivePrice(item){
   }
   if(tcgPlayerId){
     try {
-      const res = await fetch(WORKER + '/pricing/justtcg/tcgplayer/' + encodeURIComponent(tcgPlayerId) + '?' + new URLSearchParams({ storeId:getActiveStoreId() }).toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/tcgplayer/' + encodeURIComponent(tcgPlayerId) + '?' + new URLSearchParams({ storeId:getActiveStoreId() }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       const price = Number(data.price || data.selectedVariant?.marketPrice || data.card?.selectedVariant?.marketPrice || 0);
       if(res.ok && data.ok !== false && price > 0) return { market:price, source:'JustTCG', matchStatus:'exact TCGplayer ID match' };
@@ -11989,7 +11989,7 @@ async function fetchOtherTcgOrSportsLivePrice(item){
   if(!gameLabel || gameLabel === 'TCG') return null;
   try {
     const params = new URLSearchParams({ q, category:gameLabel, storeId:getActiveStoreId() });
-    const res = await fetch(WORKER + '/pricing/justtcg/search?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/search?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const match = (data.matches || [])[0];
     if(match && match.tcgplayerId && pokemonPptConditionCode(item.selectedCondition || item.condition || 'NM') === 'NM'){
@@ -12185,7 +12185,7 @@ async function saveSportsPcLink(itemId, productId){
   if(!entry) return;
   let product = null;
   try {
-    const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(productId), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(productId), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     if(res.ok && data.ok && data.product) product = data.product;
   } catch(e) {}
@@ -25217,14 +25217,14 @@ async function verifyInventoryPriceChartingReference(){
   if(status) { status.style.color='var(--gold)'; status.textContent = isUrl ? 'Reading that product page…' : 'Checking PriceCharting #' + key + '…'; }
   try {
     if(isUrl) {
-      const res = await fetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:key }).toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:key }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       if(!res.ok || !data.ok || !data.match) throw new Error(data.error || 'Could not read that product page.');
       const m = data.match;
       inventoryPcReferenceState.verified = { key, id:String(m.productId || ''), product:{ productName:m.name || '', consoleName:m.set || '' }, url:m.productUrl || key, cardNumber:m.card_number || '', printRun:m.printRun || '' };
       if(status) { status.style.color='var(--g)'; status.textContent='✓ ' + (m.name || 'Unnamed product') + (m.set ? ' · ' + m.set : ''); }
     } else {
-      const res = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(key), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(key), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       if(!res.ok || !data.ok || !data.product) throw new Error(data.error || 'No PriceCharting product found for that ID.');
       const product = data.product;
@@ -25304,7 +25304,7 @@ async function lookupComicFromPastedUrl(){
   if(btn) btn.disabled = true;
   if(status){ status.style.color='var(--gold)'; status.textContent='Searching PriceCharting for "' + query + '"…'; }
   try {
-    const res = await fetch(WORKER + '/pricing/pricecharting/comic-sweep', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ queries:[query] }) });
+    const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/comic-sweep', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ queries:[query] }) });
     const data = await res.json().catch(() => ({}));
     const products = (res.ok && data.ok) ? (data.products || []) : [];
     if(!products.length){ if(status){status.style.color='var(--red)';status.textContent='No PriceCharting comic match found for that link. Try Research → search by series name instead.';} return; }
@@ -25396,7 +25396,7 @@ async function fetchPsaCertPhotoForEditItem(){
   if(grader && !/^psa$/i.test(grader)) { if(statusEl) statusEl.textContent = 'PSA cert photo lookup only — BGS/CGC/SGC not supported yet.'; return; }
   if(statusEl) statusEl.textContent = 'Checking PSA cert...';
   try {
-    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     // Store report: a PSA 403 only ever showed as the bare "PSA API error
     // 403" -- the Worker route already captures PSA's own response body as
@@ -27337,7 +27337,7 @@ async function fetchTCGPrice(name, setName, tcgCardId) {
     const cleanName = normalizeCardNameForPokemon(itemName);
     const lookupName = normalizeTcgLookupName(itemName);
     const lookupNumber = extractPokemonNumber(itemCtx || {name:itemName,set:itemSet});
-    const universal = await fetch(WORKER + '/pricing/tcg?' + new URLSearchParams({
+    const universal = await storeWorkerFetch(WORKER + '/pricing/tcg?' + new URLSearchParams({
       q: [lookupName || itemName, itemSet, lookupNumber ? '#'+lookupNumber : ''].filter(Boolean).join(' '),
       game: pricingGameForItem(itemCtx || {name:itemName,set:itemSet,category:'TCG'}),
       set: itemSet,
@@ -29420,7 +29420,7 @@ async function scoutRunCatalogSearch(){
 // unchanged. Throws on failure so the caller's existing catch handles it
 // the same way a failed text search would.
 async function scoutResolveCatalogUrl(pastedUrl){
-  const res = await fetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:pastedUrl }).toString(), { cache:'no-store' });
+  const res = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/resolve-url?' + new URLSearchParams({ url:pastedUrl }).toString(), { cache:'no-store' });
   const data = await res.json().catch(()=>({}));
   if(!res.ok || !data.ok || !data.match) throw new Error(data.error || 'Could not read that page');
   return [data.match];
@@ -29467,7 +29467,7 @@ async function scoutHydrateCatalogImages(){
         const params = new URLSearchParams({ title: issueMatch ? issueMatch[1].trim() : name });
         if(issueMatch) params.set('issue', issueMatch[2]);
         if(r.year) params.set('year', r.year);
-        const res = await fetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
+        const res = await storeWorkerFetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
         if(res.ok) { const data = await res.json().catch(()=>({})); url = (data.variants||[]).find(v=>v.cover_image)?.cover_image || null; }
       }
       if((r.source === 'PriceCharting' || r.source === 'sportscardspro') && (r.productId || r.scpId) && catKey !== 'pokemon' && catKey !== 'comic' && (!r.imageUrl || !r.card_number || !r.printRun) && priceChartingHydrated < 6) {
@@ -29481,7 +29481,7 @@ async function scoutHydrateCatalogImages(){
         // returns cardNumber/printRun alongside the image when the page has them.
         try{
           const params = new URLSearchParams({ id: String(scpId), console: r.set || '', name: r.name || '' });
-          const scpRes = await fetch(WORKER + '/pricing/sportscardspro/image?' + params.toString(), { cache:'no-store' });
+          const scpRes = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/image?' + params.toString(), { cache:'no-store' });
           if(scpRes.ok) {
             const data = await scpRes.json().catch(()=>({}));
             if(!url) url = data.imageUrl || null;
@@ -29493,7 +29493,7 @@ async function scoutHydrateCatalogImages(){
         }catch(e){ /* no image/metadata found via SportsCardsPro's page -- still try PriceCharting's below */ }
         if(!url && r.source === 'PriceCharting' && r.productId) {
           try{
-            const pcRes = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(r.productId), { cache:'no-store' });
+            const pcRes = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(r.productId), { cache:'no-store' });
             if(pcRes.ok) { const pcData = await pcRes.json().catch(()=>({})); url = pcData.product?.imageUrl || pcData.imageUrl || null; }
           }catch(e){ /* no image available from PriceCharting either */ }
         }
@@ -31916,7 +31916,7 @@ async function resolveExactTcgplayerProduct(product={}){
     return null;
   }
   try{
-    const res=await fetch(WORKER+'/pricing/justtcg/tcgplayer/'+encodeURIComponent(product.productId)+'?'+new URLSearchParams({priceHistoryDuration:'90d',storeId:getActiveStoreId()}).toString(),{cache:'no-store'});
+    const res=await storeWorkerFetch(WORKER+'/pricing/justtcg/tcgplayer/'+encodeURIComponent(product.productId)+'?'+new URLSearchParams({priceHistoryDuration:'90d',storeId:getActiveStoreId()}).toString(),{cache:'no-store'});
     const data=await res.json().catch(()=>({}));
     const match=data.matches?.[0]||data.card||null;
     if(!res.ok||!match)return null;
@@ -32446,7 +32446,7 @@ async function fetchComicVineCover(name, issue, year){
     const params = new URLSearchParams({ title });
     if(issueNum) params.set('issue', issueNum);
     if(year) params.set('year', year);
-    const res = await fetch(WORKER + '/comic/variants?' + params.toString());
+    const res = await storeWorkerFetch(WORKER + '/comic/variants?' + params.toString());
     const data = await res.json().catch(() => ({}));
     return (data.variants||[])[0]?.cover_image || '';
   } catch(e){ return ''; }
@@ -32908,7 +32908,7 @@ async function searchChinesePokemonPriceCharting(q = ''){
   const products = [], seen = new Set();
   for(const query of [...new Set([('pokemon chinese ' + base).trim(), String(q).trim()])]){
     try {
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, live:'true' }), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, live:'true' }), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       (data.products || data.matches || []).forEach(p => {
         const id = String(p.productId || p.id || '');
@@ -34480,7 +34480,7 @@ async function hydrateQplVariantMatrix(idx, duration='90d'){
   if(!r || r.source !== 'justtcg' || !id) return r;
   try {
     const params = new URLSearchParams({ include_variants:'true', include_price_history:'true', priceHistoryDuration:duration });
-    const res = await fetch(WORKER + '/pricing/justtcg/card/' + encodeURIComponent(id) + '?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/card/' + encodeURIComponent(id) + '?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const card = data.card || data.matches?.[0];
     if(res.ok && card) {
@@ -34722,7 +34722,7 @@ async function fetchToppsSportsPriceChartingForRow(idx){
     const seen = new Map();
     for(const query of buildSportsQueryVariants(q)) {
       try {
-        const scpRes = await fetch(WORKER + '/pricing/sportscardspro/products?' + new URLSearchParams({ q:query }).toString(), { cache:'no-store' });
+        const scpRes = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/products?' + new URLSearchParams({ q:query }).toString(), { cache:'no-store' });
         const scpData = await scpRes.json().catch(() => ({}));
         (scpData.products || scpData.matches || []).forEach(match => {
           const id = match.id || match['product-id'] || '';
@@ -34732,7 +34732,7 @@ async function fetchToppsSportsPriceChartingForRow(idx){
           seen.set(key, { ...(seen.get(key) || {}), ...match, url:id ? 'https://www.sportscardspro.com/game/' + id : (match.url || match.productUrl || ''), _toppsScore:score, _sourceName:'SportsCardsPro' });
         });
       } catch(_) {}
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, category:'Sports Cards' }).toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, category:'Sports Cards' }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       (data.matches || data.products || []).forEach(match => {
         const key = match.productId || match.id || match.url || match.productName || match['product-name'];
@@ -34930,7 +34930,7 @@ async function searchSportsCardsPro(q, searchPlan = qplLastSearchPlan){
     const params = new URLSearchParams({ q: String(query).trim() });
     let data = {};
     try {
-      const res = await fetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/products?' + params, { cache:'no-store' });
       data = await res.json().catch(() => ({}));
       if(data.needsKey) {
         console.warn('[SCP] SCP_ACCESS_TOKEN not set in Worker secrets - SportsCardsPro search unavailable. Set it with: wrangler secret put SCP_ACCESS_TOKEN');
@@ -34968,7 +34968,7 @@ async function fetchScpImageAsync(idx){
   try {
     const params = new URLSearchParams({ console: r.set || '', name: r.name || '' });
     if(r.scpId) params.set('id', r.scpId);
-    const res = await fetch(WORKER + '/pricing/sportscardspro/image?' + params);
+    const res = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/image?' + params);
     const data = await res.json().catch(() => ({}));
     if(data.ok && data.imageUrl) {
       qplResults[idx] = { ...r, imageUrl: data.imageUrl };
@@ -34992,7 +34992,7 @@ async function enrichPcImagesAsync(){
   const candidates=qplResults.map((r,idx)=>({r,idx})).filter(({r})=>r&&r.source==='PriceCharting'&&!r.imageUrl&&r.pricecharting?.productId&&qplResultCategoryKey(r)!=='mtg').slice(0,3);
   for(const {r,idx} of candidates){
     try{
-      const res=await fetch(WORKER+'/pricing/pricecharting/product/'+encodeURIComponent(r.pricecharting.productId),{cache:'force-cache',signal:AbortSignal.timeout(3500)});
+      const res=await storeWorkerFetch(WORKER+'/pricing/pricecharting/product/'+encodeURIComponent(r.pricecharting.productId),{cache:'force-cache',signal:AbortSignal.timeout(3500)});
       const d=res.ok?await res.json().catch(()=>null):null;
       if(!d?.imageUrl)continue;
       if(qplResults[idx])qplResults[idx].imageUrl=d.imageUrl;
@@ -35023,7 +35023,7 @@ async function enrichPcPrintRunsAsync(){
   for(const {r,idx} of candidates){
     try{
       const params=new URLSearchParams({ console:r.set||'', name:r.name||'' });
-      const res=await fetch(WORKER+'/pricing/sportscardspro/image?'+params,{cache:'force-cache',signal:AbortSignal.timeout(3500)});
+      const res=await storeWorkerFetch(WORKER+'/pricing/sportscardspro/image?'+params,{cache:'force-cache',signal:AbortSignal.timeout(3500)});
       const d=res.ok?await res.json().catch(()=>null):null;
       if(!d?.printRun)continue;
       if(!qplResults[idx])continue;
@@ -35040,7 +35040,7 @@ async function fetchSportsCardsProProduct(scpId){
   if(!scpId) return null;
   const params = new URLSearchParams({ id: String(scpId) });
   try {
-    const res = await fetch(WORKER + '/pricing/sportscardspro/product?' + params, { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/product?' + params, { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     if(!data.ok) return null;
     // Worker normalises to { ok, product: {...} }
@@ -35127,7 +35127,7 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
     // search returns up to 20 candidates; local ranking removes unrelated categories.
     const query = qplQueryVariants(q, cat, searchPlan)[0] || q;
     const params = new URLSearchParams({ q:query, live:'true', category:'Sports Cards' });
-    const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const matches = res.ok && data.ok ? data.matches || data.products || [] : [];
     rows.push(...matches.map(m => ({ ...m, _generatedQuery:query })));
@@ -35139,7 +35139,7 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
     for(const query of qplQueryVariants(q, cat, searchPlan).slice(0, queryLimit)) {
       const params = new URLSearchParams({ q:query, live:'true' });
       if(pcCat) params.set('category', pcCat);
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       if(res.ok && data.ok) rows.push(...(data.matches || data.products || []).map(m => ({ ...m, _generatedQuery:query })));
       recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', query, (data.matches || data.products || []).length);
@@ -35498,7 +35498,7 @@ async function refreshQplSkuPrice(idx){
   const sku = r?.selectedVariant?.tcgplayerSkuId || r?.selectedVariant?.skuId || r?.skuId;
   if(!sku) return;
   try {
-    const res = await fetch(WORKER + '/pricing/justtcg/sku/' + encodeURIComponent(sku), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/sku/' + encodeURIComponent(sku), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const v = data.selectedVariant || data.card?.selectedVariant;
     if(res.ok && v) {
@@ -35515,7 +35515,7 @@ async function hydrateQplVariantHistoryBySku(idx, duration='90d'){
   if(!sku || r?.source !== 'justtcg') return;
   r.chartLastFetchStatus = 'fetching sku ' + sku;
   try {
-    const res = await fetch(WORKER + '/pricing/justtcg/sku/' + encodeURIComponent(sku) + '?' + new URLSearchParams({ priceHistoryDuration:duration }).toString(), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/sku/' + encodeURIComponent(sku) + '?' + new URLSearchParams({ priceHistoryDuration:duration }).toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const v = data.selectedVariant || data.card?.selectedVariant;
     if(res.ok && v) {
@@ -35892,7 +35892,7 @@ async function openQplChartModal(idx, range='3M'){
     // Fetch PriceCharting data for this MTG card
     try {
       const pcQuery = [r.name, r.set].filter(Boolean).join(' ');
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:pcQuery, live:'true' }), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:pcQuery, live:'true' }), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       const products = data.matches || data.products || [];
       const pcMatch = products.find(p => /magic/i.test(p.consoleName || p.category || '')) || products[0];
@@ -37258,7 +37258,7 @@ async function fetchQplPriceCharting(idx){
   const q = [r.name, r.set, r.card_number ? '#'+r.card_number : ''].filter(Boolean).join(' ');
   try {
     if(qplResultCategoryKey(r) === 'comic' && r.pricecharting?.productId){
-      const detailRes = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(r.pricecharting.productId), { cache:'no-store' });
+      const detailRes = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(r.pricecharting.productId), { cache:'no-store' });
       const detailData = await detailRes.json().catch(() => ({}));
       if(!detailRes.ok || !detailData.ok) throw new Error(detailData.error || 'PriceCharting detail failed');
       const detail = detailData.product || detailData;
@@ -37274,7 +37274,7 @@ async function fetchQplPriceCharting(idx){
       r.pcState = 'Guide Value Available';
       return;
     }
-    const res = await fetch(WORKER + '/pricing/pricecharting/slab-prices?' + new URLSearchParams({
+    const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/slab-prices?' + new URLSearchParams({
       q,
       company:r.slabCompany || 'PSA',
       grade:r.slabGrade || '10',
@@ -37559,7 +37559,7 @@ async function fetchWorkerTcgCatalog(q, cat){
   // to fight (unlike PriceCharting's pcFetch), so this is a pure speedup.
   const queries = qplQueryVariants(q, cat).slice(0, 3);
   const responses = await Promise.all(queries.map(query =>
-    fetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:getActiveStoreId() }).toString())
+    storeWorkerFetch(WORKER + '/pricing/justtcg/search?' + new URLSearchParams({ q:query, category:game, storeId:getActiveStoreId() }).toString())
       .then(res => res.ok ? res.json().catch(() => null) : null)
       .catch(() => null)
   ));
@@ -37608,7 +37608,7 @@ async function fetchWorkerTcgCatalog(q, cat){
       raw:m,
     }));
   }
-  const res = await fetch(WORKER + '/pricing/tcg?' + new URLSearchParams({ q, game, condition:'NM' }).toString());
+  const res = await storeWorkerFetch(WORKER + '/pricing/tcg?' + new URLSearchParams({ q, game, condition:'NM' }).toString());
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !(data.success || data.ok)) return [];
   const matches = data.matches || (data.match ? [data.match] : []);
@@ -37917,7 +37917,7 @@ function renderComicRunChooser(results=qplResults){const api=window.ArsCaComicIs
   const panel=document.createElement('div');panel.id='comic-run-chooser';panel.style.marginBottom='14px';panel.innerHTML=`<div class="panel" style="border-color:rgba(199,125,255,.3)"><div class="ph"><b style="color:var(--purple)">PICK THE SERIES / RUN · OLDEST TO NEWEST</b><span>${escHtml(parsed.raw)}</span></div><div style="font-size:10px;color:var(--dim);margin-bottom:9px">Barcode and search narrow the neighborhood. Pick the run, then confirm the exact cover in the Issue Hub.</div><div class="comic-run-grid">${window._comicRunGroups.map((g,i)=>`<div class="comic-run-card">${g.topCoverImageUrl?`<img src="${escHtml(g.topCoverImageUrl)}" class="comic-cover-img" loading="lazy">`:'<div class="comic-cover-img" style="display:grid;place-items:center;color:var(--dim)">NO COVER</div>'}<b>${escHtml(g.seriesTitle)} #${escHtml(g.issueNumber)}</b><div style="color:var(--purple);margin:4px 0">${escHtml([g.yearGuess,g.runLabel].filter(Boolean).join(' · '))}</div><div>${g.candidateCount} candidate${g.candidateCount===1?'':'s'} · Raw ${money(g.priceRangeRaw)}</div>${exactIdx>=0?`<button class="hbtn" style="width:100%;margin-top:8px;color:var(--g);font-weight:800" onclick="selectQuickLookupResult(${exactIdx});document.querySelector('.qpl-selected-card')?.scrollIntoView({behavior:'smooth',block:'start'})">USE THIS EXACT ISSUE</button>`:''}<button class="hbtn" style="width:100%;margin-top:8px" onclick="openComicIssueHubFromGroup(${i})">${exactIdx>=0?'BROWSE OTHER COVERS':'OPEN ISSUE HUB'}</button></div>`).join('')}</div></div>`;host.prepend(panel);}
 async function openComicIssueHubFromGroup(index){const g=window._comicRunGroups?.[index];if(!g)return;comicIssueHubState={seriesTitle:g.seriesTitle,seriesAliases:[],publisher:g.publisher,runLabel:g.runLabel,yearGuess:g.yearGuess,currentIssueNumber:g.issueNumber,selectedRunConfidence:g.confidence,lastQueries:[],filters:{filter:'all',sort:'best',showHidden:false},candidates:g.candidates||[],hiddenCandidateIds:[]};document.getElementById('comic-issue-hub')?.classList.add('on');document.body.style.overflow='hidden';const cached=await comicHubGet('comic_issue_hubs',comicHubContextKey()).catch(()=>null);if(cached){comicIssueHubState={...comicIssueHubState,...cached.context,candidates:cached.candidates||comicIssueHubState.candidates,hiddenCandidateIds:cached.hiddenCandidateIds||[],lastFetchedAt:cached.lastFetchedAt,lastQueries:cached.queriesTried||[]};}await mergeComicHubCloudDecisions();await loadComicIssueHubCandidates(false);}
 function closeComicIssueHub(){document.getElementById('comic-issue-hub')?.classList.remove('on');document.body.style.overflow='';}
-async function loadComicIssueHubCandidates(broad=false){const s=comicIssueHubState,api=window.ArsCaComicIssueHub;if(!s||!api)return;renderComicIssueHub(!(s.candidates||[]).length);if(!navigator.onLine){renderComicIssueHub(false);return;}const queries=api.buildSweepQueries(s,broad);try{const res=await fetch(WORKER+'/pricing/pricecharting/comic-sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({queries})});const data=await res.json();if(res.ok&&data.ok){const liveProducts=data.products||[],localConfirmed=await comicHubGet('confirmed_covers',comicHubContextKey()).catch(()=>null),shared=await mergeComicHubCloudDecisions(s),confirmed=shared.confirmed||localConfirmed;if(liveProducts.length){
+async function loadComicIssueHubCandidates(broad=false){const s=comicIssueHubState,api=window.ArsCaComicIssueHub;if(!s||!api)return;renderComicIssueHub(!(s.candidates||[]).length);if(!navigator.onLine){renderComicIssueHub(false);return;}const queries=api.buildSweepQueries(s,broad);try{const res=await storeWorkerFetch(WORKER+'/pricing/pricecharting/comic-sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({queries})});const data=await res.json();if(res.ok&&data.ok){const liveProducts=data.products||[],localConfirmed=await comicHubGet('confirmed_covers',comicHubContextKey()).catch(()=>null),shared=await mergeComicHubCloudDecisions(s),confirmed=shared.confirmed||localConfirmed;if(liveProducts.length){
   // Merge into whatever's already there instead of replacing it -- a
   // narrower earlier sweep's finds must not disappear just because this
   // particular set of queries (e.g. a differently-worded broad sweep)
@@ -38525,7 +38525,7 @@ function psaCertToQplRow(c = {}, certFallback = ''){
 // (a slab's own barcode decodes to this same cert number) -- one fetch +
 // row-build + graded-slab-price path for both entry points.
 async function resolvePsaCertRow(cert){
-  const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+  const res = await storeWorkerFetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || !data.ok) throw new Error([data.error || 'PSA lookup failed', data.detail].filter(Boolean).join(' — '));
   const c = data.cert || {};
@@ -38699,7 +38699,7 @@ async function verifyQplPsaCert(idx){
   if(grader !== 'PSA') { if(out) out.innerHTML = '<span style="color:var(--gold)">Internal cert API is wired for PSA first. Use COMPS for BGS/CGC/SGC pricing until those providers are added.</span>'; return; }
   if(out) out.textContent = 'Checking PSA cert...';
   try {
-    const res = await fetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
+    const res = await storeWorkerFetch(WORKER + '/psa/cert/' + encodeURIComponent(cert), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     // Store report: a PSA 403 only ever showed as the bare "PSA API error
     // 403" -- the Worker route already captures PSA's own response body as
@@ -38762,7 +38762,7 @@ async function lazyLoadComicImages(indices){
       const params = new URLSearchParams({ title });
       if(issue) params.set('issue', issue);
       if(year) params.set('year', year);
-      const res = await fetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/comic/variants?' + params.toString(), { cache:'no-store' });
       if(!res.ok) return;
       const data = await res.json().catch(() => ({}));
       const best = (data.variants || []).find(v => v.cover_image) || null;
@@ -48218,7 +48218,7 @@ async function toppsLoadPriceCharting(card){
     const seen = new Map();
     for(const q of queries) {
       try {
-        const scpRes = await fetch(WORKER + '/pricing/sportscardspro/products?' + new URLSearchParams({ q }).toString(), { cache:'no-store' });
+        const scpRes = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/products?' + new URLSearchParams({ q }).toString(), { cache:'no-store' });
         const scpData = await scpRes.json().catch(() => ({}));
         (scpData.products || scpData.matches || []).forEach(match => {
           const id = match.id || match['product-id'] || '';
@@ -48238,7 +48238,7 @@ async function toppsLoadPriceCharting(card){
           seen.set(key, { ...(seen.get(key) || {}), ...normalized, _toppsScore:score, _toppsQuery:q });
         });
       } catch(_) {}
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q, category:'Sports Cards', live:'true' }).toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q, category:'Sports Cards', live:'true' }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       (data.matches || data.products || []).forEach(match => {
         const key = match.productId || match.id || match.url || match.productName || match['product-name'];
@@ -48257,7 +48257,7 @@ async function toppsLoadPriceCharting(card){
     // Fetch product detail to get imageUrl (search APIs don't return images)
     if(payload.best && !payload.best.imageUrl && payload.best.productId) {
       try {
-        const detRes = await fetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(payload.best.productId), { cache:'no-store' });
+        const detRes = await storeWorkerFetch(WORKER + '/pricing/pricecharting/product/' + encodeURIComponent(payload.best.productId), { cache:'no-store' });
         const det = await detRes.json().catch(() => ({}));
         if(det.imageUrl) payload.best.imageUrl = det.imageUrl;
         if(det.url && !payload.best.url) payload.best.url = det.url;
@@ -48268,7 +48268,7 @@ async function toppsLoadPriceCharting(card){
       const scpNumId = String(payload.best.id || payload.best['product-id'] || '');
       if(scpNumId) {
         try {
-          const imgRes = await fetch(WORKER + '/pricing/sportscardspro/image?id=' + encodeURIComponent(scpNumId), { cache:'no-store' });
+          const imgRes = await storeWorkerFetch(WORKER + '/pricing/sportscardspro/image?id=' + encodeURIComponent(scpNumId), { cache:'no-store' });
           const imgData = await imgRes.json().catch(() => ({}));
           if(imgData.imageUrl) payload.best.imageUrl = imgData.imageUrl;
         } catch(_) {}
@@ -48299,7 +48299,7 @@ async function toppsLoadParallels(cardId){
     const q = [year, 'Topps', product, player].filter(Boolean).join(' ');
     const seen = new Map();
     for(const query of [q, [player, year, 'Topps', product].filter(Boolean).join(' ')]) {
-      const res = await fetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, category:'Sports Cards', live:'true' }).toString(), { cache:'no-store' });
+      const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + new URLSearchParams({ q:query, category:'Sports Cards', live:'true' }).toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
       (data.matches || data.products || []).forEach(m => {
         const name = m.productName || m['product-name'] || '';

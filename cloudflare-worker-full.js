@@ -57,6 +57,7 @@ import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
+import { lookupNeedsLogin } from './scripts/lookup-auth.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
@@ -3652,6 +3653,19 @@ function normalizeWebflowItemId(item) {
   return item?.shopId || item?.wfId || item?.webflowId || null;
 }
 
+// Saves a PSA cert photo to R2 (where /psa/cert/:n/photo serves it) unless
+// it's already there. Fetches the image from PSA's photo CDN, not the API.
+async function cachePsaPhoto(env, certNumber, photoUrl) {
+  if (!env.MTG_CATALOG_R2 || !photoUrl) return false;
+  const r2Key = `psa-photos/${certNumber}.jpg`;
+  if (await env.MTG_CATALOG_R2.head(r2Key)) return true;
+  let imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*' } });
+  if (!imgRes.ok && (imgRes.status === 401 || imgRes.status === 403)) imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*', Authorization: 'Bearer ' + env.PSA_TOKEN } });
+  if (!imgRes.ok) return false;
+  await env.MTG_CATALOG_R2.put(r2Key, await imgRes.arrayBuffer(), { httpMetadata: { contentType: imgRes.headers.get('content-type') || 'image/jpeg' } });
+  return true;
+}
+
 async function buyTrayIsClosed(env, storeId, id) {
   if (!id) return false;
   const scopedKey = `lba:${safeStoreKey(storeId)}:buy_tray_${String(id).replace(/[^a-zA-Z0-9:_-]/g, '-')}`;
@@ -6196,6 +6210,12 @@ async function routeRequest(request, env, ctx) {
       const peek = ['POST','PUT','PATCH','DELETE'].includes(request.method) && (/json/i.test(request.headers.get('Content-Type') || '') || url.pathname.startsWith('/public/')) ? await request.clone().json().catch(() => null) : null;
       const walled = await walledRequest(env, request, url, storeFeatureReader(env), peek);
       if (walled) return json({ ok:false, error:'Not available for this store', featureDisabled:walled.feature }, 403);
+    }
+    // Paid price and grading lookups: signed-in store staff only
+    // (scripts/lookup-auth.mjs).
+    if (lookupNeedsLogin(url.pathname)) {
+      const lookupAuth = await requireStoreUser(request, env, requestStoreId(request, url));
+      if (lookupAuth.error) return lookupAuth.error;
     }
     // Second-store pilot: a store prices on its own API keys. For a request
     // naming another store, its keys replace The Mana Pocket's in env, so
@@ -17302,6 +17322,9 @@ async function routeRequest(request, env, ctx) {
           const firstImage = v => typeof v === 'string' ? v : (v?.URL || v?.Url || v?.ImageURL || '');
           const photoUrl = cert.ImageURL || cert.ImageUrl || firstImage(imageList[0]) || null;
           const photoUrls = imageList.map(firstImage).filter(Boolean);
+          // Cache the photo now, while the lookup is signed in: the photo
+          // route answers a plain <img> only from this cache.
+          if (photoUrl && ctx?.waitUntil) ctx.waitUntil(cachePsaPhoto(env, certNumber, photoUrl).catch(() => {}));
 
           return json({
             ok: true,
@@ -17353,6 +17376,10 @@ async function routeRequest(request, env, ctx) {
               });
             }
           }
+          // Not cached: fetching it spends a PSA API call, so signed-in
+          // staff only (scripts/lookup-auth.mjs).
+          const photoAuth = await requireStoreUser(request, env, requestStoreId(request, url));
+          if (photoAuth.error) return photoAuth.error;
           const psaRes = await fetch(`${PSA_BASE}/cert/GetByCertNumber/${certNumber}`, {
             headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
           });

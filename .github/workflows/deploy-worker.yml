@@ -54,6 +54,7 @@ on:
       - scripts/pokemon-daily-sync.mjs
       - scripts/store-features.mjs
       - scripts/shared-service-usage.mjs
+      - scripts/lookup-auth.mjs
       - scripts/store-api-keys.mjs
       - scripts/catalog-inventory.mjs
       - scripts/catalog-highlights.mjs

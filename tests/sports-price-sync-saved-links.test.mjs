@@ -24,7 +24,8 @@ const slabGradeConst = dashboard.match(/const SLAB_GRADE_RE = [^\n]+\n/)[0];
 
 function load(fetchImpl, slab = null) {
   const calls = { fetch:[], slab:0, cardsight:0 };
-  const fn = new Function('fetch', 'fetchGradedSlabPriceForItem', 'fetchCardSightRealPrice', [
+  // Price lookups go through storeWorkerFetch (signed in) since 2026-10-27; same mock.
+  const fn = new Function('fetch', 'fetchGradedSlabPriceForItem', 'fetchCardSightRealPrice', 'storeWorkerFetch', [
     'const WORKER = "https://worker.test";',
     consoleConst, cacheConst, slabGradeConst,
     extractFn('parseSlabGradeText'),
@@ -55,6 +56,7 @@ function load(fetchImpl, slab = null) {
     async (url) => { calls.fetch.push(String(url)); return fetchImpl(String(url)); },
     async () => { calls.slab++; return slab; },
     async () => { calls.cardsight++; return null; },
+    async (url) => { calls.fetch.push(String(url)); return fetchImpl(String(url)); },
   );
   return { ...api, calls };
 }

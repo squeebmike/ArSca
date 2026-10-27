@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { staffHeaders, withSupabase, answeringStaffLogin } from './helpers/signed-in-worker.mjs';
 
 // Store ask: "How can we sync up prices for FOC comics we put in inventory?
 // Ie. ratio where the prices have gone up." The comic sync only priced books
@@ -34,9 +35,11 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
     return new Response('{}', { headers:{ 'Content-Type':'application/json' } });
   };
   try {
+    // Paid lookups need a signed-in store (scripts/lookup-auth.mjs).
+    globalThis.fetch = answeringStaffLogin(globalThis.fetch);
     const { default: api } = await import('../cloudflare-worker-full.js');
-    const env = { PRICECHARTING_TOKEN:'test-only' };
-    const post = body => api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }), env, { waitUntil(){} });
+    const env = withSupabase({ PRICECHARTING_TOKEN:'test-only' });
+    const post = body => api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:staffHeaders({ 'Content-Type':'application/json' }), body:JSON.stringify(body) }), env, { waitUntil(){} });
 
     const res = await post({ upcs:['76194137854200121', '76194137854200131', '11111111111100111', '123'] });
     assert.equal(res.status, 200);
@@ -180,9 +183,10 @@ const comicProduct = (id, ungraded, name = 'Book') => ({ ok:true, product:{ prod
     return new Response('{}', { headers:{ 'Content-Type':'application/json' } });
   };
   try {
+    globalThis.fetch = answeringStaffLogin(globalThis.fetch);
     const { default: api } = await import('../cloudflare-worker-full.js');
-    const env = { PRICECHARTING_TOKEN:'test-only' };
-    const res = await api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ items:[
+    const env = withSupabase({ PRICECHARTING_TOKEN:'test-only' });
+    const res = await api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:staffHeaders({ 'Content-Type':'application/json' }), body:JSON.stringify({ items:[
       { key:'a', upc:'82771403593300111', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Cover A (Smith)' },
       { key:'b', upc:'82771403593300121', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Variant B (Madan) Variant Title' },
       { key:'c', upc:'', series:'Teenage Mutant Ninja Turtles: The Hunger', issue:'1', cover:'Cover C 1:25 Eastman' },

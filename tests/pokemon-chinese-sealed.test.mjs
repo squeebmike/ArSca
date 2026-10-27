@@ -58,9 +58,10 @@ assert.match(extractFn('findCachedCardForInventoryItem'), /pokemonInventoryPptLa
     { productId:'4', productName:'Pikachu #001', consoleName:'Pokemon Japanese 30th Celebration', prices:{ ungraded:30 } },
   ];
   const fetchStub = async url => { queries.push(new URL(url).searchParams.get('q')); return { json:async () => ({ ok:true, products }) }; };
-  const search = new Function('fetch', 'WORKER', 'isSealedProductIntent',
+  // Price lookups go through storeWorkerFetch (signed in) since 2026-10-27; same stub.
+  const search = new Function('fetch', 'WORKER', 'isSealedProductIntent', 'storeWorkerFetch',
     extractFn('searchChinesePokemonPriceCharting', 'async function ') + '\nreturn searchChinesePokemonPriceCharting;')(
-    fetchStub, 'https://worker.test', name => /booster box/i.test(name));
+    fetchStub, 'https://worker.test', name => /booster box/i.test(name), fetchStub);
   const rows = await search('Pikachu 30th Celebration Simplified Chinese');
   assert.deepEqual(rows.map(r => r.productId), ['1', '2'], 'English and Japanese products are never offered for a Chinese search');
   assert.equal(queries[0], 'pokemon chinese Pikachu 30th Celebration');

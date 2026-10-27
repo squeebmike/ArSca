@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { staffHeaders, withSupabase, answeringStaffLogin } from './helpers/signed-in-worker.mjs';
 
 // Store question: "What about same bar code for variants?" A comic's full
 // 17-digit barcode normally names one cover, but some publishers print the
@@ -27,9 +28,11 @@ import assert from 'node:assert/strict';
     return reply({});
   };
   try {
+    // Paid lookups need a signed-in store (scripts/lookup-auth.mjs).
+    globalThis.fetch = answeringStaffLogin(globalThis.fetch);
     const { default: api } = await import('../cloudflare-worker-full.js');
-    const env = { PRICECHARTING_TOKEN:'test-only' };
-    const post = async body => (await api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) }), env, { waitUntil(){} })).json();
+    const env = withSupabase({ PRICECHARTING_TOKEN:'test-only' });
+    const post = async body => (await api.fetch(new Request('https://worker.test/pricing/pricecharting/comics/by-upc', { method:'POST', headers:staffHeaders({ 'Content-Type':'application/json' }), body:JSON.stringify(body) }), env, { waitUntil(){} })).json();
 
     const data = await post({ items:[
       { key:'open', upc:UPC, series:'Spider-Man: Long Way Home', issue:'4', cover:'CHRIS ALLEN VARIANT' },

@@ -46,9 +46,10 @@ const slab = new Function('inventoryCardName',
   const calls = [];
   const fetchMock = async url => { calls.push(String(url)); return { ok: true, json: async () => ({ ok: true, product: { prices: { cgc10: 41, psa10: 90 }, url: 'https://www.pricecharting.com/game/x/magicarp' } }) }; };
   const resolve = async link => link.id || (link.url ? '777' : '');
-  const api = new Function('fetch', 'WORKER', 'resolveSportsPcProductId', 'pcGradeBucket', 'inventoryGradingInfo', 'inventorySetName', 'inventoryCardNumber', 'slabSearchName',
+  // Price lookups go through storeWorkerFetch (signed in) since 2026-10-27; same mock.
+  const api = new Function('fetch', 'WORKER', 'resolveSportsPcProductId', 'pcGradeBucket', 'inventoryGradingInfo', 'inventorySetName', 'inventoryCardNumber', 'slabSearchName', 'storeWorkerFetch',
     [fnSrc('slabPcLinkForItem'), fnSrc('fetchPinnedSlabPrice'), fnSrc('fetchGradedSlabPriceForItem')].join('\n') + '; return { fetchGradedSlabPriceForItem, slabPcLinkForItem };')(
-    fetchMock, 'https://w', resolve, (c, g) => (c === 'CGC' && g === '10' ? 'cgc10' : c === 'PSA' && g === '10' ? 'psa10' : ''), i => ({ grader: i.grader, grade: i.grade }), i => i.set || '', () => '', i => i.name);
+    fetchMock, 'https://w', resolve, (c, g) => (c === 'CGC' && g === '10' ? 'cgc10' : c === 'PSA' && g === '10' ? 'psa10' : ''), i => ({ grader: i.grader, grade: i.grade }), i => i.set || '', () => '', i => i.name, fetchMock);
   const got = await api.fetchGradedSlabPriceForItem({ name: 'Magicarp', grader: 'CGC', grade: '10', providerUrl: 'https://www.pricecharting.com/game/pokemon-japanese-taruka/magicarp' });
   assert.equal(got.price, 41);
   assert.match(got.source, /PriceCharting graded \(CGC 10, pinned #777\)/);

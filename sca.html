@@ -2102,7 +2102,7 @@ async function fetchComicVariants(title, issueNumber, year) {
     const params = new URLSearchParams({ title });
     if(issueNumber) params.set('issue', issueNumber);
     if(year) params.set('year', String(year));
-    const res = await fetch(WORKER_URL + '/comic/variants?' + params.toString());
+    const res = await scannerWorkerFetch('/comic/variants?' + params.toString());
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
     const variants = data.variants || [];
@@ -3035,7 +3035,8 @@ function scannerStrictAllows(match, strict, primaryOnly){
 }
 
 async function scannerFetchJson(path, options = {}){
-  const res = await fetch(WORKER_URL + path, { cache:'no-store', signal:AbortSignal.timeout(7000), ...options });
+  // Price lookups need a signed-in store (scripts/lookup-auth.mjs in the Worker).
+  const res = await scannerWorkerFetch(path, { cache:'no-store', signal:AbortSignal.timeout(7000), ...options });
   const data = await res.json().catch(() => ({}));
   if(!res.ok || data.ok === false) throw new Error(data.error || data.reason || 'lookup failed');
   return data;
@@ -6972,7 +6973,7 @@ window.openCompsChart = async function(id, preset) {
       : '';
     const params = new URLSearchParams({q,limit:50});
     if(mode) params.set('mode', mode);
-    const res=await fetch(WORKER_URL + '/comps/sold?' + params.toString());
+    const res=await scannerWorkerFetch('/comps/sold?' + params.toString());
     const data=await res.json();
     if(!data.ok) throw new Error(data.error || 'sold comps failed');
     document.getElementById('comps-modal-body').innerHTML=renderCompsChart(data);
@@ -7013,7 +7014,7 @@ async function psaLookup(id, certNumber) {
   panel.innerHTML = `<div style="color:rgba(230,57,70,.6);letter-spacing:1px">⟳ LOOKING UP PSA #${certNumber}...</div>`;
 
   try {
-    const res = await fetch(WORKER_URL + '/psa/cert/' + certNumber);
+    const res = await scannerWorkerFetch('/psa/cert/' + certNumber);
     const data = await res.json();
 
     if(!data.ok || !data.cert) {
