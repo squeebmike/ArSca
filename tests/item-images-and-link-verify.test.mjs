@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { staffHeaders, withSupabase, answeringStaffLogin } from './helpers/signed-in-worker.mjs';
 
 // Store report: some items had no image (cards added from a pasted
 // TCGplayer link carried the product id but no image), and links in item
@@ -86,9 +87,11 @@ globalThis.fetch = async (input) => {
   return ok({});
 };
 try {
+  // Paid lookups need a signed-in store (scripts/lookup-auth.mjs).
+  globalThis.fetch = answeringStaffLogin(globalThis.fetch);
   const { default: api } = await import('../cloudflare-worker-full.js');
-  const env = { PRICECHARTING_TOKEN:'t' };
-  const read = async link => (await api.fetch(new Request('https://api.example/pricing/sportscardspro/resolve-url?url=' + encodeURIComponent(link)), env, { waitUntil() {} })).json();
+  const env = withSupabase({ PRICECHARTING_TOKEN:'t' });
+  const read = async link => (await api.fetch(new Request('https://api.example/pricing/sportscardspro/resolve-url?url=' + encodeURIComponent(link), { headers:staffHeaders() }), env, { waitUntil() {} })).json();
   // The page read is blocked: the id comes from the API, exact names only.
   let d = await read('https://www.sportscardspro.com/game/baseball-cards-2025-topps-holiday/nick-kurtz-blue-lights-h40');
   assert.equal(d.ok, true);
