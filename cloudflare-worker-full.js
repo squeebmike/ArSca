@@ -4587,6 +4587,12 @@ async function runScheduledEbayOrderSync(env) {
           await sendEmail(env, to, subject, body).catch(e => console.error('eBay quantity email failed:', e.message));
         }
       } catch (e) { console.error('eBay quantity check failed for store', storeId, e.message); }
+      // Then presales with nothing left to sell are ended, not left Active
+      // at "0 available" (scripts/foc-preorders.mjs endSoldOutFocPresales).
+      try {
+        const { data } = await focInternalPost(env, { waitUntil() {}, passThroughOnException() {} }, storeId, '/foc/admin/end-sold-out-ebay-presales', {});
+        for (const f of data?.failed || []) console.error('Could not end sold-out eBay presale', f.listingId, f.name, f.error);
+      } catch (e) { console.error('Sold-out presale cleanup failed for store', storeId, e.message); }
     } catch (e) { console.error('Scheduled eBay order sync failed for store', storeId, e.message); }
   }
 }

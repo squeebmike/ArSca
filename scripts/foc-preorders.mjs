@@ -3009,6 +3009,55 @@ async function adminEndFocEbayListings(request,env,deps){
   return deps.json({ok:true,endedCount,failedCount:errors.length,errors});
 }
 
+// Store, 2026-10-27: "I want them ended if they cant buy it ... if I do in
+// the future I can list it again." A presale that sold every copy it listed
+// stayed Active on eBay at "0 available" (eBay's out-of-stock option keeps
+// a sold-out Good 'Til Cancelled listing up). Hourly, after the eBay order
+// sync: every presale listing with nothing left is ended. A cover on a
+// multi-cover listing waits until every cover on it is sold out -- the
+// others are still for sale. The row keeps its sold count
+// (focPresaleOriginalQty), so the buyers' copies are still held at receiving.
+export function soldOutPresaleListings(rows=[]){
+  const live=r=>{const d=r.data||{};return d.source==='foc_presale'&&!d.ebayWithdrawnAt&&!!(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));};
+  const left=r=>Number(r.data.qty??r.data.quantity??0);
+  const listings=new Map();
+  for(const row of rows.filter(live)){
+    const d=row.data,key=d.ebayInventoryItemGroupKey?'group:'+d.ebayInventoryItemGroupKey:d.ebayApiSystem==='trading'?'item:'+d.ebayListingId:'offer:'+d.ebayOfferId;
+    if(!listings.has(key))listings.set(key,[]);
+    listings.get(key).push(row);
+  }
+  return [...listings.values()].filter(group=>group.every(r=>left(r)<=0));
+}
+async function endSoldOutFocPresales(request,env,deps){
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;
+  const storeId=text(limited.data?.storeId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin']);if(auth.error)return auth.error;
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const listings=soldOutPresaleListings(await focPresaleRows(db,storeId,'presale'));
+  if(!listings.length)return deps.json({ok:true,ended:[],failed:[]});
+  let token='';try{token=await deps.getEbayUserAccessToken(env);}catch(_){}
+  if(!token)return deps.json({ok:false,needsToken:true,error:'Connect eBay first'},401);
+  const ended=[],failed=[];
+  for(const rows of listings){
+    const d=rows[0].data,name=String(d.name||d.title||rows[0].id).replace(/\s*-\s*PRESALE\s*$/i,'');
+    try{
+      if(d.ebayApiSystem==='trading')await deps.endEbayListingTrading(token,d.ebayListingId);
+      else if(d.ebayInventoryItemGroupKey)await deps.withdrawEbayOfferGroup(env,token,d.ebayInventoryItemGroupKey);
+      else await deps.withdrawEbayOffer(env,token,d.ebayOfferId);
+    }catch(e){
+      // Already off eBay (ended by hand, or eBay ended it): just record it,
+      // or this run would retry it every hour.
+      if(!/already (been )?(ended|closed|withdrawn)|has been closed|not (in a )?published|not (currently )?(active|available)/i.test(String(e.message))){failed.push({listingId:d.ebayListingId||'',name,error:e.message});continue;}
+    }
+    for(const row of rows){
+      if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){try{await deps.endEbayVolumeDiscount(env,token,row.data.ebayVolumeDiscountPromotionId);}catch(_){}}
+      await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'sold_out'}})});
+    }
+    ended.push({listingId:d.ebayListingId||'',name,covers:rows.length});
+  }
+  return deps.json({ok:true,ended,failed});
+}
+
 // Store report: an eBay presale listing for a cover that never got
 // ordered stayed live indefinitely ("we didn't order any Shredder #13 --
 // why is it still presale?"). Both the PRH cart import's auto-sweep
@@ -4624,6 +4673,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/sku'&&request.method==='PATCH')return adminSku(request,env,deps);
   if(path==='/foc/admin/prh-submission'&&(request.method==='GET'||request.method==='POST'))return adminPrhSubmission(request,env,deps,url);
   if(path==='/foc/admin/end-ebay-listings'&&request.method==='POST')return adminEndFocEbayListings(request,env,deps);
+  if(path==='/foc/admin/end-sold-out-ebay-presales'&&request.method==='POST')return endSoldOutFocPresales(request,env,deps);
   if(path==='/foc/admin/prh-cart-import'&&request.method==='POST')return adminImportPrhCart(request,env,deps);
   if(path==='/foc/admin/orphaned-ebay-listings'&&request.method==='GET')return adminScanOrphanedEbayListings(request,env,deps,url);
   if(path==='/foc/admin/orphaned-ebay-listings/end'&&request.method==='POST')return adminEndOrphanedEbayListings(request,env,deps);
