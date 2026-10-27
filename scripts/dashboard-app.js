@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.26.5-trade-cart-closes';
+const APP_VERSION = '2026.10.27.1-idle-polling';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -1518,6 +1518,23 @@ function shouldPollTab(tab){
   if(document.hidden) return false;
   return !tab || activeTab === tab;
 }
+// Idle: no touch, click or key for 10 minutes. A dashboard left open on a
+// tablet overnight kept re-pulling the whole sales history every 15 seconds
+// and the inventory every minute -- ~74,000 database requests a day, over
+// Supabase's Free Plan (2026-10-27). Background refreshes pause while idle
+// and catch up on the first touch. The customer display's own refresh is
+// not paused: nobody touches that screen.
+const DASHBOARD_IDLE_MS = 10 * 60 * 1000;
+let lastDashboardActivityAt = Date.now();
+function dashboardIdle(){ return Date.now() - lastDashboardActivityAt > DASHBOARD_IDLE_MS; }
+['pointerdown','keydown','touchstart','wheel'].forEach(type => addEventListener(type, () => {
+  const wasIdle = dashboardIdle();
+  lastDashboardActivityAt = Date.now();
+  if(wasIdle && !document.hidden) setTimeout(() => {
+    if(typeof syncShowModeFromWorker === 'function') syncShowModeFromWorker().catch(() => {});
+    if(typeof refreshInventoryQuietly === 'function') refreshInventoryQuietly();
+  }, 0);
+}, { capture:true, passive:true }));
 let ts={col:'name',dir:1};
 const PER=50; let page=1;
 // Store request: staff prepping a Whatnot show needed to pick a specific
@@ -8034,7 +8051,7 @@ function renderTodayMode(){
 // and filtering the full inventory array every 10s on every tab, even while
 // backgrounded. shouldPollTab('pos') matches the same gating convention
 // already used for the other POS-tab-scoped intervals below.
-setInterval(() => { if(shouldPollTab('pos')) renderTodayMode(); }, 10000);
+setInterval(() => { if(shouldPollTab('pos') && !dashboardIdle()) renderTodayMode(); }, 10000);
 
 // ── Dealer UI v1 Functions ────────────────────────────────────────────────
 
@@ -9314,7 +9331,7 @@ async function syncShowModeFromWorker(){
   if(getAccountContext().isDemo){ renderShowSessionSwitcher(); return; }
   await fetchShowSessionIndex(false);
   const selected=getShowMode();
-  if(!selected?.id){ renderShowMode(); await syncSharedShowTransactions().catch(()=>{}); return; }
+  if(!selected?.id){ renderShowMode(); await syncStoreSalesThrottled(); return; }
   try {
     const res = await storeWorkerFetch(scopedWorkerPath('/kv/show_session_'+selected.id), { cache:'no-store', signal:AbortSignal.timeout(4000) });
     const data = await res.json().catch(() => ({}));
@@ -9340,6 +9357,16 @@ async function syncShowModeFromWorker(){
   if(current?.status==='open') await keepShowShared(current);
   renderShowMode();
   await fetchSharedCashBags().catch(()=>{});
+  await syncStoreSalesThrottled();
+}
+// The store-wide pull re-reads every sale (up to 1,000, with their lines and
+// payments), and the 15-second show tick called it every time. Once a minute
+// is plenty for other devices' sales to reach this one's stats; the
+// show-scoped pulls after a checkout or a join still run at once.
+let lastStoreSalesSyncAt = 0;
+async function syncStoreSalesThrottled(){
+  if(Date.now() - lastStoreSalesSyncAt < 60000) return;
+  lastStoreSalesSyncAt = Date.now();
   await syncSharedShowTransactions().catch(()=>{});
 }
 
@@ -15099,7 +15126,7 @@ async function refreshInventoryQuietly(){
   catch(e) { if(oldStatus) document.getElementById('sync-status').textContent = oldStatus; }
 }
 
-setInterval(refreshInventoryQuietly, 60000);
+setInterval(() => { if(!dashboardIdle()) refreshInventoryQuietly(); }, 60000);
 
 const f$=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
 const fd$=n=>'$'+Number(n||0).toFixed(2);
@@ -40241,7 +40268,7 @@ function startShowSessionSyncLoop(){
   // (syncShowModeFromWorker's own network failure path is a silent catch).
   // Calling the real function here (a strict superset of the old
   // fetchShowSessionIndex+fetchSharedCashBags pair) closes that gap.
-  const tick=()=>{if(document.visibilityState!=='visible')return;syncShowModeFromWorker().then(()=>drawerState?joinCashBag(drawerState.id,{silent:true}):null).catch(()=>{});};
+  const tick=()=>{if(document.visibilityState!=='visible'||dashboardIdle())return;syncShowModeFromWorker().then(()=>drawerState?joinCashBag(drawerState.id,{silent:true}):null).catch(()=>{});};
   // Run once immediately on load instead of only on the first 15s tick --
   // a freshly opened browser should reconcile with what every other device
   // has already sold right away, not sit on stale/empty stats for up to 15s.
@@ -43907,7 +43934,7 @@ renderBuySignals();
 // Poll for buy-offer items and open trays added on another device (mirrors the customer-display refresh below).
 // Not tab-gated -- buy tray state is trade/purchase money-handling data read
 // from more than one tab, so this only pauses while the page is backgrounded.
-setInterval(()=>{ if(!document.hidden){ fetchBuyListFromWorker(); fetchBuyTrayIndex(); } }, 8000);
+setInterval(()=>{ if(!document.hidden && !dashboardIdle()){ fetchBuyListFromWorker(); fetchBuyTrayIndex(); } }, 8000);
 
 // ── Set picker grid (shared by Pokémon + MTG Set Browsers) ───────────
 // Both browsers used a bare <select> to choose a set out of hundreds --

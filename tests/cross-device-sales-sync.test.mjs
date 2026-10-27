@@ -53,8 +53,8 @@ assert.ok(!/\.then\(\(\)=>getShowMode\(\)\?\(drawerState\?joinCashBag\(drawerSta
 // fetchShowSessionIndex+fetchSharedCashBags pair -- see its own no-show-
 // joined branch below, which still runs general sales reconciliation).
 assert.ok(!/const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;fetchShowSessionIndex\(false\)\.then\(\(\)=>getShowMode\(\)\?fetchSharedCashBags\(\):null\)/.test(dashboard), 'the tick must no longer skip syncShowModeFromWorker -- that was the exact gap that let a joined show\'s live status go stale on a device that never reloads or loses focus');
-assert.match(dashboard, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;syncShowModeFromWorker\(\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):null\)\.catch\(\(\)=>\{\}\);\};/, 'the sync loop must delegate to syncShowModeFromWorker every tick (which itself refreshes the show index, the joined show\'s live status, cash bags, and sales), then reconcile the open drawer if any');
-assert.match(dashboard, /if\(!selected\?\.id\)\{ renderShowMode\(\); await syncSharedShowTransactions\(\)\.catch\(\(\)=>\{\}\); return; \}/, 'syncShowModeFromWorker must still run general sales reconciliation when no show is joined, now that the tick relies on it alone instead of its own separate branch');
+assert.match(dashboard, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\|\|dashboardIdle\(\)\)return;syncShowModeFromWorker\(\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):null\)\.catch\(\(\)=>\{\}\);\};/, 'the sync loop must delegate to syncShowModeFromWorker every tick (which itself refreshes the show index, the joined show\'s live status, cash bags, and sales), then reconcile the open drawer if any');
+assert.match(dashboard, /if\(!selected\?\.id\)\{ renderShowMode\(\); await syncStoreSalesThrottled\(\); return; \}/, 'syncShowModeFromWorker must still run general sales reconciliation when no show is joined, now that the tick relies on it alone instead of its own separate branch');
 
 console.log('startShowSessionSyncLoop always-reconcile contract checks passed');
 
@@ -62,6 +62,8 @@ console.log('startShowSessionSyncLoop always-reconcile contract checks passed');
 // not only on the first 15s interval tick -- a freshly opened browser (the
 // exact "each browser has a different sold item count" report) should not
 // sit on stale/empty stats for up to 15 seconds before its first sync ──
+// The store-wide pull still runs, at most once a minute (Supabase Free Plan, 2026-10-27).
+assert.match(dashboard, /async function syncStoreSalesThrottled\(\)\{\s*\n\s*if\(Date\.now\(\) - lastStoreSalesSyncAt < 60000\) return;\s*\n\s*lastStoreSalesSyncAt = Date\.now\(\);\s*\n\s*await syncSharedShowTransactions\(\)\.catch\(\(\)=>\{\}\);/, 'the throttled wrapper must still run general sales reconciliation');
 assert.match(dashboard, /tick\(\);\s*\n\s*window\.__showSessionSyncTimer=setInterval\(tick,15000\);/, 'startShowSessionSyncLoop must call tick() once immediately before scheduling the 15s interval, so a fresh page load reconciles right away');
 
 console.log('Immediate-tick-on-load contract check passed');
