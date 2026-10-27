@@ -3653,6 +3653,13 @@ function normalizeWebflowItemId(item) {
   return item?.shopId || item?.wfId || item?.webflowId || null;
 }
 
+// The PSA key as pasted into Cloudflare: PSA's page wraps the long token
+// over several lines, so a copy can carry line breaks or spaces that make
+// PSA turn it down (store, 2026-10-27: new token, "same error").
+function psaToken(env) {
+  return String(env.PSA_TOKEN || '').replace(/^\s*bearer\s+/i, '').replace(/\s+/g, '');
+}
+
 // PSA's GetByCertNumber has no photos: they come from a separate call,
 // GetImagesByCertNumber, as [{ ImageURL, IsFrontImage }]. Without it the
 // cert photo never showed (store, 2026-10-27: "That psa photo link doesn't
@@ -3660,7 +3667,7 @@ function normalizeWebflowItemId(item) {
 const PSA_API_BASE = 'https://api.psacard.com/publicapi';
 async function fetchPsaImageUrls(env, certNumber) {
   const res = await fetch(`${PSA_API_BASE}/cert/GetImagesByCertNumber/${certNumber}`, {
-    headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
+    headers: { 'Authorization': 'Bearer ' + psaToken(env), 'Accept': 'application/json' },
   });
   if (!res.ok) return [];
   const data = await res.json().catch(() => null);
@@ -3678,7 +3685,7 @@ async function cachePsaPhoto(env, certNumber, photoUrl) {
   const r2Key = `psa-photos/${certNumber}.jpg`;
   if (await env.MTG_CATALOG_R2.head(r2Key)) return true;
   let imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*' } });
-  if (!imgRes.ok && (imgRes.status === 401 || imgRes.status === 403)) imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*', Authorization: 'Bearer ' + env.PSA_TOKEN } });
+  if (!imgRes.ok && (imgRes.status === 401 || imgRes.status === 403)) imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*', Authorization: 'Bearer ' + psaToken(env) } });
   if (!imgRes.ok) return false;
   await env.MTG_CATALOG_R2.put(r2Key, await imgRes.arrayBuffer(), { httpMetadata: { contentType: imgRes.headers.get('content-type') || 'image/jpeg' } });
   return true;
@@ -17333,15 +17340,20 @@ async function routeRequest(request, env, ctx) {
         const certNumber = certMatch[1];
         try {
           const psaRes = await fetch(`${PSA_BASE}/cert/GetByCertNumber/${certNumber}`, {
-            headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
+            headers: { 'Authorization': 'Bearer ' + psaToken(env), 'Accept': 'application/json' },
           });
 
           if (!psaRes.ok) {
             const errText = await psaRes.text();
             // PSA's own 401/403/429 passed straight through read like our
             // login failing. Say which side said no.
-            const reason = psaRes.status === 401 || psaRes.status === 403
-              ? 'PSA turned down our PSA_TOKEN (expired or revoked) -- make a new one at psacard.com/publicapi and update the Worker secret'
+            // A web page (not PSA's JSON) means PSA's firewall stopped the
+            // request before it reached the API -- a new key won't help.
+            const blocked = /<html|cloudflare|cf-ray|attention required|access denied/i.test(errText);
+            const reason = blocked
+              ? 'PSA\'s firewall blocked the request from our server (HTTP ' + psaRes.status + ') -- not a key problem'
+              : psaRes.status === 401 || psaRes.status === 403
+              ? 'PSA turned down our PSA_TOKEN (HTTP ' + psaRes.status + ', expired or revoked) -- make a new one at psacard.com/publicapi and update the Worker secret'
               : psaRes.status === 429 ? 'PSA daily lookup limit reached (100/day on the free plan) -- try again tomorrow'
               : 'PSA API error ' + psaRes.status;
             return json({ error: reason, detail: errText.substring(0, 200) }, 502);
@@ -17439,7 +17451,7 @@ async function routeRequest(request, env, ctx) {
           if (!photoUrl) return json({ error: 'No PSA photo on file for this cert' }, 404);
           let imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*' } });
           if (!imgRes.ok && (imgRes.status === 401 || imgRes.status === 403)) {
-            imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*', Authorization: 'Bearer ' + env.PSA_TOKEN } });
+            imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*', Authorization: 'Bearer ' + psaToken(env) } });
           }
           if (!imgRes.ok) return json({ error: 'PSA photo fetch failed: ' + imgRes.status }, imgRes.status);
           const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
@@ -17456,7 +17468,7 @@ async function routeRequest(request, env, ctx) {
         const specSetId = popMatch[1];
         try {
           const psaRes = await fetch(`${PSA_BASE}/pop/GetPopulationReport/${specSetId}`, {
-            headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
+            headers: { 'Authorization': 'Bearer ' + psaToken(env), 'Accept': 'application/json' },
           });
           if (!psaRes.ok) return json({ error: 'PSA pop error ' + psaRes.status }, psaRes.status);
           const data = await psaRes.json();

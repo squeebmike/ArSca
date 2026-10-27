@@ -6,13 +6,15 @@ import { staffHeaders, withSupabase, answeringStaffLogin } from './helpers/signe
 // saved in the background, so the <img> that loads right after the lookup
 // found nothing saved and was refused for having no login.
 const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
-const upstream = [];
-let psaStatus = 200;
+const upstream = [], auths = [];
+let psaStatus = 200, psaBody = null;
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
-globalThis.fetch = answeringStaffLogin(async (input) => {
+globalThis.fetch = answeringStaffLogin(async (input, init) => {
   const url = String(input?.url || input); upstream.push(url);
+  if (url.includes('api.psacard.com')) auths.push(new Headers(init?.headers).get('Authorization'));
   const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
   if (url.includes('/cert/GetByCertNumber/')) {
+    if (psaBody) return new Response(psaBody, { status: psaStatus, headers: { 'Content-Type': 'text/html' } });
     if (psaStatus !== 200) return json({ Message: 'Authorization has been denied for this request.' }, psaStatus);
     return json({ PSACert: { CertNumber: '555', Subject: 'CHARIZARD-HOLO', Year: '1999', Brand: 'POKEMON GAME', CardGrade: 'GEM MT 10' } });
   }
@@ -25,7 +27,8 @@ globalThis.fetch = answeringStaffLogin(async (input) => {
 });
 const r2 = new Map();
 const env = withSupabase({
-  PSA_TOKEN: 'psa-secret',
+  // Pasted from PSA's page, where the long key wraps over several lines.
+  PSA_TOKEN: ' pT4H-abc\ndef-ghi \r\n',
   LBA_KV: { get: async () => null, put: async () => {}, delete: async () => {} },
   MTG_CATALOG_R2: {
     get: async k => r2.has(k) ? { body: r2.get(k), httpMetadata: { contentType: 'image/jpeg' } } : null,
@@ -43,6 +46,7 @@ try {
   assert.equal(data.cert.subject, 'CHARIZARD-HOLO');
   assert.equal(data.cert.photoUrl, 'https://cdn.example/555-front.jpg', 'the photo comes from GetImagesByCertNumber, front first');
   assert.equal(r2.get('psa-photos/555.jpg'), 'front-bytes', 'saved before the lookup answers');
+  assert.ok(auths.length && auths.every(a => a === 'Bearer pT4H-abcdef-ghi'), 'line breaks and spaces from the paste are dropped: ' + auths.join(' | '));
 
   res = await call('/psa/cert/555/photo');
   assert.equal(res.status, 200, 'so the plain <img> right after loads without a login');
@@ -60,5 +64,13 @@ try {
   data = await res.json();
   assert.equal(res.status, 502);
   assert.match(data.error, /PSA_TOKEN/);
+
+  // PSA's firewall answering with a web page is not a key problem.
+  psaStatus = 403; psaBody = '<!DOCTYPE html><html><title>Attention Required! | Cloudflare</title></html>';
+  res = await call('/psa/cert/888', staffHeaders());
+  data = await res.json();
+  assert.equal(res.status, 502);
+  assert.match(data.error, /firewall blocked/);
+  assert.doesNotMatch(data.error, /make a new one/);
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
 console.log('psa cert photo checks passed');

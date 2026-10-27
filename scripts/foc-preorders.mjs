@@ -3012,7 +3012,7 @@ async function adminEndFocEbayListings(request,env,deps){
 // Store, 2026-10-27: "I want them ended if they cant buy it ... if I do in
 // the future I can list it again." A presale that sold every copy it listed
 // stayed Active on eBay at "0 available" (eBay's out-of-stock option keeps
-// a sold-out Good 'Til Cancelled listing up). Hourly, after the eBay order
+// a sold-out Good 'Til Cancelled listing up). Every 6 hours, after the eBay order
 // sync: every presale listing with nothing left is ended. A cover on a
 // multi-cover listing waits until every cover on it is sold out -- the
 // others are still for sale. The row keeps its sold count
