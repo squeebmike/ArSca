@@ -2,10 +2,10 @@ import {baseballSets} from './topps/baseball-seed.mjs';
 import {footballSets} from './topps/football-seed.mjs';
 import {sectionsForSet} from './baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
-import {referenceIdentityMatches,safeReferenceImage} from './reference-match.mjs';
+import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.3-flagship-update';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-26.4-base-finish';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
@@ -83,6 +83,7 @@ export function referenceMetadataCheck(row){
  if(parsed&&sources.length){
   for(const {set}of sources)for(const card of cardIndex(set).get(parsed[3]+'|'+fold(parsed[1]))||[]){
    if(!referenceConsoles(set,card).includes(row.consoleId))continue;
+   if(!parsed[2]&&referenceNeedsFinish(set,card))continue;
    const variants=[card,...cardParallelProgram(set,card).variants.map(rule=>selectedParallelCard(set,card,rule.id))];
    for(const candidate of variants)if(referenceIdentityMatches(row,candidate)){
     const path='/'+(set.sport==='football'?'football':'baseball')+'/checklists/'+set.id+'/cards/'+card.id+(candidate.parallelRule?'?parallel='+encodeURIComponent(candidate.parallelRule.id):'');

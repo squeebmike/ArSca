@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 import {referenceMetadataCheck,referenceConsoles,checkReferenceImage} from '../scripts/reference-validation.mjs';
+import {matchReferenceImage} from '../scripts/reference-match.mjs';
+import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
+import {sectionsForSet} from '../scripts/baseball-section-pages.mjs';
 const base={consoleId:'baseball-cards-2026-topps',title:'Aaron Judge #1',player:'Aaron Judge',parallel:'',run:'',cardNumber:'1',image:'https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg',url:'https://www.sportscardspro.com/game/baseball-cards-2026-topps/aaron-judge-1'};
 assert.deepEqual(referenceMetadataCheck(base).flags,[]);assert.equal(referenceMetadataCheck(base).matches.length,1);
 assert.ok(referenceMetadataCheck({...base,player:'Different Player'}).flags.includes('player_conflict'));
@@ -25,6 +28,12 @@ for(const [source,player,number,setId]of [
  ['baseball-cards-2021-bowman-draft-chrome','Harry Ford','BDC-1','2021-bowman-draft-baseball']
 ]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[],source+' '+number);assert.equal(check.matches[0].setId,setId);}
 assert.ok(referenceMetadataCheck(bowman('baseball-cards-2021-bowman-draft-chrome','Harry Ford','BD-1')).flags.includes('no_exact_checklist_match'),'Chrome source never supplies the paper BD-1 card');
+{
+ const set=baseballSets.find(s=>s.id==='2026-topps-holiday-baseball'),regular=set.cards.find(c=>c.cardNumber==='H1'),variation=sectionsForSet(set).flatMap(g=>g.cards).find(c=>c.cardNumber==='H1');
+ const row=bowman('baseball-cards-2026-topps-holiday','Bobby Witt Jr.','H1'),check=referenceMetadataCheck(row);
+ assert.deepEqual(check.flags,[]);assert.equal(check.matches.length,1);assert.ok(check.matches[0].path.endsWith('/'+regular.id));
+ assert.ok(matchReferenceImage([row],set,regular));assert.equal(matchReferenceImage([row],set,variation),null,'a plain base reference must not illustrate the short print');
+}
 for(const [number,caption]of [['11','National League Leaders RBI'],['38','American League Leaders HRs'],['52','It Takes Two']]){
  const row=bowman(base.consoleId,caption,number),check=referenceMetadataCheck(row);
  assert.deepEqual(check.flags,[],caption);assert.equal(check.matches[0].path,'/baseball/checklists/2026-topps-series-1-baseball/cards/2026-topps-series-1-baseball-'+number);
