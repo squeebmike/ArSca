@@ -7,6 +7,7 @@
  const note=document.createElement('p');note.textContent='Owner-only review of actual cloud records. Automated eligibility checks metadata, source identity, image availability and conflicts. It is not visual authentication of every photo.';panel.append(note);
  const buttons=document.createElement('div');buttons.style.cssText='display:flex;gap:8px;flex-wrap:wrap';panel.append(buttons);
  const select=document.createElement('select');select.setAttribute('aria-label','Cloud reference set');select.style.cssText='display:block;width:100%;margin:12px 0;padding:8px;background:#382746;color:white';panel.append(select);
+ const numberInput=document.createElement('input');numberInput.setAttribute('aria-label','Reference diagnostic card number');numberInput.placeholder='Optional exact card number';numberInput.maxLength=40;panel.append(numberInput);
  const status=document.createElement('p');status.setAttribute('role','status');panel.append(status);
  const progress=document.createElement('div');progress.id='reference-audit-progress';panel.append(progress);
  const gallery=document.createElement('div');gallery.id='reference-audit-samples';gallery.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px';panel.append(gallery);
@@ -15,11 +16,12 @@
  async function loadArchive(){const data=await request('sets');fill(data.sets);status.textContent='Archive loaded: '+data.sets.length+' source sets. Select a set, then load real samples.';}
  async function samples(){
   if(!select.value)await loadArchive();if(!select.value)return;
-  const data=await request('samples?console='+encodeURIComponent(select.value));gallery.replaceChildren();status.textContent=data.samples.length+' real photo samples selected from '+data.scanned+' stored records.';
+  const number=numberInput.value.trim(),data=await request('samples?console='+encodeURIComponent(select.value)+(number?'&number='+encodeURIComponent(number):''));gallery.replaceChildren();status.textContent=data.samples.length+' stored reference samples selected from '+data.scanned+' records.';
   for(const row of data.samples){
    const card=document.createElement('article');card.style.cssText='border:1px solid #776585;border-radius:8px;padding:10px;overflow-wrap:anywhere';
    const img=document.createElement('img');img.src=row.image;img.alt=row.title;img.loading='lazy';img.style.cssText='width:100%;height:270px;object-fit:contain;background:#15101b';card.append(img);
    const title=document.createElement('h3');title.textContent=row.title;title.style.fontSize='15px';card.append(title);
+   if(row.photoUsageCount!==undefined){const p=document.createElement('p');p.textContent='Stored photo identities: '+row.photoUsageCount;card.append(p);}
    for(const text of ['Card '+row.cardNumber+' · Source finish: '+(row.parallel||'not provided')+' · Source numbering: '+(row.run||'not provided'),'Checks: '+(row.validation?.flags?.join(', ')||'No metadata flags'),'Image: '+(row.health?row.health.ok?'reachable':'failed: '+row.health.reason:'not checked'),...(row.hold?['HELD: '+row.hold.reason]:[])]){const p=document.createElement('p');p.textContent=text;card.append(p);}
    const source=document.createElement('a');source.href=row.url;source.textContent='Source card page';source.target='_blank';source.rel='noopener';source.style.color='#b6e68a';card.append(source);
    for(const match of row.validation?.matches||[]){const p=document.createElement('p'),a=document.createElement('a');a.href='https://www.themanapocket.com'+match.path;a.textContent='Matching website card';a.target='_blank';a.rel='noopener';a.style.color='#b6e68a';p.append(a);card.append(p);}

@@ -83,6 +83,16 @@ export class CardReferenceArchive {
    return reply({cards,cursor:rows.size===100?[...rows.keys()].at(-1):null});
   }
   if(request.method==='GET'&&url.pathname==='/samples'){
+   const number=url.searchParams.get('number');
+   if(number!==null){
+    if(!/^[a-z0-9.-]{1,40}$/i.test(number))return new Response('Invalid number',{status:400});
+    const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:100}),samples=[];
+    for(const row of rows.values()){
+     const id=referenceImageKey(row.image),usage=id?await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2}):new Map();
+     samples.push({...row,validation:referenceMetadataCheck(row),health:id?await this.ctx.storage.get('health:'+id)||null:null,hold:id?await this.ctx.storage.get('hold:'+id)||null:null,photoUsageCount:usage.size});
+    }
+    return reply({samples,scanned:rows.size,exactNumber:number});
+   }
    const samples=[],counts={};let cursor='',scanned=0;
    for(let page=0;page<20;page++){
     const rows=await this.ctx.storage.list({prefix:'row:',limit:200,...(cursor?{startAfter:cursor}:{})});if(!rows.size)break;
@@ -190,7 +200,9 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
  }
  if(url.pathname==='/reference-collector/samples'&&request.method==='GET'){
   const id=url.searchParams.get('console')||'';if(!validReferenceConsoleId(id))return deps.json({error:'Invalid source set'},400);
-  const data=await(await archive(id).fetch('https://archive.internal/samples')).json();return deps.json(data,200,{'Cache-Control':'no-store'});
+  const target=new URL('https://archive.internal/samples'),number=url.searchParams.get('number');
+  if(number!==null){if(!/^[a-z0-9.-]{1,40}$/i.test(number))return deps.json({error:'Invalid card number'},400);target.searchParams.set('number',number);}
+  const data=await(await archive(id).fetch(target.href)).json();return deps.json(data,200,{'Cache-Control':'no-store'});
  }
  if(url.pathname==='/reference-collector/hold'&&request.method==='POST'){
   const input=await deps.readJsonWithLimit(request,4096);if(input.error)return input.error;
