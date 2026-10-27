@@ -3653,6 +3653,24 @@ function normalizeWebflowItemId(item) {
   return item?.shopId || item?.wfId || item?.webflowId || null;
 }
 
+// PSA's GetByCertNumber has no photos: they come from a separate call,
+// GetImagesByCertNumber, as [{ ImageURL, IsFrontImage }]. Without it the
+// cert photo never showed (store, 2026-10-27: "That psa photo link doesn't
+// work"). Front image first. Costs one PSA API call (100/day on the free plan).
+const PSA_API_BASE = 'https://api.psacard.com/publicapi';
+async function fetchPsaImageUrls(env, certNumber) {
+  const res = await fetch(`${PSA_API_BASE}/cert/GetImagesByCertNumber/${certNumber}`, {
+    headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => null);
+  const list = Array.isArray(data) ? data : Array.isArray(data?.Images) ? data.Images : [];
+  return list
+    .filter(img => img && (img.ImageURL || img.ImageUrl || img.URL))
+    .sort((a, b) => (b.IsFrontImage === true) - (a.IsFrontImage === true))
+    .map(img => img.ImageURL || img.ImageUrl || img.URL);
+}
+
 // Saves a PSA cert photo to R2 (where /psa/cert/:n/photo serves it) unless
 // it's already there. Fetches the image from PSA's photo CDN, not the API.
 async function cachePsaPhoto(env, certNumber, photoUrl) {
@@ -16420,6 +16438,9 @@ async function routeRequest(request, env, ctx) {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
+      // The log is The Mana Pocket's own PokemonPriceTracker account: no
+      // other store sees it.
+      if (!isPlatformStore(storeId, env)) return json({ ok:false, error:'Credit use is only shown for the built-in keys' }, 403);
       const askedHours = Number(url.searchParams.get('hours')) || 0;
       const hours = askedHours > 0 ? Math.min(24 * 30, Math.max(1, askedHours)) : 0;
       const now = new Date();
@@ -17302,7 +17323,13 @@ async function routeRequest(request, env, ctx) {
 
           if (!psaRes.ok) {
             const errText = await psaRes.text();
-            return json({ error: 'PSA API error ' + psaRes.status, detail: errText.substring(0, 200) }, psaRes.status);
+            // PSA's own 401/403/429 passed straight through read like our
+            // login failing. Say which side said no.
+            const reason = psaRes.status === 401 || psaRes.status === 403
+              ? 'PSA turned down our PSA_TOKEN (expired or revoked) -- make a new one at psacard.com/publicapi and update the Worker secret'
+              : psaRes.status === 429 ? 'PSA daily lookup limit reached (100/day on the free plan) -- try again tomorrow'
+              : 'PSA API error ' + psaRes.status;
+            return json({ error: reason, detail: errText.substring(0, 200) }, 502);
           }
 
           const data = await psaRes.json();
@@ -17320,11 +17347,24 @@ async function routeRequest(request, env, ctx) {
             : Array.isArray(cert.ImageURLs) ? cert.ImageURLs
             : [];
           const firstImage = v => typeof v === 'string' ? v : (v?.URL || v?.Url || v?.ImageURL || '');
-          const photoUrl = cert.ImageURL || cert.ImageUrl || firstImage(imageList[0]) || null;
-          const photoUrls = imageList.map(firstImage).filter(Boolean);
-          // Cache the photo now, while the lookup is signed in: the photo
-          // route answers a plain <img> only from this cache.
-          if (photoUrl && ctx?.waitUntil) ctx.waitUntil(cachePsaPhoto(env, certNumber, photoUrl).catch(() => {}));
+          let photoUrl = cert.ImageURL || cert.ImageUrl || firstImage(imageList[0]) || null;
+          let photoUrls = imageList.map(firstImage).filter(Boolean);
+          const photoCached = !!(env.MTG_CATALOG_R2 && await env.MTG_CATALOG_R2.head(`psa-photos/${certNumber}.jpg`).catch(() => null));
+          if (!photoUrl && !photoCached) {
+            photoUrls = await fetchPsaImageUrls(env, certNumber).catch(() => []);
+            photoUrl = photoUrls[0] || null;
+          }
+          // Save the photo before answering, while the lookup is signed in:
+          // the page shows it next as a plain <img>, which the photo route
+          // answers only from this cache. Waiting in the background lost that
+          // race and the photo came back "Authentication required".
+          if (photoUrl && !photoCached) {
+            await Promise.race([
+              cachePsaPhoto(env, certNumber, photoUrl).catch(() => false),
+              new Promise(resolve => setTimeout(resolve, 6000)),
+            ]);
+          }
+          if (!photoUrl && photoCached) photoUrl = `${url.origin}/psa/cert/${certNumber}/photo`;
 
           return json({
             ok: true,
@@ -17380,15 +17420,7 @@ async function routeRequest(request, env, ctx) {
           // staff only (scripts/lookup-auth.mjs).
           const photoAuth = await requireStoreUser(request, env, requestStoreId(request, url));
           if (photoAuth.error) return photoAuth.error;
-          const psaRes = await fetch(`${PSA_BASE}/cert/GetByCertNumber/${certNumber}`, {
-            headers: { 'Authorization': 'Bearer ' + env.PSA_TOKEN, 'Accept': 'application/json' },
-          });
-          if (!psaRes.ok) return json({ error: 'PSA API error ' + psaRes.status }, psaRes.status);
-          const data = await psaRes.json();
-          const cert = data?.PSACert || data;
-          const imageList = Array.isArray(cert.Images) ? cert.Images : Array.isArray(cert.ImageURLs) ? cert.ImageURLs : [];
-          const firstImage = v => typeof v === 'string' ? v : (v?.URL || v?.Url || v?.ImageURL || '');
-          const photoUrl = cert.ImageURL || cert.ImageUrl || firstImage(imageList[0]) || null;
+          const photoUrl = (await fetchPsaImageUrls(env, certNumber).catch(() => []))[0] || null;
           if (!photoUrl) return json({ error: 'No PSA photo on file for this cert' }, 404);
           let imgRes = await fetch(photoUrl, { headers: { Accept: 'image/*' } });
           if (!imgRes.ok && (imgRes.status === 401 || imgRes.status === 403)) {

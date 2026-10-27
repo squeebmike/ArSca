@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: a dedicated, discoverable settings section exists ──
-assert.match(dashboard, /\{id:'whatsnew',label:"What's New",subtitle:'Every feature in ArSca, grouped by area/, 'SETTINGS_SECTIONS must include a What\'s New section so it shows up in the sidebar and the settings search');
+assert.match(dashboard, /\{id:'whatsnew',(?:group:'[a-z]+',)?label:"What's New",subtitle:'Every feature in ArSca, grouped by area/, 'SETTINGS_SECTIONS must include a What\'s New section so it shows up in the sidebar and the settings search');
 
 // ── Contract: the FEATURE_LOG data structure exists and is well-formed ──
 assert.match(dashboard, /const FEATURE_LOG = \[/, 'FEATURE_LOG data must exist');

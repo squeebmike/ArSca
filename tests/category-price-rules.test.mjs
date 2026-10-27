@@ -111,7 +111,7 @@ assert.match(dashboard, /\['priceRule',null,'raw'\],/, 'priceRule must be a BUIL
   assert.match(fn, /CATEGORY PRICE RULES/);
   assert.match(fn, /whichever is more, rounded up to the dollar \(10% or \$2: \$8 market sells at \$10, \$50 sells at \$55\)/);
 }
-assert.match(dashboard, /keywords:'advanced diagnostics[^']*price rules markup over market percent category pricing'/, 'Settings search finds it');
+assert.match(dashboard, /\{id:'buying',[^}]*keywords:'[^']*price rules markup over market category pricing/, 'Settings search finds it (Buying & Pricing, 2026-10-27)');
 
 // ── Edit modal shows the ruled price ──
 {

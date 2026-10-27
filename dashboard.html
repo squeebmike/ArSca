@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.10.27.4-reference-finish">
+<meta name="version" content="2026.10.27.5-settings-reorg">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1736,7 +1736,7 @@ body.show-mode .inv-sync-badge{display:none;}
   #qpl-search-row .hbtn{flex:1 1 130px;min-height:44px;}
 }
 /* Settings information architecture shell */
-.settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start;max-width:1400px;margin:0 auto;padding-bottom:28px}.settings-sidebar{position:sticky;top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surf);padding:10px;max-height:calc(100vh - 150px);overflow:auto}.settings-search{width:100%;min-height:42px;margin:0 0 8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-family:var(--font-mono);font-size:11px}.settings-nav{display:grid;gap:4px}.settings-nav-btn{width:100%;min-height:40px;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dim);padding:8px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-nav-btn:hover,.settings-nav-btn.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07)}.settings-mobile-select{display:none;width:100%;min-height:46px;background:var(--surf);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 10px;font-family:var(--font-mono)}.settings-content{min-width:0}.settings-section{display:none;min-width:0}.settings-section.on{display:block}.settings-section-head{margin-bottom:12px;padding:2px 2px 10px;border-bottom:1px solid var(--border)}.settings-section-title{font-family:'Orbitron',var(--font-mono);font-size:18px;color:var(--text);letter-spacing:.04em}.settings-section-subtitle{font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);margin-top:5px;max-width:900px}.settings-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.settings-overview-card{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;display:grid;gap:8px;min-height:150px}.settings-overview-card h3{font-size:13px;margin:0;color:var(--text)}.settings-overview-card p{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim);margin:0}.settings-overview-card .hbtn{justify-self:start}.settings-status{display:inline-flex;width:max-content;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-family:var(--font-mono);font-size:8px;letter-spacing:.05em;color:var(--dim)}.settings-status.working,.settings-status.offline-ready{color:var(--g);border-color:rgba(0,255,179,.35)}.settings-status.needs-setup,.settings-status.local-fallback,.settings-status.planned{color:var(--gold);border-color:rgba(255,209,102,.38)}.settings-status.error,.settings-status.blocked{color:var(--red);border-color:rgba(255,77,109,.38)}.settings-status.online-only,.settings-status.advanced{color:var(--blue);border-color:rgba(72,202,228,.38)}.settings-search-results{display:none;margin:0 0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surf2);padding:6px}.settings-search-results.on{display:grid;gap:4px}.settings-search-result{border:0;background:transparent;color:var(--text);text-align:left;padding:8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-search-result:hover{background:rgba(0,255,179,.08);color:var(--g)}.settings-explainer{border:1px solid rgba(72,202,228,.28);background:rgba(72,202,228,.06);border-radius:10px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)}.settings-generated-panel{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:14px}
+.settings-shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:16px;align-items:start;max-width:1400px;margin:0 auto;padding-bottom:28px}.settings-sidebar{position:sticky;top:12px;border:1px solid var(--border);border-radius:12px;background:var(--surf);padding:10px;max-height:calc(100vh - 150px);overflow:auto}.settings-search{width:100%;min-height:42px;margin:0 0 8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 10px;font-family:var(--font-mono);font-size:11px}.settings-nav{display:grid;gap:10px}.settings-nav-group{display:grid;gap:2px}.settings-block-panel:not(:has(> .ph)){background:transparent;border:0;padding:0;box-shadow:none}.settings-block-body label,#vendor-profile-body label{display:block}.settings-block-body label>.tsi,#vendor-profile-body label>.tsi{display:block;width:100%;box-sizing:border-box;margin-top:4px}.settings-nav-group-label{font-family:'Orbitron',var(--font-mono);font-size:9px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase;padding:4px 10px 2px;opacity:.75}.settings-block-panel .settings-block-body>[data-settings-block]+[data-settings-block]{margin-top:12px}.settings-nav-btn{width:100%;min-height:40px;text-align:left;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--dim);padding:8px 10px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-nav-btn:hover,.settings-nav-btn.on{color:var(--g);border-color:rgba(0,255,179,.28);background:rgba(0,255,179,.07)}.settings-mobile-select{display:none;width:100%;min-height:46px;background:var(--surf);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:8px 10px;font-family:var(--font-mono)}.settings-content{min-width:0}.settings-section{display:none;min-width:0}.settings-section.on{display:block}.settings-section-head{margin-bottom:12px;padding:2px 2px 10px;border-bottom:1px solid var(--border)}.settings-section-title{font-family:'Orbitron',var(--font-mono);font-size:18px;color:var(--text);letter-spacing:.04em}.settings-section-subtitle{font-family:var(--font-mono);font-size:10px;line-height:1.6;color:var(--dim);margin-top:5px;max-width:900px}.settings-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.settings-overview-card{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;display:grid;gap:8px;min-height:150px}.settings-overview-card h3{font-size:13px;margin:0;color:var(--text)}.settings-overview-card p{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim);margin:0}.settings-overview-card .hbtn{justify-self:start}.settings-status{display:inline-flex;width:max-content;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-family:var(--font-mono);font-size:8px;letter-spacing:.05em;color:var(--dim)}.settings-status.working,.settings-status.offline-ready{color:var(--g);border-color:rgba(0,255,179,.35)}.settings-status.needs-setup,.settings-status.local-fallback,.settings-status.planned{color:var(--gold);border-color:rgba(255,209,102,.38)}.settings-status.error,.settings-status.blocked{color:var(--red);border-color:rgba(255,77,109,.38)}.settings-status.online-only,.settings-status.advanced{color:var(--blue);border-color:rgba(72,202,228,.38)}.settings-search-results{display:none;margin:0 0 10px;border:1px solid var(--border);border-radius:9px;background:var(--surf2);padding:6px}.settings-search-results.on{display:grid;gap:4px}.settings-search-result{border:0;background:transparent;color:var(--text);text-align:left;padding:8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;cursor:pointer}.settings-search-result:hover{background:rgba(0,255,179,.08);color:var(--g)}.settings-explainer{border:1px solid rgba(72,202,228,.28);background:rgba(72,202,228,.06);border-radius:10px;padding:12px;margin-bottom:12px;font-family:var(--font-mono);font-size:10px;line-height:1.65;color:var(--dim)}.settings-generated-panel{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:14px}
 .feature-log-group{border:1px solid var(--border);border-radius:10px;background:var(--surf);padding:12px;margin-bottom:12px}.feature-log-group-title{font-family:'Orbitron',var(--font-mono);font-size:12px;color:var(--text);letter-spacing:.04em;margin-bottom:8px}.feature-log-item{padding:8px 0;border-top:1px solid var(--border)}.feature-log-item:first-of-type{border-top:0;padding-top:0}.feature-log-item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px}.feature-log-title{font-size:12px;font-weight:700;color:var(--text)}.feature-log-desc{font-family:var(--font-mono);font-size:10px;line-height:1.55;color:var(--dim)}
 @media(max-width:760px){#backoffice-panels{padding:0 10px!important}.settings-shell{display:block}.settings-sidebar{position:static;max-height:none;padding:0;border:0;background:transparent;margin-bottom:10px}.settings-nav{display:none}.settings-mobile-select{display:block;margin-bottom:8px}.settings-overview-grid{grid-template-columns:1fr}.settings-section .panel,.settings-section .settings-panel{overflow:hidden}.settings-section [style*="grid-template-columns:repeat(3"],.settings-section [style*="grid-template-columns:2fr 1fr auto"],.settings-section [style*="grid-template-columns:minmax(220px,320px) 1fr"]{grid-template-columns:1fr!important}.settings-section .hbtn{white-space:normal}}
 /* PRH FOC preorder command center */
@@ -1809,27 +1809,27 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/store-demand.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/buy-signal.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/query-routing.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/comic-demand.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/database-viewer.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/expenses.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.10.27.4-reference-finish" defer></script>
+<script src="scripts/store-demand.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/buy-signal.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/query-routing.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/comic-demand.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/database-viewer.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/expenses.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.10.27.5-settings-reorg" defer></script>
 <script src="scripts/research-loupe.js?v=b90e780e52" defer></script>
-<script src="scripts/card-compare.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.10.27.4-reference-finish" defer></script>
+<script src="scripts/card-compare.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.10.27.5-settings-reorg" defer></script>
 </head>
 <body>
 
@@ -1881,7 +1881,7 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.27.4-reference-finish</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.10.27.5-settings-reorg</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -4106,9 +4106,9 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.10.27.4-reference-finish"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.10.27.4-reference-finish" defer></script>
-<script src="scripts/reference-audit-dashboard.js?v=2026.10.27.4-reference-finish" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.10.27.5-settings-reorg"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.10.27.5-settings-reorg" defer></script>
+<script src="scripts/reference-audit-dashboard.js?v=2026.10.27.5-settings-reorg" defer></script>
 </body>
 </html>
 
