@@ -3082,13 +3082,23 @@ async function fetchAllListableStorefrontItems(env, options = {}) {
 // this) so many item/category page views within the TTL window share one
 // catalog fetch instead of each re-querying Supabase from scratch.
 const ALL_LISTABLE_ITEMS_CACHE_KEY = new Request('https://internal.themanapocket.com/__cache/all-listable-storefront-items');
+// A few bytes that change whenever your store's inventory does: the row count
+// (an add or delete) and the newest updated_at (every edit -- the
+// trg_inventory_items_updated_at trigger stamps it). Lets the cached catalog
+// skip the ~6 MB reload while nothing changed.
+async function storefrontInventoryVersion(env) {
+  const { data, response } = await supabaseAdminFetch(env, `storefront_inventory?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=updated_at&order=updated_at.desc&limit=1`, { headers:{ Prefer:'count=exact' }, signal:AbortSignal.timeout(4000) });
+  const total = String(response?.headers?.get('content-range') || '').split('/')[1] || '';
+  if (!total || total === '*') throw new Error('No inventory count');
+  return total + ':' + String(data?.[0]?.updated_at || '');
+}
 async function fetchAllListableStorefrontItemsCached(env, ctx, signal) {
   const cached = await caches.default.match(ALL_LISTABLE_ITEMS_CACHE_KEY);
   if (cached) return cached.json();
   // Fresh for 5 minutes, refreshed in the background up to 15 (checkout
   // rechecks stock itself) -- a minute meant a full catalog load roughly
   // every 20 seconds across edge locations.
-  const items = await cachedPublicCatalog(env,ctx,'storefront-'+ITEM_DETAIL_STORE_ID,sharedSignal=>fetchAllListableStorefrontItems(env,{signal:sharedSignal}),{freshMs:300000,maxAgeMs:900000});
+  const items = await cachedPublicCatalog(env,ctx,'storefront-'+ITEM_DETAIL_STORE_ID,sharedSignal=>fetchAllListableStorefrontItems(env,{signal:sharedSignal}),{freshMs:300000,maxAgeMs:900000,version:()=>storefrontInventoryVersion(env)});
   const response = json(items, 200, { 'Cache-Control': 'public, max-age=180' });
   if (ctx?.waitUntil) ctx.waitUntil(caches.default.put(ALL_LISTABLE_ITEMS_CACHE_KEY, response.clone()));
   return items;

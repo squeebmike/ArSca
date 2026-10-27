@@ -44,6 +44,7 @@ assert.match(fn('fetchAllListableStorefrontItems'), /fetchStorefrontPage\(env, `
 assert.match(worker, /fetchStorefrontPage\(env, 'store_id=eq\.'\+encodeURIComponent\(ITEM_DETAIL_STORE_ID\)\+'&data->>dropship=eq\.true&data->>vendor=ilike\.BCW&order=id\.asc', offset, \{signal\}\)/, 'the supplies catalog too');
 // Row shape: a view row already has data, which the shop code passes through.
 assert.match(worker, /function storefrontProjectedRow\(row\)\{if\(row\.data\)return row;/);
-// The shared snapshot stays fresh 5 minutes (was 1).
-assert.match(worker, /fetchAllListableStorefrontItems\(env,\{signal:sharedSignal\}\),\{freshMs:300000,maxAgeMs:900000\}\);/);
+// The shared snapshot stays fresh 5 minutes (was 1), then reloads only if the
+// inventory changed (tests/public-catalog-version-check.test.mjs).
+assert.match(worker, /fetchAllListableStorefrontItems\(env,\{signal:sharedSignal\}\),\{freshMs:300000,maxAgeMs:900000,version:\(\)=>storefrontInventoryVersion\(env\)\}\);/);
 console.log('Storefront inventory view checks passed');
