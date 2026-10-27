@@ -100,4 +100,14 @@ assert.deepEqual(referenceMetadataCheck(bowman('baseball-cards-2024-bowman-chrom
 assert.ok(referenceMetadataCheck(bowman('baseball-cards-2024-bowman-prospects','Abimelec Ortiz','BCP-16')).flags.includes('no_exact_checklist_match'),'paper and Chrome sources are not interchangeable');
 assert.ok(referenceConsoles({sport:'baseball',displayName:'2023 Topps Chrome Update Series Baseball'}).includes('baseball-cards-2023-topps-chrome-update'));
 assert.ok(referenceConsoles({sport:'baseball',displayName:'2022 Topps Chrome Updates Baseball'}).includes('baseball-cards-2022-topps-chrome-update'));
+// SportsCardsPro's 2023 Topps table shortens the publisher's parent-day names.
+// Preserve the exact /50 identity; its Camo /26 and pooled plates /4 remain rejected.
+for(const finish of ["Mother's Day Pink","Father's Day Blue"]){
+ const row=bowman('baseball-cards-2023-topps','Juan Soto','1',finish,'/50');
+ assert.deepEqual(referenceMetadataCheck(row).flags,[],finish);
+ assert.ok(referenceMetadataCheck({...row,run:'/25'}).flags.includes('no_exact_checklist_match'));
+}
+for(const [finish,run]of [['Memorial Day Camo','/26'],['Printing Plates','/4']]){
+ assert.ok(referenceMetadataCheck(bowman('baseball-cards-2023-topps','Juan Soto','1',finish,run)).flags.includes('no_exact_checklist_match'));
+}
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

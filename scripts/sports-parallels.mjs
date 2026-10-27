@@ -20,8 +20,8 @@ const flagship23=()=>variants([
  ['Orange Foilboard',299,['orange foilboard','orange foil','orange rainbow foilboard']],
  ['Red Foilboard',199,['red foilboard','red foil','red rainbow foilboard']],
  ['Vintage Stock',99],['Independence Day',76],['Black',72],
- ["Mother's Day Hot Pink",50,['mothers day','mother s day','pink']],
- ["Father's Day Powder Blue",50,['fathers day','father s day','blue']],
+ ["Mother's Day Hot Pink",50,["Mother's Day Pink",'mothers day','mother s day','pink']],
+ ["Father's Day Powder Blue",50,["Father's Day Blue",'fathers day','father s day','blue']],
  ['Memorial Day Camo',25,['memorial day','camo']],
  ['Printing Plates',1,['printing plate','printing plates']],['Platinum',1]
 ]);
