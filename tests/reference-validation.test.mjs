@@ -3,6 +3,7 @@ import {referenceMetadataCheck,referenceConsoles,checkReferenceImage,validRefere
 import {matchReferenceImage} from '../scripts/reference-match.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {sectionsForSet} from '../scripts/baseball-section-pages.mjs';
+import {cardParallelProgram,selectedParallelCard} from '../scripts/sports-parallels.mjs';
 const base={consoleId:'baseball-cards-2026-topps',title:'Aaron Judge #1',player:'Aaron Judge',parallel:'',run:'',cardNumber:'1',image:'https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg',url:'https://www.sportscardspro.com/game/baseball-cards-2026-topps/aaron-judge-1'};
 assert.deepEqual(referenceMetadataCheck(base).flags,[]);assert.equal(referenceMetadataCheck(base).matches.length,1);
 assert.ok(referenceMetadataCheck({...base,player:'Different Player'}).flags.includes('player_conflict'));
@@ -18,6 +19,24 @@ assert.equal((await checkReferenceImage(base.image,async()=>new Response('HTML',
 let external=0;assert.equal((await checkReferenceImage('https://evil.test/photo.jpg',async()=>{external++;})).reason,'invalid_image_host');assert.equal(external,0,'no SSRF or arbitrary host probing');
 assert.equal(referenceMetadataCheck(base).visuallyReviewed,false,'metadata checks never claim visual authentication');
 const bowman=(consoleId,player,cardNumber,parallel='',run='')=>({...base,consoleId,player,cardNumber,parallel,run,url:'https://www.sportscardspro.com/game/'+consoleId+'/sample',title:player+(parallel?' ['+parallel+']':'')+' #'+cardNumber});
+{
+ const set=baseballSets.find(s=>s.id==='2023-topps-cosmic-chrome-baseball');
+ for(const [section,suffix,player,number]of [
+  ['Cosmic Chrome Autograph Variation','autographs','Andres Gimenez','CCA-AG'],
+  ['Extraterrestrial Talent Autograph Variation','extraterrestrial-talent-autographs','Julio Rodriguez','ETA-Jr.'],
+  ['Launched Into Orbit Autograph Variation','launched-into-orbit-autographs','Aaron Judge','LIOA-AJ']
+ ]){
+  const card=sectionsForSet(set).find(g=>g.cards[0]?.section===section).cards.find(c=>c.cardNumber===number),source='baseball-cards-2023-topps-cosmic-chrome-'+suffix,row=bowman(source,player,number);
+  assert.deepEqual(referenceMetadataCheck(row).flags,[]);assert.ok(referenceMetadataCheck(row).matches[0].path.endsWith('/'+card.id));assert.ok(matchReferenceImage([row],set,card));
+  assert.ok(!referenceConsoles(set,set.cards[0]).includes(source),'autograph source is excluded from base cards');
+  for(const rule of cardParallelProgram(set,card).variants){
+   const finish=rule.name.replace(/ Refractor$/,''),parallel=bowman(source,player,number,finish,'/'+rule.printRun),check=referenceMetadataCheck(parallel);
+   assert.deepEqual(check.flags,[],section+' '+finish);assert.ok(matchReferenceImage([parallel],set,selectedParallelCard(set,card,rule.id)));
+   assert.ok(referenceMetadataCheck({...parallel,run:'/999'}).flags.includes('no_exact_checklist_match'),'wrong serial denominator is rejected');
+  }
+ }
+ const bad=bowman('baseball-cards-2023-topps-cosmic-chrome-autographs','Julio Rodriguez','ETA-Jr.');assert.ok(referenceMetadataCheck(bad).flags.includes('no_exact_checklist_match'),'different autograph section cannot supply a reference');
+}
 assert.ok(validReferenceConsoleId('baseball-cards-2023-bowman%27s-best'));for(const bad of ['bad%2fsource','bad%2527source','bad/source','bad?source','bad%00source'])assert.equal(validReferenceConsoleId(bad),false);
 for(const [source,player,number,setId]of [['baseball-cards-2023-bowman%27s-best','Taj Bradley','1','2023-bowman-s-best-baseball'],['baseball-cards-2022-stadium-club-chrome','Shohei Ohtani','1','2022-topps-stadium-club-chrome']]){const check=referenceMetadataCheck(bowman(source,player,number));assert.deepEqual(check.flags,[]);assert.equal(check.matches[0].setId,setId);}
 for(const [source,player,number,setId]of [
