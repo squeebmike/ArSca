@@ -5,7 +5,7 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 // ── Contract: both intervals now check something before running, unlike
 // their previous unconditional setInterval(fn, ms) form ──
-assert.match(dashboard, /setInterval\(\(\) => \{ if\(shouldPollTab\('pos'\)\) renderTodayMode\(\); \}, 10000\);/, 'renderTodayMode must be gated by the POS tab, matching the convention used for its sibling POS-tab intervals (renderScanInbox, renderStorefrontOrders)');
+assert.match(dashboard, /setInterval\(\(\) => \{ if\(shouldPollTab\('pos'\) && !dashboardIdle\(\)\) renderTodayMode\(\); \}, 10000\);/, 'renderTodayMode must be gated by the POS tab, matching the convention used for its sibling POS-tab intervals (renderScanInbox, renderStorefrontOrders) -- and pauses while the dashboard is idle (tests/dashboard-idle-polling.test.mjs)');
 assert.match(dashboard, /setInterval\(\(\) => \{ if\(!document\.hidden\) updateDealerStatusBar\(\); \}, 5000\);/, 'updateDealerStatusBar must be gated by document.hidden, matching its neighbor probeNetwork()');
 assert.doesNotMatch(dashboard, /setInterval\(renderTodayMode, 10000\);/, 'the old unconditional interval call must be gone');
 assert.doesNotMatch(dashboard, /setInterval\(updateDealerStatusBar, 5000\);/, 'the old unconditional interval call must be gone');
