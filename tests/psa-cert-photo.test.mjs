@@ -72,5 +72,30 @@ try {
   assert.equal(res.status, 502);
   assert.match(data.error, /firewall blocked/);
   assert.doesNotMatch(data.error, /make a new one/);
+
+  // Store, 2026-10-27, a brand-new token: PSA limits its API to approved
+  // accounts. That's PSA's approval to get, not a key to remake.
+  psaStatus = 403; psaBody = null;
+  globalThis.fetch = answeringStaffLogin(async (input) => String(input?.url || input).includes('api.psacard.com')
+    ? new Response(JSON.stringify({ Message: 'Access to this API is limited to approved customers.' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    : new Response('{}', { status: 404 }));
+  res = await call('/psa/cert/999', staffHeaders());
+  data = await res.json();
+  assert.equal(res.status, 502);
+  assert.match(data.error, /hasn't approved this account/);
+  assert.match(data.error, /collectors-apis@collectors\.com/);
+  assert.doesNotMatch(data.error, /make a new one/);
+  assert.equal(data.detail, '', 'PSA\'s own wording is not repeated after ours');
 } finally { globalThis.fetch = originalFetch; globalThis.caches = originalCaches; }
+// A failed lookup can always be checked by hand: VERIFY ON PSA next to the
+// slab-photo button, and the psacard.com link in every PSA error.
+const fs = await import('node:fs');
+const html = fs.readFileSync(new URL('../dashboard.html', import.meta.url), 'utf8');
+const app = fs.readFileSync(new URL('../scripts/dashboard-app.js', import.meta.url), 'utf8');
+const scanner = fs.readFileSync(new URL('../sca.html', import.meta.url), 'utf8');
+assert.match(html, /onclick="fetchPsaCertPhotoForEditItem\(\)">FETCH PSA SLAB PHOTO<\/button>\s*<button class="hbtn" type="button" onclick="openPsaCertVerifyForEditItem\(\)"[^>]*>VERIFY ON PSA ↗<\/button>/);
+assert.match(app, /function openPsaCertVerifyForEditItem\(\)\{[\s\S]*?window\.open\(psaCertVerifyUrl\(cert\), '_blank', 'noopener'\);/);
+assert.equal((app.match(/escHtml\(e\.message\) \+ '<\/span><div style="margin-top:8px">' \+ psaVerifyLinkHtml\(cert\)/g) || []).length, 2, 'cert search and slab check errors link to psacard.com');
+assert.match(app, /statusEl\.innerHTML = escHtml\(e\.message \|\| String\(e\)\) \+ ' ' \+ psaVerifyLinkHtml\(cert\);/);
+assert.equal((scanner.match(/PSA lookup (failed|error)[^\n]*Verify on PSA ↗<\/a>`;/g) || []).length, 2, 'both scanner PSA errors link to psacard.com');
 console.log('psa cert photo checks passed');

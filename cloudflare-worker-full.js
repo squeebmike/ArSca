@@ -17350,13 +17350,19 @@ async function routeRequest(request, env, ctx) {
             // A web page (not PSA's JSON) means PSA's firewall stopped the
             // request before it reached the API -- a new key won't help.
             const blocked = /<html|cloudflare|cf-ray|attention required|access denied/i.test(errText);
-            const reason = blocked
+            // Store, 2026-10-27, a brand-new token: 403 {"Message":"Access to
+            // this API is limited to approved customers."} -- PSA gates the API
+            // per account now; no new key fixes that, PSA's approval does.
+            const notApproved = /approved customers/i.test(errText);
+            const reason = notApproved
+              ? 'PSA hasn\'t approved this account for its API yet -- email collectors-apis@collectors.com to ask for access. Check the cert on psacard.com in the meantime.'
+              : blocked
               ? 'PSA\'s firewall blocked the request from our server (HTTP ' + psaRes.status + ') -- not a key problem'
               : psaRes.status === 401 || psaRes.status === 403
               ? 'PSA turned down our PSA_TOKEN (HTTP ' + psaRes.status + ', expired or revoked) -- make a new one at psacard.com/publicapi and update the Worker secret'
               : psaRes.status === 429 ? 'PSA daily lookup limit reached (100/day on the free plan) -- try again tomorrow'
               : 'PSA API error ' + psaRes.status;
-            return json({ error: reason, detail: errText.substring(0, 200) }, 502);
+            return json({ error: reason, detail: notApproved ? '' : errText.substring(0, 200), psaNotApproved: notApproved || undefined }, 502);
           }
 
           const data = await psaRes.json();

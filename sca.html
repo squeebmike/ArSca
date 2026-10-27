@@ -7018,7 +7018,9 @@ async function psaLookup(id, certNumber) {
     const data = await res.json();
 
     if(!data.ok || !data.cert) {
-      panel.innerHTML = `<div style="color:rgba(255,100,100,.7)">⚠ PSA lookup failed${data.error ? ' — '+data.error : ''}</div>`;
+      // PSA's API is limited to approved accounts -- the cert can still be
+      // checked by hand on psacard.com.
+      panel.innerHTML = `<div style="color:rgba(255,100,100,.7)">⚠ PSA lookup failed${data.error ? ' — '+escHtml(data.error) : ''}</div><a href="https://www.psacard.com/cert/${encodeURIComponent(certNumber)}" target="_blank" rel="noopener" style="color:#48cae4">Verify on PSA ↗</a>`;
       return;
     }
 
@@ -7133,7 +7135,7 @@ async function psaLookup(id, certNumber) {
     toast('✓ PSA verified · ' + (c.subject||certNumber) + ' · PSA ' + c.grade);
 
   } catch(e) {
-    panel.innerHTML = `<div style="color:rgba(255,100,100,.6)">⚠ PSA lookup error — ${e.message}</div>`;
+    panel.innerHTML = `<div style="color:rgba(255,100,100,.6)">⚠ PSA lookup error — ${escHtml(e.message)}</div><a href="https://www.psacard.com/cert/${encodeURIComponent(certNumber)}" target="_blank" rel="noopener" style="color:#48cae4">Verify on PSA ↗</a>`;
     console.warn('[PSA]', e);
   }
 }
