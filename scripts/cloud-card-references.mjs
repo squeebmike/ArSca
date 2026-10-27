@@ -3,6 +3,7 @@
 // labeled separately from offers and retain their actual collection timestamp.
 import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,validReferenceConsoleId,REFERENCE_AUDIT_VERSION,REFERENCE_SOURCE_MAPPING_VERSION} from './reference-validation.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
+import {coverageArchiveRequest,coverageAlarm} from './reference-coverage.mjs';
 // A few photographed serial stamps have been checked by hand. Reuse that
 // evidence only for the identical source URL, title and photo; never infer a
 // denominator just from a finish name, or overwrite a conflicting capture.
@@ -37,6 +38,7 @@ export class CardReferenceArchive {
  constructor(ctx,env){this.ctx=ctx;this.env=env;}
  async fetch(request){
   const url=new URL(request.url);
+  if(url.pathname.startsWith('/coverage-')){const response=await coverageArchiveRequest(this,request);if(response)return response;}
   if(request.method==='POST'&&url.pathname==='/batch'){
    const text=await request.text();if(text.length>512000)return new Response('Too large',{status:413});
    let input;try{input=JSON.parse(text);}catch{return new Response('Invalid JSON',{status:400});}
@@ -121,6 +123,7 @@ export class CardReferenceArchive {
   return new Response('Not found',{status:404});
  }
  async alarm(){
+  if(await coverageAlarm(this))return;
   const state=await this.ctx.storage.get('audit');
   if(state?.running){
    if(state.phase==='metadata'){
@@ -168,6 +171,11 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
  if(!env.CARD_REFERENCE_ARCHIVE)return deps.json({error:'Cloud reference storage is unavailable'},503);
  const auth=await deps.requireStoreUser(request,env,deps.storeId,['owner','admin']);if(auth.error)return auth.error;
  const archive=(id,index=false)=>env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(index?'catalog':'console:'+id));
+ if(['/reference-collector/coverage/start','/reference-collector/coverage/status','/reference-collector/coverage/report'].includes(url.pathname)){
+  const action=url.pathname.split('/').pop();if(request.method!==(action==='start'?'POST':'GET'))return deps.json({error:'Method not allowed'},405);
+  const target=new URL('https://archive.internal/coverage-'+action);if(action==='report')target.searchParams.set('page',url.searchParams.get('page')||'0');
+  const response=await archive('catalog',true).fetch(target.href,{method:request.method});return response.ok?deps.json(await response.json(),200,{'Cache-Control':'no-store'}):deps.json({error:'Invalid coverage request'},response.status);
+ }
  if(url.pathname==='/reference-collector/audit/start'&&request.method==='POST'){
   const sets=(await(await archive('catalog',true).fetch('https://archive.internal/sets')).json()).sets;
   for(const set of sets)await archive(set.consoleId).fetch('https://archive.internal/audit-start',{method:'POST'});
