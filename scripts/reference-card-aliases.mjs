@@ -7,5 +7,6 @@ const captions={
 };
 export function referenceCardNames(card){
  const teamCaption=card.player==='Angels®'&&card.team==='Angels'&&card.subjects?.some(s=>s.note==='Team Card')?['Los Angeles Angels']:[];
- return [card.player,...(captions[card.id]||[]),...teamCaption];
+ const comboCaption=card.id==='series-1-113'&&card.player==='Mookie Betts'&&card.team==='Los Angeles Dodgers'&&card.subjects?.some(s=>s.note==='Combo Cards')?['Star Power']:[];
+ return [card.player,...(captions[card.id]||[]),...teamCaption,...comboCaption];
 }

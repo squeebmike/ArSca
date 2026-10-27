@@ -116,4 +116,10 @@ for(const [finish,run]of [['Memorial Day Camo','/26'],['Printing Plates','/4']])
  assert.ok(referenceMetadataCheck({...row,title:"Los Angeles Dodgers [Mother's Day Pink] #93",player:'Los Angeles Dodgers'}).flags.includes('no_exact_checklist_match'));
  assert.ok(referenceMetadataCheck({...row,run:'/25'}).flags.includes('no_exact_checklist_match'));
 }
+{
+ const row=bowman('baseball-cards-2023-topps','Star Power','113',"Mother's Day Pink",'/50');
+ assert.deepEqual(referenceMetadataCheck(row).flags,[],'source caption identifies the publisher Mookie Betts combo card');
+ assert.ok(referenceMetadataCheck({...row,cardNumber:'50',title:"Star Power [Mother's Day Pink] #50"}).flags.includes('no_exact_checklist_match'),'not interchangeable with the solo Betts card');
+ assert.ok(referenceMetadataCheck({...row,run:'/25'}).flags.includes('no_exact_checklist_match'));
+}
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');
