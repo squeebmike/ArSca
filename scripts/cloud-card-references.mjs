@@ -17,7 +17,10 @@ export function normalizeCloudReference(row){
  const title=String(row.title||'').replace(/\s+/g,' ').trim();if(!title||title.length>350)return null;
  const number=title.match(/#([^\s]+)\s*$/)?.[1]||String(row.cardNumber||'');
  if(number&&!/^[a-z0-9.-]{1,40}$/i.test(number))return null;
- if(row.cardNumber&&number!==String(row.cardNumber))return null;
+ // Collector 1.3.x's word-boundary capture omits a terminal period (ETA-Jr.).
+ // Keep the complete source-title identity; allow only that exact legacy loss.
+ const legacyPeriod=number.endsWith('.')&&String(row.cardNumber)===number.replace(/\.+$/,'')&&title.match(/#([a-z0-9][a-z0-9.-]*)\b/i)?.[1]===String(row.cardNumber);
+ if(row.cardNumber&&number!==String(row.cardNumber)&&!legacyPeriod)return null;
  const image=String(row.image||'');
  if(image&&!/^https:\/\/storage\.googleapis\.com\/images\.pricecharting\.com\/[a-z0-9]+\/(60|240|300|400|1600)\.jpg$/.test(image))return null;
  u.hostname=u.hostname.replace(/^(?!www\.)/,'www.');u.search='';u.hash='';u.pathname=u.pathname.replace(/\/$/,'');

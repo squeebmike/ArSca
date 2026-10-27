@@ -5,6 +5,9 @@ import {dashboardCloudRequest,cloudRequest,uploadReferences,isDashboard} from '.
 const consoleId='baseball-cards-2026-topps',image='https://storage.googleapis.com/images.pricecharting.com/card123/240.jpg';
 const card={consoleId,title:'Aaron Judge #1',cardNumber:'1',image,url:'https://www.sportscardspro.com/game/'+consoleId+'/aaron-judge-1',setName:'2026 Topps',player:'Aaron Judge'};
 assert.ok(normalizeCloudReference(card));
+const legacyJulio={...card,consoleId:'baseball-cards-2023-topps-cosmic-chrome-extraterrestrial-talent-autographs',player:'Julio Rodriguez',title:'Julio Rodriguez #ETA-Jr.',cardNumber:'ETA-Jr',url:'https://www.sportscardspro.com/game/baseball-cards-2023-topps-cosmic-chrome-extraterrestrial-talent-autographs/julio-rodriguez-eta-jr'};
+assert.equal(normalizeCloudReference(legacyJulio).cardNumber,'ETA-Jr.','legacy capture recovers full title number without changing the publisher identity');
+for(const wrong of ['ETA-J','ETA-JR','ETA-Jr..','ETA-1'])assert.equal(normalizeCloudReference({...legacyJulio,cardNumber:wrong}),null,'other number mismatches remain rejected');
 const apostropheCard={...card,title:"Logan O'Hoppe #BSR-23",player:"Logan O'Hoppe",cardNumber:'BSR-23',consoleId:'baseball-cards-2023-bowman-sterling',url:'https://www.sportscardspro.com/game/baseball-cards-2023-bowman-sterling/logan-o%27hoppe-bsr-23'};
 assert.ok(normalizeCloudReference(apostropheCard),'verified apostrophe in player URL is accepted');
 assert.equal(normalizeCloudReference({...apostropheCard,url:apostropheCard.url.replace('%27',"'")}).url,apostropheCard.url,'literal and encoded apostrophes canonicalize identically');
@@ -117,5 +120,12 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  const archive=instances.get('console:'+apostropheCard.consoleId),slug=new URL(apostropheCard.url).pathname.split('/').pop();
  const page=await archive.fetch(new Request('https://archive.internal/cards?cursor='+encodeURIComponent('row:'+slug)));assert.equal(page.status,200,'encoded apostrophe is a valid paging cursor');
  const bad=await archive.fetch(new Request('https://archive.internal/cards?cursor='+encodeURIComponent('row:logan%2fhoppe')));assert.equal(bad.status,400);
+}
+{
+ const captured={...legacyJulio,capturedAt:new Date().toISOString(),referencePrices:{currency:'USD',ungraded:129.99}},receipt=await(await send([captured])).json();
+ assert.equal(receipt.rejected,0);await instances.get('console:'+captured.consoleId).alarm();
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs'),{sectionsForSet}=await import('../scripts/baseball-section-pages.mjs'),release=baseballSets.find(s=>s.id==='2023-topps-cosmic-chrome-baseball'),subject=sectionsForSet(release).flatMap(g=>g.cards).find(c=>c.cardNumber==='ETA-Jr.');
+ const reference=await sportsReferenceImage(env,{},release,subject);assert.equal(reference.image,image);assert.equal(reference.cardNumber,'ETA-Jr.');assert.equal(reference.referencePrices.ungraded,129.99,'corrected number supports the same exact website family and price');
+ const replay=await(await send([captured])).json();assert.equal(replay.summary.cards,receipt.summary.cards,'preserved batch retries cannot duplicate the recovered row');
 }
 console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');
