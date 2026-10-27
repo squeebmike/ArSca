@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.27.8-reference-recovery';
+const APP_VERSION = '2026.10.27.9-psa-verify';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -25602,8 +25602,20 @@ async function fetchPsaCertPhotoForEditItem(){
     setInventoryEditPhoto(psaCertPhotoUrl(c.certNumber || cert), 'PSA cert photo');
     if(statusEl) statusEl.innerHTML = 'Slab photo pulled from PSA. Click SAVE CHANGES to keep it. <a href="' + escHtml(psaCertVerifyUrl(c.certNumber || cert)) + '" target="_blank" rel="noopener" style="color:var(--blue)">Verify on PSA ↗</a>';
   } catch(e) {
-    if(statusEl) statusEl.textContent = e.message || String(e);
+    if(statusEl) statusEl.innerHTML = escHtml(e.message || String(e)) + ' ' + psaVerifyLinkHtml(cert);
   }
+}
+// Store, 2026-10-27: PSA's API is limited to approved accounts, so lookups
+// can fail for reasons the store can't fix on the spot -- the cert can still
+// be checked by hand on psacard.com, one tap away.
+function psaVerifyLinkHtml(cert){
+  return cert ? '<a href="' + escHtml(psaCertVerifyUrl(cert)) + '" target="_blank" rel="noopener" style="color:var(--blue)">Verify on PSA ↗</a>' : '';
+}
+function openPsaCertVerifyForEditItem(){
+  const cert = (document.getElementById('edit-cert')?.value || '').replace(/\D+/g, '');
+  const statusEl = document.getElementById('edit-psa-photo-status');
+  if(!cert) { if(statusEl) statusEl.textContent = 'Enter a cert number first.'; return; }
+  window.open(psaCertVerifyUrl(cert), '_blank', 'noopener');
 }
 
 // Resizes the photo locally, then uploads it to R2 via the Worker and stores
@@ -38751,7 +38763,7 @@ async function runPsaCertSearch(){
       ${row.verifyUrl ? `<div style="margin-top:8px"><a href="${escHtml(row.verifyUrl)}" target="_blank" rel="noopener" style="color:var(--blue)">🔍 Verify on PSA ↗</a></div>` : ''}`;
     closePsaCertSearchModal();
   } catch(e) {
-    if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';
+    if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span><div style="margin-top:8px">' + psaVerifyLinkHtml(cert) + '</div>';
   }
 }
 
@@ -38919,7 +38931,7 @@ async function verifyQplPsaCert(idx){
       <div><a href="${escHtml(psaCertVerifyUrl(c.certNumber || cert))}" target="_blank" rel="noopener" style="color:var(--blue)">🔍 Verify on PSA ↗</a></div>
     </div>`;
   } catch(e) {
-    if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span>';
+    if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message) + '</span><div style="margin-top:8px">' + psaVerifyLinkHtml(cert) + '</div>';
   }
 }
 
