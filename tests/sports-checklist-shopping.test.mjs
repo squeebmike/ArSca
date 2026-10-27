@@ -100,6 +100,23 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  await sportsListings(e,null,s,g,d,{card:gold,wait:true});assert.equal(calls,2,'cached lookups do not repeat either search');
 }
 
+// A numbered-ID retry can recover seller name spelling differences, without
+// accepting the wrong year, player, unsigned card, or another card number.
+{
+ const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs'),{sectionsForSet}=await import('../scripts/baseball-section-pages.mjs');
+ const s=baseballSets.find(s=>s.id==='2023-topps-cosmic-chrome-baseball'),g=sectionsForSet(s).find(g=>g.name==='Extraterrestrial Talent Autograph Variation'),c=g.cards.find(c=>c.cardNumber==='ETA-Jr.');
+ const valid={...listing,title:'2023 Julio Rodriguez Topps Cosmic Chrome Extraterrestrial Talent ETA-JR AUTO'},queries=[],memory=new Map();
+ for(const term of ['AUTO','AUTOS','AUTOGRAPH','AUTOGRAPHS','SIGNED'])assert.ok(sportsListingMatches({...valid,title:valid.title.replace('AUTO',term)},c,s,g),'seller autograph wording '+term);
+ for(const term of ['NO AUTO','NON-AUTO','UNSIGNED','NOT SIGNED'])assert.ok(!sportsListingMatches({...valid,title:valid.title.replace('AUTO',term)},c,s,g),'negative autograph claim '+term);
+ const e={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async k=>memory.get(k)||null,put:async(k,v)=>memory.set(k,JSON.parse(v))}};
+ const d={searchEbay:async q=>{queries.push(q);return {listings:queries.length===1?[]:[{...valid,title:valid.title.replace('2023','2024')},{...valid,title:valid.title.replace('Julio Rodriguez','Juan Soto')},{...valid,title:valid.title.replace('AUTO','')},{...valid,title:valid.title.replace('ETA-JR','ETA-JS')},valid]};}};
+ const found=await sportsListings(e,null,s,g,d,{card:c,wait:true});assert.equal(queries.length,2);assert.match(queries[0],/Julio/);assert.ok(!queries[1].includes('Julio'));assert.match(queries[1],/ETA-Jr$/);assert.equal(found.length,1);assert.equal(found[0].title,valid.title);
+ await sportsListings(e,null,s,g,d,{card:c,wait:true});assert.equal(queries.length,2,'fallback result is shared, not repeated per visitor');
+ const initialGroup=groups.find(g=>g.cards.some(c=>c.player==='A.J. Brown'&&c.cardNumber==='BA-AB')),initialCard=initialGroup.cards.find(c=>c.cardNumber==='BA-AB');
+ for(const name of ['AJ Brown','A.J. Brown','A J Brown'])assert.ok(sportsListingMatches({...listing,title:'2025 Topps Chrome Football '+name+' BA-AB Auto'},initialCard,set,initialGroup),name);
+ assert.ok(!sportsListingMatches({...listing,title:'2025 Topps Chrome Football DJ Brown BA-AB Auto'},initialCard,set,initialGroup),'initials cannot be dropped to match only the last name');
+}
+
 // Legacy fallback responses remain compatible, but seller photos never replace references.
 {
  const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
@@ -186,7 +203,7 @@ for(const section of groups){
  const root=await(await get('/baseball/checklists/'+holiday.id)).text();assert.match(root,/Browse non-base cards/);assert.match(root,/All 440 named non-base entries/);
  assert.equal(holidayOddsRows.length,66);assert.equal(holidayOddsRows.find(r=>r.name==='Base Cards Holiday Lights').odds[1],'4:1');
  let query='';const qenv={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async()=>null,put:async()=>{}}};
- await sportsListings(qenv,null,holiday,chrome,{searchEbay:async q=>{query=q;return {listings:[]};}},{card:c,wait:true});
+ await sportsListings(qenv,null,holiday,chrome,{searchEbay:async q=>{if(!query)query=q;return {listings:[]};}},{card:c,wait:true});
  assert.match(query,/Bobby Witt Jr/);assert.match(query,/HC1/);assert.ok(!query.includes('Base Cards Chrome Variation'),'printed section headings must not over-constrain seller searches');
  assert.ok(sportsMarketplaceNotice.includes('not authentication'));assert.ok(sportsLookupScript.includes('document.hidden'));
 }

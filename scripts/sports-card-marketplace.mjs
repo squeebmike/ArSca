@@ -4,6 +4,8 @@ import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {listingMatchesRelease,ebayAffiliateListingUrl} from './article-marketplace.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const token=s=>fold(s).replace(/[^a-z0-9]/g,'');
+const personWords=s=>fold(s).replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
+const sellerSubsetPattern=pattern=>pattern.replace(/\\bautographs?\\b/g,'\\b(?:auto|autos|autograph|autographs|signed)\\b');
 const escapeRegex=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const FRESH=3*60*60*1000;
 const RETAIN=(6*60-5)*60*1000;
@@ -38,7 +40,7 @@ export function sportsListingMatches(listing,card,set,group){
  if(/\b(?:break|digital|reprint|replica|custom|facsimile|proxy|lot|box|boxes|pack|packs|case|cases|sealed)\b|you pick|choose your|complete set|set of/.test(title))return false;
  if(listing.endTime&&Date.parse(listing.endTime)<=Date.now())return false;
  const subjects=card.subjects?.length?card.subjects.map(s=>s.name):[card.player];
- if(!subjects.every(name=>fold(name).replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(w=>w.length>1).every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title.replace(/[^a-z0-9]+/g,' ')))))return false;
+ if(!subjects.every(name=>personWords(name).split(/\s+/).filter(w=>w.length>1).every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(personWords(title)))))return false;
  if(/^\d+$/.test(number)){
   const explicit=new RegExp('(?:#|\\bno\\.?\\s*)0*'+escapeRegex(number)+'(?![a-z0-9])','i').test(title);
   // Sellers often omit '#'. Do not mistake a serial denominator, year or
@@ -47,10 +49,10 @@ export function sportsListingMatches(listing,card,set,group){
   const bare=number!==String(set.year)&&new RegExp('(?:^|\\s)0*'+escapeRegex(number)+'(?=\\s|$)').test(identityTitle);
   if(!explicit&&!bare)return false;
  }else if(!(title.match(/[a-z0-9]+(?:[-–][a-z0-9]+)*/g)||[]).some(t=>token(t)===token(number)))return false;
- if(group.matchTerms){if(!group.matchTerms.every(options=>options.some(pattern=>new RegExp(pattern,'i').test(title))))return false;if((group.excludeTerms||[]).some(pattern=>new RegExp(pattern,'i').test(title)))return false;}
+ if(group.matchTerms){if(!group.matchTerms.every(options=>options.some(pattern=>new RegExp(sellerSubsetPattern(pattern),'i').test(title))))return false;if((group.excludeTerms||[]).some(pattern=>new RegExp(pattern,'i').test(title)))return false;}
  else if(/variation|parallel/i.test(group.kind)){const words=fold(group.name).replace(/\b(?:base|cards|rookies|chrome|variation|parallel)\b/g,' ').trim().split(/\s+/).filter(Boolean);if(!words.length||!words.every(w=>new RegExp('\\b'+escapeRegex(w)+'\\b').test(title)))return false;}
- if(/auto/i.test(group.kind)&&!(/\b(?:auto|autos|autograph|autographs|signed)\b/.test(title)))return false;
- if(!/auto/i.test(group.kind)&&/\b(?:auto|autograph|signed)\b/.test(title))return false;
+ if(/auto/i.test(group.kind)&&(!/\b(?:auto|autos|autograph|autographs|signed)\b/.test(title)||/\bunsigned\b|\b(?:no|non|not)[\s-]+(?:auto|autos|autograph|autographs|signed)\b/.test(title)))return false;
+ if(!/auto/i.test(group.kind)&&/\b(?:auto|autos|autograph|autographs|signed)\b/.test(title))return false;
  if(!/relic/i.test(group.kind)&&/\b(?:relic|patch|memorabilia)\b/.test(title))return false;
  return true;
 }
@@ -81,9 +83,10 @@ export async function sportsListings(env,ctx,set,group,deps,{card=null,wait=fals
   await check(result);
   let checkedAt=Number(result.checkedAt)||Date.now();
   let matches=eligible(result.listings);
-  // One bounded retry removes publisher-only section wording and the serial
-  // search token. Exact release, subset, finish and numbering validation stays.
-  const fallback=card?[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),card.player,card.cardNumber,needsSubset&&!card.parallelRule?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card.parallelRule?.searchTerm||card.parallelRule?.name].filter(Boolean).join(' '):query;
+  // One bounded retry: prefixed card IDs can search without a seller's exact
+  // player-name spelling. Numeric IDs retain the player and subset. Returned
+  // listings still pass the same full identity/finish/serial checks.
+  const fallback=card?[set.displayName.replace(/\b(?:baseball|football|cards)\b/gi,' ').replace(/\s+/g,' ').trim(),needsSubset?card.player:null,String(card.cardNumber).replace(/\.+$/,''),needsSubset&&!card.parallelRule?group.name.replace(/\b(?:base|cards|variation)\b/gi,' ').replace(/\s+/g,' ').trim():null,card.parallelRule?.searchTerm||card.parallelRule?.name].filter(Boolean).join(' '):query;
   if(!matches.length&&fallback!==query&&!signal.aborted){
    const retry=await deps.searchEbay(fallback,campaign,signal);
    await check(retry);
