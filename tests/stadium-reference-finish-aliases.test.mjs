@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {sectionsForSet} from '../scripts/baseball-section-pages.mjs';
 import {selectedParallelCard} from '../scripts/sports-parallels.mjs';
+import {referenceIdentityMatches} from '../scripts/reference-match.mjs';
 import {referenceMetadataCheck} from '../scripts/reference-validation.mjs';
 const set=baseballSets.find(s=>s.id==='2024-topps-stadium-club-baseball'),base=set.cards[0],consoleId='baseball-cards-2024-topps-stadium-club';
 for(const [id,finish,run]of [['red-foil','Red',''],['black-foil','Black',''],['gold-foil','Gold',''],['black-and-white','Black White',''],['blue-foil','Blue','/50'],['photographer-s-proof','Proof','']]){
@@ -14,3 +15,6 @@ for(const [section,finish]of [['Base Set Chrome Variation','Chrome'],['Base Card
  const check=referenceMetadataCheck(row);assert.equal(check.flags.length,0,JSON.stringify(check));assert.equal(check.matches[0].path,'/baseball/checklists/'+set.id+'/cards/'+sectionsForSet(set).find(g=>g.name===section).cards[0].id);
 }
 console.log('2024 Stadium Club source-only finish aliases restore exact photos while preserving numbering and subset identity');
+
+const chrome=sectionsForSet(set).find(g=>g.name==='Base Set Chrome Variation').cards[0];
+assert.equal(referenceIdentityMatches({consoleId,title:'Mike Trout [Chrome Refractor] #1',run:''},chrome),false,'Chrome refractor cannot collide with plain Chrome');
