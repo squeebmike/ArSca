@@ -106,8 +106,8 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  if(url.searchParams.has('reference')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
   const reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,deps);
-  if(reference)return Response.json({reference},{headers:{'Cache-Control':'public,max-age=3600','X-Robots-Tag':'noindex'}});
-  if(url.searchParams.get('reference')==='3')return Response.json({reference:null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});
+  if(reference)return Response.json({reference},{headers:{'Cache-Control':'public,max-age=3600','X-Robots-Tag':'noindex',...(url.searchParams.get('reference')==='3'?{'Access-Control-Allow-Origin':'https://squeebmike.github.io'}:{})}});
+  if(url.searchParams.get('reference')==='3')return Response.json({reference:null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex','Access-Control-Allow-Origin':'https://squeebmike.github.io'}});
   // The main card photo needs the same marketplace fallback as its versions.
   // This path reads the shared eBay cache only; it never loads store inventory.
   try{const listings=await sportsListings(env,deps.ctx,set,cardGroup,deps,{card:chosenCard,wait:true});return Response.json({reference:null,listing:listings[0]||null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
