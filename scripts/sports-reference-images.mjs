@@ -1,4 +1,4 @@
-import {safeReferenceImage,matchReferenceImage} from './reference-match.mjs';
+import {safeReferenceImage,matchReferenceImage,referenceIdentityMatches,referenceNeedsFinish} from './reference-match.mjs';
 export {safeReferenceImage,matchReferenceImage};
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
@@ -26,10 +26,10 @@ export function savedReferenceImage(set,card){return matchReferenceImage(referen
 export async function sportsReferenceImage(env,ctx,set,card,deps={}){
  const consoles=referenceConsoles(set,card);let archived=false;
  for(const id of consoles){
-  const family=await cloudReferenceFamily(env,id,String(card.cardNumber)),cloud=family.cards||[];archived ||= family.archived;
+  const family=await cloudReferenceFamily(env,id,String(card.cardNumber),true),cloud=family.cards||[];archived ||= family.archived;
   // A shared photo across different finishes is not proof of the printing.
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
-  const match=matchReferenceImage(reviewed,set,card);if(match)return match;
+  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card));if(matches.length===1)return {...matches[0],source:'PriceCharting / SportsCardsPro',referenceOnly:true};
  }
  // An archived collection's holds also govern legacy source-page fallbacks.
  // An unchecked or rejected photo must not reappear from that older cache.
@@ -54,4 +54,10 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
   return matchReferenceImage(rows,set,card);
  }catch{return null;}
 }
-export function referenceImageHtml(image,label,esc){return '<span class="mp-reference-photo">'+(image?'<img src="'+esc(image.image)+'" alt="'+esc(label+' — PriceCharting reference image')+'" width="180" height="240" loading="lazy" decoding="async"><small>PriceCharting reference</small>':'<span class="mp-reference-placeholder" role="img" aria-label="Reference photo unavailable" style="display:flex;flex-direction:column;justify-content:center;gap:12px;aspect-ratio:3/4;width:180px;max-width:100%;margin:auto;border:1px solid currentColor;border-radius:12px;padding:16px;box-sizing:border-box;text-align:center;color:var(--wo-accent,inherit)"><svg viewBox="0 0 64 80" width="48" height="60" aria-hidden="true" style="margin:0 auto"><rect x="8" y="3" width="48" height="74" rx="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M25 22h14m-11 0v13L18 54q-3 8 7 8h14q10 0 7-8L36 35V22M22 49h20" fill="none" stroke="currentColor" stroke-width="3"/></svg><strong>THE MANA POCKET</strong><span>Reference photo unavailable</span></span>')+'</span>';}
+export function referenceImageHtml(image,label,esc){return '<span class="mp-reference-photo">'+(image?.image?'<img src="'+esc(image.image)+'" alt="'+esc(label+' — PriceCharting reference image')+'" width="180" height="240" loading="lazy" decoding="async"><small>PriceCharting reference</small>':'<span class="mp-reference-placeholder" role="img" aria-label="Reference photo unavailable" style="display:flex;flex-direction:column;justify-content:center;gap:12px;aspect-ratio:3/4;width:180px;max-width:100%;margin:auto;border:1px solid currentColor;border-radius:12px;padding:16px;box-sizing:border-box;text-align:center;color:var(--wo-accent,inherit)"><svg viewBox="0 0 64 80" width="48" height="60" aria-hidden="true" style="margin:0 auto"><rect x="8" y="3" width="48" height="74" rx="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M25 22h14m-11 0v13L18 54q-3 8 7 8h14q10 0 7-8L36 35V22M22 49h20" fill="none" stroke="currentColor" stroke-width="3"/></svg><strong>THE MANA POCKET</strong><span>Reference photo unavailable</span></span>')+referenceDetailsHtml(image,esc)+'</span>';}
+
+export function referenceDetailsHtml(reference,esc){
+ if(!reference?.url)return '';
+ const prices=reference.referencePrices||{},field=['ungraded','grade9','psa10'].find(k=>prices.currency==='USD'&&Number.isFinite(prices[k])&&prices[k]>0),labels={ungraded:'Ungraded',grade9:'Grade 9',psa10:'PSA 10'};
+ return '<small><a href="'+esc(reference.url)+'" target="_blank" rel="noopener">PriceCharting reference</a> · Not a copy for sale.</small>'+(field?'<small>PriceCharting estimate · '+labels[field]+'</small><strong>$'+prices[field].toFixed(2)+' USD</strong><small>Estimate only; condition matters. Excludes shipping.</small>':'<small>Estimate unavailable</small>');
+}

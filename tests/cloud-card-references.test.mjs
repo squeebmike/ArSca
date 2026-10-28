@@ -24,7 +24,7 @@ let result=await(await send([card])).json();assert.equal(result.summary.cards,1)
 await Promise.all(Array.from({length:10},()=>send([card])));
 result=await(await send([{...card,image:''}])).json();assert.equal(result.summary.cards,1);assert.equal(result.summary.photos,1,'retry or missing-photo capture does not erase a good reference');
 const set={id:'2026-topps-series-1-baseball',displayName:'2026 Topps Series 1 Baseball',sport:'baseball',year:2026};
-assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}),null,'unchecked image URLs stay hidden');
+assert.equal((await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}))?.image,null,'unchecked image URLs stay hidden');
 await instances.get('console:'+consoleId).alarm();
 let found=await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'});
 assert.equal(found.image,image,'website reads the uploaded cloud reference through the verified flagship alias');
@@ -40,15 +40,20 @@ await send([card]);await instances.get('console:'+consoleId).alarm();
 assert.equal((await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'})).referencePrices.ungraded,7.5,'old extension batches preserve valid estimates for the same identity');
 const held=await instances.get('console:'+consoleId).fetch(new Request('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:card.url,reason:'Redemption notice instead of card artwork'})}));
 assert.equal(held.status,200);
+const heldMetadata=await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'});
+assert.equal(heldMetadata.url,card.url,'held artwork does not hide the exact source link');
+assert.equal(heldMetadata.referencePrices.ungraded,7.5,'held artwork does not hide the estimate');
+assert.equal(heldMetadata.image,null,'held artwork still cannot be displayed');
+
 const numberDiagnostics=await(await instances.get('console:'+consoleId).fetch(new Request('https://archive.internal/samples?number=1'))).json();
 assert.equal(numberDiagnostics.exactNumber,'1');
 assert.equal(numberDiagnostics.samples.length,1);
 assert.equal(numberDiagnostics.samples[0].hold.reason,'Redemption notice instead of card artwork','diagnostics preserve holds');
 assert.equal(numberDiagnostics.samples[0].photoUsageCount,1);
 assert.equal((await instances.get('console:'+consoleId).fetch(new Request('https://archive.internal/samples?number=a%2Fb'))).status,400);
-assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}),null,'a manual image hold overrides otherwise eligible metadata and URL health');
+assert.equal((await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}))?.image,null,'a manual image hold overrides otherwise eligible metadata and URL health');
 let legacyReads=0;const legacyEnv={...env,LBA_KV:{get:async()=>{legacyReads++;return null;}}};
-assert.equal(await sportsReferenceImage(legacyEnv,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}),null);
+assert.equal((await sportsReferenceImage(legacyEnv,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base'}))?.image,null);
 assert.equal(legacyReads,0,'legacy reference cache cannot bypass a cloud image hold');
 assert.equal(await sportsReferenceImage(env,{},set,{player:'Different Player',cardNumber:'1',section:'Base'}),null,'same number never substitutes another player');
 const gold={...card,title:'Aaron Judge [Gold Holo Foil] #1',parallel:'Gold Holo Foil',run:'/50',url:card.url+'-gold',image:image.replace('card123','gold123')};
@@ -56,7 +61,7 @@ await send([gold]);await instances.get('console:'+consoleId).alarm();
 found=await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:50}});assert.equal(found.image,gold.image);
 assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:25}}),null,'numbered runs must agree');
 await send([{...gold,image}]);
-assert.equal(await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:50}}),null,'a reused base photo is not a gold reference');
+assert.equal((await sportsReferenceImage(env,{},set,{player:'Aaron Judge',cardNumber:'1',section:'Base',parallelRule:{name:'Gold Holo Foil',printRun:50}}))?.image,null,'a reused base photo is not a gold reference');
 const get=path=>{const url=new URL('https://worker.example/reference-collector/'+path);return handleCloudReferenceRequest(new Request(url,{headers:{Authorization:'Bearer owner'}}),env,url,deps);};
 assert.equal((await(await get('sets')).json()).sets.length,1);
 assert.equal((await(await get('cards?console='+consoleId)).json()).cards.length,2);
@@ -95,7 +100,7 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  assert.ok((await object.ctx.storage.get(key)).mappingVersion);assert.equal(external,0,'lazy mapping repair makes no source/image network calls');
  await object.fetch(new Request('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:sample.url,reason:'Photo needs review'})}));
  await object.ctx.storage.put(key,{version:'2026-10-25.2',flags:['unmapped_source_set'],matches:[]});
- assert.equal(await sportsReferenceImage(env,{},release,subject),null,'mapping repair never bypasses an owner photo hold');
+ assert.equal((await sportsReferenceImage(env,{},release,subject))?.image,null,'mapping repair never bypasses an owner photo hold');
 }
 {
  const sample={...card,title:'American League Leaders HRs #38',player:'American League Leaders HRs',cardNumber:'38',image:'https://storage.googleapis.com/images.pricecharting.com/leaders38/240.jpg',url:'https://www.sportscardspro.com/game/'+consoleId+'/american-league-leaders-hrs-38'};
@@ -104,7 +109,7 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs'),release=baseballSets.find(s=>s.id==='2026-topps-series-1-baseball'),subject=release.cards.find(c=>c.cardNumber==='38');
  assert.equal((await sportsReferenceImage(env,{},release,subject)).image,sample.image,'existing caption mismatch repairs from stored cloud data without re-collection');
  await object.fetch(new Request('https://archive.internal/hold',{method:'POST',body:JSON.stringify({url:sample.url,reason:'Review requested'})}));
- assert.equal(await sportsReferenceImage(env,{},release,subject),null,'caption repair preserves owner holds');
+ assert.equal((await sportsReferenceImage(env,{},release,subject))?.image,null,'caption repair preserves owner holds');
 }
 {
  const bestId='baseball-cards-2023-bowman%27s-best',best={...card,consoleId:bestId,title:'Taj Bradley #1',player:'Taj Bradley',image:'https://storage.googleapis.com/images.pricecharting.com/best1/240.jpg',url:'https://www.sportscardspro.com/game/'+bestId+'/taj-bradley-1'};
@@ -135,3 +140,4 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  const replay=await(await send([captured])).json();assert.equal(replay.summary.cards,receipt.summary.cards,'preserved batch retries cannot duplicate the recovered row');
 }
 console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');
+

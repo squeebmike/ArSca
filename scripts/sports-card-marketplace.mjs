@@ -153,8 +153,8 @@ function renderReference(target,ref){
  var figure=document.createElement('figure'),img=document.createElement('img'),caption=document.createElement('figcaption'),link=document.createElement('a');
  img.src=ref.image;img.alt=ref.title+' — PriceCharting reference image';img.width=180;img.height=240;img.loading='lazy';img.decoding='async';
  link.href=ref.url;link.target='_blank';link.rel='noopener';link.textContent='PriceCharting reference';
- figure.className='mp-reference-figure';caption.append(link,document.createTextNode(' · Not a copy for sale.'));figure.append(img,caption);renderEstimate(figure,ref);target.append(figure);
- img.onerror=function(){missingReference(figure,true);};
+ figure.className='mp-reference-figure';caption.append(link,document.createTextNode(' · Not a copy for sale.'));if(ref.image)figure.append(img);else missingReference(figure,false);figure.append(caption);renderEstimate(figure,ref);target.append(figure);
+ img.onerror=function(){var photo=document.createElement('span');img.replaceWith(photo);missingReference(photo,true);};
 }
 async function fetchSportsJson(url){
  var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},20000);
