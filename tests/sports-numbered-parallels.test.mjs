@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {footballSets} from '../scripts/topps/football-seed.mjs';
+import {bigLeagueBaseballSets} from '../scripts/topps/big-league-baseball.mjs';
+import {missingBaseball2024Sets} from '../scripts/topps/missing-baseball-2024.mjs';
 import {handleBaseballCatalog} from '../scripts/baseball-catalog-pages.mjs';
 import {sectionsForSet,relatedParallelLinks} from '../scripts/baseball-section-pages.mjs';
 import {sportsListingMatches,sportsListings} from '../scripts/sports-card-marketplace.mjs';
@@ -72,7 +74,14 @@ const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
 // Coverage means release-specific data exists, not that every print run is known.
 assert.equal(Object.keys(remainingParallelSpecs).length,33);
 assert.equal(Object.keys(parallelPrograms).length,63);
+const baseOnlyReleases=new Set([...bigLeagueBaseballSets,...missingBaseball2024Sets].map(s=>s.id));
 for(const release of [...baseballSets,...footballSets]){
+ if(baseOnlyReleases.has(release.id)){
+  assert.match(release.scope,/additional parallels are not yet imported/,'base-only releases disclose their scope');
+  assert.equal(parallelPrograms[release.id],undefined,'do not invent unverified parallel programs');
+  for(const card of release.cards)assert.deepEqual(cardParallelProgram(release,card).variants,[]);
+  continue;
+ }
  const p=parallelPrograms[release.id];assert.ok(p,release.id);
  for(const card of release.cards)assert.ok(cardParallelProgram(release,card).variants.length,release.id+'/'+card.cardNumber);
  for(const spec of [p,...(p.baseRanges||[]),...Object.values(p.sections)]){
