@@ -27,7 +27,7 @@ for(const team of teams){
 }
 const mariners=teams.find(t=>t.name==='Seattle Mariners'),path=baseballTeamPath(mariners);
 let body=await(await get(path+'?set=2023-topps-series-1')).text();assert.ok(body.includes('2023 Topps Series 1 Baseball'));assert.ok(!body.includes('<h2>2023 Topps Series 2 Baseball'));
-for(const query of ['?set=fake','?year=2018','?rookies=0','?page=999','?page=0'])assert.equal((await get(path+query)).status,404);
+for(const query of ['?set=fake','?year=1800','?rookies=0','?page=999','?page=0'])assert.equal((await get(path+query)).status,404);
 assert.equal((await get('/baseball/teams/fake')).status,404);
 body=await(await get(path+'?q=nonexistent-player')).text();assert.ok(body.includes('No cards match those filters'));assert.ok(page.robotsNoindex);
 const {set,card}=mariners.rows[0];

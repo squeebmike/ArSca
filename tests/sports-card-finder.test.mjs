@@ -11,7 +11,8 @@ assert.ok(griffey.rows.length>200);assert.ok(new Set(griffey.rows.map(r=>r.set.i
 for(const name of ['ken griffey jr','Ken Griffey, Jr.','KEN GRIFFEY JR.','griffey ken jr','Ken Griffey Jr'])assert.deepEqual(search('player='+encodeURIComponent(name)).rows.map(r=>r.href),griffey.rows.map(r=>r.href),name);
 assert.ok(griffey.rows.every(r=>r.card.subjects.some(s=>/\bken\b.*\bgriffey\b.*\bjr\b/i.test(s.name))),'Jr. never borrows another subject’s suffix');
 assert.ok(griffey.rows.some(r=>r.type==='autographs'));assert.ok(griffey.rows.some(r=>r.type==='inserts'));assert.ok(griffey.rows.some(r=>r.type==='base'));
-const mariners=search('team=seattle+mariners');assert.ok(mariners.rows.length>2000);assert.equal(new Set(mariners.rows.map(r=>r.set.year)).size,8);
+const mariners=search('team=seattle+mariners');assert.ok(mariners.rows.length>2000);assert.equal(new Set(mariners.rows.map(r=>r.set.year)).size,9);
+assert.ok(mariners.rows.some(r=>r.set.year===2018),'historical releases participate in franchise search');
 assert.deepEqual(search('team=MARINERS').rows.map(r=>r.href),mariners.rows.map(r=>r.href));
 const cleveland=search('team=Cleveland+Guardians');assert.ok(cleveland.rows.some(r=>r.card.subjects.some(s=>s.team==='Cleveland Indians')),'known former franchise names participate by default');
 assert.ok(search('team=Cleveland+Guardians&teamNames=printed').rows.every(r=>r.card.subjects.some(s=>s.team==='Cleveland Guardians')),'collectors can choose the printed name only');

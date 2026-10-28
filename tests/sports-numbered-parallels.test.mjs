@@ -1,3 +1,4 @@
+import {historicalBaseballSets} from '../scripts/topps/historical-baseball.mjs';
 import {draftFinest2024Sets} from '../scripts/topps/draft-finest-2024.mjs';
 import assert from 'node:assert/strict';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
@@ -75,7 +76,7 @@ const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
 // Coverage means release-specific data exists, not that every print run is known.
 assert.equal(Object.keys(remainingParallelSpecs).length,33);
 assert.equal(Object.keys(parallelPrograms).length,63);
-const baseOnlyReleases=new Set([...bigLeagueBaseballSets,...missingBaseball2024Sets,...draftFinest2024Sets].map(s=>s.id));
+const baseOnlyReleases=new Set([...bigLeagueBaseballSets,...missingBaseball2024Sets,...draftFinest2024Sets,...historicalBaseballSets].map(s=>s.id));
 for(const release of [...baseballSets,...footballSets]){
  if(baseOnlyReleases.has(release.id)){
   assert.match(release.scope,/(?:additional parallels are|Additional parallel programs and odds are) not yet imported/,'base-only releases disclose their scope');

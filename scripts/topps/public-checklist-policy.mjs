@@ -2,7 +2,14 @@
 export function checklistPublicationProblems(set, approval = {}) {
   const problems = [];
   const name = String(set.setName || set.name || '');
-  if (!Number.isInteger(Number(set.year)) || Number(set.year) < 2019) problems.push('outside_2019_onward');
+  const year=Number(set.year);
+  if (!Number.isInteger(year) || year<1800) problems.push('outside_supported_year');
+  if(year<2019){
+    const evidence=approval.licensingEvidence;
+    let primary=false;
+    try{const u=new URL(evidence?.sourceUrl);primary=u.protocol==='https:'&&['www.topps.com','topps.com','ripped.topps.com','www.mlb.com','mlb.com'].includes(u.hostname);}catch{}
+    if(!evidence?.verified||evidence.releaseYear!==year||!evidence.licensor||!primary)problems.push('historical_licensing_review_required');
+  }
   if (set.sport !== 'baseball' || /basketball|football|star wars|mcquarrie/i.test(name)) problems.push('not_verified_baseball');
   if (/panini/i.test(name + ' ' + (set.brand || ''))) problems.push('excluded_publisher');
   if (/checklists provided|configuration of|actual contents/i.test(name)) problems.push('disclaimer_used_as_set_name');

@@ -1,3 +1,4 @@
+import {historicalBaseballSections} from './topps/historical-baseball.mjs';
 import {draftFinest2024Sections} from './topps/draft-finest-2024.mjs';
 import {archiveNonbaseSections} from './topps/archive-nonbase-sections.mjs';
 import {bowmanProspectSections} from './topps/bowman-prospect-sections.mjs';
@@ -33,7 +34,7 @@ function correctPublishedGroup(setId,group){
  return changed?{...group,cards}:group;
 }
 const sectionsBySet=new Map();
-for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections,...bowmanProspectSections,...draftFinest2024Sections]){
+for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections,...bowmanProspectSections,...draftFinest2024Sections,...historicalBaseballSections]){
  const groups=sectionsBySet.get(source.setId)||[];
  for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(correctPublishedGroup(source.setId,group));
  sectionsBySet.set(source.setId,groups);

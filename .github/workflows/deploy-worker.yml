@@ -114,6 +114,7 @@ on:
       - scripts/topps/big-league-baseball.mjs
       - scripts/topps/missing-baseball-2024.mjs
       - scripts/topps/draft-finest-2024.mjs
+      - scripts/topps/historical-baseball.mjs
       - scripts/topps/baseball-2019.mjs
       - scripts/topps/baseball-stocked-2026-10.mjs
       - scripts/topps/baseball-stocked-2026-10-21.mjs
