@@ -1,3 +1,4 @@
+import {toppsBasketball2025} from './topps-basketball-2025-seed.mjs';
 import {upperDeckExtended} from './upper-deck-extended-seed.mjs';
 import {upperDeckSeries2} from './upper-deck-series-2-seed.mjs';
 // Reviewed official publisher rows. Source and licensing evidence retained per release.
@@ -6,3 +7,5 @@ export const licensedSportsSets = [{"id":"2024-25-upper-deck-series-1-hockey","s
 licensedSportsSets.push(upperDeckSeries2);
 
 licensedSportsSets.push(upperDeckExtended);
+
+licensedSportsSets.push(toppsBasketball2025);

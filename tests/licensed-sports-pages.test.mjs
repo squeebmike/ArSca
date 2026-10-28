@@ -54,3 +54,16 @@ const extendedRoot='/hockey/checklists/'+extended.id;
 for(const group of [{cards:extended.cards},...extended.sections]){if(group.id)assert.equal((await get(extendedRoot+'/sections/'+group.id)).status,200);for(const card of group.cards){assert.equal((await get(extendedRoot+'/cards/'+card.id)).status,200);assert.equal(page.canonicalPath,extendedRoot+'/cards/'+card.id);}}
 assert.deepEqual(extended.cards.find(c=>c.cardNumber==='730').subjects.map(s=>s.name),['Jonathan Lekkerimaki','Will Smith']);
 const allHockeyXml=await(await get('/sitemap-hockey.xml')).text();assert.ok(allHockeyXml.includes(extendedRoot+'/cards/'+extended.cards.at(-1).id));
+
+const basketball=licensedSportsSets.find(s=>s.id==='2025-26-topps-basketball');
+assert.equal(basketball.cards.length,300);assert.equal(basketball.sections.length,67);
+assert.equal(basketball.sections.reduce((n,g)=>n+g.cards.length,0),3018);
+const basketballRoot='/basketball/checklists/'+basketball.id;
+assert.equal((await get('/basketball')).status,200);
+for(const group of [{cards:basketball.cards},...basketball.sections]){if(group.id)assert.equal((await get(basketballRoot+'/sections/'+group.id)).status,200);for(const card of group.cards){assert.equal((await get(basketballRoot+'/cards/'+card.id)).status,200);assert.equal(page.canonicalPath,basketballRoot+'/cards/'+card.id);}}
+assert.equal(basketball.cards.find(c=>c.cardNumber==='201').player,'Cooper Flagg');
+const triple=basketball.sections.find(s=>s.id==='1980-81-topps-basketball-triple-autographs');assert.ok(triple.cards.every(c=>c.subjects.length===3));
+const dual=basketball.sections.find(s=>s.id==='rookie-photo-shoot-dual-autograph');assert.ok(dual.cards.every(c=>c.subjects.length===2));
+assert.equal((await get(basketballRoot+'/cards/'+basketball.cards[0].id+'?parallel=made-up')).status,404);
+const basketballXml=await(await get('/sitemap-basketball.xml')).text();assert.ok(basketballXml.includes(basketballRoot+'/cards/'+basketball.cards[0].id));
+for(const pattern of ['basketball','basketball/*','sitemap-basketball.xml*'])assert.ok(routeConfig.includes('www.themanapocket.com/'+pattern+'"'));

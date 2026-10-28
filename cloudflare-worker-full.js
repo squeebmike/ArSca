@@ -7529,7 +7529,7 @@ async function routeRequest(request, env, ctx) {
       const origin = await fetch(request);
       if (!origin.ok) return origin;
       const existing = request.method === 'HEAD' ? '' : await origin.text();
-      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml', 'sitemap-baseball.xml', 'sitemap-football.xml', 'sitemap-secret-lair.xml', 'sitemap-hockey.xml', 'sitemap-sports-sets.xml']
+      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml', 'sitemap-baseball.xml', 'sitemap-football.xml', 'sitemap-secret-lair.xml', 'sitemap-hockey.xml', 'sitemap-basketball.xml', 'sitemap-sports-sets.xml']
         .map(path => 'Sitemap: https://www.themanapocket.com/' + path).filter(line => !existing.includes(line));
       const headers = new Headers(origin.headers);
       for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
