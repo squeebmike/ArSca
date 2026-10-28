@@ -16,7 +16,7 @@ const {document,window}=parseHTML('<html><body><details class="mp-card-parallels
 let observed;class Observer{constructor(cb){observed=cb;}observe(){}unobserve(){}}
 document.querySelector('details').open=true;
 let payload=data;
-vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>({ok:true,json:async()=>payload})});
+vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,AbortController,setTimeout,clearTimeout,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>({ok:true,json:async()=>payload})});
 const button=document.querySelector('button[data-sports-lookup]');observed([{target:button,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
 assert.equal(document.querySelector('[data-sports-reference-result] img').src,reference.image);
 assert.match(document.querySelector('[data-sports-reference-result]').textContent,/Not a copy for sale/);
