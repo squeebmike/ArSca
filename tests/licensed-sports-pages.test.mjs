@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {handleLicensedSportsCatalog as handle} from '../scripts/licensed-sports-pages.mjs';
 import {licensedSportsSets} from '../scripts/licensed-sports-seed.mjs';
@@ -27,3 +28,6 @@ body=await(await get(root+'?q=%3Cscript%3E')).text();assert.ok(body.includes('va
 const query=new URL('https://www.themanapocket.com/sports/checklists?sport=hockey&player=Troy+Terry');const found=sportsSearchResults(query);assert.ok(found.rows.length>1);assert.ok(found.rows.every(r=>r.href.startsWith('/hockey/')&&r.sport==='hockey'));
 body=sportsPlayerTeamSearch(query,escape).bodyHtml;assert.match(body,/Hockey/);assert.ok(!body.includes('data-sports-reference="/baseball/'),'hockey never mounts a baseball reference lookup');
 console.log('Licensed sports routes: all 4,418 card pages, sections, source metadata, discovery, sitemaps, pagination, search and strict printing isolation passed');
+
+const routeConfig=fs.readFileSync('wrangler.deploy.jsonc','utf8');
+for(const pattern of ['sports/sets*','hockey','hockey/*','sitemap-hockey.xml*','sitemap-sports-sets.xml*'])assert.ok(routeConfig.includes('www.themanapocket.com/'+pattern+'"'),'Production zone route required: '+pattern);
