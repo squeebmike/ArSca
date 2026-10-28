@@ -42,3 +42,15 @@ assert.equal(series2.cards.find(c=>c.cardNumber==='496').subjects.length,2);
 assert.equal(series2.cards.find(c=>c.cardNumber==='500').checklistCard,true);
 assert.ok(series2.sections.flatMap(g=>g.cards).some(c=>c.printedSP));
 assert.match(await(await get(secondRoot)).text(),/ambiguous rows are withheld/);
+
+const extended=licensedSportsSets.find(s=>s.id==='2024-25-upper-deck-extended-series-hockey');
+assert.deepEqual(extended.cards.map(c=>Number(c.cardNumber)),Array.from({length:250},(_,i)=>i+501));
+assert.equal(extended.sections.length,86);assert.equal(extended.sections.reduce((n,g)=>n+g.cards.length,0),3643);
+assert.equal(extended.cards.filter(c=>c.printedSection==='Base Set - All-Star').length,43);
+assert.equal(extended.cards.filter(c=>c.printedSection==='Base Set - Young Guns').length,30);
+assert.equal(extended.cards.filter(c=>c.printedSection==='Base Set - 1st Round Rookies').length,20);
+assert.equal(extended.sourceExceptions.length,0);
+const extendedRoot='/hockey/checklists/'+extended.id;
+for(const group of [{cards:extended.cards},...extended.sections]){if(group.id)assert.equal((await get(extendedRoot+'/sections/'+group.id)).status,200);for(const card of group.cards){assert.equal((await get(extendedRoot+'/cards/'+card.id)).status,200);assert.equal(page.canonicalPath,extendedRoot+'/cards/'+card.id);}}
+assert.deepEqual(extended.cards.find(c=>c.cardNumber==='730').subjects.map(s=>s.name),['Jonathan Lekkerimaki','Will Smith']);
+const allHockeyXml=await(await get('/sitemap-hockey.xml')).text();assert.ok(allHockeyXml.includes(extendedRoot+'/cards/'+extended.cards.at(-1).id));
