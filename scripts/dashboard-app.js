@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.27.9-psa-verify';
+const APP_VERSION = '2026.10.28.1-idle-update';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -89,7 +89,12 @@ async function checkForAppUpdate(){
     // away. A visible tab always falls back to the manual banner so an
     // update never interrupts whatever's actually on screen.
     const checkoutIdle = typeof checkoutState === 'undefined' || checkoutState === 'IDLE';
-    if(document.hidden && checkoutIdle) { reloadIntoAppVersion(latest); return; }
+    // Same for one left on screen with nobody touching it (dashboardIdle,
+    // 10 minutes): a PC at the store sat on an old version all night behind
+    // the banner, still running the polling the newer version had paused
+    // (Supabase check, 2026-10-28).
+    const untouched = typeof dashboardIdle === 'function' && dashboardIdle();
+    if((document.hidden || untouched) && checkoutIdle) { reloadIntoAppVersion(latest); return; }
     showAppUpdateBanner(latest);
   } catch(e) { /* offline or blocked — current version keeps working, try again later */ }
 }

@@ -54,4 +54,10 @@ assert.match(ui, /setInterval\(\(\) => \{ if\(!dashboardIdle\(\)\) refreshInvent
 assert.match(ui, /if\(!document\.hidden && !dashboardIdle\(\)\)\{ fetchBuyListFromWorker\(\); fetchBuyTrayIndex\(\); \}/, 'the buy tray refresh pauses while idle');
 assert.match(ui, /setInterval\(\(\) => \{ if\(shouldPollTab\('display'\)\) renderCustomerDisplay\(\); \}, 3000\);/, 'the customer display keeps refreshing -- nobody touches that screen');
 assert.equal((ui.match(/await syncSharedShowTransactions\(\)\.catch\(\(\)=>\{\}\);/g) || []).length, 1, 'only the throttled wrapper runs the store-wide pull');
+// A dashboard left on screen overnight sat on an old version behind the
+// update banner (2026-10-28), so a fix like this one never reached it.
+// Untouched for 10 minutes, it reloads into the new version itself.
+const update = cut('async function checkForAppUpdate', 'function showAppUpdateBanner');
+assert.match(update, /const untouched = typeof dashboardIdle === 'function' && dashboardIdle\(\);/);
+assert.match(update, /if\(\(document\.hidden \|\| untouched\) && checkoutIdle\) \{ reloadIntoAppVersion\(latest\); return; \}/, 'never in the middle of a sale');
 console.log('dashboard idle polling checks passed');
