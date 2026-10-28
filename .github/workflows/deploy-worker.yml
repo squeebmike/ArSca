@@ -112,6 +112,7 @@ on:
       - scripts/baseball-odds.mjs
       - scripts/topps/baseball-seed.mjs
       - scripts/topps/big-league-baseball.mjs
+      - scripts/topps/missing-baseball-2024.mjs
       - scripts/topps/baseball-2019.mjs
       - scripts/topps/baseball-stocked-2026-10.mjs
       - scripts/topps/baseball-stocked-2026-10-21.mjs

@@ -3,6 +3,8 @@ import {bigLeagueBaseballSets} from '../scripts/topps/big-league-baseball.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {checklistPublicationProblems} from '../scripts/topps/public-checklist-policy.mjs';
 import {referenceConsoles} from '../scripts/reference-validation.mjs';
+import {missingBaseball2024Sets} from '../scripts/topps/missing-baseball-2024.mjs';
+import {handleBaseballCatalog} from '../scripts/baseball-catalog-pages.mjs';
 for(const set of bigLeagueBaseballSets){
  assert.ok(baseballSets.includes(set));
  assert.deepEqual(checklistPublicationProblems(set,set),[]);
@@ -21,3 +23,19 @@ assert.equal(get(2023,302).team,'Brooklyn Dodgers');
 assert.equal(get(2023,201).printedRarity,'Uncommon Rainbow Foil');
 assert.equal(get(2023,310).printedRarity,'Legendary Gold Foil');
 console.log('Big League: official numbered checklists, historical teams, multi-subject identities and printed foil tiers passed');
+const big2024=missingBaseball2024Sets.find(s=>s.id==='2024-topps-big-league-baseball');
+assert.equal(big2024.cards.length,309);
+assert.ok(!big2024.cards.some(c=>c.cardNumber==='228'),'do not invent absent publisher number');
+assert.deepEqual(big2024.unissuedNumbers,[],'absence is not proof of an unissued card');
+assert.ok(big2024.cards.every(c=>c.team===''&&c.subjects.every(s=>s.team==='')),'no teams inferred from another year');
+const update=missingBaseball2024Sets.find(s=>s.id==='2024-topps-update-series-baseball');
+assert.equal(update.cards.length,350);
+assert.equal(update.cards.find(c=>c.cardNumber==='US305').subjects.length,2);
+assert.equal(update.cards.find(c=>c.cardNumber==='US191').player,'Josh Gibson');
+assert.equal(update.cards.find(c=>c.cardNumber==='US191').team,'Homestead');
+for(const set of missingBaseball2024Sets){assert.deepEqual(checklistPublicationProblems(set,set),[]);assert.ok(baseballSets.includes(set));}
+const path='/baseball/checklists/'+big2024.id+'/cards/'+big2024.cards.find(c=>c.cardNumber==='310').id;
+const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+const response=await handleBaseballCatalog(new Request('https://www.themanapocket.com'+path),{},new URL('https://www.themanapocket.com'+path),{escape,slug:s=>s,available:()=>false,listItems:async()=>[],shell:p=>p.bodyHtml});
+assert.equal(response.status,200);assert.match(await response.text(),/Legendary Gold Foil/,'printed rarity appears on card page');
+console.log('2024 Big League and Update: printed number gaps, blank teams, rookie combos and live route rendering passed');
