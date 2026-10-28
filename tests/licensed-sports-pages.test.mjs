@@ -31,3 +31,14 @@ console.log('Licensed sports routes: all 4,418 card pages, sections, source meta
 
 const routeConfig=fs.readFileSync('wrangler.deploy.jsonc','utf8');
 for(const pattern of ['sports/sets*','hockey','hockey/*','sitemap-hockey.xml*','sitemap-sports-sets.xml*'])assert.ok(routeConfig.includes('www.themanapocket.com/'+pattern+'"'),'Production zone route required: '+pattern);
+
+const series2=licensedSportsSets.find(s=>s.id==='2024-25-upper-deck-series-2-hockey');
+assert.deepEqual(series2.cards.map(c=>Number(c.cardNumber)),Array.from({length:250},(_,i)=>i+251));
+assert.equal(series2.sections.length,105);assert.equal(series2.sections.reduce((n,g)=>n+g.cards.length,0),4381);
+const secondRoot='/hockey/checklists/'+series2.id;
+for(const section of series2.sections){assert.equal((await get(secondRoot+'/sections/'+section.id)).status,200);for(const card of section.cards){assert.equal((await get(secondRoot+'/cards/'+card.id)).status,200);assert.equal(page.canonicalPath,secondRoot+'/cards/'+card.id);}}
+assert.equal(series2.sourceExceptions[0].rows.length,6);
+assert.equal(series2.cards.find(c=>c.cardNumber==='496').subjects.length,2);
+assert.equal(series2.cards.find(c=>c.cardNumber==='500').checklistCard,true);
+assert.ok(series2.sections.flatMap(g=>g.cards).some(c=>c.printedSP));
+assert.match(await(await get(secondRoot)).text(),/ambiguous rows are withheld/);

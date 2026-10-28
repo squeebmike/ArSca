@@ -115,6 +115,7 @@ on:
       - scripts/topps/missing-baseball-2024.mjs
       - scripts/topps/draft-finest-2024.mjs
       - scripts/topps/historical-baseball.mjs
+      - scripts/upper-deck-series-2-seed.mjs
       - scripts/licensed-sports-seed.mjs
       - scripts/licensed-sports-policy.mjs
       - scripts/licensed-sports-pages.mjs

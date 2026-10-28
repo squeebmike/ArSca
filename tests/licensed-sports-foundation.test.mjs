@@ -18,3 +18,5 @@ for(const patch of [{reviewed:false},{licensed:false},{sourceSha256:''},{sourceU
 for(const patch of [{verified:false},{releaseYear:2023},{licensors:['NHLPA']},{sourceUrl:'https://example.com/license'}])assert.ok(check({...set,licensingEvidence:{...set.licensingEvidence,...patch}}).includes('league_and_player_licensing_review_required'));
 assert.ok(check({...set,cards:[set.cards[0],set.cards[0]],cardCount:2}).includes('duplicate_or_invalid_card_route'));
 console.log('Licensed sports foundation: primary licensing gates, 250 base including Young Guns, 4,168 distinct non-base rows, printed teams and route separation passed');
+
+for(const release of licensedSportsSets)assert.deepEqual(check(release),[],release.id);
