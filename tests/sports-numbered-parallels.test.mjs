@@ -290,7 +290,7 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  class Observer{constructor(fn){callback=fn;}observe(){}unobserve(){}}
  const doc={hidden:false,addEventListener(){},querySelectorAll:()=>[button],createElement:el};
  const listing={title:'2021 Topps Series 1 Jo Adell #43 Gold /2021 PSA 9',href:'https://www.ebay.com/itm/123?campid=5339046175',image:'https://i.ebayimg.com/card.jpg',price:9.99};
- vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing})};}});
+ vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,AbortController,setTimeout,clearTimeout,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing})};}});
  assert.equal(fetches,0,'a collapsed/offscreen finish must not fetch');callback([{target:button,isIntersecting:true}]);
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(fetches,1);assert.equal(target.children[0].href,listing.href);assert.equal(target.children[0].rel,'noopener sponsored');
@@ -310,7 +310,7 @@ assert.ok(sportsListingMatches({title:'2021 Topps Series 1 '+clear.player+' Clea
  const disclosure={open:false,matches:()=>true,querySelectorAll:()=>[tile]};
  const doc={hidden:false,addEventListener:(name,fn)=>{events[name]=fn;},querySelectorAll:s=>s.includes('[open]')?[disclosure]:[],createElement:el};
  class Observer{constructor(fn){callback=fn;}observe(b){observed.push(b);}unobserve(){}}
- vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing:null})};}});
+ vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document:doc,AbortController,setTimeout,clearTimeout,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>{fetches++;return {ok:true,json:async()=>({listing:null})};}});
  assert.equal(mounted,undefined);assert.equal(observed.length,0);assert.equal(fetches,0);
  disclosure.open=true;events.toggle({target:disclosure});assert.ok(mounted);assert.equal(observed.length,1);assert.equal(fetches,0);
  const b=observed[0];assert.equal(b.dataset.sportsLookup,tile.dataset.sportsPreview);
