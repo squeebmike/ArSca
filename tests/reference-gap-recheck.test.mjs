@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const source=fs.readFileSync(new URL('../scripts/reference-audit-dashboard.js',import.meta.url),'utf8');
+const start=source.indexOf('async function currentReference('),end=source.indexOf('const recheckButton=',start);let requested,options;
+const context={URL,AbortSignal,fetch:async(url,opts)=>{requested=new URL(url);options=opts;return {ok:true,json:async()=>({reference:{url:'https://www.sportscardspro.com/game/example',image:null,referencePrices:{currency:'USD',ungraded:3.99}}})}}};
+vm.runInNewContext(source.slice(start,end)+'this.check=currentReference;',context);
+const result=await context.check('/baseball/checklists/test/cards/card?parallel=platinum&market=1');
+assert.equal(result.photo,false);assert.equal(result.link,true);assert.equal(result.price,true);
+assert.equal(requested.searchParams.get('reference'),'3');assert.equal(requested.searchParams.has('market'),false);assert.equal(options.credentials,'omit');
+await assert.rejects(()=>context.check('https://evil.test/baseball/checklists/test/cards/card'),/Invalid checklist/);
+assert.match(source,/gapRows.slice\(0,30\)/);assert.match(source,/Promise.all\(\[0,1\]/);
+console.log('Current gap recheck: exact public reference-only URLs, no credentials, bounded displayed sample, price without photo');
