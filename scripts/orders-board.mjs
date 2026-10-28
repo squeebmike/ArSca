@@ -49,6 +49,10 @@ export function orderStatus({ items = [], shipped = false, createdAt = '', today
 }
 
 const PRESALE_SOURCES = new Set(['foc_presale', 'foc_presale_bundle']);
+const DEAD_PAYMENT = new Set(['refunded', 'voided', 'void', 'cancelled', 'canceled', 'failed']);
+// A preorder book's own progress: handed over, in hand, or dropped.
+const FOC_ITEM_DONE = new Set(['completed', 'shipped']);
+const FOC_ITEM_DROPPED = new Set(['cancelled', 'refunded']);
 export const presaleTitleKey = t => String(t || '').replace(/\s*-\s*PRESALE\s*$/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 // payments/lines/inventory come from pos_* + inventory_items; website orders
@@ -82,6 +86,9 @@ export function buildOrdersBoard({
   for (const p of payments) {
     const provider = String(p.provider || '').toLowerCase();
     if (provider !== 'ebay' && provider !== 'whatnot') continue;
+    // A cancelled order's payments are refunded (its sales voided): nothing
+    // to ship (store, 2026-10-28: a cancelled eBay order sat "waiting on books").
+    if (DEAD_PAYMENT.has(String(p.status || '').toLowerCase())) continue;
     const ref = String(p.reference || '');
     const orderId = provider === 'ebay'
       ? text(p.provider_metadata?.ebayOrderId || ref, 60)
@@ -119,16 +126,27 @@ export function buildOrdersBoard({
   const focItemsByOrder = new Map();
   for (const it of focItems) { const list = focItemsByOrder.get(it.order_id) || []; list.push(it); focItemsByOrder.set(it.order_id, list); }
   for (const o of focOrders) {
-    if (!['paid', 'reserved', 'ready_for_pickup', 'fulfilled'].includes(o.status)) continue;
-    const items = (focItemsByOrder.get(o.id) || []).map(it => {
+    if (!['paid', 'reserved', 'ready_for_pickup', 'shipped', 'completed'].includes(o.status)) continue;
+    const done = o.status === 'shipped' || o.status === 'completed';
+    // Each book goes by its own status: one already picked up is done, one
+    // set aside is in, a cancelled one is not part of the order any more.
+    const live = (focItemsByOrder.get(o.id) || []).filter(it => !FOC_ITEM_DROPPED.has(it.status));
+    const items = live.map(it => {
       const s = it.sku || {};
-      const st = orderItemState({ isPresale: true, received: o.status === 'ready_for_pickup' || o.status === 'fulfilled' || receivedSkuIds.has(it.sku_id), onSaleDate: dayOf(s.on_sale_date) }, today);
-      return { title: [s.title, s.variant_label && !/^cover a$/i.test(s.variant_label) ? s.variant_label : ''].filter(Boolean).join(' · '), qty: Math.max(1, Number(it.quantity || 1)), price: Number(it.unit_price_cents || 0) / 100, image: s.cover_image_url || '', itemId: '', ...st };
+      const handedOver = done || FOC_ITEM_DONE.has(it.status);
+      const st = orderItemState({ isPresale: true, received: handedOver || o.status === 'ready_for_pickup' || it.status === 'ready_for_pickup' || receivedSkuIds.has(it.sku_id), onSaleDate: dayOf(s.on_sale_date) }, today);
+      return { title: [s.title, s.variant_label && !/^cover a$/i.test(s.variant_label) ? s.variant_label : ''].filter(Boolean).join(' · '), qty: Math.max(1, Number(it.quantity || 1)), price: Number(it.unit_price_cents || 0) / 100, image: s.cover_image_url || '', itemId: '', handedOver, ...st };
     });
+    // Everything left already handed over: done, whatever the order says.
+    const allHandedOver = done || (items.length > 0 && items.every(i => i.handedOver));
     website.push(finish({
       channel: 'website', kind: 'preorder', id: o.id, number: o.order_number || o.id.slice(0, 8), buyer: text(o.customer_name, 80),
-      createdAt: o.paid_at || o.created_at, total: Number(o.total_cents || 0) / 100, method: o.fulfillment_method || '', pickup: /pickup/i.test(o.fulfillment_method || ''), items,
-      shipped: o.status === 'fulfilled', shippedBy: o.fulfillment_method === 'pickup' ? 'picked up' : 'shipped',
+      createdAt: o.paid_at || o.created_at, total: Number(o.total_cents || 0) / 100, method: o.fulfillment_method || '', pickup: /pickup/i.test(o.fulfillment_method || ''),
+      // Shown only while there's something to hand over.
+      items: allHandedOver ? items : items.filter(i => !i.handedOver),
+      handedOverCount: items.filter(i => i.handedOver).length,
+      setAsideCount: live.filter(it => it.status === 'ready_for_pickup').length,
+      shipped: allHandedOver, shippedBy: o.fulfillment_method === 'pickup' ? 'picked up' : 'shipped',
     }));
   }
 
@@ -157,7 +175,7 @@ export async function handleOrdersBoard(request, env, deps, url) {
   // Open orders are kept however old; shipped ones show for the last 30 days.
   const since = new Date(Date.now() - 120 * DAY).toISOString();
 
-  const { data: payments } = await db(`pos_payments?store_id=eq.${sid}&provider=in.(ebay,whatnot)&created_at=gte.${encodeURIComponent(since)}&select=sale_id,reference,provider,amount,created_at,provider_metadata&order=created_at.desc&limit=2000`);
+  const { data: payments } = await db(`pos_payments?store_id=eq.${sid}&provider=in.(ebay,whatnot)&created_at=gte.${encodeURIComponent(since)}&select=sale_id,reference,provider,status,amount,created_at,provider_metadata&order=created_at.desc&limit=2000`);
   const saleIds = [...new Set((payments || []).map(p => p.sale_id).filter(Boolean))];
   let lines = [];
   for (let i = 0; i < saleIds.length; i += 150) {
@@ -177,11 +195,11 @@ export async function handleOrdersBoard(request, env, deps, url) {
     const { data } = await db(`inventory_items?store_id=eq.${sid}&id=${inFilter(itemIds.slice(i, i + 150))}&select=id,status,src:data->>source,onSaleDate:data->>onSaleDate,focSkuId:data->>focSkuId,converted:data->>ebayPresaleConverted,name:data->>name`);
     for (const r of data || []) inventoryById.set(r.id, r);
   }
-  const { data: focOrders } = await db(`foc_preorder_orders?store_id=eq.${sid}&status=in.(paid,reserved,ready_for_pickup,fulfilled)&created_at=gte.${encodeURIComponent(since)}&select=id,order_number,status,customer_name,fulfillment_method,total_cents,paid_at,created_at&limit=500`);
+  const { data: focOrders } = await db(`foc_preorder_orders?store_id=eq.${sid}&status=in.(paid,reserved,ready_for_pickup,shipped,completed)&created_at=gte.${encodeURIComponent(since)}&select=id,order_number,status,customer_name,fulfillment_method,total_cents,paid_at,created_at&limit=500`);
   const focIds = (focOrders || []).map(o => o.id);
   let focItems = [];
   for (let i = 0; i < focIds.length; i += 150) {
-    const { data } = await db(`foc_preorder_items?order_id=${inFilter(focIds.slice(i, i + 150))}&select=order_id,sku_id,quantity,unit_price_cents,sku:comic_skus(title,variant_label,on_sale_date,cover_image_url)`);
+    const { data } = await db(`foc_preorder_items?order_id=${inFilter(focIds.slice(i, i + 150))}&select=order_id,sku_id,status,quantity,unit_price_cents,sku:comic_skus(title,variant_label,on_sale_date,cover_image_url)`);
     focItems = focItems.concat(data || []);
   }
   const skuByTitle = new Map();
