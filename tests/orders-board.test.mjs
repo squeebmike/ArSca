@@ -217,4 +217,42 @@ assert.match(dashboard, /if\(name === 'orders'\) setTimeout\(\(\)=>\{ renderOrde
 assert.match(dashboard, /await storeWorkerFetch\('\/orders\/board\?store_id=' \+ encodeURIComponent\(getActiveStoreId\(\)\)/);
 assert.match(dashboard, /\$\{o\.status === 'ready' && o\.pickup \? 'READY FOR PICKUP' : st\.label\}/, 'a pickup order says so');
 
+// ── Store, 2026-10-28 ──
+// A cancelled eBay order (its payments refunded) sat "waiting on books", and a
+// half-picked-up website preorder had no pickup button.
+{
+  const b = buildOrdersBoard({ today:'2026-10-28',
+    payments:[
+      { sale_id:'c1', reference:'10-15252-32300', provider:'ebay', status:'refunded', amount:224, created_at:'2026-10-04T19:37:41Z', provider_metadata:{ ebayOrderId:'10-15252-32300' } },
+      { sale_id:'k1', reference:'11-1', provider:'ebay', status:'succeeded', amount:5, created_at:'2026-10-27T10:00:00Z', provider_metadata:{ ebayOrderId:'11-1' } },
+    ],
+    lines:[{ sale_id:'c1', item_id:'x', title:'SPIDER-WOMAN #1 - PRESALE', quantity:1, unit_price:224 }, { sale_id:'k1', item_id:'y', title:'Beneath the Trees', quantity:1, unit_price:5 }],
+    focOrders:[
+      { id:'fo-v', order_number:'FOC-V', status:'paid', customer_name:'Sean', fulfillment_method:'pickup', total_cents:3395, paid_at:'2026-08-24T10:00:00Z' },
+      { id:'fo-c', order_number:'FOC-C', status:'completed', customer_name:'Done', fulfillment_method:'pickup', total_cents:599, paid_at:'2026-10-20T10:00:00Z' },
+    ],
+    focItems:[
+      { order_id:'fo-v', sku_id:'d1', status:'committed', quantity:1, unit_price_cents:799, sku:{ title:'DOOM ALL-ON-ONE #1', on_sale_date:'2026-10-14' } },
+      { order_id:'fo-v', sku_id:'mf', status:'ready_for_pickup', quantity:1, unit_price_cents:599, sku:{ title:'MIDNIGHT X-MEN #1 COVER F', on_sale_date:'2026-10-07' } },
+      { order_id:'fo-v', sku_id:'md', status:'completed', quantity:1, unit_price_cents:599, sku:{ title:'MIDNIGHT X-MEN #1 COVER D', on_sale_date:'2026-10-07' } },
+      { order_id:'fo-v', sku_id:'gone', status:'cancelled', quantity:1, unit_price_cents:599, sku:{ title:'Cancelled cover', on_sale_date:'2026-10-07' } },
+      { order_id:'fo-c', sku_id:'z', status:'completed', quantity:1, unit_price_cents:599, sku:{ title:'Picked up', on_sale_date:'2026-10-07' } },
+    ],
+  });
+  assert.deepEqual(b.channels.ebay.map(o => o.id), ['11-1'], 'a cancelled (refunded) eBay order is off the board');
+  const v = b.channels.website.find(o => o.number === 'FOC-V');
+  assert.deepEqual(v.items.map(i => i.title), ['DOOM ALL-ON-ONE #1', 'MIDNIGHT X-MEN #1 COVER F'], 'picked-up and cancelled books drop off the list');
+  assert.equal(v.items.find(i => /COVER F/.test(i.title)).state, 'in', 'a book set aside for the customer is in');
+  assert.equal(v.handedOverCount, 1);
+  assert.equal(v.setAsideCount, 1, 'one book waiting at the counter');
+  assert.equal(v.status, 'late', 'DOOM is still late');
+  assert.equal(b.channels.website.find(o => o.number === 'FOC-C').status, 'shipped', 'a completed preorder shows as done (picked up)');
+}
+const preorders = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
+assert.match(preorders, /const allowed=\{paid:\['completed','shipped'\],reserved:\['shipped','completed'\],ready_for_pickup:\['completed'\],shipped:\['completed'\]\};/, 'an open preorder can be closed out by hand');
+assert.match(preorders, /foc_preorder_items\?order_id=eq\.\$\{encodeURIComponent\(order\.id\)\}&status=not\.in\.\(cancelled,refunded\)`/, 'without reviving cancelled books');
+assert.match(dashboard, /onclick="handOverFocOrderFromBoard\('\$\{escHtml\(o\.id\)\}'\)">\$\{o\.pickup \? 'PICKED UP' : 'SHIPPED'\} WHAT'S IN/, 'a pickup button for the books that are in');
+assert.match(dashboard, /onclick="completeFocOrderFromBoard\('\$\{escHtml\(o\.id\)\}',/, 'and one to close the whole order');
+assert.match(dashboard, /await storeWorkerFetch\('\/foc\/admin\/holds', \{ method:'POST'/);
+
 console.log('Orders board checks passed');

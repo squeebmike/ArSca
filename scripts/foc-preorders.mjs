@@ -4358,12 +4358,17 @@ async function adminOrders(request,env,deps,url){
   const orderId=text(body.orderId,80),next=text(body.status,40);
   const {data:orders}=await db(`foc_preorder_orders?id=eq.${encodeURIComponent(orderId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,status,fulfillment_method&limit=1`);
   const order=orders?.[0];if(!order)return deps.json({ok:false,error:'Comic preorder not found'},404);
-  const allowed={ready_for_pickup:['completed'],reserved:['shipped'],shipped:['completed']};
+  // A paid or reserved order can be closed out by hand too: some books get
+  // handed over as they come in, others never arrive, and the store knows
+  // when the customer has everything (store, 2026-10-28: "this order is
+  // complete" -- no button for an order that was never fully ready).
+  const allowed={paid:['completed','shipped'],reserved:['shipped','completed'],ready_for_pickup:['completed'],shipped:['completed']};
   if(!(allowed[order.status]||[]).includes(next))return deps.json({ok:false,error:`A ${order.status.replaceAll('_',' ')} preorder cannot be changed to ${next.replaceAll('_',' ')} here.`},409);
   if(next==='shipped'&&order.fulfillment_method!=='shipping')return deps.json({ok:false,error:'Only shipping preorders can be marked shipped'},409);
   const patch={status:next,fulfilled_at:new Date().toISOString()};
   await db(`foc_preorder_orders?id=eq.${encodeURIComponent(order.id)}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify(patch)});
-  await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:next})});
+  // Cancelled and refunded books stay that way.
+  await db(`foc_preorder_items?order_id=eq.${encodeURIComponent(order.id)}&status=not.in.(cancelled,refunded)`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:next})});
   // Picked up or shipped: its held copies leave stock.
   await releaseOrderHolds(db,storeId,order.id,next==='shipped'?'shipped':'handed_over');
   return deps.json({ok:true,status:next});

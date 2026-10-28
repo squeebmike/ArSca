@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.28.2-idle-update';
+const APP_VERSION = '2026.10.28.3-order-pickup';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21430,7 +21430,12 @@ function renderOrdersBoardFromCache(){
         ? `<button class="hbtn" style="font-size:9px" onclick="markOrderShipped('${o.channel}','${escHtml(o.id)}',false)">UNDO SHIPPED</button>`
         : `<button class="hbtn" style="font-size:9px;color:var(--g)" onclick="markOrderShipped('${o.channel}','${escHtml(o.id)}',true)">MARK SHIPPED</button>`);
     }
-    if(o.channel === 'website') actions.push(`<span style="font-size:9px;color:var(--dim)">${o.kind === 'preorder' ? 'Manage in COMIC PREORDER ORDERS below' : 'Manage in website orders below'}</span>`);
+    // Store, 2026-10-28: "How to mark picked up on some items. No button?"
+    if(o.channel === 'website' && o.kind === 'preorder' && !o.shipped){
+      if(o.setAsideCount) actions.push(`<button class="hbtn" style="font-size:9px;color:var(--g)" onclick="handOverFocOrderFromBoard('${escHtml(o.id)}')">${o.pickup ? 'PICKED UP' : 'SHIPPED'} WHAT'S IN (${Number(o.setAsideCount)})</button>`);
+      actions.push(`<button class="hbtn" style="font-size:9px" onclick="completeFocOrderFromBoard('${escHtml(o.id)}',${o.pickup ? 'true' : 'false'})">ORDER COMPLETE</button>`);
+    }
+    else if(o.channel === 'website') actions.push(`<span style="font-size:9px;color:var(--dim)">${o.kind === 'preorder' ? 'Manage in COMIC PREORDER ORDERS below' : 'Manage in website orders below'}</span>`);
     return `<div style="border:1px solid ${o.status === 'late' ? 'rgba(255,77,109,.45)' : 'var(--border)'};border-radius:8px;padding:10px;background:var(--surf2)">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap">
         <div style="min-width:0">
@@ -21440,11 +21445,32 @@ function renderOrdersBoardFromCache(){
         </div>
         <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:${st.color};background:${st.bg};border:1px solid ${st.color};border-radius:4px;padding:2px 6px;white-space:nowrap">${o.status === 'ready' && o.pickup ? 'READY FOR PICKUP' : st.label}${o.status === 'waiting' && o.expectedDate ? ' · IN BY ' + escHtml(orderBoardDate(o.expectedDate).toUpperCase()) : ''}</span>
       </div>
-      <div style="font-size:10px;color:${st.color};margin:4px 0 2px">${escHtml(o.reason || '')}${o.shipped && o.shippedBy ? ' · ' + escHtml(o.shippedBy) : ''}</div>
+      <div style="font-size:10px;color:${st.color};margin:4px 0 2px">${escHtml(o.reason || '')}${o.shipped && o.shippedBy ? ' · ' + escHtml(o.shippedBy) : ''}${!o.shipped && o.handedOverCount ? ' · ' + Number(o.handedOverCount) + ' already ' + (o.pickup ? 'picked up' : 'shipped') : ''}</div>
       ${items}
       ${actions.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">${actions.join('')}</div>` : ''}
     </div>`;
   }).join('');
+}
+// The books set aside for this preorder go to the customer; the rest stay on order.
+async function handOverFocOrderFromBoard(orderId){
+  try {
+    const res = await storeWorkerFetch('/foc/admin/holds', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:getActiveStoreId(), orderId }) });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not update the order');
+    toast_dash(data.orderDone ? 'Order complete' : 'Handed over' + (data.stillComing ? ' -- ' + data.stillComing + ' still on order' : ''));
+    renderOrdersBoard();
+  } catch(e) { toast_dash(e.message || String(e)); }
+}
+// The customer has everything they're getting: close the whole order.
+async function completeFocOrderFromBoard(orderId, pickup){
+  if(!confirm('Mark this whole preorder complete?\n\nEvery book on it counts as ' + (pickup ? 'picked up' : 'shipped') + ', including any not received yet.')) return;
+  try {
+    const res = await storeWorkerFetch('/foc/admin/orders', { method:'PATCH', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:getActiveStoreId(), orderId, status: pickup ? 'completed' : 'shipped' }) });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not update the order');
+    toast_dash('Order complete');
+    renderOrdersBoard();
+  } catch(e) { toast_dash(e.message || String(e)); }
 }
 async function markOrderShipped(channel, orderId, shipped){
   try {
