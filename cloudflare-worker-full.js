@@ -1,3 +1,4 @@
+import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {collectorPageStyles,setPageHeader} from './scripts/collector-page-ui.mjs';
 import {handlePocketGuides,pocketGuidePaths} from './scripts/pocket-guides.mjs';
@@ -7528,7 +7529,7 @@ async function routeRequest(request, env, ctx) {
       const origin = await fetch(request);
       if (!origin.ok) return origin;
       const existing = request.method === 'HEAD' ? '' : await origin.text();
-      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml', 'sitemap-baseball.xml', 'sitemap-football.xml', 'sitemap-secret-lair.xml']
+      const additions = ['sitemap-items.xml', 'sitemap-preorders.xml', 'sitemap-books.xml', 'sitemap-pages.xml', 'sitemap-pokemon.xml', 'sitemap-baseball.xml', 'sitemap-football.xml', 'sitemap-secret-lair.xml', 'sitemap-hockey.xml', 'sitemap-sports-sets.xml']
         .map(path => 'Sitemap: https://www.themanapocket.com/' + path).filter(line => !existing.includes(line));
       const headers = new Headers(origin.headers);
       for (const name of ['content-length', 'content-encoding', 'etag']) headers.delete(name);
@@ -8684,6 +8685,10 @@ async function routeRequest(request, env, ctx) {
     }
     if(url.pathname==='/secret-lair'||url.pathname.startsWith('/secret-lair/')||url.pathname==='/sitemap-secret-lair.xml') {
       const response=await handleSecretLairPages(request,env,url,{ctx,escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
+      if(response)return response;
+    }
+    if(url.pathname==='/sports/sets'||url.pathname==='/sitemap-sports-sets.xml'||/^\/(?:hockey|basketball)(?:\/|$)/.test(url.pathname)||/^\/sitemap-(?:hockey|basketball)\.xml$/.test(url.pathname)) {
+      const response=await handleLicensedSportsCatalog(request,env,url,{escape:mtgEscapeHtml,shell:mtgPageShell});
       if(response)return response;
     }
     if(url.pathname==='/football'||url.pathname.startsWith('/football/')||url.pathname==='/sitemap-football.xml') {

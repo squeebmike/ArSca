@@ -16,6 +16,12 @@ export function licensedSportsPublicationProblems(set){
  if(!primary(set.sourceUrl,publishers[set.brand])||!/^[a-f0-9]{64}$/.test(set.sourceSha256||''))problems.push('publisher_checklist_required');
  if(!evidence?.verified||evidence.releaseYear!==set.year||!league?.required.every(l=>evidence.licensors?.includes(l))||!primary(evidence.sourceUrl,league?.hosts))problems.push('league_and_player_licensing_review_required');
  if(!Array.isArray(set.cards)||!set.cards.length||set.cards.length!==set.cardCount)problems.push('incomplete_base_checklist');
+ const sectionIds=new Set();
+ for(const group of set.sections||[]){
+  if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(group.id||'')||sectionIds.has(group.id)||/^all-(?:non-base|autographs|inserts|parallels|relics|prospects)$/.test(group.id))problems.push('invalid_or_duplicate_section_route');
+  sectionIds.add(group.id);
+  if(!group.name||!Array.isArray(group.cards)||!group.cards.length)problems.push('incomplete_numbered_section');
+ }
  const groups=[{cards:set.cards||[]},...(set.sections||[])],ids=new Set();
  for(const group of groups){const numbers=new Set();for(const card of group.cards||[]){
   if(!card.id||ids.has(card.id)||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(card.id))problems.push('duplicate_or_invalid_card_route');

@@ -16,7 +16,7 @@ import {baseballChecklistInventoryMatches as baseballInventoryMatches,ebayCheckl
 import {collectionToolsHtml} from './collection-tools.mjs';
 import {marketplaceDisclosureHtml} from './catalog-inventory.mjs';
 const checklistStyles='<style>.mp-sports-card-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))!important;gap:16px}.mp-sports-card-grid .mp-card{min-width:0}.mp-sports-card-grid .mp-card-body h2,.mp-sports-card-grid .mp-card-body h2 a{font:750 18px/1.35 system-ui!important;overflow-wrap:anywhere}.mp-sports-card-grid .mp-card-body>p{font:14px/1.5 system-ui!important}.mp-card-shopping{font:14px/1.5 system-ui}.mp-card-shopping a,.mp-card-shopping button{font:650 14px/1.45 system-ui!important;overflow-wrap:anywhere}.mp-card-shopping strong{font-size:15px!important}.mp-card-shopping p{font:13px/1.5 system-ui!important}.mp-seller-notice p{font:14px/1.5 system-ui!important}.mp-seller-notice summary{font:650 14px/1.5 system-ui!important;min-height:44px;cursor:pointer}</style>';
-const sportFor=s=>s.sport==='football'||/football/i.test(s.displayName)?'football':'baseball';
+const sportFor=s=>['hockey','basketball'].includes(s.sport)?s.sport:s.sport==='football'||/football/i.test(s.displayName)?'football':'baseball';
 const setPath=s=>'/'+sportFor(s)+'/checklists/'+s.id;
 const sectionPath=(s,g)=>setPath(s)+'/sections/'+g.id;
 const cardPath=(s,c)=>setPath(s)+'/cards/'+c.id;
@@ -60,7 +60,7 @@ for(const [setId,groups] of sectionsBySet){
  }
  sectionsBySet.set(setId,kept);
 }
-export const sectionsForSet=set=>sectionsBySet.get(set.id)||[];
+export const sectionsForSet=set=>sectionsBySet.get(set.id)||(Array.isArray(set.sections)?set.sections:[]);
 export function checklistCardNavigation(set,cards,card,esc){
  const index=cards.findIndex(c=>c.id===card.id);if(index<0)return '';
  const links=[['Previous',cards[index-1]],['Next',cards[index+1]]].filter(([,c])=>c);

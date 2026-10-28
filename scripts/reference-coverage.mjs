@@ -1,3 +1,5 @@
+import {licensedSportsSets} from './licensed-sports-seed.mjs';
+import {licensedSportsPublicationProblems} from './licensed-sports-policy.mjs';
 // Owner-only, resumable coverage census. No Supabase reads or image downloads.
 import {baseballSets} from './topps/baseball-seed.mjs';
 import {footballSets} from './topps/football-seed.mjs';
@@ -5,11 +7,11 @@ import {sectionsForSet} from './baseball-section-pages.mjs';
 import {checklistPublicationProblems,footballChecklistPublicationProblems} from './topps/public-checklist-policy.mjs';
 import {cardParallelProgram} from './sports-parallels.mjs';
 import {referenceConsoles,referenceMetadataCheck,referenceImageKey,REFERENCE_SOURCE_MAPPING_VERSION} from './reference-validation.mjs';
-export const coverageSets=()=>[...baseballSets.filter(s=>!checklistPublicationProblems(s,s).length),...footballSets.filter(s=>!footballChecklistPublicationProblems(s).length)];
+export const coverageSets=()=>[...baseballSets.filter(s=>!checklistPublicationProblems(s,s).length),...footballSets.filter(s=>!footballChecklistPublicationProblems(s).length),...licensedSportsSets.filter(s=>!licensedSportsPublicationProblems(s).length)];
 export function coverageSlotPage(set,offset=0,limit=100){
  const seen=new Set(),slots=[];let n=0,more=false;
  for(const card of [...set.cards,...sectionsForSet(set).flatMap(g=>g.cards)]){
-  const base='/'+(set.sport==='football'?'football':'baseball')+'/checklists/'+set.id+'/cards/'+card.id;
+  const base='/'+(set.sport||'baseball')+'/checklists/'+set.id+'/cards/'+card.id;
   for(const rule of [null,...cardParallelProgram(set,card).variants]){
    const path=base+(rule?'?parallel='+encodeURIComponent(rule.id):'');if(seen.has(path))continue;seen.add(path);
    if(n++<offset)continue;if(slots.length===limit){more=true;break;}

@@ -11,6 +11,7 @@ const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toL
 const slug=s=>fold(s).replaceAll(' ','-');
 const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceIndex;
 export function referenceConsoles(set,card=null){
+ if(['hockey','basketball'].includes(set.sport))return (set.providerConsoles||[]).filter(id=>validReferenceConsoleId(id)&&id.startsWith(set.sport+'-cards-'));
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
  if(set.id==='2023-bowman-s-best-baseball')ids.push('baseball-cards-2023-bowman%27s-best');
  if(set.id==='2023-topps-cosmic-chrome-baseball'){
