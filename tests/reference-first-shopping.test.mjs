@@ -16,7 +16,7 @@ const {document,window}=parseHTML('<html><body><details class="mp-card-parallels
 let observed;class Observer{constructor(cb){observed=cb;}observe(){}unobserve(){}}
 document.querySelector('details').open=true;
 let payload=data;
-vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>({ok:true,json:async()=>payload})});
+vm.runInNewContext(sportsLookupScript.slice(sportsLookupScript.indexOf('<script>')+8).replace(/<\/script>$/,''),{document,AbortController,setTimeout,clearTimeout,window:{IntersectionObserver:Observer},IntersectionObserver:Observer,fetch:async()=>({ok:true,json:async()=>payload})});
 const button=document.querySelector('button[data-sports-lookup]');observed([{target:button,isIntersecting:true}]);await new Promise(resolve=>setImmediate(resolve));
 assert.equal(document.querySelector('[data-sports-reference-result] img').src,reference.image);
 assert.match(document.querySelector('[data-sports-reference-result]').textContent,/Not a copy for sale/);
@@ -41,3 +41,13 @@ assert.ok(initialHtml.includes('aria-label="Card checklist navigation"'),'card p
 assert.equal(unexpectedSourceReads,0,'HTML rendering does not crawl the provider');
 assert.equal(inventoryReads,1,'one existing inventory load, no per-image inventory reads');
 console.log('Reference-first shopping: both exact photos, separate source labels, affiliate offer, crawlable initial photo and expired-listing isolation passed');
+
+// Price and source survive missing artwork and an image load failure.
+payload={reference:{...reference,image:null},listing:null};button.dispatchEvent(new window.Event('click',{bubbles:true}));await new Promise(resolve=>setImmediate(resolve));
+assert.match(document.querySelector('[data-sports-reference-result]').textContent,/Reference photo unavailable/);
+assert.equal(document.querySelector('[data-sports-reference-result] a').href,reference.url);
+assert.match(document.querySelector('.mp-reference-estimate').textContent,/7.50 USD/);
+payload={reference,listing:null};button.dispatchEvent(new window.Event('click',{bubbles:true}));await new Promise(resolve=>setImmediate(resolve));
+document.querySelector('[data-sports-reference-result] img').onerror();
+assert.equal(document.querySelector('[data-sports-reference-result] a').href,reference.url);
+assert.match(document.querySelector('.mp-reference-estimate').textContent,/7.50 USD/);

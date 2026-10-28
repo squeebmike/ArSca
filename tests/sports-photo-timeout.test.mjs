@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import {sportsLookupScript} from '../scripts/sports-card-marketplace.mjs';
+const start=sportsLookupScript.indexOf('async function fetchSportsJson('),end=sportsLookupScript.indexOf('async function loadReference(',start);
+let expire,cleared=0,mode='stall';
+const context={AbortController,setTimeout(fn,ms){assert.equal(ms,20000);expire=fn;return 1},clearTimeout(){cleared++},fetch:async(url,{signal})=>mode==='ok'?({ok:true,json:async()=>({reference:null})}):new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(new Error('aborted'))))};
+vm.runInNewContext(sportsLookupScript.slice(start,end)+'this.run=fetchSportsJson;',context);
+const pending=context.run('/card');const rejected=assert.rejects(pending,/aborted/);expire();await rejected;assert.equal(cleared,1);
+mode='ok';const result=await context.run('/card');assert.equal(result.data.reference,null);assert.equal(cleared,2);
+console.log('Stalled photo requests abort and release timers; successful responses remain intact');

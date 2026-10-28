@@ -11,10 +11,13 @@ export function referenceIdentityMatches(row,card){
   // An alphanumeric Update number alone does not identify the Clear/image
   // variation. Those explicit base variations need a matching finish label.
   if(!m[2]&&/^base\b.*\b(?:variation|parallel)/i.test(card.section))return false;
+  const stadium=row.consoleId==='baseball-cards-2024-topps-stadium-club'?{'Base Set Chrome Variation':'chrome','Base Cards Image Variations':'image variation','Base Cards Design Variations':'design variation','Base Cards Rookie Design Variations':'rookie design variation'}[card.section]:null;
+  if(stadium)return fold(m[2])===stadium&&!row.run;
   const section=fold(card.section).replace(/\b(?:base|cards?|variations?|parallels?)\b/g,' ').replace(/\s+/g,' ').trim();
   return m[2]?finishName(section)===finishName(m[2]):/[a-z]/i.test(number);
  }
- if(!m[2]||![rule.name,...(rule.aliases||[])].some(n=>finishName(n)===finishName(m[2])))return false;
+ const sourceAliases=row.consoleId==='baseball-cards-2024-topps-stadium-club'?{'Red Foil':['Red'],'Black Foil':['Black'],'Gold Foil':['Gold'],'Blue Foil':['Blue'],'Green Foil':['Green'],'Purple Foil':['Purple'],'Black and White':['Black White'],"Photographer's Proof":['Proof'],'Gold Rainbow Foil':['Gold Rainbow']}[rule.name]||[]:[];
+ if(!m[2]||![rule.name,...(rule.aliases||[]),...sourceAliases].some(n=>finishName(n)===finishName(m[2])))return false;
  const denominator=String(row.run||'').match(/^\/(-?\d+)$/)?.[1];
  if(rule.numberingUnknown)return true;
  if(rule.printRun)return Number(denominator)===(rule.serialDenominator||rule.printRun);

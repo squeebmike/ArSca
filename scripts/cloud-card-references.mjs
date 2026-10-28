@@ -114,7 +114,7 @@ export class CardReferenceArchive {
    const id=referenceImageKey(row.image),hold={reason:String(input.reason||'Source photo needs review').slice(0,300),heldAt:Date.now()};await this.ctx.storage.put('hold:'+id,hold);return reply({ok:true,hold});
   }
   if(request.method==='GET'&&url.pathname==='/family'){
-   const number=url.searchParams.get('number')||'';if(!/^[a-z0-9.-]{1,40}$/i.test(number))return new Response('Invalid number',{status:400});
+   const metadata=url.searchParams.get('metadata')==='1',number=url.searchParams.get('number')||'';if(!/^[a-z0-9.-]{1,40}$/i.test(number))return new Response('Invalid number',{status:400});
    const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000}),cards=[],audit=await this.ctx.storage.get('audit'),archived=!!(await this.ctx.storage.get('meta'));
    if(audit?.phase==='metadata')return reply({cards:[],archived});
    for(const row of rows.values()){
@@ -123,10 +123,12 @@ export class CardReferenceArchive {
     // This uses only the stored family and immutable publisher metadata.
     // Image health, ambiguity, duplicates and owner holds still gate display.
     if(check?.flags?.some(flag=>['unmapped_source_set','no_exact_checklist_match','ambiguous_checklist_match'].includes(flag))&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
-    if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.length||check.matches.length!==1||!id)continue;
+    if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.some(flag=>!metadata||!['missing_photo','invalid_image_host'].includes(flag))||check.matches.length!==1)continue;
+    if(metadata)cards.push({...row,image:null,validation:'automatically_matched',visuallyReviewed:false});
+    if(!id)continue;
     const health=await this.ctx.storage.get('health:'+id);if(!health?.ok||Date.now()-health.checkedAt>7*86400000||await this.ctx.storage.get('hold:'+id))continue;
     const usage=await this.ctx.storage.list({prefix:'usage:'+id+':',limit:2});if(usage.size!==1)continue;
-    cards.push({...row,validation:'automatically_matched',imageCheckedAt:health.checkedAt,visuallyReviewed:false});
+    if(metadata)cards.pop();cards.push({...row,validation:'automatically_matched',imageCheckedAt:health.checkedAt,visuallyReviewed:false});
    }
    return reply({cards,archived});
   }
@@ -232,7 +234,7 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
  }
  return deps.json({error:'Not found'},404);
 }
-export async function cloudReferenceFamily(env,consoleId,number){
+export async function cloudReferenceFamily(env,consoleId,number,metadata=false){
  if(!env.CARD_REFERENCE_ARCHIVE||!number)return {cards:[],archived:false};
- try{const target=new URL('https://archive.internal/family');target.searchParams.set('number',number);const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));const r=await stub.fetch(target.href,{signal:AbortSignal.timeout(2500)});return r.ok?await r.json():{cards:[],archived:true};}catch{return {cards:[],archived:true};}
+ try{const target=new URL('https://archive.internal/family');target.searchParams.set('number',number);if(metadata)target.searchParams.set('metadata','1');const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));const r=await stub.fetch(target.href,{signal:AbortSignal.timeout(2500)});return r.ok?await r.json():{cards:[],archived:true};}catch{return {cards:[],archived:true};}
 }
