@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {CardReferenceArchive,normalizeCloudReference} from '../scripts/cloud-card-references.mjs';
 import {sportsReferenceImage} from '../scripts/sports-reference-images.mjs';
+import {handleBaseballCatalog} from '../scripts/baseball-catalog-pages.mjs';
 import {referenceImageKey} from '../scripts/reference-validation.mjs';
 import {IMAGE_REFRESH_COORDINATOR,parseImageRefreshFamily,queueViewedReferenceImage,sameImageReference} from '../scripts/reference-image-refresh.mjs';
 const originalNow=Date.now;let now=1800000000000;Date.now=()=>now;
@@ -74,5 +75,20 @@ try{
   const diagnostic=await queueViewedReferenceImage(env,row);assert.equal(diagnostic.imageRefreshProviderStatus,testCase.status);assert.equal(diagnostic.imageRefreshProviderError,testCase.error);assert.equal((await stored()).image,'');assert.ok(!JSON.stringify(diagnostic).includes('private'));assert.ok(!JSON.stringify(diagnostic).includes('secret'));
   now=Math.max(now,await coordinator().ctx.storage.get('im-paused'))+1;source=html(row,photo);await coordinator().alarm();const recovered=await queueViewedReferenceImage(env,row);assert.equal(recovered.imageRefreshProviderStatus,200);assert.equal(recovered.imageRefreshProviderError,null,'healthy exact source refresh clears the previous enum failure');assert.equal((await stored()).image,photo);
  }
+ // Explicit status inspection travels through the real public reference route,
+ // but can only read the image coordinator's already persisted state.
+ const statusReference={consoleId:'baseball-cards-2026-bowman-chrome',productId:'12345',title:'Aaron Judge #66',cardNumber:'66',parallel:'',run:'',image:null,url:'https://www.sportscardspro.com/game/baseball-cards-2026-bowman-chrome/aaron-judge-66'};
+ const statusObject=coordinator(),statusStore=statusObject.ctx.storage,checkedAt=now-100,pausedUntil=now+3600000;
+ await statusStore.put('im-cache:12345',{...statusReference,image:'',checkedAt});await statusStore.put('im-demand:12345',{row:{...statusReference,image:''},retryAt:pausedUntil,attempts:1});await statusStore.put('im-paused',pausedUntil);await statusStore.put('im-last-provider-status',403);await statusStore.put('im-last-provider-error','source_http');
+ const originalPut=statusStore.put,originalDelete=statusStore.delete,originalSetAlarm=statusStore.setAlarm;let statusWrites=0,coordinatorReads=0,priceReads=0;
+ statusStore.put=statusStore.delete=statusStore.setAlarm=async()=>{statusWrites++;throw Error('status must not write');};
+ statusObject.env={...env,CARD_REFERENCE_ARCHIVE:{idFromName:id=>id,get(){throw Error('status must not call a source archive');}}};
+ const statusEnv={REFERENCE_IMAGE_REFRESH_ENABLED:'1',CARD_REFERENCE_ARCHIVE:{idFromName:id=>id,get:id=>({fetch:async input=>{const request=new Request(input),path=new URL(request.url).pathname;if(id===IMAGE_REFRESH_COORDINATOR){coordinatorReads++;return statusObject.fetch(request);}if(path==='/reference-price'){priceReads++;assert.equal((await request.json()).refresh,false);return Response.json({queued:false});}assert.equal(path,'/family');return Response.json({cards:[statusReference],archived:true});}})}};
+ const statusUrl=new URL('https://www.themanapocket.com/baseball/checklists/2026-bowman-chrome-baseball/cards/2026-bowman-chrome-baseball-66?reference=3&price-refresh=0&image-status=1'),statusDeps={escape:s=>String(s),listItems:async()=>{throw Error('no inventory');},available:()=>true};
+ const beforeInspection=fetches.length,statusResponse=await handleBaseballCatalog(new Request(statusUrl),statusEnv,statusUrl,statusDeps),statusData=(await statusResponse.json()).reference;
+ assert.equal(statusResponse.headers.get('Cache-Control'),'no-store');assert.equal(statusData.imageRefreshPending,true);assert.equal(statusData.imageRefreshCheckedAt,checkedAt);assert.equal(statusData.imageRefreshRetryAt,pausedUntil);assert.equal(statusData.imageRefreshProviderStatus,403);assert.equal(statusData.imageRefreshProviderError,'source_http');assert.equal(coordinatorReads,1);assert.equal(priceReads,1);assert.equal(statusWrites,0);assert.equal(fetches.length,beforeInspection);
+ statusUrl.searchParams.delete('image-status');await handleBaseballCatalog(new Request(statusUrl),statusEnv,statusUrl,statusDeps);assert.equal(coordinatorReads,1,'ordinary stored audits do not inspect or contact the image coordinator');
+ const mismatch=await queueViewedReferenceImage(statusEnv,{...statusReference,title:'Different #66'},{refresh:false,inspect:true});assert.equal(mismatch.imageRefreshCheckedAt,null);assert.equal(mismatch.imageRefreshPending,false);
+ statusStore.put=originalPut;statusStore.delete=originalDelete;statusStore.setAlarm=originalSetAlarm;assert.equal((await statusStore.list({prefix:'im-demand:'})).size,1,'status inspection does not create or consume demand');
  console.log('Demand image metadata: exact identity, audit isolation, dedupe, TTL, health/holds/duplicates, CAS and persistent pause passed');
 }finally{Date.now=originalNow;}

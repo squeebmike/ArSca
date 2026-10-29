@@ -34,7 +34,7 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
   const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card,set));if(matches.length===1){
    // Stored-reference audits and grid previews never enqueue provider work.
-   const reference=await queueViewedReferenceImage(env,matches[0],{refresh:deps.imageRefresh!==false&&deps.priceRefresh!==false&&!deps.requireArchiveRead&&!deps.archiveOnly});
+   const reference=await queueViewedReferenceImage(env,matches[0],{refresh:deps.imageRefresh!==false&&deps.priceRefresh!==false&&!deps.requireArchiveRead&&!deps.archiveOnly,inspect:deps.imageStatus===true&&deps.requireArchiveRead===true&&deps.priceRefresh===false});
    return {...await refreshedReferencePrices(env,reference,{refresh:deps.priceRefresh!==false}),source:'PriceCharting / SportsCardsPro',referenceOnly:true};
   }
  }

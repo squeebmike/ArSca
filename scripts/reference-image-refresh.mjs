@@ -29,16 +29,23 @@ export function parseImageRefreshFamily(html,consoleId){
 }
 function archive(env,consoleId){return env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));}
 async function internal(env,consoleId,path,data){try{const r=await archive(env,consoleId).fetch(new Request('https://archive.internal/'+path,{method:'POST',body:JSON.stringify(data),signal:AbortSignal.timeout(8000)}));if(!r.ok)throw Error();return await r.json();}catch{throw failure(path==='image-refresh-state'?'archive_state_unavailable':'archive_apply_unavailable');}}
-export async function queueViewedReferenceImage(env,reference,{refresh=true}={}){
- if(!refresh||env.REFERENCE_IMAGE_REFRESH_ENABLED!=='1'||!env.CARD_REFERENCE_ARCHIVE||!validImageReference(reference))return reference;
- try{const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(IMAGE_REFRESH_COORDINATOR));const r=await stub.fetch(new Request('https://archive.internal/image-refresh-demand',{method:'POST',body:JSON.stringify(reference)}));if(!r.ok)return reference;const state=await r.json();return {...reference,imageRefreshPending:!!state.queued,imageRefreshCheckedAt:state.checkedAt||null,imageRefreshRetryAt:state.retryAt||null,imageRefreshProviderStatus:state.providerStatus||null,imageRefreshProviderError:state.providerError||null};}catch{return reference;}
+export async function queueViewedReferenceImage(env,reference,{refresh=true,inspect=false}={}){
+ if((!inspect&&(!refresh||env.REFERENCE_IMAGE_REFRESH_ENABLED!=='1'))||!env.CARD_REFERENCE_ARCHIVE||!validImageReference(reference))return reference;
+ try{const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(IMAGE_REFRESH_COORDINATOR));const r=await stub.fetch(new Request('https://archive.internal/image-refresh-demand',{method:'POST',body:JSON.stringify({...reference,...(inspect?{refresh:false}:{})})}));if(!r.ok)return reference;const state=await r.json();return {...reference,imageRefreshPending:!!state.queued,imageRefreshCheckedAt:state.checkedAt||null,imageRefreshRetryAt:state.retryAt||null,imageRefreshProviderStatus:state.providerStatus||null,imageRefreshProviderError:state.providerError||null};}catch{return reference;}
 }
 export async function imageRefreshRequest(owner,request){
  if(new URL(request.url).pathname!=='/image-refresh-demand')return null;
- if(owner.env.REFERENCE_IMAGE_REFRESH_ENABLED!=='1')return Response.json({queued:false});
  if(request.method!=='POST')return new Response('Method not allowed',{status:405});
  let ref;try{const body=await request.text();if(body.length>4000)throw Error();ref=JSON.parse(body);}catch{return new Response('Invalid request',{status:400});}
  if(!validImageReference(ref))return new Response('Exact reference required',{status:400});
+ if(ref.refresh===false){
+  // Inspection is storage-only: no archive requests, writes, queue changes,
+  // alarm scheduling or upstream calls, even while the provider is paused.
+  const store=owner.ctx.storage,prior=await store.get('im-cache:'+ref.productId),pending=await store.get('im-demand:'+ref.productId),queued=!!pending&&sameImageReference(pending.row,ref),now=Date.now();
+  const retryAt=Math.max(Number(await store.get('im-paused')||0),queued?Number(pending.retryAt||0):0);
+  return Response.json({queued,checkedAt:sameImageReference(prior,ref)&&String(prior.image||'')===String(ref.image||'')?prior.checkedAt||null:null,retryAt:retryAt>now?retryAt:null,providerStatus:await store.get('im-last-provider-status')||null,providerError:await store.get('im-last-provider-error')||null});
+ }
+ if(owner.env.REFERENCE_IMAGE_REFRESH_ENABLED!=='1')return Response.json({queued:false});
  return owner.ctx.blockConcurrencyWhile(async()=>{
   const store=owner.ctx.storage,state=await internal(owner.env,ref.consoleId,'image-refresh-state',{expected:ref});
   const diagnostics={providerStatus:await store.get('im-last-provider-status')||null,providerError:await store.get('im-last-provider-error')||null};
