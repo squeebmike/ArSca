@@ -41,3 +41,5 @@ const deps={escape:s=>String(s),listItems:async()=>[],available:()=>true},html=d
 for(const g of groups)for(const c of g.cards){const u=new URL('https://www.themanapocket.com/baseball/checklists/'+set.id+'/cards/'+c.id+'?reference=3');const r=await handleBaseballSections(new Request(u),{},u,deps,[set],html,missing);assert.equal(r.status,200);assert.equal((await r.json()).reference,null,'uncollected references remain honestly unavailable');}
 assert.equal(new Set(baseballSectionSitemapPaths([set])).size,baseballSectionSitemapPaths([set]).length);
 console.log('2026 Five Star: 750 exact identities, 799 subjects, 650 nonbase routes, physical patch isolation, licensing and base serial rules passed');
+
+assert.equal(groups.find(g=>g.name==='Quotable').cards.length,25);for(const g of groups)for(const c of g.cards)assert.equal(referenceConsoles(set,c).includes('baseball-cards-2026-topps-five-star-quotable-autograph'),g.name==='Quotable','Quotable stays section scoped');

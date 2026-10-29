@@ -26,6 +26,18 @@ try{
  const old={...ref,referencePrices:{ungraded:1,currency:'USD'}};assert.deepEqual(await refreshedReferencePrices({},old),old,'missing coordinator keeps saved price');
  const binding={idFromName:name=>{assert.equal(name,'pricecharting-global-v1');return name;},get:()=>({fetch:r=>referencePriceRequest(owner,r)})};
  const enriched=await refreshedReferencePrices({CARD_REFERENCE_ARCHIVE:binding},{...old,image:'exact-saved-photo'});assert.equal(enriched.image,'exact-saved-photo');assert.equal(enriched.referencePrices.ungraded,12.34);
+ const stitches={productId:'14948731',title:'Byron Buxton #SS-BB',consoleId:'baseball-cards-2026-topps-five-star-stars-&-stitches-autograph'};
+ const stitchesData={...data,id:stitches.productId,'product-name':stitches.title,'console-name':'Baseball Cards 2026 Topps Five Star Stars & Stitches Autograph'};
+ assert.ok(priceProductIdentity(stitchesData,stitches));assert.ok(!priceProductIdentity({...stitchesData,'console-name':'Baseball Cards 2026 Topps Five Star Active Autograph'},stitches));
+ const beforeStitches=calls.length;
+ const stitchesAudit=await referencePriceRequest(owner,request({...stitches,refresh:false}));assert.equal(stitchesAudit.status,200);assert.equal((await stitchesAudit.json()).queued,false);
+ values.set('pc-cache:'+stitches.productId,{...stitches,checkedAt:now,referencePrices:{ungraded:42,currency:'USD'}});
+ const stitchesCached=await refreshedReferencePrices({CARD_REFERENCE_ARCHIVE:binding},{...stitches,image:'saved-stitches-photo'},{refresh:false});
+ assert.equal(stitchesCached.referencePrices.ungraded,42,'observed ampersand console reaches the shared verified cache');assert.equal(stitchesCached.image,'saved-stitches-photo');assert.equal(calls.length,beforeStitches,'read-only ampersand lookups do not fetch upstream');
+ for(const consoleId of [stitches.consoleId+'&evil',stitches.consoleId.replace('2026','2025'),'baseball-cards-2026-topps-five-star-arbitrary-&-autograph']){
+  assert.equal((await referencePriceRequest(owner,request({...stitches,consoleId}))).status,400,'ampersand exception is limited to the exact observed console');
+  const invalid={...stitches,consoleId};assert.equal(await refreshedReferencePrices({CARD_REFERENCE_ARCHIVE:{idFromName(){throw new Error('invalid console reached coordinator');}}},invalid),invalid);
+ }
  // Real concurrent callers exercise serialization and actual elapsed spacing,
  // rather than only asserting a persisted timestamp or mirroring the code.
  Date.now=originalNow;values.delete('pc-next-call');values.delete('pc-paused-until');calls=[];response=data;

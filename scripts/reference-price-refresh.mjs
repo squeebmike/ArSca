@@ -51,7 +51,9 @@ export async function refreshedReferencePrices(env,reference,{refresh=true}={}){
 }
 export function priceProductIdentity(data,ref){const name=String(data?.['console-name']||''),expected=/^(?:baseball|football|hockey|basketball)[ -]+cards[ -]+/i.test(name)?ref.consoleId:ref.consoleId.replace(/^(?:baseball|football|hockey|basketball)-cards-/,'');return String(data?.id)===ref.productId&&fold(data['product-name'])===fold(ref.title)&&fold(name)===fold(expected);}
 export function apiReferencePrices(data,now){const out={};for(const [field,key]of [['ungraded','loose-price'],['grade9','graded-price'],['psa10','manual-only-price']]){const cents=Number(data[key]);if(Number.isSafeInteger(cents)&&cents>0)out[field]=cents/100;}return Object.keys(out).length?{...out,currency:'USD',capturedAt:new Date(now).toISOString()}:null;}
-function validRef(r){return r&&/^\d{1,20}$/.test(r.productId||'')&&typeof r.title==='string'&&r.title.length<=350&&/^(baseball|football|hockey|basketball)-cards-[a-z0-9%-]+$/.test(r.consoleId||'');}
+// This observed provider console contains a literal ampersand in its path.
+const observedAmpersandConsole='baseball-cards-2026-topps-five-star-stars-&-stitches-autograph';
+function validRef(r){return r&&/^\d{1,20}$/.test(r.productId||'')&&typeof r.title==='string'&&r.title.length<=350&&(/^(baseball|football|hockey|basketball)-cards-[a-z0-9%-]+$/.test(r.consoleId||'')||r.consoleId===observedAmpersandConsole);}
 export async function referencePriceRequest(owner,request){
  const url=new URL(request.url);if(url.pathname!=='/reference-price')return null;
  if(request.method!=='POST')return reply({error:'Method not allowed'},405);
