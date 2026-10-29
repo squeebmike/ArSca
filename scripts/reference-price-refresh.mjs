@@ -24,13 +24,13 @@ async function upstream(owner,path,params,serverToken){
  const url=new URL(path,'https://www.pricecharting.com');
  for(const [key,value]of Object.entries(params))url.searchParams.set(key,String(value));url.searchParams.set('t',token);
  try{
-  const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(8000)});
-  await store.put('pc-last-provider-status',response.status);
+  const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(8000)});
+  await store.put('pc-last-provider-status',response.status);await store.delete('pc-last-provider-error');
   if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));return reply({error:'Price provider unavailable'},response.status);}
   const text=await response.text();if(text.length>2000000)return reply({error:'Price response too large'},502);
   try{const data=JSON.parse(text);if(data.status!=='error'&&text.length<100000)await store.put(cacheKey,{at:Date.now(),text});}catch{return reply({error:'Invalid price response'},502);}
   return new Response(text,{headers:{'Content-Type':'application/json'}});
- }catch{await store.put('pc-paused-until',Date.now()+60000);return reply({error:'Price provider unavailable'},502);}
+ }catch(error){await store.put('pc-last-provider-error',['TimeoutError','AbortError'].includes(error?.name)?'timeout':'network_failure');await store.put('pc-paused-until',Date.now()+60000);return reply({error:'Price provider unavailable'},502);}
 }
 export async function priceApiRequest(owner,request){
  if(request.method!=='POST')return reply({error:'Method not allowed'},405);
@@ -45,7 +45,7 @@ export async function refreshedReferencePrices(env,reference){
   const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(coordinatorName));
   const response=await stub.fetch(new Request('https://archive/reference-price',{method:'POST',body:JSON.stringify({productId:reference.productId,title:reference.title,consoleId:reference.consoleId})}));
   if(!response.ok)return reference;const cached=await response.json();
-  return {...reference,...(cached.referencePrices?{referencePrices:cached.referencePrices}:{}),priceCheckedAt:cached.checkedAt||null,priceRefreshPending:!!cached.queued,priceRefreshRetryAt:cached.retryAt||null,priceRefreshProviderStatus:cached.providerStatus||null};
+  return {...reference,...(cached.referencePrices?{referencePrices:cached.referencePrices}:{}),priceCheckedAt:cached.checkedAt||null,priceRefreshPending:!!cached.queued,priceRefreshRetryAt:cached.retryAt||null,priceRefreshProviderStatus:cached.providerStatus||null,priceRefreshProviderError:cached.providerError||null};
  }catch{return reference;}
 }
 export function priceProductIdentity(data,ref){const name=String(data?.['console-name']||''),expected=/^(?:baseball|football|hockey|basketball)[ -]+cards[ -]+/i.test(name)?ref.consoleId:ref.consoleId.replace(/^(?:baseball|football|hockey|basketball)-cards-/,'');return String(data?.id)===ref.productId&&fold(data['product-name'])===fold(ref.title)&&fold(name)===fold(expected);}
@@ -70,7 +70,7 @@ export async function referencePriceRequest(owner,request){
     const next=Math.max(now+1,Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0));const alarm=await store.getAlarm();if(!alarm||alarm>next)await store.setAlarm(next);
    }
   }
-  return reply({referencePrices:same?cache.referencePrices||null:null,checkedAt:same?cache.checkedAt:null,stale:!fresh,queued,retryAt:Number(await store.get('pc-paused-until')||0)>now?await store.get('pc-paused-until'):null,providerStatus:await store.get('pc-last-provider-status')||null});
+  return reply({referencePrices:same?cache.referencePrices||null:null,checkedAt:same?cache.checkedAt:null,stale:!fresh,queued,retryAt:Number(await store.get('pc-paused-until')||0)>now?await store.get('pc-paused-until'):null,providerStatus:await store.get('pc-last-provider-status')||null,providerError:await store.get('pc-last-provider-error')||null});
  });
 }
 export async function referencePriceAlarm(owner){
@@ -86,7 +86,7 @@ export async function referencePriceAlarm(owner){
    if(!response.ok){const pause=Math.max(Number(await store.get('pc-paused-until')||0),Date.now()+60000);await store.put('pc-paused-until',pause);await store.setAlarm(pause);return;}
    const data=await response.json();if(data.status!=='success'||!priceProductIdentity(data,ref)){const old=await store.get('pc-cache:'+ref.productId);await store.put('pc-cache:'+ref.productId,{...ref,checkedAt:Date.now(),referencePrices:old?.title===ref.title&&old?.consoleId===ref.consoleId?old.referencePrices:null,reason:'identity_or_provider_response_unverified'});await store.delete(key);}
    else{const old=await store.get('pc-cache:'+ref.productId),prices=apiReferencePrices(data,Date.now()),same=old?.title===ref.title&&old?.consoleId===ref.consoleId;await store.put('pc-cache:'+ref.productId,{...ref,checkedAt:Date.now(),referencePrices:prices||(same?old.referencePrices:null)||null});await store.delete(key);}
-  }catch{await store.put('pc-paused-until',Date.now()+60000);}
+  }catch{await store.put('pc-last-provider-error','coordinator_failure');await store.put('pc-paused-until',Date.now()+60000);}
   if((await store.list({prefix:'pc-demand:',limit:1})).size)await store.setAlarm(Math.max(Date.now()+GAP,Number(await store.get('pc-paused-until')||0)));
  });return true;
 }
