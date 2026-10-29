@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.1-big-league-inserts';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.2-big-league-inserts';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
@@ -13,6 +13,11 @@ const sets=[...baseballSets,...footballSets],indexes=new WeakMap();let sourceInd
 export function referenceConsoles(set,card=null){
  if(['hockey','basketball'].includes(set.sport))return (set.providerConsoles||[]).filter(id=>validReferenceConsoleId(id)&&id.startsWith(set.sport+'-cards-'));
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
+ // Observed 2019 directories from the authorized Big League recovery.
+ if(set.id==='2019-topps-big-league-baseball'){
+  const sources={'Players Weekend Nicknames':'players%27-weekend-nicknames','Blast Offs':'blast-off','Star Caricature Reproductions':'star-caricature-reproductions','Wall Climbers':'wall-climbers'};
+  for(const [section,suffix] of Object.entries(sources))if(!card||card.section===section)ids.push('baseball-cards-2019-topps-big-league-'+suffix);
+ }
  // Observed 2020 provider directories collected by the authorized recovery.
  if(set.id==='2020-topps-big-league-baseball'){
   const sources={'Roll Call':'roll-call','Flipping Out':'flipping-out','Defensive Wizards':'defensive-wizards','Star Caricatures Reproductions':'star-caricature-reproductions'};
