@@ -3,6 +3,9 @@
 import {safeReferenceImage} from './reference-match.mjs';
 export const IMAGE_REFRESH_COORDINATOR='reference-image-global-v1';
 const DAY=86400000,GAP=1100,LIMIT=500,MAX_BYTES=2000000;
+const failure=(code,status)=>Object.assign(new Error(code),{code,...(status?{status}:{})});
+const errorCodes=new Set(['source_timeout','source_network','source_http','source_challenge','unexpected_source_response','unexpected_source_url','source_response_too_large','exact_identity_unavailable','archive_state_unavailable','archive_apply_unavailable']);
+const safeError=error=>errorCodes.has(error?.code)?error.code:'coordinator_failure';
 const identityFields=['consoleId','productId','url','title','cardNumber','parallel','run'];
 export function sameImageReference(a,b){return !!a&&!!b&&identityFields.every(k=>String(a[k]||'')===String(b[k]||''));}
 export function validImageReference(r){
@@ -13,8 +16,8 @@ export function validImageReference(r){
 const decode=s=>String(s||'').replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;/g,' ');
 const text=s=>decode(s.replace(/<[^>]+>/g,' ')).replace(/\s+/g,' ').trim();
 export function parseImageRefreshFamily(html,consoleId){
- if(html.length>MAX_BYTES)throw Error('Source response unavailable');
- if(/cf-chl-|captcha|verify you are human|just a moment/i.test(html))throw Object.assign(Error('Source response unavailable'),{status:403});
+ if(html.length>MAX_BYTES)throw failure('source_response_too_large');
+ if(/cf-chl-|captcha|verify you are human|just a moment/i.test(html))throw failure('source_challenge',403);
  const rows=[];
  for(const match of html.matchAll(/<tr\b[^>]*\bid="product-(\d+)"[^>]*>([\s\S]*?)<\/tr>/gi)){
   const cell=match[2].match(/<td\b[^>]*class="title"[^>]*>([\s\S]*?)<\/td>/i)?.[1]||'',a=cell.match(/<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);if(!a)continue;
@@ -25,10 +28,10 @@ export function parseImageRefreshFamily(html,consoleId){
  return rows;
 }
 function archive(env,consoleId){return env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));}
-async function internal(env,consoleId,path,data){const r=await archive(env,consoleId).fetch(new Request('https://archive.internal/'+path,{method:'POST',body:JSON.stringify(data),signal:AbortSignal.timeout(8000)}));if(!r.ok)throw Error('Stored image metadata unavailable');return r.json();}
+async function internal(env,consoleId,path,data){try{const r=await archive(env,consoleId).fetch(new Request('https://archive.internal/'+path,{method:'POST',body:JSON.stringify(data),signal:AbortSignal.timeout(8000)}));if(!r.ok)throw Error();return await r.json();}catch{throw failure(path==='image-refresh-state'?'archive_state_unavailable':'archive_apply_unavailable');}}
 export async function queueViewedReferenceImage(env,reference,{refresh=true}={}){
  if(!refresh||env.REFERENCE_IMAGE_REFRESH_ENABLED!=='1'||!env.CARD_REFERENCE_ARCHIVE||!validImageReference(reference))return reference;
- try{const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(IMAGE_REFRESH_COORDINATOR));const r=await stub.fetch(new Request('https://archive.internal/image-refresh-demand',{method:'POST',body:JSON.stringify(reference)}));if(!r.ok)return reference;const state=await r.json();return {...reference,imageRefreshPending:!!state.queued,imageRefreshCheckedAt:state.checkedAt||null,imageRefreshRetryAt:state.retryAt||null};}catch{return reference;}
+ try{const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(IMAGE_REFRESH_COORDINATOR));const r=await stub.fetch(new Request('https://archive.internal/image-refresh-demand',{method:'POST',body:JSON.stringify(reference)}));if(!r.ok)return reference;const state=await r.json();return {...reference,imageRefreshPending:!!state.queued,imageRefreshCheckedAt:state.checkedAt||null,imageRefreshRetryAt:state.retryAt||null,imageRefreshProviderStatus:state.providerStatus||null,imageRefreshProviderError:state.providerError||null};}catch{return reference;}
 }
 export async function imageRefreshRequest(owner,request){
  if(new URL(request.url).pathname!=='/image-refresh-demand')return null;
@@ -38,24 +41,28 @@ export async function imageRefreshRequest(owner,request){
  if(!validImageReference(ref))return new Response('Exact reference required',{status:400});
  return owner.ctx.blockConcurrencyWhile(async()=>{
   const store=owner.ctx.storage,state=await internal(owner.env,ref.consoleId,'image-refresh-state',{expected:ref});
-  if(!state.row||state.held)return Response.json({queued:false});
+  const diagnostics={providerStatus:await store.get('im-last-provider-status')||null,providerError:await store.get('im-last-provider-error')||null};
+  if(!state.row||state.held)return Response.json({queued:false,...diagnostics});
   const row=state.row,key='im-demand:'+row.productId,prior=await store.get('im-cache:'+row.productId),now=Date.now(),fresh=prior&&sameImageReference(prior,row)&&prior.image===row.image&&now-prior.checkedAt<(row.image?7*DAY:DAY);
   let queued=false;
   if(!fresh){const pending=await store.list({prefix:'im-demand:',limit:LIMIT});if(pending.has(key)||pending.size<LIMIT){await store.put('im-mode',true);if(!pending.has(key))await store.put(key,{row,attempts:0,retryAt:now});queued=true;const due=Math.max(now+1,Number(await store.get('im-next')||0),Number(await store.get('im-paused')||0));const alarm=await store.getAlarm();if(!alarm||alarm>due)await store.setAlarm(due);}}
-  return Response.json({queued,checkedAt:fresh?prior.checkedAt:null,retryAt:Number(await store.get('im-paused')||0)>now?await store.get('im-paused'):null});
+  const retryAt=Math.max(Number(await store.get('im-paused')||0),queued?Number((await store.get(key))?.retryAt||0):0);
+  return Response.json({queued,checkedAt:fresh?prior.checkedAt:null,retryAt:retryAt>now?retryAt:null,...diagnostics});
  });
 }
 async function fetchFamily(owner,row){
  const url=new URL('https://www.sportscardspro.com/console/'+row.consoleId);url.searchParams.set('model-number',row.cardNumber);
- const response=await (owner.env.REFERENCE_METADATA_FETCH||fetch)(url,{signal:AbortSignal.timeout(8000),redirect:'error',headers:{Accept:'text/html','User-Agent':'TheManaPocketReferenceImages/1.0 (+https://www.themanapocket.com)'}});
- if(!response.ok)throw Object.assign(Error('Source unavailable'),{status:response.status});
- if(response.url&&new URL(response.url).href!==url.href)throw Error('Unexpected source URL');
- if(!/text\/html/i.test(response.headers.get('Content-Type')||''))throw Error('Unexpected source response');
- if(Number(response.headers.get('Content-Length')||0)>MAX_BYTES)throw Error('Source response too large');
+ const store=owner.ctx.storage;await store.put('im-last-provider-status',null);await store.put('im-last-provider-error',null);
+ let response;try{response=await (owner.env.REFERENCE_METADATA_FETCH||fetch)(url,{signal:AbortSignal.timeout(8000),redirect:'manual',headers:{Accept:'text/html','User-Agent':'TheManaPocketReferenceImages/1.0 (+https://www.themanapocket.com)'}});}catch(error){throw failure(['TimeoutError','AbortError'].includes(error?.name)?'source_timeout':'source_network');}
+ await store.put('im-last-provider-status',response.status);
+ if(!response.ok)throw failure('source_http',response.status);
+ if(response.url&&new URL(response.url).href!==url.href)throw failure('unexpected_source_url');
+ if(!response.body||!/text\/html/i.test(response.headers.get('Content-Type')||''))throw failure('unexpected_source_response');
+ if(Number(response.headers.get('Content-Length')||0)>MAX_BYTES)throw failure('source_response_too_large');
  const reader=response.body.getReader(),decoder=new TextDecoder();let size=0,html='';
- try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BYTES)throw Error('Source response too large');html+=decoder.decode(value,{stream:true});}html+=decoder.decode();}finally{await reader.cancel().catch(()=>{});}
+ try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BYTES)throw failure('source_response_too_large');html+=decoder.decode(value,{stream:true});}html+=decoder.decode();}catch(error){if(errorCodes.has(error?.code))throw error;throw failure(['TimeoutError','AbortError'].includes(error?.name)?'source_timeout':'source_network');}finally{await reader.cancel().catch(()=>{});}
  const rows=parseImageRefreshFamily(html,row.consoleId),matches=rows.filter(r=>sameImageReference(r,row));
- if(matches.length!==1)throw Error('Exact source identity unavailable');
+ if(matches.length!==1)throw failure('exact_identity_unavailable');
  const candidate=matches[0];
  // Source families can reuse generic artwork before sibling rows are imported.
  // Apply the same ambiguity gate as archive reads before any first publication.
@@ -81,6 +88,7 @@ export async function imageRefreshAlarm(owner){
     await store.delete(key);
    }
   }catch(error){
+   await store.put('im-last-provider-error',safeError(error));
    const attempts=(demand.attempts||0)+1,retryAt=Date.now()+Math.min(6*3600000,60000*2**Math.min(attempts-1,8));
    await store.put(key,{...demand,attempts,retryAt});
    // Challenge, quota, and transport failures share a persistent host pause.

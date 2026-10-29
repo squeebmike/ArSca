@@ -9,7 +9,7 @@ const consoleId='baseball-cards-2026-topps',photo='https://storage.googleapis.co
 const row={consoleId,productId:'123',title:'Aaron Judge #1',cardNumber:'1',parallel:'',run:'',image:'',url:'https://www.sportscardspro.com/game/'+consoleId+'/aaron-judge-1'};
 const html=(r,image='')=>`<table><tr id="product-${r.productId}"><td class="title"><a href="${r.url}">${r.title}</a>${r.run?`<span class="list-print-run">${r.run}</span>`:''}</td><td><img src="${image||'/images/no-photo.png'}"></td></tr></table>`;
 let source=html(row,photo),fetches=[],healthOk=true;
-const objects=new Map(),env={REFERENCE_IMAGE_REFRESH_ENABLED:'1',REFERENCE_METADATA_FETCH:async url=>{fetches.push({at:now,url:String(url)});return source instanceof Response?source:new Response(source,{headers:{'Content-Type':'text/html'}});},REFERENCE_IMAGE_FETCH:async()=>healthOk?new Response(null,{headers:{'Content-Type':'image/jpeg'}}):new Response(null,{status:404})};
+const objects=new Map(),env={REFERENCE_IMAGE_REFRESH_ENABLED:'1',REFERENCE_METADATA_FETCH:async (url,options)=>{assert.equal(options.redirect,'manual','source redirects are observed without following them');fetches.push({at:now,url:String(url)});if(source instanceof Error)throw source;return source instanceof Response?source:new Response(source,{headers:{'Content-Type':'text/html'}});},REFERENCE_IMAGE_FETCH:async()=>healthOk?new Response(null,{headers:{'Content-Type':'image/jpeg'}}):new Response(null,{status:404})};
 env.CARD_REFERENCE_ARCHIVE={idFromName:id=>id,get:id=>{if(!objects.has(id)){const store=storage();let tail=Promise.resolve();objects.set(id,new CardReferenceArchive({storage:store,blockConcurrencyWhile(fn){const result=tail.then(fn);tail=result.catch(()=>{});return result;}},env));}return {fetch:(request,options)=>objects.get(id).fetch(new Request(request,options))};}};
 const archive=()=>{env.CARD_REFERENCE_ARCHIVE.get('console:'+consoleId);return objects.get('console:'+consoleId);};
 const coordinator=()=>objects.get(IMAGE_REFRESH_COORDINATOR);
@@ -61,5 +61,18 @@ try{
  await coordinator().alarm();const first=fetches.at(-1);await coordinator().alarm();assert.equal(fetches.at(-1),first,'another product waits for the shared start gate');now+=1100;await coordinator().alarm();assert.ok(fetches.at(-1).at-first.at>=1100);assert.equal((await archive().ctx.storage.get('row:aaron-judge-1-gold')).image,goldPhoto);
  now+=7*86400000+1;for(let i=0;i<500;i++)await coordinator().ctx.storage.put('im-demand:bounded-'+i,{row,attempts:0,retryAt:now});
  const bounded=await queueViewedReferenceImage(env,row);assert.equal(bounded.imageRefreshPending,false);assert.equal((await coordinator().ctx.storage.list({prefix:'im-demand:'})).size,500,'new views cannot grow the persisted queue past its bound');
+ for(const testCase of [
+  {source:new Error('secret token https://private.example'),status:null,error:'source_network'},
+  {source:new DOMException('private timeout details','TimeoutError'),status:null,error:'source_timeout'},
+  {source:new Response('private challenge content',{status:403}),status:403,error:'source_http'},
+  {source:new Response(null,{status:302,headers:{Location:'https://private.example'}}),status:302,error:'source_http'},
+  {source:html({...row,title:'Wrong Player #1'},photo),status:200,error:'exact_identity_unavailable'},
+  {source:new Response('not HTML',{headers:{'Content-Type':'application/json'}}),status:200,error:'unexpected_source_response'},
+  {source:'Just a moment: verify you are human',status:200,error:'source_challenge'},
+ ]){
+  objects.clear();await post('batch',{cards:[row]});await archive().alarm();source=testCase.source;await queueViewedReferenceImage(env,row);await coordinator().alarm();
+  const diagnostic=await queueViewedReferenceImage(env,row);assert.equal(diagnostic.imageRefreshProviderStatus,testCase.status);assert.equal(diagnostic.imageRefreshProviderError,testCase.error);assert.equal((await stored()).image,'');assert.ok(!JSON.stringify(diagnostic).includes('private'));assert.ok(!JSON.stringify(diagnostic).includes('secret'));
+  now=Math.max(now,await coordinator().ctx.storage.get('im-paused'))+1;source=html(row,photo);await coordinator().alarm();const recovered=await queueViewedReferenceImage(env,row);assert.equal(recovered.imageRefreshProviderStatus,200);assert.equal(recovered.imageRefreshProviderError,null,'healthy exact source refresh clears the previous enum failure');assert.equal((await stored()).image,photo);
+ }
  console.log('Demand image metadata: exact identity, audit isolation, dedupe, TTL, health/holds/duplicates, CAS and persistent pause passed');
 }finally{Date.now=originalNow;}
