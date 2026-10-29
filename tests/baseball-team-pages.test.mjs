@@ -6,8 +6,9 @@ const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').rep
 let page,inventory=[],loads=0;
 const deps={escape,slug:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>{loads++;return inventory;},shell:p=>{page=p;return JSON.stringify({title:p.title,canonical:p.canonicalPath,noindex:p.robotsNoindex,schema:p.jsonLd})+p.bodyHtml;}};
 const get=path=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path),{},new URL('https://www.themanapocket.com'+path),deps);
-const teams=baseballTeams(baseballSets);assert.equal(teams.length,42);
-const names=new Set(teams.map(t=>t.name));assert.equal(names.size,42);
+const teams=baseballTeams(baseballSets);assert.equal(teams.length,43);
+const names=new Set(teams.map(t=>t.name));assert.equal(names.size,43);
+assert(names.has('Washington Senators'),'official Five Star Walter Johnson base card adds its printed historical team');
 const home=await(await get('/baseball')).text();
 const xml=await(await get('/sitemap-baseball.xml?part=1')).text();
 for(const team of teams){
