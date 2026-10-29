@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.19-five-star-quotable-source';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.20-five-star-physical-sources';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&(value==='baseball-cards-2026-topps-five-star-stars-&-stitches-autograph'||/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value));}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
@@ -15,6 +15,8 @@ export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
  // Observed through the normal provider search and verified source pages.
  if(set.id==='2026-topps-five-star-baseball'){
+  const physicalSources={'Rookie Cap Patch Autographs Jackie Robinson Day Mlb Logo':'rookie-cap-patch-autograph-mlb-logo','Rookie Cap Patch Autographs Jackie Robinson Day Side Logo':'rookie-cap-patch-autograph-side-logo','Award Winners Autograph Relics':'award-winner-autograph-relic','Award Winners Autograph Relics Image Variation':'award-winner-autograph-relic'};
+  for(const [section,suffix]of Object.entries(physicalSources))if(!card||card.section===section)ids.push('baseball-cards-2026-topps-five-star-'+suffix);
   // Observed mixed provider console: DPA dual patches plus all 57 FSCS cuts; exact identity is still required.
   for(const [section,suffix]of [['Five Star Active Autographs','active-autograph'],['Five Star Retired Autographs','retired-autograph'],['Five Star Autographed Jumbo Prime Cards','jumbo-prime-autograph'],['Five Star Quintuple Relic Autographs','quintuple-relic-autograph'],['Five Star Dual Autograph Patch Cards','dual-autograph-patch'],['Five Star Cut Signatures','dual-autograph-patch'],['Five Star Fabric','fabric-autograph'],['Apex Autographs','apex-autograph'],['Leaderboard Legend Autographs','leaderboard-legend-autograph'],['Five Star Silver Signatures','silver-signature'],['Five Star Golden Graphs','golden-graphs'],['Five Tool Phenom Autographs','five-tool-phenom-autograph'],['Stars And Stitches Autographs','stars-&-stitches-autograph'],['Baseball Royalty','royalty-autograph'],['Five Star Dual Autographs','dual-autograph'],['Five Star Triple Autographs','triple-autograph'],['Quotable','quotable-autograph']])if(!card||card.section===section)ids.push('baseball-cards-2026-topps-five-star-'+suffix);
  }

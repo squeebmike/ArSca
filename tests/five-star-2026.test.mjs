@@ -5,6 +5,7 @@ import {checklistPublicationProblems} from '../scripts/topps/public-checklist-po
 import {sectionsForSet,baseballSectionSitemapPaths,handleBaseballSections} from '../scripts/baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard,parallelPrograms,cardNumberingLabel} from '../scripts/sports-parallels.mjs';
 import {referenceConsoles,referenceMetadataCheck,validReferenceConsoleId} from '../scripts/reference-validation.mjs';
+import {referenceIdentityMatches} from '../scripts/reference-match.mjs';
 const set=fiveStar2026Sets[0],source=fiveStar2026Sections[0],groups=sectionsForSet(set),all=[...set.cards,...groups.flatMap(g=>g.cards)];
 assert(baseballSets.includes(set));assert.deepEqual(checklistPublicationProblems(set,set),[]);assert.equal(set.releaseDate,'2026-10-28');assert.deepEqual(set.unissuedNumbers,[]);assert.equal(source.sourceSha256,set.sourceSha256);
 assert.equal(set.cards.length,100);assert.equal(groups.length,22);assert.equal(all.length,750);assert.equal(new Set(all.map(c=>c.id)).size,750);assert.equal(all.reduce((n,c)=>n+c.subjects.length,0),799);
@@ -43,3 +44,25 @@ assert.equal(new Set(baseballSectionSitemapPaths([set])).size,baseballSectionSit
 console.log('2026 Five Star: 750 exact identities, 799 subjects, 650 nonbase routes, physical patch isolation, licensing and base serial rules passed');
 
 assert.equal(groups.find(g=>g.name==='Quotable').cards.length,25);for(const g of groups)for(const c of g.cards)assert.equal(referenceConsoles(set,c).includes('baseball-cards-2026-topps-five-star-quotable-autograph'),g.name==='Quotable','Quotable stays section scoped');
+const physicalCases=[
+ [logo,'rookie-cap-patch-autograph-mlb-logo','Jackie Robinson Day','/1'],
+ [side,'rookie-cap-patch-autograph-side-logo','Jackie Robinson Day','/1'],
+ [groups.find(g=>g.id==='award-winners-autograph-relics'),'award-winner-autograph-relic','','/10'],
+ [groups.find(g=>g.id==='award-winners-autograph-relics-image-variation'),'award-winner-autograph-relic','Image Variation','/1']
+];
+for(const [group,suffix,finish,run]of physicalCases){
+ const consoleId='baseball-cards-2026-topps-five-star-'+suffix;
+ for(const g of groups)for(const c of g.cards)assert.equal(referenceConsoles(set,c).includes(consoleId),suffix==='award-winner-autograph-relic'?g.name.startsWith('Award Winners Autograph Relics'):g.name===group.name,'physical source stays within its observed official families');
+ for(const card of group.cards){
+  const row={consoleId,title:card.player+(finish?' ['+finish+']':'')+' #'+card.cardNumber,player:card.player,cardNumber:card.cardNumber,parallel:finish,run,image:'',url:'https://www.sportscardspro.com/game/'+consoleId+'/observed-card'};
+  assert(referenceIdentityMatches(row,card,set));
+  const checked=referenceMetadataCheck(row);assert.equal(checked.matches.length,1);assert(checked.matches[0].path.endsWith('/'+card.id));
+  for(const other of physicalCases.flatMap(([g])=>g.cards).filter(c=>c.id!==card.id))assert(!referenceIdentityMatches(row,other,set),'physical labels cannot leak to another logo, occasion, subject or image variation');
+  assert(!referenceIdentityMatches({...row,run:run==='/1'?'/10':'/1'},card,set),'physical serial run must agree');
+  assert(!referenceIdentityMatches({...row,run:''},card,set),'physical serial run must be explicit');
+  for(const wrong of finish==='Jackie Robinson Day'?['','Armed Forces Weekend','Independence Day','Mothers Day','Fathers Day']:finish?['','Ruby']:['Image Variation','Ruby']){
+   const changed={...row,title:card.player+(wrong?' ['+wrong+']':'')+' #'+card.cardNumber,parallel:wrong};
+   assert(!referenceIdentityMatches(changed,card,set),'missing or other physical finish is rejected');
+  }
+ }
+}

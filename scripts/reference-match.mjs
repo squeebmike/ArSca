@@ -7,6 +7,17 @@ export function referenceNeedsFinish(set,card){return !card.parallelRule&&!!set.
 export function referenceIdentityMatches(row,card,set){
  const m=String(row.title||'').match(/^(.*?)\s*(?:\[([^\]]+)\])?\s*#([^\s]+)\s*$/),rule=card.parallelRule,number=String(card.cardNumber);
  if(!m||!referenceCardNames(card).some(name=>fold(m[1])===fold(name))||m[3]!==number)return false;
+ // These observed consoles combine distinct physical programs under shared
+ // numbers. Require the printed occasion/variation and its exact serial run.
+ if(set?.id==='2026-topps-five-star-baseball'){
+  const physical={
+   'Rookie Cap Patch Autographs Jackie Robinson Day Mlb Logo':['rookie-cap-patch-autograph-mlb-logo','jackie robinson day','/1'],
+   'Rookie Cap Patch Autographs Jackie Robinson Day Side Logo':['rookie-cap-patch-autograph-side-logo','jackie robinson day','/1'],
+   'Award Winners Autograph Relics':['award-winner-autograph-relic','','/10'],
+   'Award Winners Autograph Relics Image Variation':['award-winner-autograph-relic','image variation','/1']
+  }[card.section];
+  if(physical)return !rule&&row.consoleId==='baseball-cards-2026-topps-five-star-'+physical[0]&&fold(m[2])===physical[1]&&row.run===physical[2];
+ }
  if(!rule){
   if(!card.section||card.section==='Base'){
    if(m[2])return false;const program=set?cardParallelProgram(set,card):null;
