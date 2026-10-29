@@ -119,6 +119,7 @@ on:
       - scripts/topps/big-league-2019-sections.mjs
       - scripts/topps/big-league-2021-sections.mjs
       - scripts/topps/big-league-2023-sections.mjs
+      - scripts/topps/big-league-2024-sections.mjs
       - scripts/upper-deck-series-2-seed.mjs
       - scripts/upper-deck-extended-seed.mjs
       - scripts/topps-basketball-2025-seed.mjs
