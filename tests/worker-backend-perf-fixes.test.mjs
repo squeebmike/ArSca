@@ -22,8 +22,10 @@ console.log('PriceCharting pcFetch caching contract checks passed');
 
 // ── Functional: reimplement the parallelized batch-lookup shape and verify
 // concurrent execution ordering + null-filtering semantics ──
+const startedIds = [], releases = [];
 async function fakeJustFetch(id, shouldFail){
-  await new Promise(resolve => setTimeout(resolve, id === 'slow' ? 30 : 5));
+  startedIds.push(id);
+  await new Promise(resolve => releases.push(resolve));
   if(shouldFail) throw new Error('not found');
   return { card: { id, name: 'Card ' + id } };
 }
@@ -37,13 +39,10 @@ async function runBatch(ids){
   return results.filter(Boolean);
 }
 
-const started = Date.now();
-const out = await runBatch(['a', 'slow', 'b', 'missing']);
-const elapsed = Date.now() - started;
+const pending = runBatch(['a', 'slow', 'b', 'missing']);
+// All requests must start before any finishes; no scheduler timing assumptions.
+assert.deepEqual(startedIds, ['a', 'slow', 'b', 'missing']);
+for (const release of releases) release();
+const out = await pending;
 assert.deepEqual(out.map(c => c.id), ['a', 'slow', 'b'], 'the missing card must be filtered out while the others succeed');
-// A sequential version of this batch would take >= 5+30+5+5 = 45ms; running
-// concurrently should finish close to the slowest single call (~30ms), not
-// the sum of all four.
-assert.ok(elapsed < 45, `parallel batch lookups took ${elapsed}ms -- expected well under the ~45ms a sequential loop would take`);
-
 console.log('Batch parallelization functional checks passed');
