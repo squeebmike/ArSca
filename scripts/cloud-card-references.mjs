@@ -4,6 +4,7 @@
 import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenceImage,validReferenceConsoleId,REFERENCE_AUDIT_VERSION,REFERENCE_SOURCE_MAPPING_VERSION} from './reference-validation.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 import {coverageArchiveRequest,coverageAlarm} from './reference-coverage.mjs';
+import {priceApiRequest,referencePriceRequest,referencePriceAlarm} from './reference-price-refresh.mjs';
 // A few photographed serial stamps have been checked by hand. Reuse that
 // evidence only for the identical source URL, title and photo; never infer a
 // denominator just from a finish name, or overwrite a conflicting capture.
@@ -46,6 +47,8 @@ export class CardReferenceArchive {
  constructor(ctx,env){this.ctx=ctx;this.env=env;}
  async fetch(request){
   const url=new URL(request.url);
+  if(url.pathname==='/price-api')return priceApiRequest(this,request);
+  if(url.pathname==='/reference-price')return referencePriceRequest(this,request);
   if(url.pathname.startsWith('/coverage-')){const response=await coverageArchiveRequest(this,request);if(response)return response;}
   if(request.method==='POST'&&url.pathname==='/batch'){
    const text=await request.text();if(text.length>512000)return new Response('Too large',{status:413});
@@ -145,6 +148,7 @@ export class CardReferenceArchive {
   return new Response('Not found',{status:404});
  }
  async alarm(){
+  if(await referencePriceAlarm(this))return;
   if(await coverageAlarm(this))return;
   const state=await this.ctx.storage.get('audit');
   if(state?.running){

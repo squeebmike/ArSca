@@ -4,6 +4,7 @@ import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 import {cloudReferenceFamily} from './cloud-card-references.mjs';
 import {referenceConsoles} from './reference-validation.mjs';
+import {refreshedReferencePrices} from './reference-price-refresh.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
 const slug=s=>fold(s).replaceAll(' ','-');
 const decode=s=>String(s||'').replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;/g,' ');
@@ -29,7 +30,7 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
   const family=await cloudReferenceFamily(env,id,String(card.cardNumber),true),cloud=family.cards||[];archived ||= family.archived;
   // A shared photo across different finishes is not proof of the printing.
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
-  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card));if(matches.length===1)return {...matches[0],source:'PriceCharting / SportsCardsPro',referenceOnly:true};
+  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card));if(matches.length===1)return {...await refreshedReferencePrices(env,matches[0]),source:'PriceCharting / SportsCardsPro',referenceOnly:true};
  }
  // An archived collection's holds also govern legacy source-page fallbacks.
  // An unchecked or rejected photo must not reappear from that older cache.
@@ -59,5 +60,6 @@ export function referenceImageHtml(image,label,esc){return '<span class="mp-refe
 export function referenceDetailsHtml(reference,esc){
  if(!reference?.url)return '';
  const prices=reference.referencePrices||{},field=['ungraded','grade9','psa10'].find(k=>prices.currency==='USD'&&Number.isFinite(prices[k])&&prices[k]>0),labels={ungraded:'Ungraded',grade9:'Grade 9',psa10:'PSA 10'};
- return '<small><a href="'+esc(reference.url)+'" target="_blank" rel="noopener">PriceCharting reference</a> · Not a copy for sale.</small>'+(field?'<small>PriceCharting estimate · '+labels[field]+'</small><strong>$'+prices[field].toFixed(2)+' USD</strong><small>Estimate only; condition matters. Excludes shipping.</small>':'<small>Estimate unavailable</small>');
+ const captured=Number.isFinite(Date.parse(prices.capturedAt))?'<small>Price captured '+esc(new Date(prices.capturedAt).toISOString().slice(0,10))+'</small>':'';
+ return '<small><a href="'+esc(reference.url)+'" target="_blank" rel="noopener">PriceCharting reference</a> · Not a copy for sale.</small>'+(field?'<small>PriceCharting estimate · '+labels[field]+'</small><strong>$'+prices[field].toFixed(2)+' USD</strong>'+captured+'<small>Estimate only; condition matters. Excludes shipping.</small>':'<small>Estimate unavailable</small>');
 }

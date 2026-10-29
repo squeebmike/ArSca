@@ -15,8 +15,8 @@ console.log('JustTCG batch parallelization contract checks passed');
 // ── Contract: pcFetch is edge-cached like the other PriceCharting lookups in
 // this file, matching the same cf:{cacheTtl,...} shape used nearby ──
 const pcFetchSrc = worker.slice(worker.indexOf('function pcFetch(path, params = {}) {'), worker.indexOf('const comicPcQuery ='));
-assert.match(pcFetchSrc, /cf: \{ cacheTtl: 300, cacheEverything: false \}/, 'pcFetch must set a Cloudflare edge cache TTL on its upstream fetch');
-assert.match(pcFetchSrc, /const res = await fetch\(pcUrl\(path\) \+ '\?' \+ qs\.toString\(\), \{ headers: \{ 'Accept': 'application\/json' \}, cf: \{ cacheTtl: 300, cacheEverything: false \} \}\);/, 'the cf option must be attached to the actual upstream request, not a separate no-op call');
+assert.match(pcFetchSrc, /const res = await coordinatedPriceFetch\(env,path,params\)/, 'staff lookups must share the persistent API coordinator with public refresh');
+assert.doesNotMatch(pcFetchSrc, /await fetch\(/, 'staff callers cannot bypass the shared rate limit with a direct provider request');
 
 console.log('PriceCharting pcFetch caching contract checks passed');
 

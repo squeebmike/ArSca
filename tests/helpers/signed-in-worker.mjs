@@ -4,7 +4,10 @@
 // answers that check (any token is a store owner) and passes the rest on.
 export const STAFF_STORE = '0f9dd4bc-42a7-487e-a972-2905d24513e9';
 export const staffHeaders = (extra = {}) => ({ Authorization: 'Bearer staff-test', 'X-Store-Id': STAFF_STORE, ...extra });
-export const withSupabase = (env = {}) => ({ SUPABASE_URL: 'https://database.example', SUPABASE_SERVICE_ROLE_KEY: 'test-only', ...env });
+// Route fixtures forward the private coordinator request to their mocked fetch.
+// The real persistent rate/cache behavior is tested in reference-price-refresh.
+const priceCoordinatorFixture=()=>({idFromName:name=>name,get:()=>({async fetch(request){const {path,params,token}=await request.json();const url=new URL(path,'https://www.pricecharting.com');for(const [key,value]of Object.entries(params))url.searchParams.set(key,value);url.searchParams.set('t',token);return globalThis.fetch(url.href);}})});
+export const withSupabase = (env = {}) => ({ SUPABASE_URL: 'https://database.example', SUPABASE_SERVICE_ROLE_KEY: 'test-only', ...((env.PRICECHARTING_TOKEN||env.PRICECHARTING_API_KEY)?{CARD_REFERENCE_ARCHIVE:priceCoordinatorFixture()}:{}), ...env });
 export function answeringStaffLogin(fetchImpl) {
   return async (input, init) => {
     const url = String(input?.url || input);

@@ -66,6 +66,7 @@ on:
       - scripts/reference-card-aliases.mjs
       - scripts/reference-validation.mjs
       - scripts/reference-coverage.mjs
+      - scripts/reference-price-refresh.mjs
       - tests/item-seo-pages.test.mjs
       - scripts/reference-set-cache.mjs
       - scripts/collection-tools.mjs

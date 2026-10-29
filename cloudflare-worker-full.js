@@ -1,5 +1,6 @@
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
+import {coordinatedPriceFetch} from './scripts/reference-price-refresh.mjs';
 import {collectorPageStyles,setPageHeader} from './scripts/collector-page-ui.mjs';
 import {handlePocketGuides,pocketGuidePaths} from './scripts/pocket-guides.mjs';
 import {cachedPublicCatalog} from './scripts/public-catalog-cache.mjs';
@@ -77,7 +78,8 @@ import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
 import { handleDailyTasksRequest } from './scripts/daily-tasks.mjs';
 
-// Per-isolate rate limiter for PriceCharting API (no KV needed). _pcQueueTail
+// Local pacing also keeps staff batches orderly; every API call now passes
+// through the persistent account-wide coordinator. _pcQueueTail
 // serializes the check-and-update of _pcLastCall itself so concurrent callers
 // (e.g. Promise.all'd barcode candidates, or overlapping requests in the same
 // isolate) can't both read a stale "time since last call" and fire together --
@@ -10523,10 +10525,7 @@ async function routeRequest(request, env, ctx) {
         const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
         if (pcToken) {
           try {
-            const pcRes = await fetch(`https://www.pricecharting.com/api/product?id=${encodeURIComponent(scpId)}&t=${encodeURIComponent(pcToken)}`, {
-              headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' },
-              cf: { cacheTtl: 7200 },
-            });
+            const pcRes = await coordinatedPriceFetch(env,'/api/product',{id:scpId});
             if (pcRes.ok) {
               const pcData = await pcRes.json().catch(() => null);
               const rawImg = pcData?.['image-url'] || pcData?.imageUrl || pcData?.image || '';
@@ -10677,7 +10676,7 @@ async function routeRequest(request, env, ctx) {
         if (pcToken) {
           try {
             const q = `${words(productSlug)} ${words(consoleSlug).replace(/\bcards?\b/g, ' ')}`.replace(/\s+/g, ' ').trim().slice(0, 200);
-            const searchRes = await fetch(`https://www.pricecharting.com/api/products?q=${encodeURIComponent(q)}&t=${encodeURIComponent(pcToken)}`, { headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' }, cf: { cacheTtl: 7200 } });
+            const searchRes = await coordinatedPriceFetch(env,'/api/products',{q});
             if (searchRes.ok) {
               const found = await searchRes.json().catch(() => null);
               const hit = (found?.products || []).find(p => norm(p['console-name']) === norm(consoleSlug) && norm(p['product-name']) === norm(productSlug));
@@ -10690,10 +10689,7 @@ async function routeRequest(request, env, ctx) {
         const pcToken = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
         if (pcToken) {
           try {
-            const pcRes = await fetch(`https://www.pricecharting.com/api/product?id=${encodeURIComponent(priceChartingId)}&t=${encodeURIComponent(pcToken)}`, {
-              headers: { 'Accept': 'application/json', 'User-Agent': 'Walk-Off Sports Cards Dealer App/2026' },
-              cf: { cacheTtl: 7200 },
-            });
+            const pcRes = await coordinatedPriceFetch(env,'/api/product',{id:priceChartingId});
             if (pcRes.ok) {
               const pcData = await pcRes.json().catch(() => null);
               if (pcData) {
@@ -14832,7 +14828,6 @@ async function routeRequest(request, env, ctx) {
         headers: { 'Accept': 'text/csv,*/*' },
         signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
       });
-      const pcUrl = path => 'https://www.pricecharting.com' + path;
       const pcImageUrl = p => {
         const raw = p['image-url'] || p.imageUrl || p.image || p.coverUrl || p.thumbnail || p['box-art-url'] || p['image'] || '';
         if (raw) {
@@ -14979,8 +14974,7 @@ async function routeRequest(request, env, ctx) {
         return 'ungraded';
       };
       function pcFetch(path, params = {}) {
-        const qs = new URLSearchParams({ t: token, ...params });
-        // In-process rate limiter — no KV needed, good enough per isolate.
+        // Local batch ordering, in addition to the shared persistent rate gate.
         // Each call chains onto the shared _pcQueueTail so the "how long since
         // the last call" check and the _pcLastCall update happen atomically in
         // turn, even when multiple callers invoke pcFetch concurrently -- a
@@ -14990,11 +14984,7 @@ async function routeRequest(request, env, ctx) {
           const wait = _pcLastCall > 0 ? Math.max(0, 1100 - (Date.now() - _pcLastCall)) : 0;
           if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
           _pcLastCall = Date.now();
-          // Edge-cached like the other PriceCharting lookups in this file
-          // (see the image-lookup calls above) -- without this, every repeat
-          // lookup of the same card by any staff member paid the full
-          // ~1.1s rate-limit pace again instead of being served from cache.
-          const res = await fetch(pcUrl(path) + '?' + qs.toString(), { headers: { 'Accept': 'application/json' }, cf: { cacheTtl: 300, cacheEverything: false } });
+          const res = await coordinatedPriceFetch(env,path,params);
           const text = await res.text();
           let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
           if (!res.ok || data.status === 'error') throw new Error(data['error-message'] || data.error || 'PriceCharting ' + res.status);
@@ -18999,8 +18989,8 @@ async function routeRequest(request, env, ctx) {
         const token = env.PRICECHARTING_TOKEN || env.PRICECHARTING_API_KEY;
         if (!token) return json({ ok: false, error: 'PRICECHARTING_TOKEN not set' }, 501);
 
-        const q = encodeURIComponent(`${card.player} ${setData.set}`);
-        const pcRes = await fetch(`https://www.pricecharting.com/api/products?q=${q}&status=price&token=${token}`);
+        const q = `${card.player} ${setData.set}`;
+        const pcRes = await coordinatedPriceFetch(env,'/api/products',{q,status:'price'});
         if (!pcRes.ok) return json({ ok: false, error: 'PriceCharting error' }, 502);
         const pcData = await pcRes.json();
         const products = (pcData.products || []).slice(0, 5);
