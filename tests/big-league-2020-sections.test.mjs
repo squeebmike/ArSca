@@ -1,3 +1,4 @@
+import {referenceConsoles} from '../scripts/reference-validation.mjs';
 import assert from 'node:assert/strict';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {bigLeague2020Sections} from '../scripts/topps/big-league-2020-sections.mjs';
@@ -11,3 +12,5 @@ for(const g of groups){assert.equal(new Set(g.cards.map(c=>c.cardNumber)).size,g
 assert.equal(groups[0].cards[0].player,'Ronald Acuña Jr.');
 assert.equal(groups[1].cards.at(-1).cardNumber,'FO-15');assert.equal(groups[1].cards.at(-1).player,'Willson Contreras');
 console.log('2020 Big League: 146 official insert/autograph identities, 56 autos, source provenance and sitemap discovery passed');
+
+for(const [i,suffix] of [[0,'roll-call'],[1,'flipping-out'],[2,'star-caricature-reproductions'],[3,'defensive-wizards']]){const id='baseball-cards-2020-topps-big-league-'+suffix;assert(referenceConsoles(set,groups[i].cards[0]).includes(id));assert(!referenceConsoles(set,set.cards[0]).includes(id));assert(!referenceConsoles(set,groups[4].cards[0]).includes(id));}
