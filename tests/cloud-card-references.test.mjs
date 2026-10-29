@@ -151,7 +151,32 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
  const reference=await sportsReferenceImage(env,{},release,subject);assert.equal(reference.image,image);assert.equal(reference.cardNumber,'ETA-Jr.');assert.equal(reference.referencePrices.ungraded,129.99,'corrected number supports the same exact website family and price');
  const replay=await(await send([captured])).json();assert.equal(replay.summary.cards,receipt.summary.cards,'preserved batch retries cannot duplicate the recovered row');
 }
-console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');
+{
+ // A completed audit can leave transient flags inside its saved validation.
+ // Family reads validate identity separately and apply current image gates.
+ const {referenceMetadataCheck,referenceImageKey}=await import('../scripts/reference-validation.mjs'),store=storage();let external=0;
+ const object=new CardReferenceArchive({storage:store},{REFERENCE_IMAGE_FETCH:async()=>{external++;throw Error('Read must not refresh images');}});
+ const exact=normalizeCloudReference({...priced,productId:'123'}),slug='aaron-judge-1',imageId=referenceImageKey(exact.image),check=referenceMetadataCheck(exact);
+ assert.equal(check.matches.length,1);
+ await store.put('meta',{consoleId,cards:1,photos:1});await store.put('row:'+slug,exact);await store.put('family:1:'+slug,exact);
+ await store.put('validation:'+slug,{...check,flags:['image_http_403','manual_image_hold','shared_image_requires_review']});
+ await store.put('health:'+imageId,{ok:true,checkedAt:Date.now()});await store.put('usage:'+imageId+':'+slug,{url:exact.url,title:exact.title});
+ const family=async()=>{const response=await object.fetch(new Request('https://archive.internal/family?number=1&metadata=1'));return (await response.json()).cards;};
+ let current=await family();assert.equal(current.length,1);assert.equal(current[0].image,exact.image,'historical image failure cannot hide a currently healthy, unique, unheld exact photo');assert.equal(current[0].url,exact.url);assert.equal(current[0].referencePrices.ungraded,7.5);
+ // Even if a later audit rewrites its flags, the metadata cache remains clean.
+ await store.put('validation:'+slug,{...check,flags:['image_request_failed']});
+ current=await family();assert.equal(current[0].image,exact.image);
+ await store.put('health:'+imageId,{ok:false,reason:'image_http_403',checkedAt:Date.now()});current=await family();assert.equal(current[0].image,null);assert.equal(current[0].url,exact.url);assert.equal(current[0].referencePrices.ungraded,7.5,'current health failure hides artwork, not exact source prices');
+ await store.put('health:'+imageId,{ok:true,checkedAt:Date.now()-8*86400000});assert.equal((await family())[0].image,null,'stale live health is still blocked');
+ await store.put('health:'+imageId,{ok:true,checkedAt:Date.now()});await store.put('hold:'+imageId,{reason:'Current owner hold'});current=await family();assert.equal(current[0].image,null);assert.equal(current[0].url,exact.url);
+ await store.delete('hold:'+imageId);await store.put('usage:'+imageId+':other',{url:'other',title:'Other #2'});current=await family();assert.equal(current[0].image,null);assert.equal(current[0].referencePrices.ungraded,7.5);
+ await store.delete('usage:'+imageId+':other');assert.equal((await family())[0].image,exact.image);
+ for(const changed of [{player:'Shohei Ohtani'},{cardNumber:'2'},{parallel:'Gold Holo Foil'},{title:'Different Player #1'}]){
+  await store.put('family:1:'+slug,{...exact,...changed});assert.deepEqual(await family(),[],'current identity conflicts remain rejected and invalidate the cached metadata fingerprint');
+ }
+ await store.put('family:1:'+slug,exact);assert.equal((await family())[0].image,exact.image);assert.equal(external,0,'metadata repair uses stored rows only, without a source/image/API fetch');
+}
+console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, current image gates independent of metadata, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');
 
 
 {

@@ -163,11 +163,17 @@ export class CardReferenceArchive {
    const rows=await this.ctx.storage.list({prefix:'family:'+number+':',limit:1000}),cards=[],audit=await this.ctx.storage.get('audit'),archived=!!(await this.ctx.storage.get('meta'));
    if(audit?.phase==='metadata')return reply({cards:[],archived});
    for(const row of rows.values()){
-    const slug=new URL(row.url).pathname.split('/').pop(),id=referenceImageKey(row.image);let check=await this.ctx.storage.get('validation:'+slug);
-    // Repair old unmapped-source results lazily, once per mapping release.
-    // This uses only the stored family and immutable publisher metadata.
-    // Image health, ambiguity, duplicates and owner holds still gate display.
-    if(check?.flags?.some(flag=>['unmapped_source_set','no_exact_checklist_match','ambiguous_checklist_match'].includes(flag))&&check.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){check=referenceMetadataCheck(row);await this.ctx.storage.put('validation:'+slug,check);}
+    const slug=new URL(row.url).pathname.split('/').pop(),id=referenceImageKey(row.image);
+    // Full audits add transient health/hold/usage flags to `validation`. Keep
+    // immutable identity validation separately so a historical failure cannot
+    // suppress today's exact link or override today's image gates below.
+    const identity=JSON.stringify([row.consoleId,row.productId,row.url,row.title,row.cardNumber,row.player,row.parallel,row.run,row.image]);
+    const saved=await this.ctx.storage.get('metadata-validation:'+slug);let check=saved?.check;
+    if(saved?.identity!==identity||check?.version!==REFERENCE_AUDIT_VERSION||check?.mappingVersion!==REFERENCE_SOURCE_MAPPING_VERSION){
+     check=referenceMetadataCheck(row);
+     await this.ctx.storage.put('metadata-validation:'+slug,{identity,check});
+     await this.ctx.storage.put('validation:'+slug,check);
+    }
     if(check?.version!==REFERENCE_AUDIT_VERSION||check.flags.some(flag=>!metadata||!['missing_photo','invalid_image_host'].includes(flag))||check.matches.length!==1)continue;
     if(metadata)cards.push({...row,image:null,validation:'automatically_matched',visuallyReviewed:false});
     if(!id)continue;
