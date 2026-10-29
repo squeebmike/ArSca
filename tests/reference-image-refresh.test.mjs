@@ -53,7 +53,8 @@ try{
  const disabled={...env,REFERENCE_IMAGE_REFRESH_ENABLED:'0'};assert.equal(await queueViewedReferenceImage(disabled,snapshot),snapshot);
  // A successful missing-photo check gets a daily negative TTL. Distinct viewed
  // products share the same persistent source gate, including across alarms.
- objects.clear();healthOk=true;source=html(row);await post('batch',{cards:[row]});await archive().alarm();await queueViewedReferenceImage(env,row);await coordinator().alarm();const negativeCalls=fetches.length;
+ objects.clear();healthOk=true;source=html(row,photo)+html(gold,photo);await post('batch',{cards:[row]});await archive().alarm();await queueViewedReferenceImage(env,row);await coordinator().alarm();const negativeCalls=fetches.length;
+ assert.equal((await stored()).image,'','shared sibling artwork is held before its sibling exists in the archive');
  await queueViewedReferenceImage(env,row);await coordinator().alarm();assert.equal(fetches.length,negativeCalls);assert.equal((await stored()).image,'');
  now+=86400001;await queueViewedReferenceImage(env,row);await post('batch',{cards:[gold]});await archive().alarm();await queueViewedReferenceImage(env,gold);
  const goldPhoto=photo.replace('newphoto','goldphoto');source=html(row,photo)+html(gold,goldPhoto);

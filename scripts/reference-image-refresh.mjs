@@ -54,8 +54,13 @@ async function fetchFamily(owner,row){
  if(Number(response.headers.get('Content-Length')||0)>MAX_BYTES)throw Error('Source response too large');
  const reader=response.body.getReader(),decoder=new TextDecoder();let size=0,html='';
  try{for(;;){const {done,value}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BYTES)throw Error('Source response too large');html+=decoder.decode(value,{stream:true});}html+=decoder.decode();}finally{await reader.cancel().catch(()=>{});}
- const matches=parseImageRefreshFamily(html,row.consoleId).filter(r=>sameImageReference(r,row));
- if(matches.length!==1)throw Error('Exact source identity unavailable');return matches[0];
+ const rows=parseImageRefreshFamily(html,row.consoleId),matches=rows.filter(r=>sameImageReference(r,row));
+ if(matches.length!==1)throw Error('Exact source identity unavailable');
+ const candidate=matches[0];
+ // Source families can reuse generic artwork before sibling rows are imported.
+ // Apply the same ambiguity gate as archive reads before any first publication.
+ if(candidate.image&&rows.some(other=>other.url!==candidate.url&&other.title!==candidate.title&&other.image===candidate.image))return {...candidate,image:''};
+ return candidate;
 }
 export async function imageRefreshAlarm(owner){
  const store=owner.ctx.storage;if(!await store.get('im-mode'))return false;
