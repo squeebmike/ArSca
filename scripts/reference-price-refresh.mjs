@@ -13,17 +13,18 @@ export async function coordinatedPriceFetch(env,path,params={}){
 async function upstream(owner,path,params,serverToken){
  const store=owner.ctx.storage,now=Date.now();
  const token=serverToken||owner.env.PRICECHARTING_TOKEN||owner.env.PRICECHARTING_API_KEY;
- if(!token)return reply({error:'Price provider unavailable'},503);
+ if(!token){await store.put('pc-last-provider-error','missing_api_configuration');return reply({error:'Price provider unavailable'},503);}
  const identity=JSON.stringify([token,path,Object.entries(params).sort(([a],[b])=>a.localeCompare(b))]);
  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity)),cacheKey='pc-api:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
  const cached=await store.get(cacheKey);if(cached&&now-cached.at<300000)return new Response(cached.text,{headers:{'Content-Type':'application/json'}});
  const due=Math.max(Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0));
- if(due-now>GAP)return reply({error:'Price provider temporarily paused'},503);
+ if(due-now>GAP){await store.put('pc-last-provider-error','provider_paused');return reply({error:'Price provider temporarily paused'},503);}
  if(due>now)await new Promise(resolve=>setTimeout(resolve,due-now));
  await store.put('pc-next-call',Date.now()+GAP);
  const url=new URL(path,'https://www.pricecharting.com');
  for(const [key,value]of Object.entries(params))url.searchParams.set(key,String(value));url.searchParams.set('t',token);
  try{
+  await store.put('pc-last-provider-error','request_started');
   const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(8000)});
   await store.put('pc-last-provider-status',response.status);await store.delete('pc-last-provider-error');
   if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));return reply({error:'Price provider unavailable'},response.status);}
