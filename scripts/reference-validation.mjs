@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.8-five-star-mixed-source';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.9-five-star-historical-athletics';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
