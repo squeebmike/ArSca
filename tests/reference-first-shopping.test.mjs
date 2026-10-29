@@ -51,3 +51,15 @@ payload={reference,listing:null};button.dispatchEvent(new window.Event('click',{
 document.querySelector('[data-sports-reference-result] img').onerror();
 assert.equal(document.querySelector('[data-sports-reference-result] a').href,reference.url);
 assert.match(document.querySelector('.mp-reference-estimate').textContent,/7.50 USD/);
+
+// Section grids must expose stored insert photos before JavaScript runs.
+const {handleBaseballSections}=await import('../scripts/baseball-section-pages.mjs');
+const {baseballSets}=await import('../scripts/topps/baseball-seed.mjs');
+let archiveReads=0;
+const insertRef={...reference,title:'Ronald Acuna Jr #RC-1',cardNumber:'RC-1',consoleId:'baseball-cards-2020-topps-big-league-roll-call'};
+const gridEnv={...env,CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:id=>({fetch:async()=>{archiveReads++;return Response.json({cards:id==='console:'+insertRef.consoleId?[insertRef]:[],archived:true});}})}};
+const gridUrl=new URL('https://www.themanapocket.com/baseball/checklists/2020-topps-big-league-baseball/sections/roll-call');
+const gridResponse=await handleBaseballSections(new Request(gridUrl),gridEnv,gridUrl,{...deps,referenceFetch:async()=>{throw Error('No provider fetch for grid');}},baseballSets,d=>new Response(d.bodyHtml),()=>new Response('',{status:404}));
+const gridHtml=await gridResponse.text();assert(gridHtml.includes('src="'+reference.image+'"'),'collected insert photo renders in section HTML');
+assert(gridHtml.includes('data-sports-reference='),'other cards retain viewport reference loading');
+assert(archiveReads<=12,'only six visible cards read at most two stored source families each');
