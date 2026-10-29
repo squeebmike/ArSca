@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {fiveStar2026Sets,fiveStar2026Sections} from '../scripts/topps/five-star-2026.mjs';
+import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
+import {checklistPublicationProblems} from '../scripts/topps/public-checklist-policy.mjs';
+import {sectionsForSet,baseballSectionSitemapPaths,handleBaseballSections} from '../scripts/baseball-section-pages.mjs';
+import {cardParallelProgram,selectedParallelCard} from '../scripts/sports-parallels.mjs';
+const set=fiveStar2026Sets[0],source=fiveStar2026Sections[0],groups=sectionsForSet(set),all=[...set.cards,...groups.flatMap(g=>g.cards)];
+assert(baseballSets.includes(set));assert.deepEqual(checklistPublicationProblems(set,set),[]);assert.equal(set.releaseDate,'2026-10-28');assert.equal(source.sourceSha256,set.sourceSha256);
+assert.equal(set.cards.length,100);assert.equal(groups.length,22);assert.equal(all.length,750);assert.equal(new Set(all.map(c=>c.id)).size,750);assert.equal(all.reduce((n,c)=>n+c.subjects.length,0),799);
+assert.equal(groups.find(g=>g.id==='five-star-triple-autographs').cards.length,11);assert.equal(groups.find(g=>g.id==='five-star-cut-signatures').cards.length,57);
+const logo=groups.find(g=>g.id==='rookie-cap-patch-autographs-jackie-robinson-day-mlb-logo'),side=groups.find(g=>g.id==='rookie-cap-patch-autographs-jackie-robinson-day-side-logo');assert.equal(logo.cards.length,17);assert(logo.cards.every(c=>!side.cards.some(x=>x.id===c.id)));
+for(const c of all){assert(c.subjects.every(s=>s.name));assert(!c.player.includes('\uFFFD'));assert.equal(c.subjects.length,c.printedRows.length);}
+assert.equal(selectedParallelCard(set,set.cards[0],'amber').parallelRule.printRun,25);assert.equal(cardParallelProgram(set,set.cards[0]).maxPrintRun,50);assert.equal(cardParallelProgram(set,groups[0].cards[0]).variants.length,0,'base rainbow is not silently assigned to autograph relics');
+const deps={escape:s=>String(s),listItems:async()=>[],available:()=>true},html=d=>new Response(d.bodyHtml),missing=()=>new Response('missing',{status:404});
+for(const g of groups)for(const c of g.cards){const u=new URL('https://www.themanapocket.com/baseball/checklists/'+set.id+'/cards/'+c.id+'?reference=3');const r=await handleBaseballSections(new Request(u),{},u,deps,[set],html,missing);assert.equal(r.status,200);assert.equal((await r.json()).reference,null,'uncollected references remain honestly unavailable');}
+assert.equal(new Set(baseballSectionSitemapPaths([set])).size,baseballSectionSitemapPaths([set]).length);
+console.log('2026 Five Star: 750 exact identities, 799 subjects, 650 nonbase routes, physical patch isolation, licensing and base serial rules passed');

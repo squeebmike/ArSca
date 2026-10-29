@@ -1,3 +1,4 @@
+import {fiveStar2026Sections} from './topps/five-star-2026.mjs';
 import {bigLeague2024Sections} from './topps/big-league-2024-sections.mjs';
 import {bigLeague2023Sections} from './topps/big-league-2023-sections.mjs';
 import {bigLeague2021Sections} from './topps/big-league-2021-sections.mjs';
@@ -39,7 +40,7 @@ function correctPublishedGroup(setId,group){
  return changed?{...group,cards}:group;
 }
 const sectionsBySet=new Map();
-for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections,...bowmanProspectSections,...draftFinest2024Sections,...historicalBaseballSections,...bigLeague2020Sections,...bigLeague2019Sections,...bigLeague2021Sections,...bigLeague2023Sections,...bigLeague2024Sections]){
+for(const source of [...baseballSections,...holidayBaseballSections,...footballSections,...archiveNonbaseSections,...bowmanProspectSections,...draftFinest2024Sections,...historicalBaseballSections,...bigLeague2020Sections,...bigLeague2019Sections,...bigLeague2021Sections,...bigLeague2023Sections,...bigLeague2024Sections,...fiveStar2026Sections]){
  const groups=sectionsBySet.get(source.setId)||[];
  for(const group of source.sections)if(!groups.some(g=>g.id===group.id))groups.push(correctPublishedGroup(source.setId,group));
  sectionsBySet.set(source.setId,groups);

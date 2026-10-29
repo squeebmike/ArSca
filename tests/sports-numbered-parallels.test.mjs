@@ -75,7 +75,7 @@ const spring24=baseballSets.find(s=>s.id==='2024-bowman-baseball'),spring25=base
 const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
 // Coverage means release-specific data exists, not that every print run is known.
 assert.equal(Object.keys(remainingParallelSpecs).length,33);
-assert.equal(Object.keys(parallelPrograms).length,64);
+assert.equal(Object.keys(parallelPrograms).length,65);
 const baseOnlyReleases=new Set([...bigLeagueBaseballSets,...missingBaseball2024Sets,...draftFinest2024Sets,...historicalBaseballSets].map(s=>s.id));
 for(const release of [...baseballSets,...footballSets]){
  if(baseOnlyReleases.has(release.id)&&release.id!=='2024-topps-big-league-baseball'){

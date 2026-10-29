@@ -384,6 +384,8 @@ config['2024-topps-big-league-baseball']={source:bigLeague24Odds,sourceSha256:'8
  'the-bigs':{variants:variants([['Superfractor','?']])},
  'topps-big-leaguer':{variants:variants([['Foil Variation','?']])}
 }};
+// Base serials are explicit in Topps' release guide; subset programs still require review.
+config['2026-topps-five-star-baseball']={source:'https://ripped.topps.com/2026-topps-five-star-baseball-hobby-box-guide/',base:variants([['Amber',25],['Emerald',15],['Onyx',10],['Ruby',5],['Foilfractor',1]]),baseRanges:[{first:1,last:100,maxPrintRun:50,variants:variants([['Amber',25],['Emerald',15],['Onyx',10],['Ruby',5],['Foilfractor',1]])}],sections:{}};
 export const parallelPrograms=config;
 const baseIdentities=new WeakMap();
 export function cardParallelProgram(set,card){
