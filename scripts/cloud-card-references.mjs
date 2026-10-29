@@ -32,6 +32,14 @@ export function normalizeCloudReference(row){
  const referencePrices=Object.keys(prices).length?{...prices,currency:'USD',capturedAt:new Date(seenAt).toISOString()}:null;
  return {consoleId:parts[1],setName:String(row.setName||parts[1]).replace(/\s+/g,' ').trim().slice(0,200),productId:/^\d{1,20}$/.test(String(row.productId||''))?String(row.productId):'',title,cardNumber:number,player:String(row.player||'').slice(0,200),parallel:String(row.parallel||'').slice(0,120),run,image:photo,url:u.href,capturedAt:new Date().toISOString(),...(referencePrices?{referencePrices}:{})};
 }
+// Keep malformed provider numbers as owner-review evidence, never lookup identities.
+export function quarantineCloudReference(row){
+ const title=String(row?.title||''),number=title.match(/#([^\s]+)\s*$/)?.[1];
+ if(!number||/^[a-z0-9.-]{1,40}$/i.test(number)||number.length>40||title.length>350)return null;
+ const envelope=normalizeCloudReference({...row,title:title.replace(/#[^\s]+\s*$/,'#QUARANTINED'),cardNumber:'QUARANTINED'});
+ if(!envelope)return null;
+ return {...envelope,title,cardNumber:number,quarantineReason:'malformed_provider_card_number',quarantinedAt:Date.now()};
+}
 const reply=data=>Response.json(data);
 // Fetch-only DO class; authorization is enforced before calling this binding.
 export class CardReferenceArchive {
@@ -43,10 +51,10 @@ export class CardReferenceArchive {
    const text=await request.text();if(text.length>512000)return new Response('Too large',{status:413});
    let input;try{input=JSON.parse(text);}catch{return new Response('Invalid JSON',{status:400});}
    if(!Array.isArray(input.cards)||!input.cards.length||input.cards.length>200)return new Response('Expected 1–200 cards',{status:400});
-   const rows=input.cards.map(normalizeCloudReference).filter(Boolean),consoleId=rows[0]?.consoleId;
-   if(!consoleId||rows.some(r=>r.consoleId!==consoleId))return new Response('One source set per batch',{status:400});
+   const rows=input.cards.map(normalizeCloudReference).filter(Boolean),quarantined=input.cards.filter(r=>!normalizeCloudReference(r)).map(quarantineCloudReference).filter(Boolean),consoleId=rows[0]?.consoleId||quarantined[0]?.consoleId;
+   if(!consoleId||[...rows,...quarantined].some(r=>r.consoleId!==consoleId))return new Response('One source set per batch',{status:400});
    const summary=await this.ctx.storage.transaction(async tx=>{
-    const meta=await tx.get('meta')||{consoleId,name:rows[0].setName,cards:0,photos:0};
+    const meta=await tx.get('meta')||{consoleId,name:(rows[0]||quarantined[0]).setName,cards:0,photos:0};
     for(const row of rows){
      const slug=new URL(row.url).pathname.split('/').pop(),key='row:'+slug,old=await tx.get(key);
      const merged={...row,image:row.image||old?.image||''};
@@ -63,10 +71,11 @@ export class CardReferenceArchive {
      if(old?.cardNumber&&old.cardNumber!==row.cardNumber)await tx.delete('family:'+old.cardNumber+':'+slug);
      if(row.cardNumber)await tx.put('family:'+row.cardNumber+':'+slug,merged);
     }
+    for(const row of quarantined){const key='quarantine:'+new URL(row.url).pathname.split('/').pop();if(!await tx.get(key))meta.quarantined=(meta.quarantined||0)+1;await tx.put(key,row);}
     meta.updatedAt=Date.now();await tx.put('meta',meta);return meta;
    });
    await this.ctx.storage.setAlarm(Date.now()+1000);
-   return reply({ok:true,accepted:rows.length,rejected:input.cards.length-rows.length,summary});
+   return reply({ok:true,accepted:rows.length,quarantined:quarantined.length,rejected:input.cards.length-rows.length-quarantined.length,summary});
   }
   if(request.method==='POST'&&url.pathname==='/summary'){
    const summary=await request.json();if(!validReferenceConsoleId(summary.consoleId))return new Response('Invalid set',{status:400});
@@ -80,7 +89,8 @@ export class CardReferenceArchive {
    if(cursor&&(!cursor.startsWith('row:')||!validCardSlug(cursor.slice(4))))return new Response('Invalid cursor',{status:400});
    const rows=await this.ctx.storage.list({prefix:'row:',limit:100,...(cursor?{startAfter:cursor}:{})});
    const cards=[];for(const [key,row]of rows)cards.push({...row,validation:await this.ctx.storage.get('validation:'+key.slice(4))||null});
-   return reply({cards,cursor:rows.size===100?[...rows.keys()].at(-1):null});
+   const quarantined=[...(await this.ctx.storage.list({prefix:'quarantine:',limit:100})).values()];
+   return reply({cards,quarantined,cursor:rows.size===100?[...rows.keys()].at(-1):null});
   }
   if(request.method==='GET'&&url.pathname==='/samples'){
    const number=url.searchParams.get('number');

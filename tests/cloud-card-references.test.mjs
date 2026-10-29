@@ -141,3 +141,16 @@ await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/)
 }
 console.log('Cloud references: owner-only writes, idempotent batches, persistent source photos, exact website matching, lazy source repair, holds, paginated audit status, cloud bridge and interrupted-upload recovery passed');
 
+
+{
+ const {quarantineCloudReference}=await import('../scripts/cloud-card-references.mjs');
+ const malformed={...card,title:'Wilson Contreras #F)-15',player:'Wilson Contreras',cardNumber:'F',url:card.url.replace(/[^/]+$/,'wilson-contreras-f-15')};
+ assert.equal(normalizeCloudReference(malformed),null);
+ assert.equal(quarantineCloudReference(malformed).cardNumber,'F)-15');
+ assert.equal(quarantineCloudReference({...malformed,url:'https://evil.example/game/'+consoleId+'/fake'}),null);
+ const receipt=await(await send([malformed])).json();assert.equal(receipt.accepted,0);assert.equal(receipt.quarantined,1);assert.equal(receipt.rejected,0,'stored exception is accounted for without publishing an identity');
+ const archive=instances.get('console:'+consoleId);const page=await(await archive.fetch(new Request('https://archive.internal/cards'))).json();assert.ok(page.quarantined.some(r=>r.title===malformed.title));
+ assert.ok(!page.cards.some(r=>r.url===malformed.url));
+ const family=await(await archive.fetch(new Request('https://archive.internal/family?number=F'))).json();assert.ok(!family.cards.some(r=>r.url===malformed.url));
+ const replay=await(await send([malformed])).json();assert.equal(replay.summary.quarantined,receipt.summary.quarantined,'quarantine replay does not inflate counts');
+}
