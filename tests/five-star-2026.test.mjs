@@ -5,7 +5,7 @@ import {checklistPublicationProblems} from '../scripts/topps/public-checklist-po
 import {sectionsForSet,baseballSectionSitemapPaths,handleBaseballSections} from '../scripts/baseball-section-pages.mjs';
 import {cardParallelProgram,selectedParallelCard} from '../scripts/sports-parallels.mjs';
 const set=fiveStar2026Sets[0],source=fiveStar2026Sections[0],groups=sectionsForSet(set),all=[...set.cards,...groups.flatMap(g=>g.cards)];
-assert(baseballSets.includes(set));assert.deepEqual(checklistPublicationProblems(set,set),[]);assert.equal(set.releaseDate,'2026-10-28');assert.equal(source.sourceSha256,set.sourceSha256);
+assert(baseballSets.includes(set));assert.deepEqual(checklistPublicationProblems(set,set),[]);assert.equal(set.releaseDate,'2026-10-28');assert.deepEqual(set.unissuedNumbers,[]);assert.equal(source.sourceSha256,set.sourceSha256);
 assert.equal(set.cards.length,100);assert.equal(groups.length,22);assert.equal(all.length,750);assert.equal(new Set(all.map(c=>c.id)).size,750);assert.equal(all.reduce((n,c)=>n+c.subjects.length,0),799);
 assert.equal(groups.find(g=>g.id==='five-star-triple-autographs').cards.length,11);assert.equal(groups.find(g=>g.id==='five-star-cut-signatures').cards.length,57);
 const logo=groups.find(g=>g.id==='rookie-cap-patch-autographs-jackie-robinson-day-mlb-logo'),side=groups.find(g=>g.id==='rookie-cap-patch-autographs-jackie-robinson-day-side-logo');assert.equal(logo.cards.length,17);assert(logo.cards.every(c=>!side.cards.some(x=>x.id===c.id)));
