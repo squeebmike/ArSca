@@ -4,4 +4,6 @@ The same object handles existing staff API lookups. Its persistent gate spaces u
 
 Product ID, product name and console must match before public prices change. Integer cents map to ungraded (`loose-price`), grade 9 (`graded-price`) and PSA 10 (`manual-only-price`). Empty prices and failed identity checks preserve the prior estimate and its capture timestamp. A capture date appears beside displayed estimates. Photos, holds and duplicate checks are unchanged.
 
-`reference-price-refresh.test.mjs` tests demand deduplication, freshness, real concurrent spacing, shared staff/public coordination, exact identity, empty prices, quota pauses and outage preservation. Deployment and a production request followed by a completed alarm are still required to confirm the feature is operating with the configured production token.
+Coverage checks can request `reference=3&price-refresh=0` to read saved references and the existing price cache without queuing API work. This keeps full coverage audits from becoming price scans.
+
+`reference-price-refresh.test.mjs` tests demand deduplication, freshness, real concurrent spacing, shared staff/public coordination, exact identity, empty prices, quota pauses and outage preservation. Production verification refreshed the already matched product 10932348 and then served the same capture timestamp from cache. The source photo and link stayed unchanged. A later provider 429 was preserved as a shared retry pause; this confirms one live refresh, not catalog-wide price completeness.
