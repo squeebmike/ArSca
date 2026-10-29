@@ -21,7 +21,8 @@ assert.ok(search('q=2024').rows.every(r=>r.set.year===2024),'a bare year does no
 const range=search('player=Ken+Griffey+Jr.&from=2023&to=2024');assert.ok(range.rows.length);assert.ok(range.rows.every(r=>r.set.year>=2023&&r.set.year<=2024));
 assert.equal(search('from=2025&to=2024'),null);assert.equal(search('sort=garbage'),null);
 const old=search('player=Ken+Griffey+Jr.&sort=oldest');for(let i=1;i<old.rows.length;i++)assert.ok(old.rows[i-1].set.year<=old.rows[i].set.year);
-const multi=all.find(r=>r.card.subjects.length>1&&r.card.subjects[0].team&&r.card.subjects[1].team&&r.card.subjects[0].team!==r.card.subjects[1].team);
+// Use genuinely different franchises, not Athletics/Oakland team-name aliases.
+const multi=all.find(r=>r.card.subjects[0]?.name==='Shohei Ohtani'&&r.card.subjects[1]?.name==='Sadaharu Oh');
 assert.ok(multi);const mismatch=search(new URLSearchParams({player:multi.card.subjects[0].name,team:multi.card.subjects[1].team}));assert.ok(!mismatch.rows.includes(multi),'a different signer’s team must not satisfy the player filter');
 const found=[];
 for(let page=1;page<=griffey.pages;page++){
