@@ -250,5 +250,5 @@ export async function handleCloudReferenceRequest(request,env,url,deps){
 }
 export async function cloudReferenceFamily(env,consoleId,number,metadata=false){
  if(!env.CARD_REFERENCE_ARCHIVE||!number)return {cards:[],archived:false};
- try{const target=new URL('https://archive.internal/family');target.searchParams.set('number',number);if(metadata)target.searchParams.set('metadata','1');const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));const r=await stub.fetch(target.href,{signal:AbortSignal.timeout(2500)});return r.ok?await r.json():{cards:[],archived:true};}catch{return {cards:[],archived:true};}
+ try{const target=new URL('https://archive.internal/family');target.searchParams.set('number',number);if(metadata)target.searchParams.set('metadata','1');const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName('console:'+consoleId));const r=await stub.fetch(target.href,{signal:AbortSignal.timeout(2500)});return r.ok?await r.json():{cards:[],archived:true,unavailable:true};}catch{return {cards:[],archived:true,unavailable:true};}
 }

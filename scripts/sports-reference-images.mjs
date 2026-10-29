@@ -28,6 +28,7 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
  const consoles=referenceConsoles(set,card);let archived=false;
  for(const id of consoles){
   const family=await cloudReferenceFamily(env,id,String(card.cardNumber),true),cloud=family.cards||[];archived ||= family.archived;
+  if(family.unavailable&&deps.requireArchiveRead)throw Object.assign(new Error('Stored references temporarily unavailable'),{code:'REFERENCE_ARCHIVE_UNAVAILABLE'});
   // A shared photo across different finishes is not proof of the printing.
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
   const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card,set));if(matches.length===1)return {...await refreshedReferencePrices(env,matches[0],{refresh:deps.priceRefresh!==false}),source:'PriceCharting / SportsCardsPro',referenceOnly:true};

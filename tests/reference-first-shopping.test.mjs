@@ -70,3 +70,11 @@ const gridResponse=await handleBaseballSections(new Request(gridUrl),gridEnv,gri
 const gridHtml=await gridResponse.text();assert(gridHtml.includes('src="'+reference.image+'"'),'collected insert photo renders in section HTML');
 assert(gridHtml.includes('data-sports-reference='),'other cards retain viewport reference loading');
 assert(archiveReads<=12,'only six visible cards read at most two stored source families each');
+
+// Stored-reference audits must distinguish an archive outage from a missing card.
+for(const failure of ['http','throw','empty']){
+ const env={CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:()=>({fetch:async()=>{if(failure==='throw')throw Error('private failure detail');return failure==='http'?new Response('private failure detail',{status:503}):Response.json({cards:[],archived:true});}})}};
+ const url=new URL('https://www.themanapocket.com/baseball/checklists/2026-bowman-chrome-baseball/cards/2026-bowman-chrome-baseball-66?reference=3&price-refresh=0');
+ const r=await handleBaseballCatalog(new Request(url),env,url,{escape:s=>String(s),listItems:async()=>{throw Error('no inventory scan');},available:()=>true});
+ assert.equal(r.status,failure==='empty'?200:503);const j=await r.json();if(failure==='empty')assert.equal(j.reference,null);else{assert.equal(j.retryable,true);assert.equal(r.headers.get('Cache-Control'),'no-store');assert(!JSON.stringify(j).includes('private failure detail'));}
+}
