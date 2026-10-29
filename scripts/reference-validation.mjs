@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.4-five-star-families';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.5-five-star-families';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
@@ -15,7 +15,7 @@ export function referenceConsoles(set,card=null){
  const sport=set.sport==='football'?'football':'baseball',name=slug(set.displayName.replace(/\b(baseball|football)\b/gi,'')),ids=[sport+'-cards-'+name];
  // Observed through the normal provider search and verified source pages.
  if(set.id==='2026-topps-five-star-baseball'){
-  for(const [section,suffix]of [['Five Star Active Autographs','active-autograph'],['Five Star Retired Autographs','retired-autograph']])if(!card||card.section===section)ids.push('baseball-cards-2026-topps-five-star-'+suffix);
+  for(const [section,suffix]of [['Five Star Active Autographs','active-autograph'],['Five Star Retired Autographs','retired-autograph'],['Five Star Autographed Jumbo Prime Cards','jumbo-prime-autograph']])if(!card||card.section===section)ids.push('baseball-cards-2026-topps-five-star-'+suffix);
  }
  // Observed 2019 directories from the authorized Big League recovery.
  if(set.id==='2019-topps-big-league-baseball'){
