@@ -75,10 +75,10 @@ const spring24=baseballSets.find(s=>s.id==='2024-bowman-baseball'),spring25=base
 const cardIn=(release,id)=>sectionsForSet(release).find(g=>g.id===id).cards[0];
 // Coverage means release-specific data exists, not that every print run is known.
 assert.equal(Object.keys(remainingParallelSpecs).length,33);
-assert.equal(Object.keys(parallelPrograms).length,63);
+assert.equal(Object.keys(parallelPrograms).length,64);
 const baseOnlyReleases=new Set([...bigLeagueBaseballSets,...missingBaseball2024Sets,...draftFinest2024Sets,...historicalBaseballSets].map(s=>s.id));
 for(const release of [...baseballSets,...footballSets]){
- if(baseOnlyReleases.has(release.id)){
+ if(baseOnlyReleases.has(release.id)&&release.id!=='2024-topps-big-league-baseball'){
   assert.match(release.scope,/(?:additional parallels are|Additional parallel programs and odds are) not yet imported/,'base-only releases disclose their scope');
   assert.equal(parallelPrograms[release.id],undefined,'do not invent unverified parallel programs');
   for(const card of release.cards)assert.deepEqual(cardParallelProgram(release,card).variants,[]);

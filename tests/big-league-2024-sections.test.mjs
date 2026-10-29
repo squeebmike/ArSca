@@ -1,3 +1,4 @@
+import {cardParallelProgram} from '../scripts/sports-parallels.mjs';
 import assert from 'node:assert/strict';
 import {bigLeague2024Sections} from '../scripts/topps/big-league-2024-sections.mjs';
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
@@ -10,3 +11,9 @@ const accented=cards.find(c=>c.cardNumber==='SMF-ÓC');assert.equal(accented.pla
 assert.equal(groups.filter(g=>g.kind==='Autographs').flatMap(g=>g.cards).length,249);
 const auto=groups.find(g=>g.id==='common-cards-i-electric-orange-autograph-variation').cards.find(a=>set.cards.some(b=>b.player===a.player));const unsigned=set.cards.find(c=>c.player===auto.player);assert(unsigned);assert.equal(referenceIdentityMatches({title:unsigned.player+' #'+unsigned.cardNumber,run:''},auto),false);
 console.log('2024 Big League: 447 official insert/autograph entries, 249 autos, blank printed teams and accented number preservation passed');
+
+for(const n of ['1','201','250'])assert(cardParallelProgram(set,set.cards.find(c=>c.cardNumber===n)).variants.some(v=>v.id==='electric-orange'));
+for(const n of ['251','276','301'])assert(!cardParallelProgram(set,set.cards.find(c=>c.cardNumber===n)).variants.some(v=>v.id==='electric-orange'));
+assert.equal(cardParallelProgram(set,groups.find(g=>g.id==='good-vibrations').cards[0]).variants.length,0);
+assert.equal(cardParallelProgram(set,groups.find(g=>g.id==='big-league-autographs').cards[0]).variants.length,4);
+assert(cardParallelProgram(set,set.cards[0]).variants.every(v=>v.numberingUnknown));

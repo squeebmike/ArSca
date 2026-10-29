@@ -373,6 +373,17 @@ Object.assign(config['2025-topps-series-2-baseball'].sections,Object.fromEntries
  ["summer-superstars",[["Pink Foil",null],["Blue Foil",150],["Green Foil",99],["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]],
  ["topps-mega-stars",[["Gold Foil",50],["Orange Foil",25],["Black Foil",10],["Red Foil",5],["Foilfractor",1]]]
 ].map(([id,rows])=>[id,{variants:variants(rows)}])));
+// Publisher odds identify finishes by tier. The PDF's 'No. of Cards' column
+// is retained as evidence, not silently interpreted as stamped serial numbering.
+const bigLeague24Odds='https://cdn.shopify.com/s/files/1/0662/9749/5709/files/2024ToppsBigLeagueBaseballOdds.pdf';
+const bigLeague24Base=variants([['Black Foil','?'],['Foilfractor','?']]);
+config['2024-topps-big-league-baseball']={source:bigLeague24Odds,sourceSha256:'87509bb54f0a12092eb3fed63bbcde066a8482fa89f12ea41312839b3597ed7c',base:[],baseRanges:[{first:1,last:250,variants:[...bigLeague24Base,...variants([['Electric Orange','?']])]},{first:251,last:310,variants:bigLeague24Base}],sections:{
+ 'big-league-autographs':{variants:variants([['Gold Foil','?'],['Orange Foil','?'],['Red Foil','?'],['Foilfractor','?']])},
+ 'opening-act-autographs':{variants:variants([['Gold Foil','?'],['Orange Foil','?'],['Red Foil','?'],['Foilfractor','?']])},
+ 'lets-go':{variants:variants([['Red Refractor','?'],['Superfractor','?']])},
+ 'the-bigs':{variants:variants([['Superfractor','?']])},
+ 'topps-big-leaguer':{variants:variants([['Foil Variation','?']])}
+}};
 export const parallelPrograms=config;
 const baseIdentities=new WeakMap();
 export function cardParallelProgram(set,card){
