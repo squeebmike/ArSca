@@ -25,6 +25,7 @@ async function upstream(owner,path,params,serverToken){
  for(const [key,value]of Object.entries(params))url.searchParams.set(key,String(value));url.searchParams.set('t',token);
  try{
   const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'error',signal:AbortSignal.timeout(8000)});
+  await store.put('pc-last-provider-status',response.status);
   if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));return reply({error:'Price provider unavailable'},response.status);}
   const text=await response.text();if(text.length>2000000)return reply({error:'Price response too large'},502);
   try{const data=JSON.parse(text);if(data.status!=='error'&&text.length<100000)await store.put(cacheKey,{at:Date.now(),text});}catch{return reply({error:'Invalid price response'},502);}
@@ -44,7 +45,7 @@ export async function refreshedReferencePrices(env,reference){
   const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(coordinatorName));
   const response=await stub.fetch(new Request('https://archive/reference-price',{method:'POST',body:JSON.stringify({productId:reference.productId,title:reference.title,consoleId:reference.consoleId})}));
   if(!response.ok)return reference;const cached=await response.json();
-  return {...reference,...(cached.referencePrices?{referencePrices:cached.referencePrices}:{}),priceCheckedAt:cached.checkedAt||null,priceRefreshPending:!!cached.queued};
+  return {...reference,...(cached.referencePrices?{referencePrices:cached.referencePrices}:{}),priceCheckedAt:cached.checkedAt||null,priceRefreshPending:!!cached.queued,priceRefreshRetryAt:cached.retryAt||null,priceRefreshProviderStatus:cached.providerStatus||null};
  }catch{return reference;}
 }
 export function priceProductIdentity(data,ref){const name=String(data?.['console-name']||''),expected=/^(?:baseball|football|hockey|basketball)[ -]+cards[ -]+/i.test(name)?ref.consoleId:ref.consoleId.replace(/^(?:baseball|football|hockey|basketball)-cards-/,'');return String(data?.id)===ref.productId&&fold(data['product-name'])===fold(ref.title)&&fold(name)===fold(expected);}
@@ -69,7 +70,7 @@ export async function referencePriceRequest(owner,request){
     const next=Math.max(now+1,Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0));const alarm=await store.getAlarm();if(!alarm||alarm>next)await store.setAlarm(next);
    }
   }
-  return reply({referencePrices:same?cache.referencePrices||null:null,checkedAt:same?cache.checkedAt:null,stale:!fresh,queued});
+  return reply({referencePrices:same?cache.referencePrices||null:null,checkedAt:same?cache.checkedAt:null,stale:!fresh,queued,retryAt:Number(await store.get('pc-paused-until')||0)>now?await store.get('pc-paused-until'):null,providerStatus:await store.get('pc-last-provider-status')||null});
  });
 }
 export async function referencePriceAlarm(owner){

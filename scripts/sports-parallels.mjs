@@ -384,8 +384,18 @@ config['2024-topps-big-league-baseball']={source:bigLeague24Odds,sourceSha256:'8
  'the-bigs':{variants:variants([['Superfractor','?']])},
  'topps-big-leaguer':{variants:variants([['Foil Variation','?']])}
 }};
-// Base serials are explicit in Topps' release guide; subset programs still require review.
+// The guide supplies these maximum serials for the actual master printings.
+// Finish-by-subject eligibility remains unconfirmed; do not copy base rainbows.
 config['2026-topps-five-star-baseball']={source:'https://ripped.topps.com/2026-topps-five-star-baseball-hobby-box-guide/',base:variants([['Amber',25],['Emerald',15],['Onyx',10],['Ruby',5],['Foilfractor',1]]),baseRanges:[{first:1,last:100,maxPrintRun:50,variants:variants([['Amber',25],['Emerald',15],['Onyx',10],['Ruby',5],['Foilfractor',1]])}],sections:{}};
+for(const [section,maxPrintRun]of [
+ ['five-star-autographed-jumbo-prime-cards',50],['five-star-fabric',50],
+ ['five-star-quintuple-relic-autographs',10],['five-star-dual-autograph-patch-cards',10],
+ ['five-star-active-autographs',199],['five-star-retired-autographs',199],
+ ['apex-autographs',25],['stars-and-stitches-autographs',25],
+ ['leaderboard-legend-autographs',50],['five-tool-phenom-autographs',50],
+ ['five-star-dual-autographs',10],['five-star-triple-autographs',5],['quotable',5]
+])config['2026-topps-five-star-baseball'].sections[section]={maxPrintRun,variants:[]};
+for(const section of ['rookie-cap-patch-autographs-jackie-robinson-day-mlb-logo','rookie-cap-patch-autographs-jackie-robinson-day-side-logo','five-star-cut-signatures','welcome-to-the-club-dual-autographs'])config['2026-topps-five-star-baseball'].sections[section]={printRun:1,variants:[]};
 export const parallelPrograms=config;
 const baseIdentities=new WeakMap();
 export function cardParallelProgram(set,card){

@@ -17,6 +17,7 @@ try{
  now+=3600001;response={...data,'product-name':'Wrong player #1'};await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34,'bad identity never erases last verified price');
  now+=86400001;response={...data,'loose-price':0,'graded-price':0,'manual-only-price':0};await referencePriceRequest(owner,request(ref));await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34,'blank provider price preserves previous value');
  now+=86400001;response=new Response('limited',{status:429});await referencePriceRequest(owner,request(ref));await referencePriceAlarm(owner);assert.ok(values.get('pc-paused-until')>=now+3600000);const count=calls.length;await referencePriceAlarm(owner);assert.equal(calls.length,count,'quota pause is persistent');
+ const paused=await(await referencePriceRequest(owner,request(ref))).json();assert.equal(paused.providerStatus,429);assert.ok(paused.retryAt>=now+3600000);assert.ok(!JSON.stringify(paused).includes('private-test-token'));
  now+=3600001;response=data;await referencePriceAlarm(owner);const last=calls.at(-1).at;now+=1100;
  const apiRequest=()=>new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'456'}})});
  await priceApiRequest(owner,apiRequest());assert.ok(calls.at(-1).at-last>=1100,'staff and public refresh share persisted rate gate');
