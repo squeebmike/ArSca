@@ -78,3 +78,10 @@ for(const failure of ['http','throw','empty']){
  const r=await handleBaseballCatalog(new Request(url),env,url,{escape:s=>String(s),listItems:async()=>{throw Error('no inventory scan');},available:()=>true});
  assert.equal(r.status,failure==='empty'?200:503);const j=await r.json();if(failure==='empty')assert.equal(j.reference,null);else{assert.equal(j.retryable,true);assert.equal(r.headers.get('Cache-Control'),'no-store');assert(!JSON.stringify(j).includes('private failure detail'));}
 }
+
+{
+ const {sportsReferenceImage}=await import('../scripts/sports-reference-images.mjs');const {fiveStar2026Sets,fiveStar2026Sections}=await import('../scripts/topps/five-star-2026.mjs');const set=fiveStar2026Sets[0],card=fiveStar2026Sections[0].sections.find(g=>g.name==='Apex Autographs').cards[0];
+ const row={title:card.player+' #'+card.cardNumber,player:card.player,cardNumber:card.cardNumber,run:'',parallel:'',url:'https://www.sportscardspro.com/game/baseball-cards-2026-topps-five-star-apex-autograph/exact',image:null};
+ const env={CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:name=>({fetch:async()=>name.endsWith('apex-autograph')?Response.json({cards:[row],archived:true}):new Response('unavailable',{status:503})})}};
+ const r=await sportsReferenceImage(env,{},set,card,{requireArchiveRead:true,priceRefresh:false});assert.equal(r.url,row.url,'an unavailable broad source does not hide a healthy exact section match');
+}
