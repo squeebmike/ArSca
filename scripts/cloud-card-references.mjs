@@ -5,6 +5,7 @@ import {referenceMetadataCheck,referenceCategory,referenceImageKey,checkReferenc
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 import {coverageArchiveRequest,coverageAlarm} from './reference-coverage.mjs';
 import {priceApiRequest,referencePriceRequest,referencePriceAlarm} from './reference-price-refresh.mjs';
+import {imageRefreshRequest,imageRefreshAlarm,sameImageReference,validImageReference} from './reference-image-refresh.mjs';
 // A few photographed serial stamps have been checked by hand. Reuse that
 // evidence only for the identical source URL, title and photo; never infer a
 // denominator just from a finish name, or overwrite a conflicting capture.
@@ -47,6 +48,37 @@ export class CardReferenceArchive {
  constructor(ctx,env){this.ctx=ctx;this.env=env;}
  async fetch(request){
   const url=new URL(request.url);
+  if(url.pathname==='/image-refresh-demand')return imageRefreshRequest(this,request);
+  if(request.method==='POST'&&['/image-refresh-state','/image-refresh-apply'].includes(url.pathname)){
+   if(this.env.REFERENCE_IMAGE_REFRESH_ENABLED!=='1')return new Response('Unavailable',{status:503});
+   let input;try{const body=await request.text();if(body.length>10000)throw Error();input=JSON.parse(body);}catch{return new Response('Invalid request',{status:400});}
+   if(!validImageReference(input.expected))return new Response('Exact reference required',{status:400});
+   const slug=new URL(input.expected.url).pathname.split('/').pop(),key='row:'+slug;
+   const eligible=row=>{const check=row&&referenceMetadataCheck(row);return check?.matches?.length===1&&!check.flags.some(flag=>!['missing_photo','invalid_image_host'].includes(flag));};
+   const row=await this.ctx.storage.get(key);
+   if(!sameImageReference(row,input.expected)||!eligible(row))return reply({row:null,applied:false});
+   const oldId=referenceImageKey(row.image),held=!!(oldId&&await this.ctx.storage.get('hold:'+oldId));
+   if(url.pathname==='/image-refresh-state')return reply({row,held});
+   const observed=normalizeCloudReference(input.observed);
+   if(held||!observed||!sameImageReference(row,observed)||row.image!==input.expected.image)return reply({applied:false});
+   // Blank source metadata is a successful negative check, never image deletion.
+   const image=observed.image||row.image,imageId=referenceImageKey(image);
+   let health=null;
+   if(observed.image){health=await checkReferenceImage(observed.image,this.env.REFERENCE_IMAGE_FETCH||fetch);if(!health.ok)return new Response('Image verification unavailable',{status:503});}
+   const result=await this.ctx.storage.transaction(async tx=>{
+    const current=await tx.get(key);
+    if(!sameImageReference(current,input.expected)||current.image!==input.expected.image||!eligible(current)||oldId&&await tx.get('hold:'+oldId))return {applied:false};
+    if(imageId&&await tx.get('hold:'+imageId))return {applied:false,checked:true,image:current.image};
+    // Keep an existing image if another source identity already owns this URL.
+    if(imageId){const usage=await tx.list({prefix:'usage:'+imageId+':',limit:2});if([...usage.keys()].some(k=>k!=='usage:'+imageId+':'+slug))return {applied:false,checked:true,image:current.image};}
+    const merged={...current,image,imageMetadataCheckedAt:Date.now()};
+    await tx.put(key,merged);await tx.put('family:'+current.cardNumber+':'+slug,merged);
+    if(imageId&&imageId!==oldId){if(oldId)await tx.delete('usage:'+oldId+':'+slug);await tx.put('usage:'+imageId+':'+slug,{title:merged.title,url:merged.url});await tx.put('image:'+imageId,{image});const meta=await tx.get('meta');if(meta){meta.photos+=(image?1:0)-(current.image?1:0);await tx.put('meta',meta);}}
+    if(health)await tx.put('health:'+imageId,health);
+    await tx.put('validation:'+slug,referenceMetadataCheck(merged));
+    return {applied:true,image};
+   });return reply(result);
+  }
   if(url.pathname==='/price-api')return priceApiRequest(this,request);
   if(url.pathname==='/reference-price')return referencePriceRequest(this,request);
   if(url.pathname.startsWith('/coverage-')){const response=await coverageArchiveRequest(this,request);if(response)return response;}
@@ -148,6 +180,7 @@ export class CardReferenceArchive {
   return new Response('Not found',{status:404});
  }
  async alarm(){
+  if(await imageRefreshAlarm(this))return;
   if(await referencePriceAlarm(this))return;
   if(await coverageAlarm(this))return;
   const state=await this.ctx.storage.get('audit');

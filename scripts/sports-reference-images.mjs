@@ -5,6 +5,7 @@ import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
 import {cloudReferenceFamily} from './cloud-card-references.mjs';
 import {referenceConsoles} from './reference-validation.mjs';
 import {refreshedReferencePrices} from './reference-price-refresh.mjs';
+import {queueViewedReferenceImage} from './reference-image-refresh.mjs';
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
 const slug=s=>fold(s).replaceAll(' ','-');
 const decode=s=>String(s||'').replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;|&apos;/g,"'").replace(/&nbsp;/g,' ');
@@ -31,7 +32,11 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
   unavailable ||= family.unavailable;
   // A shared photo across different finishes is not proof of the printing.
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
-  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card,set));if(matches.length===1)return {...await refreshedReferencePrices(env,matches[0],{refresh:deps.priceRefresh!==false}),source:'PriceCharting / SportsCardsPro',referenceOnly:true};
+  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card,set));if(matches.length===1){
+   // Stored-reference audits and grid previews never enqueue provider work.
+   const reference=await queueViewedReferenceImage(env,matches[0],{refresh:deps.imageRefresh!==false&&deps.priceRefresh!==false&&!deps.requireArchiveRead&&!deps.archiveOnly});
+   return {...await refreshedReferencePrices(env,reference,{refresh:deps.priceRefresh!==false}),source:'PriceCharting / SportsCardsPro',referenceOnly:true};
+  }
  }
  if(unavailable&&deps.requireArchiveRead)throw Object.assign(new Error('Stored references temporarily unavailable'),{code:'REFERENCE_ARCHIVE_UNAVAILABLE'});
  // An archived collection's holds also govern legacy source-page fallbacks.

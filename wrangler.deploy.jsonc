@@ -3,6 +3,7 @@
   "main": "cloudflare-worker-full.js",
   "compatibility_date": "2026-08-20",
   "vars": {
+    "REFERENCE_IMAGE_REFRESH_ENABLED": "1",
     "EBAY_PARTNER_CAMPAIGN_ID": "5339046175",
     "STRIPE_PLATFORM_MODE": "live",
     "STRIPE_PUBLISHABLE_KEY": "pk_live_51OhyA8LHo6HlAYnMuSJGtOtXDbU5I8NIvHqgSpoKfH8PoZ2pIHCFVyO1fkqlpcpTAQ5tgEMGbWYlA81hiwQ2HhB400tlnsrfsw",
