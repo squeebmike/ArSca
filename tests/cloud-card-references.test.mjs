@@ -90,6 +90,18 @@ assert.ok(!isDashboard('https://squeebmike.github.io/Other/dashboard.html'));ass
 const oldLocation=globalThis.location;globalThis.location={origin:'https://squeebmike.github.io',pathname:'/ArSca/dashboard.html'};
 await assert.rejects(dashboardCloudRequest('/kv/private','GET'),/Invalid cloud/);globalThis.location=oldLocation;
 {
+ const source='baseball-cards-2026-topps-five-star',sample={consoleId:source,productId:'14946125',title:'Shohei Ohtani #1',player:'Shohei Ohtani',cardNumber:'1',parallel:'',run:'/50',image:'',url:'https://www.sportscardspro.com/game/'+source+'/shohei-ohtani-1'};
+ await send([sample]);const object=instances.get('console:'+source),key='validation:shohei-ohtani-1';
+ await object.ctx.storage.put(key,{version:'2026-10-25.2',mappingVersion:'2026-10-29.2-big-league-inserts',flags:['missing_photo','unmapped_source_set'],matches:[]});
+ const {fiveStar2026Sets}=await import('../scripts/topps/five-star-2026.mjs'),release=fiveStar2026Sets[0];
+ const found=await sportsReferenceImage(env,{},release,release.cards[0],{archiveOnly:true,priceRefresh:false});
+ assert.equal(found?.url,sample.url,'newly published numbered base identity reuses previously collected metadata');assert.equal(found.image,null,'missing provider photo remains missing');assert.equal(found.productId,'14946125');assert.equal(found.referencePrices,undefined,'blank source price is not invented');
+ assert.equal((await object.ctx.storage.get(key)).metadataMatched,true,'stale unmapped validation is repaired from publisher metadata');
+ const {referenceIdentityMatches}=await import('../scripts/reference-match.mjs');
+ for(const run of ['/51','/100','/-50',''])assert.equal(referenceIdentityMatches({...sample,run},release.cards[0],release),false,'unverified base numbering rejected');
+ assert.equal(referenceIdentityMatches({...sample,title:'Shohei Ohtani [Amber] #1',run:'/25'},release.cards[0],release),false,'numbered base does not absorb a named parallel');
+}
+{
  const source='baseball-cards-2024-bowman-chrome-prospects',sample={consoleId:source,title:'Abimelec Ortiz #BCP-16',player:'Abimelec Ortiz',cardNumber:'BCP-16',parallel:'',run:'',image:'https://storage.googleapis.com/images.pricecharting.com/corrwxltjzov7mgb3xls/240.jpg',url:'https://www.sportscardspro.com/game/'+source+'/abimelec-ortiz-bcp-16',capturedAt:new Date().toISOString(),referencePrices:{currency:'USD',ungraded:1.23}};
  await send([sample]);const object=instances.get('console:'+source);await object.alarm();
  const key='validation:abimelec-ortiz-bcp-16';await object.ctx.storage.put(key,{version:'2026-10-25.2',flags:['unmapped_source_set'],matches:[]});

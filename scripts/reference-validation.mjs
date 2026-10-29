@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.2-big-league-inserts';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.3-five-star-master';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value);}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
@@ -110,7 +110,7 @@ export function referenceMetadataCheck(row){
    if(!referenceConsoles(set,card).includes(row.consoleId))continue;
    if(!parsed[2]&&referenceNeedsFinish(set,card))continue;
    const variants=[card,...cardParallelProgram(set,card).variants.map(rule=>selectedParallelCard(set,card,rule.id))];
-   for(const candidate of variants)if(referenceIdentityMatches(row,candidate)){
+   for(const candidate of variants)if(referenceIdentityMatches(row,candidate,set)){
     const path='/'+(set.sport==='football'?'football':'baseball')+'/checklists/'+set.id+'/cards/'+card.id+(candidate.parallelRule?'?parallel='+encodeURIComponent(candidate.parallelRule.id):'');
     if(!matches.some(m=>m.path===path))matches.push({setId:set.id,path,source:set.sourceUrl,parallel:candidate.parallelRule?.name||'',run:candidate.parallelRule?.printRun||null});
    }

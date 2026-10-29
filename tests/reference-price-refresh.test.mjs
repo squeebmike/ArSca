@@ -10,6 +10,7 @@ const request=r=>new Request('https://archive/reference-price',{method:'POST',bo
 try{
  assert.ok(priceProductIdentity(data,ref));assert.ok(!priceProductIdentity({...data,'console-name':'Football Cards 2026 Topps Five Star'},ref));assert.ok(!priceProductIdentity({...data,'product-name':'Shohei Ohtani [Amber] #1'},ref));
  assert.deepEqual(apiReferencePrices(data,now),{ungraded:12.34,grade9:25,psa10:99,currency:'USD',capturedAt:new Date(now).toISOString()});assert.equal(apiReferencePrices({'loose-price':0},now),null);
+ const audit=await(await referencePriceRequest(owner,request({...ref,refresh:false}))).json();assert.equal(audit.queued,false);assert.equal((await storage.list({prefix:'pc-demand:'})).size,0,'coverage audit reads never queue API scans');
  await Promise.all(Array.from({length:20},()=>referencePriceRequest(owner,request(ref))));assert.equal((await storage.list({prefix:'pc-demand:'})).size,1);assert.equal(calls.length,0,'page views enqueue without upstream calls');
  await referencePriceAlarm(owner);assert.equal(calls.length,1);let result=await(await referencePriceRequest(owner,request(ref))).json();assert.equal(result.referencePrices.ungraded,12.34);assert.equal(result.stale,false);assert.ok(!JSON.stringify(result).includes('private-test-token'));
  await referencePriceAlarm(owner);assert.equal(calls.length,1,'fresh or empty queue does not scan');

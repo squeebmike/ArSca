@@ -30,7 +30,7 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
   const family=await cloudReferenceFamily(env,id,String(card.cardNumber),true),cloud=family.cards||[];archived ||= family.archived;
   // A shared photo across different finishes is not proof of the printing.
   const reviewed=cloud.filter(r=>!cloud.some(other=>other.url!==r.url&&other.image&&other.image===r.image&&other.title!==r.title));
-  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card));if(matches.length===1)return {...await refreshedReferencePrices(env,matches[0]),source:'PriceCharting / SportsCardsPro',referenceOnly:true};
+  const needsFinish=referenceNeedsFinish(set,card),matches=reviewed.filter(row=>(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card,set));if(matches.length===1)return {...await refreshedReferencePrices(env,matches[0],{refresh:deps.priceRefresh!==false}),source:'PriceCharting / SportsCardsPro',referenceOnly:true};
  }
  // An archived collection's holds also govern legacy source-page fallbacks.
  // An unchecked or rejected photo must not reappear from that older cache.

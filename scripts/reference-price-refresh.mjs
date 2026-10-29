@@ -40,11 +40,11 @@ export async function priceApiRequest(owner,request){
  if(input.token!==undefined&&(typeof input.token!=='string'||input.token.length>1000))return reply({error:'Invalid provider configuration'},400);
  return owner.ctx.blockConcurrencyWhile(()=>upstream(owner,input.path,input.params,input.token));
 }
-export async function refreshedReferencePrices(env,reference){
+export async function refreshedReferencePrices(env,reference,{refresh=true}={}){
  if(!validRef(reference)||!env.CARD_REFERENCE_ARCHIVE)return reference;
  try{
   const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(coordinatorName));
-  const response=await stub.fetch(new Request('https://archive/reference-price',{method:'POST',body:JSON.stringify({productId:reference.productId,title:reference.title,consoleId:reference.consoleId})}));
+  const response=await stub.fetch(new Request('https://archive/reference-price',{method:'POST',body:JSON.stringify({productId:reference.productId,title:reference.title,consoleId:reference.consoleId,refresh})}));
   if(!response.ok)return reference;const cached=await response.json();
   return {...reference,...(cached.referencePrices?{referencePrices:cached.referencePrices}:{}),priceCheckedAt:cached.checkedAt||null,priceRefreshPending:!!cached.queued,priceRefreshRetryAt:cached.retryAt||null,priceRefreshProviderStatus:cached.providerStatus||null,priceRefreshProviderError:cached.providerError||null};
  }catch{return reference;}
@@ -63,7 +63,7 @@ export async function referencePriceRequest(owner,request){
   const same=cache&&cache.title===ref.title&&cache.consoleId===ref.consoleId;
   const fresh=same&&now-cache.checkedAt<DAY;
   let queued=false;
-  if(!fresh&&(owner.env.PRICECHARTING_TOKEN||owner.env.PRICECHARTING_API_KEY)){
+  if(ref.refresh!==false&&!fresh&&(owner.env.PRICECHARTING_TOKEN||owner.env.PRICECHARTING_API_KEY)){
    const pending=await store.list({prefix:'pc-demand:',limit:LIMIT});
    if(pending.has('pc-demand:'+ref.productId)||pending.size<LIMIT){
     await store.put('pc-mode',true);await store.put('pc-demand:'+ref.productId,{productId:ref.productId,title:ref.title,consoleId:ref.consoleId});

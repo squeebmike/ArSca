@@ -113,7 +113,7 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  if(parallelId&&!chosenCard)return missing();
  if(url.searchParams.has('reference')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
-  const reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,deps);
+  const reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,{...deps,priceRefresh:url.searchParams.get('price-refresh')!=='0'});
   if(reference)return Response.json({reference},{headers:{'Cache-Control':'public,max-age=3600','X-Robots-Tag':'noindex',...(url.searchParams.get('reference')==='3'?{'Access-Control-Allow-Origin':'https://squeebmike.github.io'}:{})}});
   if(url.searchParams.get('reference')==='3')return Response.json({reference:null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex','Access-Control-Allow-Origin':'https://squeebmike.github.io'}});
   // The main card photo needs the same marketplace fallback as its versions.

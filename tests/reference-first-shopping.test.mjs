@@ -5,6 +5,13 @@ import {handleBaseballCatalog} from '../scripts/baseball-catalog-pages.mjs';
 import {sportsLookupScript} from '../scripts/sports-card-marketplace.mjs';
 const reference={title:'Aaron Judge #66',image:'https://storage.googleapis.com/images.pricecharting.com/example/240.jpg',url:'https://www.sportscardspro.com/game/baseball-cards-2026-bowman-chrome/aaron-judge-66',run:''};
 reference.referencePrices={currency:'USD',ungraded:7.5,grade9:25,psa10:80,capturedAt:'2026-10-25T08:00:00Z'};
+{
+ const auditReference={...reference,consoleId:'baseball-cards-2026-bowman-chrome',productId:'12345'},requests=[];
+ const auditEnv={CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:()=>({fetch:async input=>{const request=new Request(input);if(new URL(request.url).pathname==='/reference-price'){requests.push(await request.json());return Response.json({referencePrices:reference.referencePrices,queued:false});}return Response.json({cards:[auditReference],archived:true});}})}};
+ const auditUrl=new URL('https://www.themanapocket.com/baseball/checklists/2026-bowman-chrome-baseball/cards/2026-bowman-chrome-baseball-66?reference=3&price-refresh=0');
+ const response=await handleBaseballCatalog(new Request(auditUrl),auditEnv,auditUrl,{escape:s=>String(s),listItems:async()=>{throw Error('no inventory scan');},available:()=>true});
+ assert.equal((await response.json()).reference.productId,'12345');assert.equal(requests.length,1);assert.equal(requests[0].refresh,false,'stored coverage endpoint does not enqueue a price scan');
+}
 const href='https://www.ebay.com/itm/123?campid=5339046175';
 const store=new Map();let inventoryReads=0;
 const env={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async key=>store.get(key)||null,put:async(key,value)=>store.set(key,JSON.parse(value))},CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:()=>({fetch:async()=>Response.json({cards:[reference],archived:true})})}};

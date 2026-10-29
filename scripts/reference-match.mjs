@@ -1,13 +1,18 @@
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\b([a-z]) ([a-z])\b/g,'$1$2');
 import {referenceCardNames} from './reference-card-aliases.mjs';
+import {cardParallelProgram} from './sports-parallels.mjs';
 const finishName=s=>fold(s).replace(/^platinum toile /,'toile ').replace(/^bowman logo pattern$/,'logo pattern').replace(/ refractor$/,'');
 export function safeReferenceImage(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='storage.googleapis.com'&&/^\/images\.pricecharting\.com\/[a-z0-9]+\/(?:60|240|300|400|1600)\.jpg$/.test(u.pathname)?u.href:null;}catch{return null;}}
 export function referenceNeedsFinish(set,card){return !card.parallelRule&&!!set.cards?.some(base=>base.id!==card.id&&String(base.cardNumber)===String(card.cardNumber)&&fold(base.player)===fold(card.player));}
-export function referenceIdentityMatches(row,card){
+export function referenceIdentityMatches(row,card,set){
  const m=String(row.title||'').match(/^(.*?)\s*(?:\[([^\]]+)\])?\s*#([^\s]+)\s*$/),rule=card.parallelRule,number=String(card.cardNumber);
  if(!m||!referenceCardNames(card).some(name=>fold(m[1])===fold(name))||m[3]!==number)return false;
  if(!rule){
-  if(!card.section||card.section==='Base')return !m[2]&&!row.run;
+  if(!card.section||card.section==='Base'){
+   if(m[2])return false;const program=set?cardParallelProgram(set,card):null;
+   if(program?.printRun||program?.maxPrintRun){const denominator=String(row.run||'').match(/^\/([1-9]\d*)$/)?.[1];return !!denominator&&(program.printRun?Number(denominator)===program.printRun:Number(denominator)<=program.maxPrintRun);}
+   return !row.run;
+  }
   // An alphanumeric Update number alone does not identify the Clear/image
   // variation. Those explicit base variations need a matching finish label.
   if(!m[2]&&/^base\b.*\b(?:variation|parallel)/i.test(card.section))return false;
@@ -23,4 +28,4 @@ export function referenceIdentityMatches(row,card){
  if(rule.printRun)return Number(denominator)===(rule.serialDenominator||rule.printRun);
  return !denominator;
 }
-export function matchReferenceImage(rows,set,card){const needsFinish=referenceNeedsFinish(set,card),matches=rows.filter(row=>safeReferenceImage(row.image)&&(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card));return matches.length===1?{...matches[0],source:'PriceCharting / SportsCardsPro',referenceOnly:true}:null;}
+export function matchReferenceImage(rows,set,card){const needsFinish=referenceNeedsFinish(set,card),matches=rows.filter(row=>safeReferenceImage(row.image)&&(!needsFinish||/\[[^\]]+\]\s*#/.test(row.title))&&referenceIdentityMatches(row,card,set));return matches.length===1?{...matches[0],source:'PriceCharting / SportsCardsPro',referenceOnly:true}:null;}
