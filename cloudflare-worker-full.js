@@ -587,6 +587,17 @@ function inventoryCostBasisFromData(data = {}) {
 // checkout actually charges -- both call this exact same validation logic.
 const SHIPPO_API_BASE = 'https://api.goshippo.com';
 
+// Writes a sale's lines in one batch. Every row gets every column (missing
+// ones as null) so the batch is never turned down for mismatched keys. Returns
+// the error, if any, so a checkout can stop instead of carrying on with a sale
+// that has no items.
+async function insertSaleLines(env, saleLines) {
+  const keys = [...new Set(saleLines.flatMap(l => Object.keys(l)))];
+  const rows = saleLines.map(l => Object.fromEntries(keys.map(k => [k, l[k] === undefined ? null : l[k]])));
+  const { response, data } = await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(rows) });
+  return response && !response.ok ? String(data?.message || data?.code || response.status) : '';
+}
+
 async function loadCartForShipping(env, storeId, requestedItemsRaw) {
   const requestedItems = Array.isArray(requestedItemsRaw) ? requestedItemsRaw.slice(0, 20) : [];
   if (!requestedItems.length) return { error: json({ ok:false, error:'Your cart is empty' }, 400) };
@@ -7990,8 +8001,16 @@ async function routeRequest(request, env, ctx) {
       await supabaseAdminFetch(env, 'pos_sales', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:saleId, store_id:storeId, subtotal:subtotalCents/100, discount_total:0, tax_total:0, total:totalCents/100, status:'pending' }) });
 
       const saleLines = lineItems.map(li => { const extended=li.unitPrice*li.quantity,totalCost=li.costBasis*li.quantity;return { id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:extended, adjusted_price:extended, discount_amount:0, cost_basis:li.costBasis, profit:Math.round((extended-totalCost)*100)/100, condition:li.condition, image_url:li.imageUrl }; });
-      if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0 }); }
-      await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
+      // Same keys as the item lines: the database turns down a batch whose
+      // rows differ ("All object keys must match"), and every shipped website
+      // order lost its lines that way from 2026-10-23 (store, 2026-10-29).
+      if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0, condition:'', image_url:null }); }
+      const linesError = await insertSaleLines(env, saleLines);
+      if (linesError) {
+        console.error('Storefront checkout: could not save sale lines', saleId, linesError);
+        await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled' }) });
+        return json({ ok:false, error:'Could not start checkout -- please try again, or call the store.' }, 500);
+      }
 
       const orderRef = `shop:${saleId}`;
       if (pointsRedeemed) {
@@ -8529,8 +8548,13 @@ async function routeRequest(request, env, ctx) {
       await supabaseAdminFetch(env, 'pos_sales', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:saleId, store_id:storeId, subtotal:subtotalCents/100, discount_total:0, tax_total:0, total:totalCents/100, status:'pending' }) });
 
       const saleLines = lineItems.map(li => { const extended=li.unitPrice*li.quantity,totalCost=li.costBasis*li.quantity;return { id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:li.itemId, title:li.title, category:li.category, quantity:li.quantity, unit_price:li.unitPrice, original_price:extended, adjusted_price:extended, discount_amount:0, cost_basis:li.costBasis, profit:Math.round((extended-totalCost)*100)/100, condition:'', image_url:li.imageUrl }; });
-      if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0 }); }
-      await supabaseAdminFetch(env, 'pos_sale_lines', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify(saleLines) });
+      // Same keys as the item lines: the database turns down a batch whose
+      // rows differ ("All object keys must match"), and every shipped website
+      // order lost its lines that way from 2026-10-23 (store, 2026-10-29).
+      if (shippingFeeCents > 0) { const shipping=shippingFeeCents/100;saleLines.push({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, item_id:null, title:'Shipping', category:'Shipping', quantity:1, unit_price:shipping, original_price:shipping, adjusted_price:shipping, discount_amount:0, cost_basis:shipping, profit:0, condition:'', image_url:null }); }
+      // Already paid: the order is recorded even if its lines fail.
+      const linesError = await insertSaleLines(env, saleLines);
+      if (linesError) console.error('record-order: could not save sale lines', saleId, linesError);
 
       await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
 
