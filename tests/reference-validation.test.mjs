@@ -122,4 +122,25 @@ for(const [finish,run]of [['Memorial Day Camo','/26'],['Printing Plates','/4']])
  assert.ok(referenceMetadataCheck({...row,cardNumber:'50',title:"Star Power [Mother's Day Pink] #50"}).flags.includes('no_exact_checklist_match'),'not interchangeable with the solo Betts card');
  assert.ok(referenceMetadataCheck({...row,run:'/25'}).flags.includes('no_exact_checklist_match'));
 }
+{
+ const set=baseballSets.find(s=>s.id==='2022-topps-chrome-platinum-anniversary'),groups=sectionsForSet(set),autos=groups.find(g=>g.name==='Autograph Cards'),card=autos.cards.find(c=>c.cardNumber==='CPA-ABE'),source='baseball-cards-2022-topps-chrome-platinum-anniversary-autographs';
+ assert.equal(autos.cards.length,130);assert.equal(card.player,'Anthony Bender');
+ for(const c of [...set.cards,...groups.flatMap(g=>g.cards)])assert.equal(referenceConsoles(set,c).includes(source),c.section==='Autograph Cards','dedicated autograph console excludes every non-autograph section and base');
+ for(const other of baseballSets.filter(s=>s.id!==set.id))assert(!referenceConsoles(other).includes(source),'autograph console is limited to its verified release');
+ const row={...bowman(source,'Anthony Bender','CPA-ABE'),productId:'5660136',url:'https://www.sportscardspro.com/game/'+source+'/anthony-bender-cpa-abe',image:'https://storage.googleapis.com/images.pricecharting.com/corrixsc3ychqjtgtnne/240.jpg',referencePrices:{currency:'USD',ungraded:1.87,grade9:12.24,psa10:34.50,capturedAt:'2026-10-30T15:30:00.000Z'}};
+ const check=referenceMetadataCheck(row);assert.deepEqual(check.flags,[]);assert.equal(check.matches.length,1);assert.equal(check.matches[0].path,'/baseball/checklists/'+set.id+'/cards/'+card.id);
+ const photo=matchReferenceImage([row],set,card);assert(photo);assert.equal(photo.image,row.image);assert.deepEqual(photo.referencePrices,row.referencePrices);
+ assert.equal(referenceMetadataCheck({...row,title:'Anthony Bender #CPA-ABX',cardNumber:'CPA-ABX'}).matches.length,0,'wrong card number remains rejected');
+ assert.equal(referenceMetadataCheck({...row,title:'Anthony Bend #CPA-ABE',player:'Anthony Bend'}).matches.length,0,'wrong player remains rejected');
+ assert.equal(referenceMetadataCheck({...row,title:'Shohei Ohtani #1',player:'Shohei Ohtani',cardNumber:'1'}).matches.length,0,'non-autograph cannot borrow the dedicated source');
+ const observed=[['refractor','Refractor',199],['aqua-refractor','Aqua Refractor',150],['blue-prism-refractor','Blue Prism Refractor',99],['platinum-toile-cream-blue-refractor','Toile Cream Blue Refractor',99],['gold-refractor','Gold Refractor',50],['orange-refractor','Orange Refractor',25],['pink-refractor','Pink Refractor',15],['black-refractor','Black Refractor',10],['red-refractor','Red Refractor',5],['platinum-toile-cream-red-refractor','Toile Cream Red Refractor',5],['superfractor','SuperFractor',1]];
+ assert.equal(cardParallelProgram(set,card).variants.length,11,'source mapping does not invent finish eligibility');
+ for(const [id,finish,run]of observed){
+  const parallel={...row,title:'Anthony Bender ['+finish+'] #CPA-ABE',parallel:finish,run:'/'+run};
+  assert.deepEqual(referenceMetadataCheck(parallel).flags,[],finish);assert(referenceMetadataCheck(parallel).matches[0].path.endsWith('?parallel='+id));
+  assert(matchReferenceImage([parallel],set,selectedParallelCard(set,card,id)));assert.equal(matchReferenceImage([parallel],set,card),null,'parallel cannot fill the uncolored slot');
+  assert.equal(referenceMetadataCheck({...parallel,run:'/999'}).matches.length,0,'wrong serial denominator remains rejected');
+  assert.equal(referenceMetadataCheck({...parallel,run:''}).matches.length,0,'missing parallel serial denominator remains rejected');
+ }
+}
 console.log('Reference validation: official identities, correct numbered printing, unmapped sources, image status, SSRF boundaries and honest review labels passed');

@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-29.21-stadium-chrome-autograph-source';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-30.1-platinum-autograph-source';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&(value==='baseball-cards-2026-topps-five-star-stars-&-stitches-autograph'||/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value));}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');
@@ -59,6 +59,7 @@ export function referenceConsoles(set,card=null){
  if(set.id==='2024-topps-chrome-update-series-baseball'&&(!card||['Autograph Cards','Topps Chrome Update Autograph Cards'].includes(card.section)))ids.push('baseball-cards-2024-topps-chrome-update-autograph');
  if(set.id==='2024-topps-five-star-baseball')ids.push('baseball-cards-2024-topps-five-star-autograph');
  if(set.id==='2024-topps-stadium-club-baseball'&&(!card||card.section==='Chrome Autograph Cards'))ids.push('baseball-cards-2024-topps-stadium-club-chrome-autograph');
+ if(set.id==='2022-topps-chrome-platinum-anniversary'&&(!card||card.section==='Autograph Cards'))ids.push('baseball-cards-2022-topps-chrome-platinum-anniversary-autographs');
  // Actual collected source IDs use plural "prospects" in 2024/2025 and
  // combine spring/fall Chrome subjects. Number, player and section still
  // decide the exact published release; these aliases never publish a card.
