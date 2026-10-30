@@ -34,3 +34,14 @@ for(const [finish,run]of [['Red','/50'],['Orange','/10'],['Superfractor','/1']])
  assert.equal(selectedParallelCard(set,abbott,finish.toLowerCase()),null,'unregistered autograph finishes are not published from provider rows');
  assert.equal(referenceMetadataCheck({...autographRow,title:'Andrew Abbott ['+finish+'] #SCCA-AA',parallel:finish,run}).matches.length,0,'observed colored row cannot substitute for uncolored autograph');
 }
+
+// Collected 2022 Platinum uses the exact SP label for publisher image variants.
+const platinum=baseballSets.find(s=>s.id==='2022-topps-chrome-platinum-anniversary'),platinumSource='baseball-cards-2022-topps-chrome-platinum-anniversary',platinumVariations=sectionsForSet(platinum).find(g=>g.name==='Base Cards Image Variations'),griffey=platinumVariations.cards.find(c=>c.cardNumber==='450'),griffeyBase=platinum.cards.find(c=>c.cardNumber==='450');
+assert.equal(platinumVariations.cards.length,25);
+const spRow={consoleId:platinumSource,title:'Ken Griffey Jr. [SP Variation] #450',player:'Ken Griffey Jr.',cardNumber:'450',parallel:'SP Variation',run:'',image:'https://storage.googleapis.com/images.pricecharting.com/corrlwkvmmcownm5rxz4/240.jpg',url:'https://www.sportscardspro.com/game/'+platinumSource+'/ken-griffey-jr-sp-variation-450'};
+const spCheck=referenceMetadataCheck(spRow);assert.deepEqual(spCheck.flags,[]);assert.equal(spCheck.matches.length,1);assert.equal(spCheck.matches[0].path,'/baseball/checklists/'+platinum.id+'/cards/'+griffey.id);assert(matchReferenceImage([spRow],platinum,griffey));
+assert.equal(matchReferenceImage([spRow],platinum,griffeyBase),null,'SP photo cannot replace uncolored base');
+const plainGriffey={...spRow,title:'Ken Griffey Jr. #450',parallel:''};assert.equal(matchReferenceImage([plainGriffey],platinum,griffey),null,'uncolored photo cannot replace SP');assert(matchReferenceImage([plainGriffey],platinum,griffeyBase));
+for(const bad of [{...spRow,run:'/1'},{...spRow,title:'Ken Griffey Jr. [Refractor] #450',parallel:'Refractor'},{...spRow,title:'Ken Griffey Jr. [Image Variation] #450',parallel:'Image Variation'},{...spRow,title:'Ken Griffey Jr. [SP Variation] #451',cardNumber:'451'},{...spRow,title:'Shohei Ohtani [SP Variation] #450',player:'Shohei Ohtani'},{...spRow,consoleId:'baseball-cards-2023-topps-chrome-platinum-anniversary'}])assert.equal(matchReferenceImage([bad],platinum,griffey),null,'only exact observed SP identity/source is accepted');
+assert.equal(referenceIdentityMatches(spRow,griffey,{...platinum,id:'2023-topps-chrome-platinum-anniversary'}),false,'alias cannot leak to another release');
+assert.equal(referenceIdentityMatches(spRow,{...griffey,section:'Base Cards Design Variations'},platinum),false,'alias cannot leak to a different physical section');

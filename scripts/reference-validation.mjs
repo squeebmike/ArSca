@@ -5,7 +5,7 @@ import {cardParallelProgram,selectedParallelCard} from './sports-parallels.mjs';
 import {referenceIdentityMatches,safeReferenceImage,referenceNeedsFinish} from './reference-match.mjs';
 import {referenceCardNames} from './reference-card-aliases.mjs';
 export const REFERENCE_AUDIT_VERSION='2026-10-25.2';
-export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-30.1-platinum-autograph-source';
+export const REFERENCE_SOURCE_MAPPING_VERSION='2026-10-30.2-platinum-sp-variation';
 export function validReferenceConsoleId(value){return typeof value==='string'&&value.length<=160&&(value==='baseball-cards-2026-topps-five-star-stars-&-stitches-autograph'||/^[a-z0-9-]+(?:%27[a-z0-9-]+)*$/.test(value));}
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
 const slug=s=>fold(s).replaceAll(' ','-');

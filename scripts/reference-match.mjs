@@ -27,6 +27,9 @@ export function referenceIdentityMatches(row,card,set){
   // An alphanumeric Update number alone does not identify the Clear/image
   // variation. Those explicit base variations need a matching finish label.
   if(!m[2]&&/^base\b.*\b(?:variation|parallel)/i.test(card.section))return false;
+  // The collected Platinum root calls its publisher-listed image variants SP.
+  // This source label identifies only those variants, never the numbered base.
+  if(set?.id==='2022-topps-chrome-platinum-anniversary'&&card.section==='Base Cards Image Variations')return row.consoleId==='baseball-cards-2022-topps-chrome-platinum-anniversary'&&fold(m[2])==='sp variation'&&!row.run;
   const stadium=row.consoleId==='baseball-cards-2024-topps-stadium-club'?{'Base Set Chrome Variation':'chrome','Base Cards Image Variations':'image variation','Base Cards Design Variations':'design variation','Base Cards Rookie Design Variations':'rookie design variation'}[card.section]:null;
   if(stadium)return fold(m[2])===stadium&&!row.run;
   const section=fold(card.section).replace(/\b(?:base|cards?|variations?|parallels?)\b/g,' ').replace(/\s+/g,' ').trim();
