@@ -214,7 +214,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
   const queue = [];
   const deadline = Date.now() + (deps.budgetMs ?? 8 * 60 * 1000);
   for (let g = 0; g < batch.length; g += CHUNK) {
-    if (g > 0 && Date.now() > deadline) { out.stoppedEarly = true; break; }
+    if (g > 0 && Date.now() >= deadline) { out.stoppedEarly = true; break; }
     const group = batch.slice(g, g + CHUNK);
     // Comics with no link: barcode first, then series + issue + cover.
     const found = new Map();
