@@ -1,4 +1,5 @@
 import { renderBookAlertForm, alertBookTitle } from './book-alert-ui.mjs';
+import { cachedPublicCatalog } from './public-catalog-cache.mjs';
 import { productFacts, storeOrganization, productIdentity, storePolicyHtml } from './storefront-seo.mjs';
 // The Mana Pocket PRH + Lunar FOC preorder service.
 //
@@ -715,6 +716,9 @@ export function preorderDirectoryEntries(catalogs, deps, includeClosed = false) 
   return [...entries.values()].sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));
 }
 
+const PREORDER_DIRECTORY_KV_KEY='public-catalog:preorder-directory-v3';
+const PREORDER_DIRECTORY_FRESH_MS=3*3600*1000;
+const PREORDER_DIRECTORY_STALE_MS=48*3600*1000;
 async function preorderDirectory(env, deps, url) {
   const raw = url.searchParams.get('page') || '1';
   if (!/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw))) return notFoundPreorderPage(deps);
@@ -726,10 +730,25 @@ async function preorderDirectory(env, deps, url) {
   try {
     if(cached) entries=await cached.json();
     else {
-      const db=async(p,o)=>{const result=await deps.supabaseAdminFetch(env,p,o);if(result.response&&!result.response.ok)throw new Error('Preorder catalog unavailable');return result;};
-      const catalogs=(await Promise.all([PRH,LUNAR].map(d=>loadAllCatalogs(db,deps.publicStoreId,false,d)))).flat();
-      entries=preorderDirectoryEntries(catalogs,deps,true);
-      if(cache)await cache.put(key,new Response(JSON.stringify(entries),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=60'}}));
+      // Building this list reads every week's full catalog (all PRH and Lunar
+      // weeks, ~1 MB each). With only a 60-second cache kept separately at
+      // each Cloudflare location, crawlers paging through it rebuilt it every
+      // few minutes -- most of the database's data transfer (2026-10-31,
+      // Free Plan egress at 172%). One shared copy now lasts 3 hours; each
+      // cover's own page and checkout still check it live. If a rebuild
+      // fails, the last copy (up to 2 days old) is shown instead.
+      let saved=null;try{saved=await env.LBA_KV?.get(PREORDER_DIRECTORY_KV_KEY,'json');}catch{}
+      const age=saved&&Array.isArray(saved.entries)&&Number.isFinite(saved.at)?Date.now()-saved.at:Infinity;
+      if(age<PREORDER_DIRECTORY_FRESH_MS)entries=saved.entries;
+      else{
+        try{
+          const db=async(p,o)=>{const result=await deps.supabaseAdminFetch(env,p,o);if(result.response&&!result.response.ok)throw new Error('Preorder catalog unavailable');return result;};
+          const catalogs=(await Promise.all([PRH,LUNAR].map(d=>loadAllCatalogs(db,deps.publicStoreId,false,d)))).flat();
+          entries=preorderDirectoryEntries(catalogs,deps,true);
+          try{await env.LBA_KV?.put(PREORDER_DIRECTORY_KV_KEY,JSON.stringify({at:Date.now(),entries}),{expirationTtl:Math.ceil(PREORDER_DIRECTORY_STALE_MS/1000)});}catch{}
+        }catch(error){if(age<PREORDER_DIRECTORY_STALE_MS)entries=saved.entries;else throw error;}
+      }
+      if(cache)await cache.put(key,new Response(JSON.stringify(entries),{headers:{'Content-Type':'application/json','Cache-Control':'public, max-age=600'}}));
     }
   } catch {return new Response('Comic preorders are temporarily unavailable.',{status:503,headers:{'Cache-Control':'no-store','Retry-After':'60'}});}
   if(!includeClosed)entries=entries.filter(entry=>entry.orderable);
@@ -4636,6 +4655,18 @@ export async function syncFocStripeEvent(env, event, deps) {
   }
 }
 
+// One whole FOC week for the /preorders page (~1 MB from the database).
+// Every visitor opening a week used to read it fresh -- crawlers that run
+// the page included -- which was much of the database's data transfer
+// (2026-10-31, Free Plan egress at 172%). Visitors now share one copy per
+// week for up to 3 minutes; checkout still checks stock and incentives live.
+const isCacheableCycleId=id=>/^[0-9a-f-]{36}$/i.test(String(id||''));
+export async function sharedCycleCatalog(env,storeId,distributor,cycleId,load){
+  if(!env?.LBA_KV)return load();
+  const items=await cachedPublicCatalog(env,null,'preorder-cycle:'+storeId+':'+distributor+':'+cycleId,async()=>{const catalog=await load();return catalog?[catalog]:[];},{freshMs:180000,maxAgeMs:180000,staleMs:3600000,timeoutMs:20000});
+  return items[0]||null;
+}
+
 export async function handleFocRequest(request, env, url, deps) {
   const path=url.pathname;
   if(path==='/preorders/catalog'&&request.method==='GET')return preorderDirectory(env,deps,url);
@@ -4650,7 +4681,11 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/public/preorders'&&request.method==='GET'){
     const storeId=text(url.searchParams.get('store_id'),80);const db=(p,o)=>deps.supabaseAdminFetch(env,p,o);const requestedLimit=Number.parseInt(url.searchParams.get('limit'),10);const requestedPage=Number.isFinite(requestedLimit)&&requestedLimit>0?{limit:requestedLimit,offset:Number.parseInt(url.searchParams.get('offset'),10)||0}:null;
     const distributor=url.searchParams.get('distributor')===LUNAR?LUNAR:PRH;
-    const catalog=await loadCatalog(db,storeId,url.searchParams.get('cycle')||'',false,undefined,undefined,requestedPage,distributor);return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
+    const requestedCycle=url.searchParams.get('cycle')||'';
+    const catalog=!requestedPage&&isCacheableCycleId(requestedCycle)
+      ? await sharedCycleCatalog(env,storeId,distributor,requestedCycle,()=>loadCatalog(db,storeId,requestedCycle,false,undefined,undefined,null,distributor))
+      : await loadCatalog(db,storeId,requestedCycle,false,undefined,undefined,requestedPage,distributor);
+    return catalog?deps.json({ok:true,...catalog}):deps.json({ok:false,error:'No FOC catalog is published yet'},404);
   }
   if(path==='/public/comics/new-releases'&&request.method==='GET')return newReleasesCatalog(env,deps,url);
   if(path==='/public/preorders/weeks'&&request.method==='GET'){
