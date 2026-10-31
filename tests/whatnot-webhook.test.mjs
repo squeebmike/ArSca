@@ -20,6 +20,14 @@ assert.equal(await verifyStandardWebhook(secret, await headers({ 'webhook-signat
 assert.equal(await verifyStandardWebhook(secret, await headers({ 'webhook-timestamp': String(now - 3600), 'webhook-signature': await sign('msg_1', now - 3600, body) }), body), 'timestamp too old or in the future', 'an old replay fails');
 assert.equal(await verifyStandardWebhook(secret, new Headers(), body), 'missing webhook headers');
 assert.equal(await verifyStandardWebhook(secret, await headers({ 'webhook-signature': 'v0,abc ' + (await sign('msg_1', now, body)) }), body), '', 'any one valid v1 signature in the list is enough');
+// Whatnot's own example delivery (developers.whatnot.com, Webhooks -> Verifying
+// signatures). Whatnot secrets start with wn_wh_, not whsec_: with the old
+// code every real delivery was refused.
+const wnBody = '{"type": "shows.started", "timestamp": "2026-10-20T16:00:00.123Z", "data": {"show_id": "9b2f6c1e-4d3a-4f8b-a1c2-3d4e5f6a7b8c"}, "version": "v2", "seller_id": "1234567"}';
+const wnHeaders = new Headers({ 'webhook-id': '0b7e4f6c-3d1a-4a8e-9f2b-5c6d7e8f9a0b', 'webhook-timestamp': '1792512005', 'webhook-signature': 'v1,8m/VX9GLLqhNZJndMpPw7OTUKSDI4szDXAmIFY8ffBI=' });
+assert.equal(await verifyStandardWebhook('wn_wh_AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=', wnHeaders, wnBody, 1792512005), '', 'a Whatnot wn_wh_ secret verifies Whatnot\'s example');
+assert.equal(await verifyStandardWebhook(' wn_wh_AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=\n', wnHeaders, wnBody, 1792512005), '', 'pasted with stray spaces');
+assert.equal(await verifyStandardWebhook('wn_wh_AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=', wnHeaders, wnBody.replace('1234567', '7654321'), 1792512005), 'signature does not match');
 
 // The route.
 const kv = new Map();
