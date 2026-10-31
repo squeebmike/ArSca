@@ -16,8 +16,8 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 // ── Each category builder must accept and honor restrictToIds ──
 const comicBuildStart = dashboard.indexOf('async function buildLiveComicPriceSyncProposal(options = {}){');
 assert(comicBuildStart >= 0, 'buildLiveComicPriceSyncProposal must exist');
-assert.match(dashboard.slice(comicBuildStart, comicBuildStart + 300),
-  /const items=comicInventoryPriceSyncItems\(\)\.filter\(i=>!options\.restrictToIds\|\|options\.restrictToIds\.has\(i\.id\)\);/,
+assert.match(dashboard.slice(comicBuildStart, comicBuildStart + 500),
+  /const items=comicInventoryPriceSyncItems\(\)\.filter\(i=>\(!options\.restrictToIds\|\|options\.restrictToIds\.has\(i\.id\)\)&&!\(typeof dailyPriceSyncRunning!=='undefined'&&dailyPriceSyncRunning&&serverPriceCheckedToday\(i\)\)\);/,
   'comic price sync must respect restrictToIds');
 
 const mtgBuildStart = dashboard.indexOf('async function buildOfflineMtgPriceSyncProposal(options = {}){');

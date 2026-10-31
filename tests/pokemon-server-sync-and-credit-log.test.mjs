@@ -137,7 +137,7 @@ function fakeDeps(rows, answer) {
 
 // Wiring: hourly trigger, review hand-off, dashboard skip.
 assert.match(wrangler, /"17 \* \* \* \*"/, 'hourly trigger');
-assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.includes('if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(runScheduledPokemonServerSync(env)); return; }'), 'hourly trigger runs only the sync');
+assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.includes('if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(Promise.all([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)])); return; }'), 'hourly trigger runs only the daily price syncs (Pokemon, and PriceCharting comics/sports)');
 assert.ok(worker.includes("source: 'server-daily-sync'"), 'server calls are logged');
 assert.ok(worker.includes("url.pathname === '/price-sync/review'"), 'review queue route');
 assert.ok(deploy.includes('scripts/ppt-usage.mjs') && deploy.includes('scripts/pokemon-daily-sync.mjs'), 'deploys on change');
