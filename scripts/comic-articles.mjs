@@ -166,16 +166,23 @@ const money = cents => '$' + (Number(cents || 0) / 100).toFixed(2);
 
 // ---------- Webflow CMS ----------
 
+// Reviewed publisher Cover A art for these exact editorial issues only. Editors
+// can replace it through the normal CMS cover or a lead image in the article.
+const editorialCoverFallbacks=new Map([
+  ['spider-woman-1-2026-covers-release-date',{url:'https://images.penguinrandomhouse.com/cover/75960621723600111',alt:'Spider-Woman #1 Cover A by Ito'}],
+  ['jean-grey-1-2026-covers-release-date',{url:'https://images.penguinrandomhouse.com/cover/75960621614700111',alt:'Jean Grey #1 Cover A by Joelle Jones'}],
+]);
 export function shapeArticle(item) {
   const f = item?.fieldData || {};
   // Use existing article art when an editor has not picked a card image yet.
   const bodyImage = String(f[F.body] || '').match(/<img\b[^>]*\ssrc=["'](https?:\/\/[^"']+)["']/i)?.[1] || '';
   if (!f.slug || !f.name) return null;
+  const fallback=!f[F.image]?.url&&!bodyImage?editorialCoverFallbacks.get(String(f.slug)):null;
   return {
     id: item.id, slug: String(f.slug), title: String(f.name),
     summary: String(f[F.summary] || '').trim(),
     bodyHtml: sanitizeRichText(f[F.body] || ''),
-    image: f[F.image]?.url || bodyImage, imageAlt: f[F.image]?.alt || '',
+    image: f[F.image]?.url || bodyImage || fallback?.url || '', imageAlt: f[F.image]?.alt || fallback?.alt || '',
     author: String(f[F.author] || '').trim() || 'The Mana Pocket',
     publishedAt: f[F.published] || item.lastPublished || item.createdOn || null,
     updatedAt: item.lastUpdated || item.lastPublished || null,

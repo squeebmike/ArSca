@@ -107,6 +107,21 @@ console.log('Buy box state checks passed');
 // --- Pages -----------------------------------------------------------------------
 const item = { id: 'w1', lastPublished: '2026-09-27T18:00:00Z', fieldData: { name: 'Big <News>', slug: 'big-news', summary: 'Short.', body: '<h2>Part</h2><p>Text</p><script>x</script>', 'published-on-2': '2026-09-27T12:00:00Z', 'books-to-promote': 'X-Men: Incursions #1\nNope #9', 'book-details': 'Price: $4.99' } };
 assert.equal(shapeArticle({ fieldData: { name: 'no slug' } }), null);
+{
+ const {renderArticleList}=await import('../scripts/comic-articles.mjs');
+ for(const [slug,title,url,alt]of [
+  ['spider-woman-1-2026-covers-release-date','Spider-Woman #1','https://images.penguinrandomhouse.com/cover/75960621723600111','Spider-Woman #1 Cover A by Ito'],
+  ['jean-grey-1-2026-covers-release-date','Jean Grey #1','https://images.penguinrandomhouse.com/cover/75960621614700111','Jean Grey #1 Cover A by Joelle Jones'],
+ ]){
+  const item={fieldData:{name:title,slug,body:'<p>Publisher release guide.</p>'}},article=shapeArticle(item);
+  assert.equal(article.image,url);assert.equal(article.imageAlt,alt);
+  const list=renderArticleList([article],{esc:String,pageShell:p=>p.bodyHtml});assert.ok(list.includes('src="'+url+'"'),'published article card includes its reviewed exact cover');
+  const page=renderArticlePage(article,[],[],{esc:String,pageShell:p=>p.bodyHtml});assert.ok(page.includes('src="'+url+'"'));assert.ok(page.includes('alt="'+alt+'"'));
+  const cms=shapeArticle({fieldData:{...item.fieldData,'cover-image':{url:'https://example.com/editor-cover.jpg',alt:'Editor cover'}}});assert.equal(cms.image,'https://example.com/editor-cover.jpg');assert.equal(cms.imageAlt,'Editor cover');
+  const body=shapeArticle({fieldData:{...item.fieldData,body:'<p><img src="https://example.com/editor-body.jpg"></p>'}});assert.equal(body.image,'https://example.com/editor-body.jpg');assert.equal(body.imageAlt,'','fallback credit must not describe an editor-selected different image');
+  assert.equal(shapeArticle({fieldData:{...item.fieldData,slug:slug+'-other-issue'}}).image,'','nearby slugs cannot borrow reviewed cover art');
+ }
+}
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
 globalThis.fetch = async url => { assert.match(String(url), /collections\/6ab95f7914e615c91fc4dbd6\/items\/live/, 'only published (live) items are read'); return { ok: true, json: async () => ({ items: [item, { id: 'd', isDraft: true, fieldData: { name: 'Draft', slug: 'draft' } }] }) }; };
 const pageDeps = { ...deps([{ id: 'a', title: 'X-MEN: INCURSIONS #1 COVER A', customer_price_cents: 499, customer_enabled: true, cycle: cycle('open', future) }]),
