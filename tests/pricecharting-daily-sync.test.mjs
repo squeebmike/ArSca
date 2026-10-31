@@ -117,5 +117,7 @@ console.log('pricecharting daily sync checks passed');
 }
 const workerSrc = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(workerSrc, /env\.LBA_KV\.put\('pricecharting-sync-last:' \+ storeId/, 'each run leaves its result');
+assert.match(workerSrc, /job: 'pricecharting-sync', store_id: storeId/, 'also where it can be queried');
+assert.match(workerSrc, /try \{\n      const storeEnv = await pricingEnvForStore\(env, storeId\);/, "one store's setup failing can't stop the others");
 console.log('pricecharting daily sync chunked checks passed');
 

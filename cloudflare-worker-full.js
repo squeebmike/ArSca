@@ -19682,25 +19682,37 @@ async function runScheduledPriceChartingServerSync(env) {
   const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
   const ctx = { waitUntil() {}, passThroughOnException() {} };
   for (const storeId of storeIds) {
-    const storeEnv = await pricingEnvForStore(env, storeId);
-    if (!(storeEnv.PRICECHARTING_TOKEN || storeEnv.PRICECHARTING_API_KEY)) continue;
-    const deps = {
-      db: (path, opts) => supabaseAdminFetch(env, path, opts),
-      kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
-      kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 14 * 86400 }),
-      products: async ids => (await focInternalPost(env, ctx, storeId, '/pricing/pricecharting/products/batch', { ids })).data?.products || {},
-      comicLookup: async items => (await focInternalPost(env, ctx, storeId, '/pricing/pricecharting/comics/by-upc', { items })).data?.products || {},
-    };
-    // Each run's result is kept (KV pricecharting-sync-last:<store>), so a
-    // run that does nothing shows why without logs.
+    // Each run's result is kept (server_job_runs, and KV
+    // pricecharting-sync-last:<store>), so a run that does nothing shows why.
     const startedAt = new Date().toISOString();
+    const calls = { products: 0, comicLookup: 0, lastError: '' };
+    const keep = async result => {
+      const row = { job: 'pricecharting-sync', store_id: storeId, started_at: startedAt, finished_at: new Date().toISOString(), result: { ...result, calls } };
+      await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) }).catch(() => {});
+      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify(row.result), { expirationTtl: 7 * 86400 }).catch(() => {});
+    };
+    const internal = async (path, body, kind) => {
+      calls[kind]++;
+      const { res, data } = await focInternalPost(env, ctx, storeId, path, body);
+      if (!res.ok || data?.ok === false) calls.lastError = `${path} ${res.status}: ${String(data?.error || '').slice(0, 200)}`;
+      return data?.products || {};
+    };
     try {
+      const storeEnv = await pricingEnvForStore(env, storeId);
+      if (!(storeEnv.PRICECHARTING_TOKEN || storeEnv.PRICECHARTING_API_KEY)) continue;
+      const deps = {
+        db: (path, opts) => supabaseAdminFetch(env, path, opts),
+        kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
+        kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 14 * 86400 }),
+        products: ids => internal('/pricing/pricecharting/products/batch', { ids }, 'products'),
+        comicLookup: items => internal('/pricing/pricecharting/comics/by-upc', { items }, 'comicLookup'),
+      };
       const result = await runPriceChartingServerSync(storeId, deps);
       if (result.checked) console.log('PriceCharting server sync', storeId, JSON.stringify(result));
-      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), ...result }), { expirationTtl: 7 * 86400 });
+      if (!result.skipped || calls.lastError) await keep(result);
     } catch (e) {
       console.error('PriceCharting server sync failed for store', storeId, e.message);
-      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify({ startedAt, error: e.message }), { expirationTtl: 7 * 86400 }).catch(() => {});
+      await keep({ error: String(e.message || e).slice(0, 500) });
     }
   }
 }
