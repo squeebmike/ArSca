@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {
   whatnotCategoryId, whatnotDesired, syncWhatnotItem, runWhatnotListingSync,
   processWhatnotOrder, reconcileWhatnotOrders, whatnotFee, whatnotClient, WHATNOT_PROFILES,
-  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders,
+  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders, refreshRecentWhatnotShows,
 } from '../scripts/whatnot-sync.mjs';
 
 // Store, 2026-10-31: "Anything I checkbox will be put on whatnot and synced.
@@ -266,6 +266,27 @@ assert.equal(r.link.error, 'title: String too long');
   await refreshWhatnotShow({ id: 'show2', title: 'Next week', status: 'scheduled' }, deps);
   assert.deepEqual(saved[0], { whatnot_show_id: 'show2', platform: 'whatnot', title: 'Next week', status: 'planning', started_at: null, ended_at: null });
   assert.equal((await refreshWhatnotShow({ id: 'show3', status: 'cancelled' }, deps)).skipped, 'cancelled');
+}
+
+// A kept show that should have started is asked about directly, even when
+// Whatnot's show list doesn't include it.
+{
+  const asked = [];
+  const deps = { storeId: 'S', feeSettings: {}, kvGet: async () => null, kvPut: async () => {}, costsForOrders: async () => ({}), upsertShow: async () => {},
+    openShowIds: async () => ['listed', 'old-one'],
+    api: async (m, path) => {
+      asked.push(path);
+      if (path.startsWith('/shows?')) return { ok: true, status: 200, data: { data: [{ id: 'listed', title: 'L', status: 'scheduled' }] } };
+      if (path === '/shows/old-one') return { ok: true, status: 200, data: { id: 'old-one', title: 'Today', status: 'ended', ended_at: '2026-10-31T20:00:00.000Z', created_at: '2026-10-31T18:00:00.000Z' } };
+      if (path.startsWith('/analytics/')) return { ok: true, status: 200, data: { calculation_status: 'PENDING' } };
+      if (path.startsWith('/orders?')) return { ok: true, status: 200, data: { data: [], next_cursor: null } };
+      throw new Error(path);
+    } };
+  const res = await refreshRecentWhatnotShows(deps);
+  assert.ok(asked.includes('/shows/old-one'), 'the kept show is looked up directly');
+  assert.equal(asked.filter(p => p === '/shows/listed').length, 0, 'one already in the list is not asked twice');
+  assert.equal(res.find(r => r.showId === 'old-one').status, 'ended');
+  assert.match(fs.readFileSync('cloudflare-worker-full.js', 'utf8'), /openShowIds: async \(\) => \{/);
 }
 
 // The client: Bearer token, retries a 429.

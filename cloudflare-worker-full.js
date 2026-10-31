@@ -19617,6 +19617,13 @@ function whatnotDeps(env, ctx, storeId) {
     voidOrder: orderId => voidWhatnotOrder(env, storeId, orderId),
     costsForOrders: orderIds => whatnotOrderCosts(env, storeId, orderIds),
     upsertShow: row => upsertWhatnotShow(env, storeId, row),
+    // Kept shows past their start that aren't final yet (planning or live, or
+    // ended within 3 days -- their numbers firm up when Whatnot's analytics land).
+    openShowIds: async () => {
+      const now = new Date().toISOString(), since = new Date(Date.now() - 3 * 86400000).toISOString();
+      const { data } = await supabaseAdminFetch(env, `whatnot_shows?store_id=eq.${encodeURIComponent(storeId)}&whatnot_show_id=not.is.null&started_at=lt.${encodeURIComponent(now)}&or=(status.in.(planning,live),ended_at.gt.${encodeURIComponent(since)})&select=whatnot_show_id&order=started_at.desc&limit=10`).catch(() => ({ data: [] }));
+      return (data || []).map(r => r.whatnot_show_id).filter(Boolean);
+    },
   };
 }
 // What our items in each Whatnot order cost, from the sales recorded for it.
@@ -19658,7 +19665,7 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   // A run that did something (or hit a problem) is also kept where it can be
   // checked from outside the Worker (server_job_runs).
   const l = out.listings || {};
-  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError) {
+  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError || out.shows?.some(x => x.summary || x.error)) {
     await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
   }
   return out;

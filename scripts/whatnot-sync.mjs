@@ -385,11 +385,21 @@ export async function refreshRecentWhatnotShows(deps, { limit = 10 } = {}) {
   const r = await deps.api('GET', `/shows?limit=${limit}`);
   if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));
   const out = [];
+  const done = new Set();
   for (const show of r.data?.data || []) {
     const recent = show.status !== 'ended' || !show.ended_at || Date.now() - Date.parse(show.ended_at) < 7 * 86400000;
     if (!recent) continue;
+    done.add(show.id);
     try { out.push(await refreshWhatnotShow(show, deps)); }
     catch (e) { out.push({ showId: show.id, error: e.message }); }
+  }
+  // Shows we keep that should have started and haven't been seen ending:
+  // asked about one by one. 2026-10-31: the first ten listed didn't include
+  // that day's show, so it stayed "planning" with no totals after it ended.
+  for (const id of (await deps.openShowIds?.()) || []) {
+    if (done.has(id)) continue;
+    try { out.push(await refreshWhatnotShow(String(id), deps)); }
+    catch (e) { out.push({ showId: id, error: e.message }); }
   }
   return out;
 }
