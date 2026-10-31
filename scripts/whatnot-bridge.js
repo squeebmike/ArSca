@@ -487,21 +487,27 @@ function sb(){ return typeof getSupabaseClient === 'function' ? getSupabaseClien
 function storeId(){ return typeof getActiveStoreId === 'function' ? getActiveStoreId() : ''; }
 
 // Sales the live sticker helper recorded (reference "whatnot-live:<id>"),
-// as { itemId, amount }, so the report import can skip them.
+// and sales recorded automatically from Whatnot's own order notifications
+// (reference "whatnot-api:<order>:<item>", scripts/whatnot-sync.mjs), as
+// { itemId, amount, title, auto }, so the report import can skip them.
 async function loadLiveSales(){
   var client = sb(), store = storeId();
   if(!client || !store) return [];
   try {
     var since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
-    var res = await client.from('pos_payments').select('sale_id,amount,reference').eq('store_id', store).like('reference', 'whatnot-live:%').gte('created_at', since).limit(1000);
+    var res = await client.from('pos_payments').select('sale_id,amount,reference').eq('store_id', store).or('reference.like.whatnot-live:%,reference.like.whatnot-api:%').gte('created_at', since).limit(1000);
     var pays = (res && res.data) || [];
-    var itemBySale = {};
+    var lineBySale = {};
     for(var i = 0; i < pays.length; i += 100){
       var ids = pays.slice(i, i + 100).map(function(p){ return p.sale_id; });
-      var lr = await client.from('pos_sale_lines').select('sale_id,item_id').in('sale_id', ids);
-      ((lr && lr.data) || []).forEach(function(l){ itemBySale[l.sale_id] = l.item_id; });
+      var lr = await client.from('pos_sale_lines').select('sale_id,item_id,title').in('sale_id', ids);
+      ((lr && lr.data) || []).forEach(function(l){ lineBySale[l.sale_id] = l; });
     }
-    return pays.map(function(p){ return { itemId:String(itemBySale[p.sale_id] || ''), amount:Number(p.amount || 0) }; }).filter(function(x){ return x.itemId; });
+    return pays.map(function(p){
+      var line = lineBySale[p.sale_id] || {};
+      var auto = /^whatnot-api:/.test(String(p.reference || ''));
+      return { itemId:String(line.item_id || ''), amount:Number(p.amount || 0), title:auto ? String(line.title || '') : '', auto:auto };
+    }).filter(function(x){ return x.itemId || x.title; });
   } catch(e) { return []; }
 }
 async function loadShows(){
@@ -519,7 +525,7 @@ function buildReportRows(){
   var fee = typeof whatnotFeeSettings === 'function' ? whatnotFeeSettings() : { pct:10.9, flat:0.3 };
   var byId = {};
   items().forEach(function(i){ byId[i.id] = i; });
-  var live = (r.live || []).map(function(x){ return { itemId:x.itemId, amount:x.amount, used:false }; });
+  var live = (r.live || []).map(function(x){ return { itemId:x.itemId, amount:x.amount, title:x.title || '', auto:!!x.auto, used:false }; });
   r.links = r.links || {}; r.costs = r.costs || {}; r.picks = r.picks || {}; r.modes = r.modes || {};
   return r.rows.map(function(cells, n){
     function cell(key){ return cols[key] >= 0 ? String(cells[cols[key]] || '').trim() : ''; }
@@ -553,10 +559,12 @@ function buildReportRows(){
     var ref = 'whatnot:' + (order || [cell('date'), sku || norm(title), price].join('|')) + (order && (sku || title) ? ':' + (sku || norm(title)).slice(0, 40) : '');
     var liveHit = null;
     if(item && !lot && !cancelled && !giveaway) liveHit = live.find(function(l){ return !l.used && l.itemId === String(item.id) && Math.abs(l.amount - price) < 0.01; }) || null;
+    // A Whatnot-only listing recorded automatically has no item: same title and price.
+    if(!liveHit && !lot && !cancelled && !giveaway && title) liveHit = live.find(function(l){ return !l.used && l.auto && l.title && norm(l.title) === norm(title) && Math.abs(l.amount - price) < 0.01; }) || null;
     if(liveHit) liveHit.used = true;
     var reason = '';
     if(cancelled) reason = 'Cancelled or refunded';
-    else if(liveHit) reason = 'Recorded live during the show';
+    else if(liveHit) reason = liveHit.auto ? 'Already recorded from Whatnot automatically' : 'Recorded live during the show';
     else if(how === 'pool' && !isSellable(item)) reason = 'Random pool bin is empty -- add books to it';
     else if(lot && lot.some(function(i){ return !isSellable(i); })) reason = 'An item in this lot is already sold';
     else if(item && !isSellable(item)) reason = 'Already sold in the dashboard';

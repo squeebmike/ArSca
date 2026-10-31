@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.4-live-sync-count';
+const APP_VERSION = '2026.10.31.5-whatnot-sync';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4422,6 +4422,67 @@ function ensureWhatnotConnectionPanel(backoffice){
   panel.innerHTML = '<div class="ph">WHATNOT <span style="font-size:9px;color:var(--dim)">seller API connection</span></div><div id="whatnot-connection-body" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Open to check the connection.</div><button class="hbtn" style="margin-top:8px" onclick="renderWhatnotConnection()">CHECK CONNECTION</button>';
   backoffice.prepend(panel);
 }
+// Whatnot listings (Worker: /whatnot/sync, /whatnot/items). A save of a
+// checked item asks the Worker to push it now; a few saves in a row share
+// one request. The Worker also runs every 10 minutes on its own.
+let _whatnotSyncTimer = null;
+function queueWhatnotSync(){
+  clearTimeout(_whatnotSyncTimer);
+  _whatnotSyncTimer = setTimeout(() => {
+    storeWorkerFetch(WORKER + '/whatnot/sync?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ orders:false }) })
+      .then(() => { _whatnotItemsCache = null; }).catch(() => {});
+  }, 3000);
+}
+let _whatnotItemsCache = null;
+async function whatnotItemLinks(){
+  if(_whatnotItemsCache && Date.now() - _whatnotItemsCache.at < 60000) return _whatnotItemsCache;
+  const res = await storeWorkerFetch(WORKER + '/whatnot/items?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+  const d = await res.json().catch(() => ({}));
+  _whatnotItemsCache = { at:Date.now(), items:d.items || {}, last:d.last || null };
+  return _whatnotItemsCache;
+}
+function whatnotLinkText(link){
+  if(!link) return '';
+  if(link.error) return 'Whatnot: ' + link.error;
+  return 'On Whatnot: ' + (Number(link.qty) || 0) + ' at $' + Number(link.price || 0).toFixed(2);
+}
+async function showWhatnotItemStatus(item){
+  const el = document.getElementById('edit-whatnot-status');
+  if(!el) return;
+  el.textContent = '';
+  if(item?.sellOnWhatnot !== true) return;
+  try {
+    const { items } = await whatnotItemLinks();
+    const link = items[item.supabaseRowId || item.id];
+    el.textContent = link ? whatnotLinkText(link) : 'Goes on Whatnot within a few minutes';
+    el.style.color = link?.error ? 'var(--red)' : 'var(--dim)';
+  } catch(e) {}
+}
+async function syncWhatnotNow(){
+  const out = document.getElementById('whatnot-sync-result');
+  if(out) out.textContent = 'Syncing with Whatnot...';
+  try {
+    const res = await storeWorkerFetch(WORKER + '/whatnot/sync?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ orders:true }) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok) throw new Error(d.error || 'Could not sync with Whatnot');
+    _whatnotItemsCache = null;
+    await renderWhatnotConnection();
+  } catch(e) { if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+function whatnotSyncSummaryHtml(last, items){
+  const links = Object.values(items || {});
+  const listed = links.filter(l => !l.error && Number(l.qty) > 0).length;
+  const problems = Object.entries(items || {}).filter(([, l]) => l.error);
+  const byId = id => (all || []).find(i => (i.supabaseRowId || i.id) === id);
+  let html = `<div style="margin-top:8px">Listed on Whatnot now: <b style="color:var(--text)">${listed}</b>${problems.length ? ` · <span style="color:var(--red)">${problems.length} with a problem</span>` : ''}</div>`;
+  if(last) {
+    const l = last.listings || {};
+    const sold = (last.orders || []).filter(o => o.recorded?.length).length;
+    html += `<div>Last sync ${escHtml(new Date(last.at).toLocaleString())}: ${Number(l.created) || 0} listed, ${Number(l.updated) || 0} updated${sold ? ', ' + sold + ' order(s) recorded' : ''}${last.listingsError || last.ordersError ? ' · <span style="color:var(--red)">' + escHtml(last.listingsError || last.ordersError) + '</span>' : ''}</div>`;
+  }
+  if(problems.length) html += problems.slice(0, 20).map(([id, l]) => `<div style="color:var(--red)">${escHtml(byId(id)?.name || l.name || id)}: ${escHtml(l.error)}</div>`).join('');
+  return html;
+}
 async function renderWhatnotConnection(){
   const body = document.getElementById('whatnot-connection-body');
   if(!body) return;
@@ -4438,6 +4499,10 @@ async function renderWhatnotConnection(){
       <div style="margin-top:8px">Webhook address for Whatnot Seller Hub → Seller API:</div>
       <div style="color:var(--text);user-select:all;word-break:break-all">${escHtml(d.webhookUrl || '')}</div>
       <div style="margin-top:8px">Latest events from Whatnot:</div>${events}`;
+    if(d.apiKeySet) {
+      try { const { items, last } = await whatnotItemLinks(); body.innerHTML += whatnotSyncSummaryHtml(last, items); } catch(e) {}
+      body.innerHTML += '<div style="margin-top:6px">Check SELL ON WHATNOT on an item to list it (Buy It Now, same price as here). Quantity and price follow every change; a Whatnot sale lowers stock here.</div><button class="hbtn" style="margin-top:6px" onclick="syncWhatnotNow()">SYNC WITH WHATNOT NOW</button><div id="whatnot-sync-result"></div>';
+    }
   } catch(e) {
     body.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>';
   }
@@ -14734,6 +14799,10 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // Listed on Whatnot (set when its Whatnot CSV is downloaded). Only a
   // marker -- the item stays sellable here, on eBay and on the storefront.
   ['whatnotListedAt',''], ['whatnotListing', null],
+  // SELL ON WHATNOT (edit screen): listed on Whatnot through the Seller API
+  // and kept 1:1 on quantity and price by the Worker (scripts/whatnot-sync.mjs).
+  // The Whatnot listing ids live on the Worker, not here.
+  ['sellOnWhatnot', false, 'bool'],
   // The eBay listing an item is on. LIST ON EBAY saved these through this
   // list's write path, but they were never on it -- every listing made from
   // the dashboard was silently forgotten on save (store report: the Goblin
@@ -24914,6 +24983,8 @@ async function updateBuiltInInventoryItem(item, updates){
     const beforeQty = Number(item.qty ?? item.quantity ?? 0), beforeStatus = item.status;
     applyDashboardItemUpdate(item.id, updates);
     if((nextData.ebayListingId || item.ebayListingId) && (Number(nextData.qty ?? nextData.quantity ?? 0) !== beforeQty || (nextData.status || 'in_stock') !== beforeStatus)) storeWorkerFetch('/ebay/sync-item-quantities', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:[item.supabaseRowId || item.id] }) }).catch(() => {});
+    // Whatnot follows too (checked now, or checked before and just unchecked).
+    if(nextData.sellOnWhatnot === true || item.sellOnWhatnot === true) queueWhatnotSync();
     return true;
   }
   // LOCAL-FIRST OFFLINE FALLBACK: save locally + queue Supabase sync for retry
@@ -26236,6 +26307,9 @@ function openEditModal(id) {
   document.getElementById('edit-signature-value').value = item.signature_value || '';
   toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
+  const sellWhatnot = document.getElementById('edit-sell-whatnot');
+  if(sellWhatnot) sellWhatnot.checked = item.sellOnWhatnot === true;
+  showWhatnotItemStatus(item);
   populateEbayExtraFieldInputs(item);
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
@@ -26337,6 +26411,9 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-signature-value').value = item.signature_value || '';
   toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
+  const sellWhatnot = document.getElementById('edit-sell-whatnot');
+  if(sellWhatnot) sellWhatnot.checked = item.sellOnWhatnot === true;
+  showWhatnotItemStatus(item);
   populateEbayExtraFieldInputs(item);
   document.getElementById('edit-sync-status').textContent = '';
   setInventoryEditPhoto(inventoryImageUrl(item), inventoryImageSourceLabel(item));
@@ -26442,6 +26519,7 @@ async function confirmAddToInventoryFromModal(){
     signed_by: document.getElementById('edit-signed-by').value.trim(),
     signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
+    sellOnWhatnot: !!document.getElementById('edit-sell-whatnot')?.checked,
     photos: [...editPhotosWorking],
     ...tcgReferencePatch,
     ...pcReferencePatch,
@@ -26720,6 +26798,7 @@ async function confirmEditAndSync() {
     signed_by: document.getElementById('edit-signed-by').value.trim(),
     signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
+    sellOnWhatnot: !!document.getElementById('edit-sell-whatnot')?.checked,
     ...tcgReferencePatch,
     ...pcReferencePatch,
     ...inventoryOwnershipPatch(),
