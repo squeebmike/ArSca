@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.6-live-studio';
+const APP_VERSION = '2026.10.31.7-whatnot-bulk';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17659,7 +17659,7 @@ function renderTable(){
     const thumbCell = `<td class="td-thumb">${bulkCb}<div onclick="${editClick}" style="cursor:pointer" title="Edit item">${thumbInner}</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}${i.whatnotListedAt?` <span style="color:var(--purple);font-size:8px" title="Listed on Whatnot ${escHtml(String(i.whatnotListedAt).slice(0,10))} -- still sellable everywhere">📺 WHATNOT</span>`:''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}${i.whatnotListedAt?` <span style="color:var(--purple);font-size:8px" title="Listed on Whatnot ${escHtml(String(i.whatnotListedAt).slice(0,10))} -- still sellable everywhere">📺 WHATNOT</span>`:''}${i.sellOnWhatnot===true?` <span style="color:var(--g);font-size:8px" title="Selling on Whatnot -- quantity and price kept the same as here">WN SYNC</span>`:''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
@@ -24641,6 +24641,28 @@ async function setWhatnotQtyMatched(rows){
   const b = gone.length ? await setWhatnotListed(gone, null) : { saved:0, failed:0 };
   toast_dash(`Whatnot counts updated for ${a.saved + b.saved} item${a.saved + b.saved === 1 ? '' : 's'}${a.failed + b.failed ? ' (' + (a.failed + b.failed) + ' could not be saved)' : ''}`);
   return { saved:a.saved + b.saved, failed:a.failed + b.failed };
+}
+// Bulk SELL ON WHATNOT / STOP ON WHATNOT (inventory bulk bar): the same
+// checkbox as the edit screen, for every selected item. The Worker lists or
+// zeroes them (scripts/whatnot-sync.mjs): a sync goes as soon as the saves
+// finish, and the 10-minute run carries on with the rest of a big batch.
+async function setSellOnWhatnotSelected(on){
+  const items = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in' && (i.sellOnWhatnot === true) !== on);
+  if(!items.length){ toast_dash(on ? 'The selected items are already set to sell on Whatnot' : 'None of the selected items are selling on Whatnot'); return; }
+  const msg = on
+    ? 'List ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' on Whatnot (Buy It Now, same price as here)? Items already listed there another way would be listed twice.'
+    : 'Stop selling ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' on Whatnot? They go to 0 there.';
+  if(!confirm(msg)) return;
+  let done = 0, failed = 0;
+  for(const item of items){
+    try { await updateBuiltInInventoryItem(item, { sellOnWhatnot:on }); done++; }
+    catch(e) { failed++; }
+    if((done + failed) % 10 === 0) toast_dash('Whatnot: ' + (done + failed) + ' of ' + items.length + '...');
+  }
+  queueWhatnotSync();
+  _whatnotItemsCache = null;
+  toast_dash((on ? 'Sending ' : 'Taking ') + done + ' item' + (done === 1 ? '' : 's') + (on ? ' to' : ' off') + ' Whatnot' + (failed ? ' · ' + failed + ' could not be saved' : '') + (done > 25 ? ' -- about 100 go every 10 minutes' : ''));
+  if(typeof renderAll === 'function') renderAll();
 }
 function clearWhatnotMarkSelected(){
   const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.whatnotListedAt).map(i => i.id);

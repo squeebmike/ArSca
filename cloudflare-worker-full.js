@@ -19126,7 +19126,9 @@ export default {
     // (scripts/pokemon-daily-sync.mjs, scripts/pricecharting-daily-sync.mjs);
     // Whatnot has its own 10-minute trigger; everything else stays on the
     // 6-hour trigger.
-    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)]); return; }
+    // One after the other, not together: each reads a lot of inventory, and
+    // running both at once doubles what the Worker holds in memory.
+    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); return; }
     if (event?.cron === WHATNOT_SYNC_CRON) { await Promise.allSettled([runScheduledWhatnotSync(env, ctx)]); return; }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]);
   },
@@ -19639,10 +19641,10 @@ async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
   return data?.[0]?.receipt_settings || {};
 }
-async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true } = {}) {
+async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 25 } = {}) {
   const deps = whatnotDeps(env, ctx, storeId);
   const out = { at: new Date().toISOString() };
-  try { out.listings = await runWhatnotListingSync(storeId, deps, { force }); }
+  try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit }); }
   catch (e) { out.listingsError = e.message; }
   if (orders) {
     const feeSettings = await whatnotFeeSettings(env, storeId);
@@ -19653,11 +19655,18 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
     catch (e) { out.showsError = e.message; }
   }
   await env.LBA_KV.put('whatnot-sync-last:' + storeId, JSON.stringify(out), { expirationTtl: 30 * 86400 });
+  // A run that did something (or hit a problem) is also kept where it can be
+  // checked from outside the Worker (server_job_runs).
+  const l = out.listings || {};
+  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError) {
+    await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
+  }
   return out;
 }
 async function runScheduledWhatnotSync(env, ctx) {
   if (!env.WHATNOT_API_KEY || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
-  try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env)); }
+  // Up to 100 checked items a run (a bulk SELL ON WHATNOT goes out over a few runs).
+  try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env), { limit: 100 }); }
   catch (e) { console.error('Whatnot sync failed:', e.message); }
 }
 // A Whatnot event, after the webhook route has checked and kept it.
@@ -19700,10 +19709,18 @@ async function runScheduledPriceChartingServerSync(env) {
     // pricecharting-sync-last:<store>), so a run that does nothing shows why.
     const startedAt = new Date().toISOString();
     const calls = { products: 0, comicLookup: 0, lastError: '' };
+    // One row per run, written when it starts and updated at each step, so
+    // a run that is cut off still shows how far it got (and when).
+    let runRowId = null;
+    const writeRun = async result => {
+      const row = { finished_at: new Date().toISOString(), result: { ...result, calls } };
+      if (runRowId) { await supabaseAdminFetch(env, `server_job_runs?id=eq.${runRowId}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) }).catch(() => {}); return; }
+      const made = await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ job: 'pricecharting-sync', store_id: storeId, started_at: startedAt, ...row }) }).catch(() => null);
+      runRowId = made?.data?.[0]?.id || null;
+    };
     const keep = async result => {
-      const row = { job: 'pricecharting-sync', store_id: storeId, started_at: startedAt, finished_at: new Date().toISOString(), result: { ...result, calls } };
-      await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) }).catch(() => {});
-      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify(row.result), { expirationTtl: 7 * 86400 }).catch(() => {});
+      await writeRun({ stage: 'done', ...result });
+      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify({ ...result, calls }), { expirationTtl: 7 * 86400 }).catch(() => {});
     };
     const internal = async (path, body, kind) => {
       calls[kind]++;
@@ -19714,7 +19731,9 @@ async function runScheduledPriceChartingServerSync(env) {
     try {
       const storeEnv = await pricingEnvForStore(env, storeId);
       if (!(storeEnv.PRICECHARTING_TOKEN || storeEnv.PRICECHARTING_API_KEY)) continue;
+      await writeRun({ stage: 'started' });
       const deps = {
+        progress: result => writeRun(result),
         db: (path, opts) => supabaseAdminFetch(env, path, opts),
         kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
         kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 14 * 86400 }),
@@ -19723,7 +19742,7 @@ async function runScheduledPriceChartingServerSync(env) {
       };
       const result = await runPriceChartingServerSync(storeId, deps);
       if (result.checked) console.log('PriceCharting server sync', storeId, JSON.stringify(result));
-      if (!result.skipped || calls.lastError) await keep(result);
+      await keep(result);
     } catch (e) {
       console.error('PriceCharting server sync failed for store', storeId, e.message);
       await keep({ error: String(e.message || e).slice(0, 500) });

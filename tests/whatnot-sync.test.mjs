@@ -305,4 +305,31 @@ assert.match(worker, /reference=like\.\$\{encodeURIComponent\('whatnot-api:' \+ 
 assert.match(worker, /whatnot_shows\?on_conflict=store_id,whatnot_show_id/);
 assert.match(worker, /const showId = type\.startsWith\('shows\.'\) \? \(data\.show_id \|\| data\.id\) : '';/);
 assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql', 'utf8'), /create unique index if not exists whatnot_shows_store_whatnot_id on public\.whatnot_shows\(store_id, whatnot_show_id\)/);
+// Bulk SELL ON WHATNOT / STOP ON WHATNOT from the inventory bulk bar.
+{
+  const dash = fs.readFileSync('dashboard.html', 'utf8');
+  assert.match(dash, /onclick="setSellOnWhatnotSelected\(true\)"[^>]*>SELL ON WHATNOT</);
+  assert.match(dash, /onclick="setSellOnWhatnotSelected\(false\)"[^>]*>STOP ON WHATNOT</);
+  const src = dash.match(/async function setSellOnWhatnotSelected\(on\)\{[\s\S]*?\n\}\n/)[0];
+  const run = (items, selected, answer = true) => {
+    const saved = [], toasts = []; let syncs = 0;
+    const fn = new Function('all', 'inventoryBulkSelectedIds', 'updateBuiltInInventoryItem', 'confirm', 'toast_dash', 'queueWhatnotSync', 'renderAll',
+      `let _whatnotItemsCache = 1; ${src}; return setSellOnWhatnotSelected;`)(items, new Set(selected), async (item, u) => { saved.push([item.id, u.sellOnWhatnot]); item.sellOnWhatnot = u.sellOnWhatnot; }, () => answer, t => toasts.push(t), () => { syncs++; }, () => {});
+    return { fn, saved, toasts, get syncs() { return syncs; } };
+  };
+  const items = [{ id: 'a', source: 'built_in' }, { id: 'b', source: 'built_in', sellOnWhatnot: true }, { id: 'c', source: 'webflow' }, { id: 'd', source: 'built_in' }];
+  let r = run(items, ['a', 'b', 'c']);
+  await r.fn(true);
+  assert.deepEqual(r.saved, [['a', true]], 'only selected dashboard items not already on Whatnot');
+  assert.equal(r.syncs, 1, 'one sync after the saves');
+  r = run(items, ['a', 'b']);
+  await r.fn(false);
+  assert.deepEqual(r.saved, [['a', false], ['b', false]]);
+  r = run([{ id: 'x', source: 'built_in' }], ['x'], false);
+  await r.fn(true);
+  assert.equal(r.saved.length, 0, 'cancel changes nothing');
+  assert.match(fs.readFileSync('scripts/dashboard-app.js', 'utf8'), /\$\{i\.sellOnWhatnot===true\?` <span[^`]*>WN SYNC<\/span>`:''\}/, 'the list shows which items sell on Whatnot');
+  assert.match(worker, /runWhatnotSyncForStore\(env, ctx, whatnotStoreId\(env\), \{ limit: 100 \}\)/, 'the 10-minute run takes up to 100');
+  assert.match(worker, /job: 'whatnot-sync', store_id: storeId/, 'Whatnot runs are kept where they can be checked');
+}
 console.log('whatnot sync checks passed');
