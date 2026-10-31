@@ -73,6 +73,24 @@ assert.equal(wn.products.get('p1').qty, 3);
 let link = r.link;
 assert.equal(link.productId, 'p1'); assert.equal(link.qty, 3); assert.equal(link.price, 12.5);
 
+// Published only after the price and quantity are set (Whatnot publishes a
+// product once it has both); a draft is published on a later run.
+{
+  const order = wn.calls.map(c => c.method + ' ' + c.path.split('?')[0]);
+  assert.ok(order.indexOf('POST /merchandising/products/p1') > order.indexOf('POST /inventory/set'), 'publish after inventory: ' + order.join(', '));
+  assert.ok(order.indexOf('POST /merchandising/products/p1') > order.indexOf('PATCH /products/p1/variants'), 'publish after price');
+  assert.equal(link.published, true);
+  const w2 = fakeWhatnot();
+  let refuse = true;
+  const api2 = async (m, path, body) => (m === 'POST' && path.startsWith('/merchandising') && refuse) ? { ok: false, status: 422, data: { title: 'Cannot publish', detail: 'missing image' } } : w2.api(m, path, body);
+  let r2 = await syncWhatnotItem(api2, row(), shape(row()), null, opts);
+  assert.equal(r2.link.published, undefined);
+  assert.match(r2.link.note, /^Draft on Whatnot \(not in your shop yet\): Cannot publish: missing image/);
+  refuse = false;
+  r2 = await syncWhatnotItem(api2, row(), shape(row()), r2.link, opts);
+  assert.equal(r2.link.published, true, 'the draft goes out on the next run'); assert.equal(r2.link.note, undefined);
+}
+
 // Nothing changed: no calls.
 wn.calls.length = 0;
 r = await syncWhatnotItem(wn.api, row(), shape(row()), link, opts);
@@ -149,6 +167,28 @@ assert.equal(r.link.error, 'title: String too long');
   assert.equal(wn.products.get('p1').qty, 0);
   // The links live in KV, never in the item's data.
   assert.ok(kv.get('whatnot-link:S:b').productId === 'p2');
+}
+
+// The store run picks a draft up again even though the item didn't change.
+{
+  const w3 = fakeWhatnot();
+  let refuse = true;
+  const api3 = async (m, path, body) => (m === 'POST' && path.startsWith('/merchandising') && refuse) ? { ok: false, status: 422, data: { detail: 'missing image' } } : w3.api(m, path, body);
+  const kv = new Map();
+  const item = { id: 'z', status: 'in_stock', updated_at: '1', data: { name: 'Z', sellOnWhatnot: true, quantity: 1 } };
+  const deps = { api: api3, shape, kvGet: async k => kv.has(k) ? structuredClone(kv.get(k)) : null, kvPut: async (k, v) => { if (v == null) kv.delete(k); else kv.set(k, structuredClone(v)); },
+    db: async path => path.includes('select=id,updated_at') ? { data: [{ id: 'z', updated_at: '1' }] } : { data: [item] } };
+  await runWhatnotListingSync('S', deps);
+  assert.equal(kv.get('whatnot-linked:S').z, 'draft');
+  refuse = false;
+  const out = await runWhatnotListingSync('S', deps);
+  assert.equal(out.checked, 1, 'rechecked without an edit');
+  assert.equal(kv.get('whatnot-link:S:z').published, true);
+  assert.equal(kv.get('whatnot-linked:S').z, 'ok');
+  assert.equal((await runWhatnotListingSync('S', deps)).checked, 0, 'and left alone once published');
+  // A link from before publishing was checked (marked 1) is checked once.
+  kv.set('whatnot-linked:S', { z: 1 });
+  assert.equal((await runWhatnotListingSync('S', deps)).checked, 1);
 }
 
 // Orders: each item recorded once, through record-external-sale.

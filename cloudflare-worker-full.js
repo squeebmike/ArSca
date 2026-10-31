@@ -13547,7 +13547,7 @@ async function routeRequest(request, env, ctx) {
       const items = {};
       for (const id of Object.keys(linked).slice(0, 500)) {
         const link = await env.LBA_KV.get(`whatnot-link:${storeId}:${id}`, 'json');
-        if (link) items[id] = { qty: link.qty, price: link.price, url: link.url || '', error: link.error || '', syncedAt: link.syncedAt || link.errorAt || '' };
+        if (link) items[id] = { qty: link.qty, price: link.price, url: link.url || '', error: link.error || '', note: link.note || '', published: link.published === true, syncedAt: link.syncedAt || link.errorAt || '' };
       }
       return json({ ok: true, items, last: await env.LBA_KV.get('whatnot-sync-last:' + storeId, 'json') });
     }

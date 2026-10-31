@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.7-whatnot-bulk';
+const APP_VERSION = '2026.10.31.8-whatnot-publish';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4444,7 +4444,8 @@ async function whatnotItemLinks(){
 function whatnotLinkText(link){
   if(!link) return '';
   if(link.error) return 'Whatnot: ' + link.error;
-  return 'On Whatnot: ' + (Number(link.qty) || 0) + ' at $' + Number(link.price || 0).toFixed(2);
+  if(!link.published && Number(link.qty) > 0) return link.note || ('Draft on Whatnot: ' + (Number(link.qty) || 0) + ' at $' + Number(link.price || 0).toFixed(2) + ' -- publishing on the next sync');
+  return 'In your Whatnot shop: ' + (Number(link.qty) || 0) + ' at $' + Number(link.price || 0).toFixed(2);
 }
 async function showWhatnotItemStatus(item){
   const el = document.getElementById('edit-whatnot-status');
@@ -4471,10 +4472,10 @@ async function syncWhatnotNow(){
 }
 function whatnotSyncSummaryHtml(last, items){
   const links = Object.values(items || {});
-  const listed = links.filter(l => !l.error && Number(l.qty) > 0).length;
-  const problems = Object.entries(items || {}).filter(([, l]) => l.error);
+  const listed = links.filter(l => !l.error && l.published && Number(l.qty) > 0).length;
+  const problems = Object.entries(items || {}).filter(([, l]) => l.error || (!l.published && Number(l.qty) > 0 && l.note)).map(([id, l]) => [id, { ...l, error: l.error || l.note }]);
   const byId = id => (all || []).find(i => (i.supabaseRowId || i.id) === id);
-  let html = `<div style="margin-top:8px">Listed on Whatnot now: <b style="color:var(--text)">${listed}</b>${problems.length ? ` · <span style="color:var(--red)">${problems.length} with a problem</span>` : ''}</div>`;
+  let html = `<div style="margin-top:8px">In your Whatnot shop now: <b style="color:var(--text)">${listed}</b>${problems.length ? ` · <span style="color:var(--red)">${problems.length} with a problem</span>` : ''}</div>`;
   if(last) {
     const l = last.listings || {};
     const sold = (last.orders || []).filter(o => o.recorded?.length).length;
