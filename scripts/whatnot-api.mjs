@@ -47,7 +47,7 @@ export async function verifyStandardWebhook(secret, headers, rawBody, nowSeconds
   if (!id || !/^\d+$/.test(timestamp) || !signatures.length) return 'missing webhook headers';
   if (Math.abs(nowSeconds - Number(timestamp)) > MAX_SKEW_SECONDS) return 'timestamp too old or in the future';
   let keyBytes;
-  try { keyBytes = b64ToBytes(String(secret).trim().replace(/^(whsec_|wn_wh_)/, '')); } catch (_) { return 'webhook secret is not valid base64'; }
+  try { keyBytes = b64ToBytes(String(secret).trim().replace(/^(?:wn_wh_|whsec_)/, '')); if (!keyBytes.length) throw new Error('Empty key'); } catch (_) { return 'webhook secret is not valid base64'; }
   const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const expected = bytesToB64(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${id}.${timestamp}.${rawBody}`)));
   const ok = signatures.some(s => { const [version, sig] = s.split(','); return version === 'v1' && sig && sameString(sig, expected); });
@@ -71,6 +71,12 @@ export async function handleWhatnotWebhook(request, env, deps) {
   try { body = JSON.parse(rawBody); } catch (_) { body = { raw: rawBody.slice(0, 4000) }; }
   const type = String(body?.type || body?.topic || body?.event || request.headers.get('webhook-event') || 'unknown').slice(0, 80);
   const storeId = whatnotStoreId(env);
+  // Live Studio owns its atomic effect deduplication. Await acceptance before
+  // acknowledging so a failed handoff is retried. It never writes inventory.
+  if (env.MANA_LIVE_STUDIO && body?.version === 'v2') {
+    try { await env.MANA_LIVE_STUDIO.getByName(storeId).receiveWhatnot(id, body); }
+    catch (_) { return deps.json({ ok:false, error:'Live Studio delivery unavailable; retry' },503); }
+  }
   const at = Date.now();
   const record = { id, type, receivedAt: new Date(at).toISOString(), sellerId: String(body?.seller_id || request.headers.get('x-whatnot-seller-id') || ''), body };
   await env.LBA_KV.put(eventKey(storeId, at, id), JSON.stringify(record), { expirationTtl: EVENT_TTL });

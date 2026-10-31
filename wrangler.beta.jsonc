@@ -3,6 +3,8 @@
   "main": "cloudflare-worker-full.js",
   "compatibility_date": "2026-07-15",
   "vars": { "ENVIRONMENT": "beta" },
+  "durable_objects": {"bindings":[{"name":"MANA_LIVE_STUDIO","class_name":"ManaLiveStudio"}]},
+  "migrations": [{"tag":"mana-live-studio-v1","new_sqlite_classes":["ManaLiveStudio"]}],
   "kv_namespaces": [
     { "binding": "LBA_KV", "id": "00000000000000000000000000000000" }
   ],

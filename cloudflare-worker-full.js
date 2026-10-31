@@ -48,6 +48,9 @@ import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledSto
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
 import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows } from './scripts/whatnot-sync.mjs';
+import { handleLiveStudio } from './scripts/live-studio-api.mjs';
+import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
+export { ManaLiveStudio };
 import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
@@ -13514,6 +13517,9 @@ async function routeRequest(request, env, ctx) {
     // (scripts/whatnot-api.mjs).
     if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
       return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)) });
+    }
+    if (url.pathname.startsWith('/live-studio/')) {
+      return await handleLiveStudio(request, env, { json, requireStoreUser, readJsonWithLimit }, url);
     }
     if (url.pathname === '/whatnot/status' && request.method === 'GET') {
       return await handleWhatnotStatus(request, env, { requireStoreUser, json }, url);
