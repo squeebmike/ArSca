@@ -148,7 +148,7 @@ assert.match(w.mails.at(-1).body, /Listed on eBay today \(1\):\n- Later #1/);
 assert.deepEqual(JSON.parse(kvMem.get('foc-autolist:' + STORE)).items, []);
 assert.deepEqual(JSON.parse(kvMem.get('foc-autolist:stores')), [], 'an empty queue stops being checked');
 // Wiring: the cron runs it; only this Worker's own requests skip sign-in.
-assert.match(worker, /runScheduledLunarCoverFill\(env\), runScheduledFocAutoList\(env\)\]\)\);/);
+assert.match(worker, /runScheduledLunarCoverFill\(env\), runScheduledFocAutoList\(env\)\]\);/);
 assert.match(worker, /if \(FOC_INTERNAL_REQUESTS\.has\(request\)\) return \{ user:\{ id:'', email:'auto-list' \}, role:'owner', token:'' \};/);
 assert.match(worker, /if \(url\.pathname === '\/foc\/ebay\/auto-list'\) return handleFocAutoListRoute\(request, env, url\);/);
 assert.equal((worker.match(/FOC_INTERNAL_REQUESTS\.add\(/g) || []).length, 1, 'only the auto-list run marks a request');

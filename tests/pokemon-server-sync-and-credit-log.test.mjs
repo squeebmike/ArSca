@@ -137,7 +137,7 @@ function fakeDeps(rows, answer) {
 
 // Wiring: hourly trigger, review hand-off, dashboard skip.
 assert.match(wrangler, /"17 \* \* \* \*"/, 'hourly trigger');
-assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.includes('if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(Promise.all([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)])); return; }'), 'hourly trigger runs only the daily price syncs (Pokemon, and PriceCharting comics/sports)');
+assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.includes('if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)]); return; }'), 'hourly trigger runs only the daily price syncs (Pokemon, and PriceCharting comics/sports)');
 assert.ok(worker.includes("source: 'server-daily-sync'"), 'server calls are logged');
 assert.ok(worker.includes("url.pathname === '/price-sync/review'"), 'review queue route');
 assert.ok(deploy.includes('scripts/ppt-usage.mjs') && deploy.includes('scripts/pokemon-daily-sync.mjs'), 'deploys on change');
@@ -145,3 +145,12 @@ assert.ok(ui.includes('if(dailyPriceSyncRunning) items = items.filter(i => !serv
 assert.ok(ui.includes("storeWorkerFetch('/price-sync/review'"), 'server review queue shown in PRICE SYNC');
 
 console.log('pokemon server sync + credit log tests passed');
+// 2026-10-31: jobs handed to ctx.waitUntil get ~30 s after the handler
+// returns; the comic/sports sync was cut off every hour before saving. The
+// scheduled handler awaits every job instead.
+{
+  const sched = worker.slice(worker.indexOf('  async scheduled(event, env, ctx) {'), worker.indexOf('\n  },\n};', worker.indexOf('  async scheduled(event, env, ctx) {')));
+  assert.doesNotMatch(sched, /ctx\.waitUntil\(/, 'no scheduled job is left to waitUntil');
+  assert.equal((sched.match(/await Promise\.allSettled\(\[/g) || []).length, 3, 'all three schedules are awaited');
+}
+

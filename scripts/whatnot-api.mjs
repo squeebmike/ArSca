@@ -47,7 +47,7 @@ export async function verifyStandardWebhook(secret, headers, rawBody, nowSeconds
   if (!id || !/^\d+$/.test(timestamp) || !signatures.length) return 'missing webhook headers';
   if (Math.abs(nowSeconds - Number(timestamp)) > MAX_SKEW_SECONDS) return 'timestamp too old or in the future';
   let keyBytes;
-  try { keyBytes = b64ToBytes(String(secret).trim().replace(/^(whsec_|wn_wh_)/, '')); } catch (_) { return 'webhook secret is not valid base64'; }
+  try { keyBytes = b64ToBytes(String(secret).trim().replace(/^(?:wn_wh_|whsec_)/, '')); if (!keyBytes.length) throw new Error('Empty key'); } catch (_) { return 'webhook secret is not valid base64'; }
   const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const expected = bytesToB64(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${id}.${timestamp}.${rawBody}`)));
   const ok = signatures.some(s => { const [version, sig] = s.split(','); return version === 'v1' && sig && sameString(sig, expected); });
@@ -77,6 +77,16 @@ export async function handleWhatnotWebhook(request, env, deps) {
   await env.LBA_KV.put('whatnot-webhook-seen:' + id, '1', { expirationTtl: SEEN_TTL });
   // Orders are recorded after answering (Whatnot waits 5 seconds at most).
   try { deps.onEvent?.(record); } catch (_) {}
+  // Live Studio (the show overlay) gets the event in the background. A sale
+  // is never held up or retried because of the overlay: stock and sales come
+  // first. Its effects ignore events over 60 seconds old anyway, so a
+  // Whatnot retry (31+ seconds later) wouldn't animate. It never writes
+  // inventory and dedupes events itself.
+  if (env.MANA_LIVE_STUDIO && body?.version === 'v2') {
+    const handoff = Promise.resolve().then(() => env.MANA_LIVE_STUDIO.getByName(storeId).receiveWhatnot(id, body))
+      .catch(e => console.warn('Live Studio did not get Whatnot event', id, e?.message || e));
+    if (deps.background) deps.background(handoff); else await handoff;
+  }
   return deps.json({ ok: true });
 }
 

@@ -144,6 +144,9 @@ on:
       - scripts/orders-board.mjs
       - scripts/whatnot-api.mjs
       - scripts/whatnot-sync.mjs
+      - scripts/live-studio-api.mjs
+      - scripts/live-studio-room.mjs
+      - scripts/live-studio-model.mjs
       - scripts/pricecharting-daily-sync.mjs
       - scripts/sitemap-cache.mjs
       - wrangler.deploy.jsonc
@@ -197,13 +200,13 @@ jobs:
         run: node --import=./tests/helpers/dashboard-source-hook.mjs --test tests/seo-discovery-regressions.test.mjs tests/foc-preorder-share-page.test.mjs tests/backlist-catalog.test.mjs tests/comic-new-releases.test.mjs tests/bcw-storefront.test.mjs tests/item-seo-pages.test.mjs
 
       - name: Verify automatic book alerts
-        run: node --test tests/article-marketplace.test.mjs tests/book-alerts.test.mjs tests/book-alert-management.test.mjs tests/comic-articles.test.mjs tests/pocket-guides.test.mjs tests/social-links-page.test.mjs tests/store-shopping-improvements.test.mjs tests/department-pages.test.mjs tests/product-shopping.test.mjs
+        run: node --import=./tests/helpers/cloudflare-modules-hook.mjs --test tests/article-marketplace.test.mjs tests/book-alerts.test.mjs tests/book-alert-management.test.mjs tests/comic-articles.test.mjs tests/pocket-guides.test.mjs tests/social-links-page.test.mjs tests/store-shopping-improvements.test.mjs tests/department-pages.test.mjs tests/product-shopping.test.mjs
 
       - name: Verify unified comic search
-        run: node --test tests/comic-search.test.mjs tests/preorder-mobile-rollout.test.mjs
+        run: node --import=./tests/helpers/cloudflare-modules-hook.mjs --test tests/comic-search.test.mjs tests/preorder-mobile-rollout.test.mjs
 
       - name: Verify baseball checklist discovery
-        run: node --test tests/sports-card-finder.test.mjs tests/sports-card-number-search.test.mjs tests/collector-page-ui.test.mjs tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/football-catalog-pages.test.mjs tests/secret-lair-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs tests/catalog-availability.test.mjs tests/reference-set-cache.test.mjs
+        run: node --import=./tests/helpers/cloudflare-modules-hook.mjs --test tests/sports-card-finder.test.mjs tests/sports-card-number-search.test.mjs tests/collector-page-ui.test.mjs tests/public-baseball-checklist-policy.test.mjs tests/baseball-catalog-pages.test.mjs tests/football-catalog-pages.test.mjs tests/secret-lair-pages.test.mjs tests/baseball-team-pages.test.mjs tests/baseball-player-pages.test.mjs tests/catalog-highlights.test.mjs tests/collection-tools.test.mjs tests/baseball-odds.test.mjs tests/catalog-availability.test.mjs tests/reference-set-cache.test.mjs
 
       - name: Smoke tests are manual only
         run: |

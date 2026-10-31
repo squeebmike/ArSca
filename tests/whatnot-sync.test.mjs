@@ -285,9 +285,9 @@ assert.equal(r.link.error, 'title: String too long');
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /const WHATNOT_SYNC_CRON = '\*\/10 \* \* \* \*';/);
-assert.match(worker, /if \(event\?\.cron === WHATNOT_SYNC_CRON\) \{ ctx\.waitUntil\(runScheduledWhatnotSync\(env, ctx\)\); return; \}/);
+assert.match(worker, /if \(event\?\.cron === WHATNOT_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledWhatnotSync\(env, ctx\)\]\); return; \}/);
 assert.match(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'), /"\*\/10 \* \* \* \*"/, 'the 10-minute trigger is deployed');
-assert.match(worker, /handleWhatnotWebhook\(request, env, \{ json, onEvent: record => ctx\?\.waitUntil\?\.\(handleWhatnotEventRecord\(env, ctx, record\)\) \}\)/);
+assert.match(worker, /handleWhatnotWebhook\(request, env, \{ json, onEvent: record => ctx\?\.waitUntil\?\.\(handleWhatnotEventRecord\(env, ctx, record\)\), background: /);
 assert.match(worker, /focInternalPost\(env, ctx, storeId, '\/inventory\/record-external-sale', body\)/);
 assert.equal((worker.match(/confirmed_by: auth\.user\.id \|\| null, confirmed_at: soldAt/g) || []).length, 2, 'internal callers have no user id; the payment row takes null');
 assert.match(worker, /url\.pathname === '\/whatnot\/sync' && request\.method === 'POST'[\s\S]{0,200}\['owner','admin','manager'\]/);

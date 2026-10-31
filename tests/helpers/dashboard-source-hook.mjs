@@ -11,6 +11,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { syncBuiltinESMExports } from 'node:module';
+// Also lets plain Node import the Worker (cloudflare:workers stand-in).
+import './cloudflare-modules-hook.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const htmlPath = path.join(root, 'dashboard.html');

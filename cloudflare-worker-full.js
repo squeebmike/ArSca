@@ -48,6 +48,9 @@ import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledSto
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
 import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows } from './scripts/whatnot-sync.mjs';
+import { handleLiveStudio } from './scripts/live-studio-api.mjs';
+import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
+export { ManaLiveStudio };
 import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
@@ -13513,7 +13516,10 @@ async function routeRequest(request, env, ctx) {
     // Whatnot Seller API: events Whatnot sends, and their status for Settings
     // (scripts/whatnot-api.mjs).
     if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
-      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)) });
+      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)), background: p => ctx?.waitUntil?.(p) });
+    }
+    if (url.pathname.startsWith('/live-studio/')) {
+      return await handleLiveStudio(request, env, { json, requireStoreUser, readJsonWithLimit }, url);
     }
     if (url.pathname === '/whatnot/status' && request.method === 'GET') {
       return await handleWhatnotStatus(request, env, { requireStoreUser, json }, url);
@@ -19109,12 +19115,20 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    // The hourly trigger only runs the Pokémon daily price update, a batch
-    // at a time (scripts/pokemon-daily-sync.mjs); everything else stays on
-    // the 6-hour trigger.
-    if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(Promise.all([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)])); return; }
-    if (event?.cron === WHATNOT_SYNC_CRON) { ctx.waitUntil(runScheduledWhatnotSync(env, ctx)); return; }
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
+    // The jobs are awaited here, not handed to ctx.waitUntil: work left to
+    // waitUntil gets only ~30 seconds after this handler returns, while an
+    // awaited scheduled handler gets the full scheduled-run time. 2026-10-31:
+    // the comic/sports PriceCharting sync (about one PriceCharting call per
+    // 1.1 s) was cut off every hour before its first save -- 0 of 416 items
+    // checked all day -- while the quick Pokemon batches fit in the 30 s.
+    // allSettled: one job failing never cuts another short.
+    // The hourly trigger runs the daily price updates, a batch at a time
+    // (scripts/pokemon-daily-sync.mjs, scripts/pricecharting-daily-sync.mjs);
+    // Whatnot has its own 10-minute trigger; everything else stays on the
+    // 6-hour trigger.
+    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)]); return; }
+    if (event?.cron === WHATNOT_SYNC_CRON) { await Promise.allSettled([runScheduledWhatnotSync(env, ctx)]); return; }
+    await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]);
   },
 };
 

@@ -21,8 +21,8 @@
     "enabled": true,
     "head_sampling_rate": 0.1
   },
-  "durable_objects": {"bindings":[{"name":"PUBLIC_EBAY_CACHE","class_name":"PublicEbayCache"},{"name":"CARD_REFERENCE_ARCHIVE","class_name":"CardReferenceArchive"}]},
-  "migrations": [{"tag":"public-ebay-cache-v1","new_sqlite_classes":["PublicEbayCache"]},{"tag":"card-reference-archive-v1","new_sqlite_classes":["CardReferenceArchive"]}],
+  "durable_objects": {"bindings":[{"name":"PUBLIC_EBAY_CACHE","class_name":"PublicEbayCache"},{"name":"CARD_REFERENCE_ARCHIVE","class_name":"CardReferenceArchive"},{"name":"MANA_LIVE_STUDIO","class_name":"ManaLiveStudio"}]},
+  "migrations": [{"tag":"public-ebay-cache-v1","new_sqlite_classes":["PublicEbayCache"]},{"tag":"card-reference-archive-v1","new_sqlite_classes":["CardReferenceArchive"]},{"tag":"mana-live-studio-v1","new_sqlite_classes":["ManaLiveStudio"]}],
   "kv_namespaces": [
     {
       "binding": "LBA_KV",
