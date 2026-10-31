@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.1-label-stock';
+const APP_VERSION = '2026.10.31.2-whatnot-connect';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -2766,6 +2766,7 @@ const SETTINGS_SECTIONS = [
   {id:'inventory',group:'store',label:'Inventory & Imports',subtitle:'Where inventory lives, categories, imports and exports, stock alerts and data health.',keywords:'inventory source imports csv spreadsheet export tcgplayer collectr categories low stock alert threshold price mover data health template'},
   {id:'website',group:'online',feature:'website',label:'Website & Online Sales',subtitle:'Your public storefront, the "Sell to us" page, shipping origin and rates, reviews, events and Webflow.',keywords:'website storefront online store public inventory sell to us buylist shipping origin ship from rates shippo reviews event calendar webflow'},
   {id:'ebay',group:'online',feature:'ebay',label:'eBay',subtitle:'Listing categories, shipping lines, description templates, shipping policy, auto-reprice and promoted listings.',keywords:'ebay listing category id shipping line description template shipping policy auto reprice aged listings promoted listings ads'},
+  {id:'whatnot',group:'online',feature:'whatnot',label:'Whatnot',subtitle:'Connect your Whatnot seller account: API key, webhook address and the events Whatnot has sent.',keywords:'whatnot live shows auctions seller api webhook events orders connect'},
   {id:'phone',group:'online',feature:'sms',label:'Phone & Texts',subtitle:'Call forwarding and the text relay on your store number.',keywords:'phone call forwarding text relay sms twilio numbers voicemail'},
   {id:'catalogs',group:'data',label:'Catalogs & Price Lookups',subtitle:'Research defaults, offline catalogs, pricing API keys and credit use.',keywords:'catalog pricing pokemon pokémon ppt pokemonpricetracker mtg scryfall pricecharting justtcg api key credits comics sports topps research offline'},
   {id:'sync',group:'data',label:'Data Sync',subtitle:'Keeps inventory, sales, settings and consignments the same on every device and in the cloud.',keywords:'sync queue cloud pending failed conflicts consignments devices offline'},
@@ -2790,6 +2791,7 @@ const SETTINGS_PANEL_MAP = {
   inventory:['settings-block-source','inventory-tools-panel','spreadsheet-panel','settings-block-categories','settings-block-alerts','data-health-panel'],
   website:['settings-block-storefront','settings-block-shipping-origin','settings-block-buylist','customer-reviews-panel','event-calendar-panel','webflow-integration-panel'],
   ebay:['settings-block-ebay'],
+  whatnot:['whatnot-connection-panel'],
   phone:['settings-block-phone'],
   catalogs:['backoffice-research-panel','pricing-apis-panel','offline-catalog-manager-panel'],
   sync:['inventory-sync-panel','sync-queue-panel'],
@@ -3293,6 +3295,7 @@ function organizeRegisterLayout(){
   ensurePaymentSettingsPanel(backoffice);
   ensureResearchSettingsPanel(backoffice);
   ensurePricingApisPanel(backoffice);
+  ensureWhatnotConnectionPanel(backoffice);
   ensureOfflineCatalogManagerPanel(backoffice);
   ensurePricingQaPanel(backoffice);
   ensureStoreMembersPanel(backoffice);
@@ -4407,6 +4410,39 @@ async function clearPokemonExactCache(){
 // credit log (The Mana Pocket's built-in keys only) and, for any other store,
 // its own API keys. The old PRICECHARTING DATA panel that held these was
 // retired, which left both the credit log and the key entry unreachable.
+// Whatnot Seller API connection (scripts/whatnot-api.mjs): whether the key
+// and webhook secret are set in Cloudflare, the address to give Whatnot,
+// and the latest events it has sent.
+function ensureWhatnotConnectionPanel(backoffice){
+  if(document.getElementById('whatnot-connection-panel')) return;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.id = 'whatnot-connection-panel';
+  panel.style.marginBottom = '14px';
+  panel.innerHTML = '<div class="ph">WHATNOT <span style="font-size:9px;color:var(--dim)">seller API connection</span></div><div id="whatnot-connection-body" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Open to check the connection.</div><button class="hbtn" style="margin-top:8px" onclick="renderWhatnotConnection()">CHECK CONNECTION</button>';
+  backoffice.prepend(panel);
+}
+async function renderWhatnotConnection(){
+  const body = document.getElementById('whatnot-connection-body');
+  if(!body) return;
+  body.textContent = 'Checking...';
+  try {
+    const res = await storeWorkerFetch(WORKER + '/whatnot/status?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok) throw new Error(d.error || 'Could not check Whatnot');
+    const tick = on => on ? '<span style="color:var(--g)">✓ set</span>' : '<span style="color:var(--gold)">not set</span>';
+    const events = (d.events || []).map(e => `<div>${escHtml(new Date(e.receivedAt).toLocaleString())} · <b style="color:var(--text)">${escHtml(e.type)}</b></div>`).join('') || '<div>None yet.</div>';
+    body.innerHTML = `
+      <div>API key (WHATNOT_API_KEY in Cloudflare): ${tick(d.apiKeySet)}</div>
+      <div>Webhook secret (WHATNOT_WEBHOOK_SECRET): ${tick(d.webhookSecretSet)}</div>
+      <div style="margin-top:8px">Webhook address for Whatnot Seller Hub → Seller API:</div>
+      <div style="color:var(--text);user-select:all;word-break:break-all">${escHtml(d.webhookUrl || '')}</div>
+      <div style="margin-top:8px">Latest events from Whatnot:</div>${events}`;
+  } catch(e) {
+    body.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>';
+  }
+}
+
 function ensurePricingApisPanel(backoffice){
   if(document.getElementById('pricing-apis-panel')) return;
   const panel = document.createElement('div');

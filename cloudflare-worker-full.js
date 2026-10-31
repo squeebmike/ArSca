@@ -25,6 +25,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
  *   CARDSIGHTAI_API_KEY
  *   WEBFLOW_TOKEN
  *   PSA_TOKEN
+ *   WHATNOT_API_KEY / WHATNOT_WEBHOOK_SECRET (Whatnot Seller API; WHATNOT_STORE_ID optional)
  *   STRIPE_SECRET_KEY_TEST / STRIPE_SECRET_KEY_LIVE
  *   STRIPE_PUBLISHABLE_KEY_TEST / STRIPE_PUBLISHABLE_KEY_LIVE
  *   STRIPE_WEBHOOK_SECRET_TEST / STRIPE_WEBHOOK_SECRET_LIVE
@@ -45,6 +46,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
+import { handleWhatnotWebhook, handleWhatnotStatus } from './scripts/whatnot-api.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
@@ -7660,6 +7662,8 @@ async function routeRequest(request, env, ctx) {
         anthropic: !!env.ANTHROPIC_API_KEY,
         cardsight: !!env.CARDSIGHTAI_API_KEY,
         psa: !!env.PSA_TOKEN,
+        whatnot: !!env.WHATNOT_API_KEY,
+        whatnotWebhook: !!env.WHATNOT_WEBHOOK_SECRET,
         stripe: !!(env.STRIPE_SECRET_KEY_TEST || env.STRIPE_SECRET_KEY_LIVE || env.STRIPE_SECRET_KEY),
         ebay: !!env.EBAY_USER_TOKEN,
         ebayClient: !!(env.EBAY_CLIENT_ID || (env.LBA_KV && await env.LBA_KV.get('secret:EBAY_CLIENT_ID'))),
@@ -13504,6 +13508,14 @@ async function routeRequest(request, env, ctx) {
 
     // Orders board: eBay, Whatnot and website orders -- what's in, when
     // the rest is due, what's late (see scripts/orders-board.mjs).
+    // Whatnot Seller API: events Whatnot sends, and their status for Settings
+    // (scripts/whatnot-api.mjs).
+    if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
+      return await handleWhatnotWebhook(request, env, { json });
+    }
+    if (url.pathname === '/whatnot/status' && request.method === 'GET') {
+      return await handleWhatnotStatus(request, env, { requireStoreUser, json }, url);
+    }
     if (url.pathname === '/orders/board' && request.method === 'GET') {
       return await handleOrdersBoard(request, env, { requireStoreUser, supabaseAdminFetch, json }, url);
     }
