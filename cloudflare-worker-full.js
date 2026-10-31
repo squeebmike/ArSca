@@ -47,6 +47,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus } from './scripts/whatnot-api.mjs';
+import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
@@ -19083,7 +19084,7 @@ export default {
     // The hourly trigger only runs the Pokémon daily price update, a batch
     // at a time (scripts/pokemon-daily-sync.mjs); everything else stays on
     // the 6-hour trigger.
-    if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(runScheduledPokemonServerSync(env)); return; }
+    if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(Promise.all([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)])); return; }
     ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
   },
 };
@@ -19546,6 +19547,34 @@ async function runScheduledPokemonServerSync(env) {
       if (result.checked) console.log('Pokemon server sync', storeId, JSON.stringify(result));
       if (result.failed && !result.checked) continue; // this key is out of credits; another store's may not be
     } catch (e) { console.error('Pokemon server sync failed for store', storeId, e.message); }
+  }
+}
+
+// Daily comic + sports prices from PriceCharting (scripts/pricecharting-
+// daily-sync.mjs), hourly batches from 3 AM Pacific. Each store prices with
+// its own PriceCharting key (The Mana Pocket's, or a pilot store's own);
+// a store without one is skipped. Lookups go through the Worker's own
+// PriceCharting routes, so pacing and matching stay the same as the
+// dashboard's.
+async function runScheduledPriceChartingServerSync(env) {
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+  for (const storeId of storeIds) {
+    const storeEnv = await pricingEnvForStore(env, storeId);
+    if (!(storeEnv.PRICECHARTING_TOKEN || storeEnv.PRICECHARTING_API_KEY)) continue;
+    const deps = {
+      db: (path, opts) => supabaseAdminFetch(env, path, opts),
+      kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
+      kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 14 * 86400 }),
+      products: async ids => (await focInternalPost(env, ctx, storeId, '/pricing/pricecharting/products/batch', { ids })).data?.products || {},
+      comicLookup: async items => (await focInternalPost(env, ctx, storeId, '/pricing/pricecharting/comics/by-upc', { items })).data?.products || {},
+    };
+    try {
+      const result = await runPriceChartingServerSync(storeId, deps);
+      if (result.checked) console.log('PriceCharting server sync', storeId, JSON.stringify(result));
+    } catch (e) { console.error('PriceCharting server sync failed for store', storeId, e.message); }
   }
 }
 

@@ -143,6 +143,7 @@ on:
       - scripts/ebay-order-money.mjs
       - scripts/orders-board.mjs
       - scripts/whatnot-api.mjs
+      - scripts/pricecharting-daily-sync.mjs
       - scripts/sitemap-cache.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml

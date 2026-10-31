@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.2-whatnot-connect';
+const APP_VERSION = '2026.10.31.3-server-pc-sync';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -10699,7 +10699,9 @@ async function comicSharedBarcodes(upcs = []){
   return shared;
 }
 async function buildLiveComicPriceSyncProposal(options = {}){
-  const items=comicInventoryPriceSyncItems().filter(i=>!options.restrictToIds||options.restrictToIds.has(i.id));
+  // The daily run leaves books the server already checked today alone
+  // (scripts/pricecharting-daily-sync.mjs).
+  const items=comicInventoryPriceSyncItems().filter(i=>(!options.restrictToIds||options.restrictToIds.has(i.id))&&!(typeof dailyPriceSyncRunning!=='undefined'&&dailyPriceSyncRunning&&serverPriceCheckedToday(i)));
   const summary={checked:items.length,processed:0,changed:0,unchanged:0,noMatch:0,noPrice:0,errors:0,issues:[]};
   const proposal=[];
 
@@ -11667,11 +11669,19 @@ async function claimServerPriceSyncReview(){
     const oldPrice = Number(p.oldPrice) || 0, newPrice = Number(p.newPrice);
     const delta = newPrice - oldPrice, direction = delta >= 0 ? 'up' : 'down';
     const big = oldPrice > 0 ? isBigPriceChange(oldPrice, newPrice) : false;
-    return { item:{ ...item }, mode:'live', source:'PokemonPriceTracker (overnight check)', oldPrice, newPrice, rawNewPrice:newPrice,
+    const common = { item:{ ...item }, oldPrice, newPrice, rawNewPrice:newPrice,
       delta, deltaPct:Number(p.deltaPct) || (oldPrice > 0 ? Math.abs(delta / oldPrice) * 100 : 100), isBig:big, direction,
       label:big ? (direction === 'up' ? 'BIG INCREASE' : 'BIG DROP') : (direction === 'up' ? 'increase' : 'drop'),
-      cacheAge:'server', lastUpdated:p.lastUpdated || p.at, matchStatus:'exact TCGplayer ID (server daily check)',
-      tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(item), prices:p.prices || null, variants:p.variants || null, selected:true };
+      cacheAge:'server', lastUpdated:p.lastUpdated || p.at, selected:true };
+    // Comics and sports from the server's daily PriceCharting check
+    // (scripts/pricecharting-daily-sync.mjs) apply like their own syncs.
+    if(p.mode === 'comic-live') return { ...common, mode:'comic-live', provider:'comic', source:p.source || 'PriceCharting comic sync',
+      matchStatus:p.matchStatus || 'exact PriceCharting product (server daily check)', pricechartingProductId:p.pricechartingProductId || '',
+      pricechartingProductName:p.pricechartingProductName || '', pricechartingComicPrices:p.pricechartingComicPrices || null, providerUrl:p.providerUrl || '', pricePath:p.pricePath || '' };
+    if(p.mode === 'sports-live') return { ...common, mode:'sports-live', source:p.source || 'PriceCharting', linkFields:p.linkFields || null,
+      matchStatus:p.matchStatus || 'exact PriceCharting product (server daily check)' };
+    return { ...common, mode:'live', source:'PokemonPriceTracker (overnight check)', matchStatus:'exact TCGplayer ID (server daily check)',
+      tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(item), prices:p.prices || null, variants:p.variants || null };
   }).filter(Boolean);
   if(!fresh.length) return 0;
   restorePendingPriceSyncProposals();
@@ -12270,6 +12280,9 @@ async function buildOtherTcgSportsPriceSyncProposal(options = {}){
   items = items.filter(i => isOtherTcgSportsInventorySyncItem(i) && (!options.restrictToIds || options.restrictToIds.has(i.id)));
   if(options.group === 'sports') items = items.filter(isSportsPriceSyncItem);
   else if(options.group === 'other') items = items.filter(i => !isSportsPriceSyncItem(i));
+  // The daily run leaves cards the server's PriceCharting check already did
+  // today alone (scripts/pricecharting-daily-sync.mjs).
+  if(typeof dailyPriceSyncRunning !== 'undefined' && dailyPriceSyncRunning) items = items.filter(i => !serverPriceCheckedToday(i));
   items = items.sort((a,b) => inventoryReferenceMarketPrice(b) - inventoryReferenceMarketPrice(a));
 
   const summary = { checked:items.length, processed:0, changed:0, unchanged:0, errors:0, noMatch:0, noPrice:0, issues:[] };
