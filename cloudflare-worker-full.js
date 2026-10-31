@@ -19639,10 +19639,10 @@ async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
   return data?.[0]?.receipt_settings || {};
 }
-async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true } = {}) {
+async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 25 } = {}) {
   const deps = whatnotDeps(env, ctx, storeId);
   const out = { at: new Date().toISOString() };
-  try { out.listings = await runWhatnotListingSync(storeId, deps, { force }); }
+  try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit }); }
   catch (e) { out.listingsError = e.message; }
   if (orders) {
     const feeSettings = await whatnotFeeSettings(env, storeId);
@@ -19653,11 +19653,18 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
     catch (e) { out.showsError = e.message; }
   }
   await env.LBA_KV.put('whatnot-sync-last:' + storeId, JSON.stringify(out), { expirationTtl: 30 * 86400 });
+  // A run that did something (or hit a problem) is also kept where it can be
+  // checked from outside the Worker (server_job_runs).
+  const l = out.listings || {};
+  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError) {
+    await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
+  }
   return out;
 }
 async function runScheduledWhatnotSync(env, ctx) {
   if (!env.WHATNOT_API_KEY || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
-  try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env)); }
+  // Up to 100 checked items a run (a bulk SELL ON WHATNOT goes out over a few runs).
+  try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env), { limit: 100 }); }
   catch (e) { console.error('Whatnot sync failed:', e.message); }
 }
 // A Whatnot event, after the webhook route has checked and kept it.
