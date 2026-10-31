@@ -36,7 +36,10 @@ export function referenceIdentityMatches(row,card,set){
   return m[2]?finishName(section)===finishName(m[2]):/[a-z]/i.test(number);
  }
  const sourceAliases=row.consoleId==='baseball-cards-2024-topps-stadium-club'?{'Red Foil':['Red'],'Black Foil':['Black'],'Gold Foil':['Gold'],'Blue Foil':['Blue'],'Green Foil':['Green'],'Purple Foil':['Purple'],'Black and White':['Black White'],"Photographer's Proof":['Proof'],'Gold Rainbow Foil':['Gold Rainbow']}[rule.name]||[]:[];
- if(!m[2]||![rule.name,...(rule.aliases||[]),...sourceAliases].some(n=>finishName(n)===finishName(m[2])))return false;
+ // The publisher's sole /99 Around the Diamond finish is Pristine Refractor;
+ // this collected console labels that same numbered printing Refractor.
+ const diamond99=set?.id==='2023-topps-pristine-baseball'&&card.section==='Around The Diamond Autograph Relic'&&row.consoleId==='baseball-cards-2023-topps-pristine-around-the-diamond-autograph-relic'&&rule.name==='Pristine Refractor'&&rule.printRun===99&&row.run==='/99'&&fold(m[2])==='refractor';
+ if(!m[2]||!diamond99&&![rule.name,...(rule.aliases||[]),...sourceAliases].some(n=>finishName(n)===finishName(m[2])))return false;
  const denominator=String(row.run||'').match(/^\/(-?\d+)$/)?.[1];
  if(rule.numberingUnknown)return true;
  if(rule.printRun)return Number(denominator)===(rule.serialDenominator||rule.printRun);
