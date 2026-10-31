@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.3-server-pc-sync';
+const APP_VERSION = '2026.10.31.4-live-sync-count';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -14377,6 +14377,9 @@ async function loadWebflowInventoryItems(){
 // (photos included) every 60 seconds regardless of whether anything
 // actually changed.
 let _builtInSyncWatermark = null;
+// When the full item id list was last downloaded (see refreshBuiltInInventoryDelta).
+let _builtInManifestCheckedAt = 0;
+const BUILT_IN_MANIFEST_RECHECK_MS = 15 * 60 * 1000;
 // ── Inventory copy on this device ────────────────────────────────────────
 // Every open used to download every item's full record (~11 MB for ~1,600
 // items) -- measured on the store phone, that download was nearly all of
@@ -14555,6 +14558,7 @@ async function loadBuiltInInventoryItems(){
       const { rows, changed } = await syncInventoryCopy(sb, storeId, cachedRows, versionsPromise);
       console.info('[INV] Loaded ' + rows.length + ' built-in items from this device (' + changed + ' downloaded) for store ' + storeId);
       if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
+      _builtInManifestCheckedAt = Date.now();
       if(bootTimer) { bootTimer.mark('inventory-downloaded'); Object.assign(bootTimer.info, { inventoryRows:rows.length, inventoryFrom:'device copy', inventoryChanged:changed }); }
       setTimeout(() => writeInventoryCache(storeId, rows, cached.fullLoadedAt), 3000);
       return rows.map(mapBuiltInItem);
@@ -14593,6 +14597,7 @@ async function loadBuiltInInventoryItems(){
   console.info('[INV] Loaded ' + rows.length + ' built-in items from Supabase for store ' + storeId);
   // Rows are ordered updated_at DESC, so the first row is the newest.
   if(rows.length) _builtInSyncWatermark = rows[0].updated_at;
+  _builtInManifestCheckedAt = Date.now();
   if(bootTimer) { bootTimer.mark('inventory-downloaded'); Object.assign(bootTimer.info, { inventoryRows:rows.length, inventoryFrom:'full download' }); }
   // Save the complete set for next time -- never a partial one.
   if(!loadFailed && rows.length) { const fullLoadedAt = Date.now(); setTimeout(() => writeInventoryCache(storeId, rows, fullLoadedAt), 3000); }
@@ -15305,6 +15310,13 @@ function applyDashboardItemUpdate(id, updates) {
 // ever narrows what the quiet 60s poll downloads, it never replaces the
 // explicit full-reload paths (manual REFRESH, right after a save, tab
 // switches, etc.).
+// How many items the store has -- a few bytes, no rows.
+async function builtInInventoryCount(sb, storeId){
+  const { count, error } = await sb.from('inventory_items').select('id', { count:'exact', head:true }).eq('store_id', storeId);
+  if(error) throw error;
+  if(!Number.isFinite(count)) throw new Error('no item count');
+  return count;
+}
 async function refreshBuiltInInventoryDelta(){
   if(!_builtInSyncWatermark || !all.some(i => i.source === 'built_in')) return false;
   const sb = getSupabaseClient();
@@ -15318,10 +15330,15 @@ async function refreshBuiltInInventoryDelta(){
   // fetchInventoryVersions, which pages to the exact count (and throws if
   // it doesn't add up, so nothing is dropped on a bad list), and changed
   // rows page in steps of the real cap.
+  //
+  // Egress over the Free Plan (2026-10-31): that id list is ~200 KB, and
+  // every open dashboard downloaded it every minute (~12 MB an hour each)
+  // to notice deletions. Now each tick asks only for the item count; the
+  // list is downloaded when the count doesn't match what's shown (an item
+  // was deleted or is missing here) and at least every 15 minutes anyway.
   const PAGE = 1000;
-  let manifest;
-  try { manifest = await fetchInventoryVersions(sb, storeId); }
-  catch(e) { return false; }
+  let liveCount = null;
+  try { liveCount = await builtInInventoryCount(sb, storeId); } catch(e) { liveCount = null; }
   const changedRows = [];
   let changedOffset = 0;
   let changedError = null;
@@ -15337,6 +15354,14 @@ async function refreshBuiltInInventoryDelta(){
   // a row inserted with an older timestamp) come back here too.
   const shownIds = new Set(all.filter(i => i.source === 'built_in').map(i => i.id));
   changedRows.forEach(r => shownIds.add(r.id));
+  let manifest;
+  if(liveCount !== null && liveCount === shownIds.size && Date.now() - _builtInManifestCheckedAt < BUILT_IN_MANIFEST_RECHECK_MS) {
+    manifest = [...shownIds].map(id => ({ id }));
+  } else {
+    try { manifest = await fetchInventoryVersions(sb, storeId); }
+    catch(e) { return false; }
+    _builtInManifestCheckedAt = Date.now();
+  }
   const missingIds = manifest.map(v => v.id).filter(id => !shownIds.has(id));
   const recoveredRows = [];
   for(let i = 0; i < missingIds.length; i += 100){
