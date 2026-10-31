@@ -12,3 +12,6 @@ create table if not exists public.server_job_runs (
 );
 create index if not exists server_job_runs_job_started on public.server_job_runs(job, started_at desc);
 alter table public.server_job_runs enable row level security;
+-- grants: service_role only server_job_runs
+grant select, insert, update, delete on public.server_job_runs to service_role;
+grant usage, select on sequence public.server_job_runs_id_seq to service_role;
