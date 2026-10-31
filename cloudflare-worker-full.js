@@ -19691,10 +19691,17 @@ async function runScheduledPriceChartingServerSync(env) {
       products: async ids => (await focInternalPost(env, ctx, storeId, '/pricing/pricecharting/products/batch', { ids })).data?.products || {},
       comicLookup: async items => (await focInternalPost(env, ctx, storeId, '/pricing/pricecharting/comics/by-upc', { items })).data?.products || {},
     };
+    // Each run's result is kept (KV pricecharting-sync-last:<store>), so a
+    // run that does nothing shows why without logs.
+    const startedAt = new Date().toISOString();
     try {
       const result = await runPriceChartingServerSync(storeId, deps);
       if (result.checked) console.log('PriceCharting server sync', storeId, JSON.stringify(result));
-    } catch (e) { console.error('PriceCharting server sync failed for store', storeId, e.message); }
+      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify({ startedAt, finishedAt: new Date().toISOString(), ...result }), { expirationTtl: 7 * 86400 });
+    } catch (e) {
+      console.error('PriceCharting server sync failed for store', storeId, e.message);
+      await env.LBA_KV.put('pricecharting-sync-last:' + storeId, JSON.stringify({ startedAt, error: e.message }), { expirationTtl: 7 * 86400 }).catch(() => {});
+    }
   }
 }
 

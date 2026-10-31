@@ -84,3 +84,38 @@ assert.match(app, /if\(p\.mode === 'comic-live'\) return \{ \.\.\.common, mode:'
 assert.match(app, /if\(typeof dailyPriceSyncRunning !== 'undefined' && dailyPriceSyncRunning\) items = items\.filter\(i => !serverPriceCheckedToday\(i\)\);/);
 assert.match(app, /!\(typeof dailyPriceSyncRunning!=='undefined'&&dailyPriceSyncRunning&&serverPriceCheckedToday\(i\)\)/);
 console.log('pricecharting daily sync checks passed');
+
+// 2026-10-31: the first day checked nothing. The pick reads only comic and
+// sports rows and only the keys it needs; the whole record is read for the
+// batch; each group of 20 is saved before the next is looked up, and no new
+// group starts after the time budget.
+{
+  const mk = n => ({ id: 'c' + n, status: 'in_stock', data: { category: 'Comic', name: 'Batman #' + n, pricechartingProductId: String(1000 + n), market: 5 } });
+  const all = Array.from({ length: 50 }, (_, n) => mk(n));
+  const gets = [], saved = [];
+  const deps2 = {
+    kvGet: async () => null, kvPut: async () => {},
+    products: async ids => Object.fromEntries(ids.map(id => [id, { ok: true, product: { productId: id, prices: { loose: 5 } } }])),
+    comicLookup: async () => ({}),
+    budgetMs: 0,
+    db: async (path, opts) => {
+      if (opts?.method === 'PATCH') { saved.push(path); return { response: { ok: true } }; }
+      gets.push(path);
+      if (path.includes('select=id,status,k_')) return { data: all.map(r => ({ id: r.id, status: r.status, k_category: 'Comic', k_pricechartingProductId: r.data.pricechartingProductId, k_name: r.data.name })) };
+      const ids = decodeURIComponent(path.match(/id=in\.\(([^)]*)\)/)[1]).split(',');
+      return { data: all.filter(r => ids.includes(r.id)) };
+    },
+  };
+  const res = await runPriceChartingServerSync('store-1', deps2, at3am);
+  assert.match(gets[0], /data->>category=imatch\./, 'only comic and sports rows');
+  assert.match(gets[0], /select=id,status,k_category:data->category,/, 'only the keys the pick needs');
+  assert.doesNotMatch(gets[0], /select=id,status,data&/);
+  assert.equal(res.candidates, 50);
+  assert.equal(saved.length, 20, 'out of time after the first group: that group is saved, the rest wait');
+  assert.equal(res.checked, 20); assert.equal(res.stoppedEarly, true);
+  assert.equal(res.left, 30);
+}
+const workerSrc = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+assert.match(workerSrc, /env\.LBA_KV\.put\('pricecharting-sync-last:' \+ storeId/, 'each run leaves its result');
+console.log('pricecharting daily sync chunked checks passed');
+

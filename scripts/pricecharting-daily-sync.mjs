@@ -20,6 +20,7 @@ export const PC_SYNC_BATCH = 80;
 export const PC_SYNC_START_HOUR = 3; // Pacific
 const IDS_PER_CALL = 40;      // /pricing/pricecharting/products/batch
 const LOOKUPS_PER_CALL = 15;  // /pricing/pricecharting/comics/by-upc
+const CHUNK = 20;             // looked up, then saved, a group at a time
 
 const SPORTS_CATEGORY = /^(sports?(\s+cards?)?|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis|boxing)(\s+cards?)?$/i;
 const SLAB_RE = /\b(PSA|BGS|BECKETT|CGC|SGC|TAG|HGA|CBCS)\s*(?:GEM\s*(?:MINT|MT)\s*|MINT\s*|PRISTINE\s*)?(10|[1-9](?:\.\d)?)(?![\d.])/i;
@@ -167,46 +168,87 @@ export function nextBatch(rows = [], now = Date.now(), size = PC_SYNC_BATCH) {
     .slice(0, size);
 }
 
+// Picking the batch needs only these keys. 2026-10-31: the first run asked
+// for every in-stock item's whole record at once (some carry photos, ~25 KB
+// each); the API caps a request at 1,000 rows and the answer was too big to
+// use, so nothing was checked. Now: comic and sports rows only, these keys
+// only, a page at a time.
+const PICK_KEYS = ['category', 'archivedAt', 'dropship', 'ownershipType', 'source', 'priceSyncCheckedAt',
+  'pricechartingProductId', 'providerProductId', 'sourceProductId', 'providerUrl', 'upc', 'barcode',
+  'name', 'title', 'series', 'issue', 'issueNumber', 'variant', 'comicMetadata', 'selectedComicCover', 'externalRefs', 'focComicDetail'];
+const PICK_SELECT = 'id,status,' + PICK_KEYS.map(k => `k_${k}:data->${k}`).join(',');
+const PICK_CATEGORY = 'comic|sport|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis|boxing';
+async function loadCandidateRows(deps, s) {
+  const rows = [];
+  for (let offset = 0; offset < 20000; offset += 1000) {
+    const { data } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&data->>category=imatch.${encodeURIComponent(PICK_CATEGORY)}&select=${PICK_SELECT}&order=id.asc&limit=1000&offset=${offset}`);
+    const page = data || [];
+    for (const r of page) rows.push(r.data ? r : { id: r.id, status: r.status, data: Object.fromEntries(PICK_KEYS.filter(k => r['k_' + k] != null).map(k => [k, r['k_' + k]])) });
+    if (page.length < 1000) break;
+  }
+  return rows;
+}
+
 // deps: { db(path, opts), products(ids) -> { [id]: { ok, product } }, comicLookup(items) -> { [key]: { ok, via, product } }, kvGet, kvPut }
 export async function runPriceChartingServerSync(storeId, deps, now = Date.now()) {
   if (pacificHour(now) < PC_SYNC_START_HOUR) return { skipped: 'before 3 AM' };
   const s = encodeURIComponent(storeId);
-  const { data: rows } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,status,data&limit=5000`);
-  const batch = nextBatch(rows || [], now);
-  const out = { checked: 0, applied: 0, unchanged: 0, review: 0, noPrice: 0, failed: 0, left: 0 };
-  if (!batch.length) return out;
-
-  // Comics with no link: barcode first, then series + issue + cover.
-  const found = new Map();
-  const lookups = batch.filter(x => !pricechartingIdOf(x.kind, x.row.data));
-  for (let i = 0; i < lookups.length; i += LOOKUPS_PER_CALL) {
-    const part = lookups.slice(i, i + LOOKUPS_PER_CALL);
-    let got = {};
-    try { got = await deps.comicLookup(part.map(x => ({ key: x.row.id, upc: comicFullUpc(x.row.data), ...(comicTitleHint(x.row.data) || {}) }))) || {}; } catch (_) {}
-    for (const x of part) if (got[x.row.id]?.ok && got[x.row.id].product?.productId) found.set(x.row.id, { product: got[x.row.id].product, viaTitle: got[x.row.id].via === 'title' });
+  const rows = await loadCandidateRows(deps, s);
+  const picked = nextBatch(rows, now);
+  const out = { checked: 0, applied: 0, unchanged: 0, review: 0, noPrice: 0, failed: 0, left: 0, candidates: rows.length };
+  if (!picked.length) return out;
+  // The whole record only for this hour's batch (the update writes it back).
+  const full = new Map();
+  for (let i = 0; i < picked.length; i += 40) {
+    const ids = picked.slice(i, i + 40).map(x => encodeURIComponent(x.row.id)).join(',');
+    const { data } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&id=in.(${ids})&select=id,status,data`);
+    for (const r of data || []) full.set(r.id, r);
   }
-  // Linked ones: their saved product.
-  const ids = [...new Set(batch.map(x => pricechartingIdOf(x.kind, x.row.data)).filter(Boolean))];
-  const byId = new Map();
-  for (let i = 0; i < ids.length; i += IDS_PER_CALL) {
-    let got = {};
-    try { got = await deps.products(ids.slice(i, i + IDS_PER_CALL)) || {}; } catch (_) {}
-    for (const [id, r] of Object.entries(got)) if (r?.ok && r.product) byId.set(id, r.product);
-  }
+  const batch = picked.filter(x => full.has(x.row.id)).map(x => ({ row: full.get(x.row.id), kind: syncKind(full.get(x.row.id)) })).filter(x => x.kind);
 
+  // 20 at a time, each group saved before the next is looked up, so a run
+  // cut short (Cloudflare's time limit on a scheduled run) keeps what it
+  // finished -- before, nothing was saved until all 80 were looked up, and
+  // the same 80 were picked again every hour. No new group starts after
+  // the time budget.
   const queue = [];
-  for (const { row, kind } of batch) {
-    const id = pricechartingIdOf(kind, row.data);
-    const hit = id ? { product: byId.get(id) || null, viaTitle: false } : (found.get(row.id) || { product: null, viaTitle: false });
-    const plan = planRow(row, kind, hit.product, { viaTitle: hit.viaTitle, now });
-    try {
-      await deps.db(`inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: plan.data, updated_at: new Date(now).toISOString() }) });
-    } catch (e) { out.failed++; continue; }
-    out.checked++;
-    if (plan.kind === 'applied') out.applied++;
-    else if (plan.kind === 'unchanged') out.unchanged++;
-    else if (plan.kind === 'review') { out.review++; queue.push(plan.proposal); }
-    else out.noPrice++;
+  const deadline = Date.now() + (deps.budgetMs ?? 8 * 60 * 1000);
+  for (let g = 0; g < batch.length; g += CHUNK) {
+    if (g > 0 && Date.now() > deadline) { out.stoppedEarly = true; break; }
+    const group = batch.slice(g, g + CHUNK);
+    // Comics with no link: barcode first, then series + issue + cover.
+    const found = new Map();
+    const lookups = group.filter(x => !pricechartingIdOf(x.kind, x.row.data));
+    for (let i = 0; i < lookups.length; i += LOOKUPS_PER_CALL) {
+      const part = lookups.slice(i, i + LOOKUPS_PER_CALL);
+      let got = {};
+      try { got = await deps.comicLookup(part.map(x => ({ key: x.row.id, upc: comicFullUpc(x.row.data), ...(comicTitleHint(x.row.data) || {}) }))) || {}; } catch (_) {}
+      for (const x of part) if (got[x.row.id]?.ok && got[x.row.id].product?.productId) found.set(x.row.id, { product: got[x.row.id].product, viaTitle: got[x.row.id].via === 'title' });
+    }
+    // Linked ones: their saved product.
+    const ids = [...new Set(group.map(x => pricechartingIdOf(x.kind, x.row.data)).filter(Boolean))];
+    const byId = new Map();
+    for (let i = 0; i < ids.length; i += IDS_PER_CALL) {
+      let got = {};
+      try { got = await deps.products(ids.slice(i, i + IDS_PER_CALL)) || {}; } catch (_) {}
+      for (const [id, r] of Object.entries(got)) if (r?.ok && r.product) byId.set(id, r.product);
+    }
+    for (const { row, kind } of group) {
+      const id = pricechartingIdOf(kind, row.data);
+      const hit = id ? { product: byId.get(id) || null, viaTitle: false } : (found.get(row.id) || { product: null, viaTitle: false });
+      let plan;
+      try {
+        // One odd item can't stop the rest.
+        plan = planRow(row, kind, hit.product, { viaTitle: hit.viaTitle, now });
+        const res = await deps.db(`inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: plan.data, updated_at: new Date(now).toISOString() }) });
+        if (res?.response && !res.response.ok) throw new Error('save failed');
+      } catch (e) { out.failed++; (out.errors ||= []).length < 5 && out.errors.push(row.id + ': ' + String(e.message || e).slice(0, 120)); continue; }
+      out.checked++;
+      if (plan.kind === 'applied') out.applied++;
+      else if (plan.kind === 'unchanged') out.unchanged++;
+      else if (plan.kind === 'review') { out.review++; queue.push(plan.proposal); }
+      else out.noPrice++;
+    }
   }
   if (queue.length) {
     const key = 'price-sync-review:' + storeId;
@@ -215,6 +257,6 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
     for (const p of queue) merged.set(p.itemId, p);
     await deps.kvPut(key, [...merged.values()].slice(-500));
   }
-  out.left = Math.max(0, nextBatch(rows || [], now, 100000).length - batch.length);
+  out.left = Math.max(0, nextBatch(rows, now, 100000).length - out.checked);
   return out;
 }
