@@ -1,4 +1,6 @@
 export async function handleLiveStudio(request,env,deps,url) {
+  const originalJson=deps.json;
+  deps={...deps,json:(data,status=200)=>originalJson(data,status,{'Cache-Control':'no-store'})};
   if (!env.MANA_LIVE_STUDIO) return deps.json({ok:false,error:'Live Studio is not deployed yet'},503);
   const storeId=String(url.searchParams.get('store_id') || '');
   if (!/^[0-9a-f-]{36}$/i.test(storeId)) return deps.json({ok:false,error:'Valid store ID required'},400);

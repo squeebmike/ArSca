@@ -54,6 +54,7 @@ export class ManaLiveStudio extends DurableObject {
     if (this.sql.exec('SELECT id FROM seen WHERE id=?',id).toArray().length) return {duplicate:true};
     const s = this.read();
     const effect = whatnotEffect(event,s.settings,now);
+    let emitted=false;
     this.ctx.storage.transactionSync(()=>{
       this.sql.exec('INSERT INTO seen VALUES (?,?)',id,now+7*86400000);
       if (effect) {
@@ -61,9 +62,10 @@ export class ManaLiveStudio extends DurableObject {
         if (event.type.startsWith('shows.')) s.showEventAt=effect.at;
         s.effect=makeEffect(effect.kind,s.settings,now);
         this.write(s);
+        emitted=true;
       }
     });
-    if (effect && s.effect?.startsAt === now) this.broadcast({type:'effect',effect:s.effect,serverNow:now});
+    if (emitted) this.broadcast({type:'effect',effect:s.effect,serverNow:now});
     return {ok:true};
   }
   async fetch(request) {
