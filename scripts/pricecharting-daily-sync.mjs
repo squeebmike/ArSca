@@ -195,7 +195,10 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
   const s = encodeURIComponent(storeId);
   const rows = await loadCandidateRows(deps, s);
   const picked = nextBatch(rows, now);
-  const out = { checked: 0, applied: 0, unchanged: 0, review: 0, noPrice: 0, failed: 0, left: 0, candidates: rows.length };
+  const out = { checked: 0, applied: 0, unchanged: 0, review: 0, noPrice: 0, failed: 0, left: 0, candidates: rows.length, picked: picked.length };
+  // Where the run got to, saved as it goes (a run cut off still shows it).
+  const progress = async stage => { try { await deps.progress?.({ stage, ...out }); } catch (_) {} };
+  await progress('picked');
   if (!picked.length) return out;
   // The whole record only for this hour's batch (the update writes it back).
   const full = new Map();
@@ -205,6 +208,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
     for (const r of data || []) full.set(r.id, r);
   }
   const batch = picked.filter(x => full.has(x.row.id)).map(x => ({ row: full.get(x.row.id), kind: syncKind(full.get(x.row.id)) })).filter(x => x.kind);
+  await progress('loaded ' + batch.length);
 
   // 20 at a time, each group saved before the next is looked up, so a run
   // cut short (Cloudflare's time limit on a scheduled run) keeps what it
@@ -216,6 +220,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
   for (let g = 0; g < batch.length; g += CHUNK) {
     if (g > 0 && Date.now() >= deadline) { out.stoppedEarly = true; break; }
     const group = batch.slice(g, g + CHUNK);
+    await progress('looking up ' + (g + 1) + '-' + (g + group.length));
     // Comics with no link: barcode first, then series + issue + cover.
     const found = new Map();
     const lookups = group.filter(x => !pricechartingIdOf(x.kind, x.row.data));
@@ -233,6 +238,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
       try { got = await deps.products(ids.slice(i, i + IDS_PER_CALL)) || {}; } catch (_) {}
       for (const [id, r] of Object.entries(got)) if (r?.ok && r.product) byId.set(id, r.product);
     }
+    await progress('saving ' + (g + 1) + '-' + (g + group.length));
     for (const { row, kind } of group) {
       const id = pricechartingIdOf(kind, row.data);
       const hit = id ? { product: byId.get(id) || null, viaTitle: false } : (found.get(row.id) || { product: null, viaTitle: false });

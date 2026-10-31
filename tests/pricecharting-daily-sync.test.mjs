@@ -77,7 +77,7 @@ assert.deepEqual(await runPriceChartingServerSync('store-1', deps, new Date('202
 
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /if \(event\?\.cron === POKEMON_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\), runScheduledPriceChartingServerSync\(env\)\]\); return; \}/, 'runs hourly, awaited (not left to waitUntil)');
+assert.match(worker, /if \(event\?\.cron === POKEMON_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledPriceChartingServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\)\]\); return; \}/, 'runs hourly, awaited, one sync after the other');
 assert.match(worker, /if \(!\(storeEnv\.PRICECHARTING_TOKEN \|\| storeEnv\.PRICECHARTING_API_KEY\)\) continue;/, 'each store on its own key');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /if\(p\.mode === 'comic-live'\) return \{ \.\.\.common, mode:'comic-live', provider:'comic'/, 'the dashboard reviews server comic changes like its own');
@@ -120,4 +120,19 @@ assert.match(workerSrc, /env\.LBA_KV\.put\('pricecharting-sync-last:' \+ storeId
 assert.match(workerSrc, /job: 'pricecharting-sync', store_id: storeId/, 'also where it can be queried');
 assert.match(workerSrc, /try \{\n      const storeEnv = await pricingEnvForStore\(env, storeId\);/, "one store's setup failing can't stop the others");
 console.log('pricecharting daily sync chunked checks passed');
+// Progress is reported at each step, so a run cut off shows how far it got.
+{
+  const stages = [];
+  const mk = n => ({ id: 'p' + n, status: 'in_stock', data: { category: 'Comic', name: 'X #' + n, pricechartingProductId: String(50 + n), market: 5 } });
+  const all2 = Array.from({ length: 25 }, (_, n) => mk(n));
+  await runPriceChartingServerSync('store-1', {
+    kvGet: async () => null, kvPut: async () => {}, comicLookup: async () => ({}),
+    products: async ids => Object.fromEntries(ids.map(id => [id, { ok: true, product: { productId: id } }])),
+    progress: async r => { stages.push(r.stage); },
+    db: async (path, opts) => opts?.method === 'PATCH' ? { response: { ok: true } } : { data: path.includes('k_category') ? all2.map(r => ({ id: r.id, status: r.status, k_category: 'Comic', k_pricechartingProductId: r.data.pricechartingProductId })) : all2.filter(r => decodeURIComponent(path).includes(r.id)) },
+  }, at3am);
+  assert.deepEqual(stages, ['picked', 'loaded 25', 'looking up 1-20', 'saving 1-20', 'looking up 21-25', 'saving 21-25']);
+  assert.match(workerSrc, /await writeRun\(\{ stage: 'started' \}\);/, 'a row as soon as the run starts');
+}
+console.log('pricecharting progress checks passed');
 
