@@ -255,20 +255,25 @@ export async function processWhatnotOrder(order, deps) {
   }
   const recorded = [];
   let first = true;
+  const giveawayOrder = order.transaction_type === 'giveaway';
   for (const it of items) {
     const quantity = Math.max(1, Number(it.quantity) || 1);
     const salePrice = Math.round((Number(it.unit_price?.amount) || 0) * quantity * 100) / 100;
     const ours = [it.variant_external_id, it.product_external_id].find(isUuid) || '';
     const title = String(it.purchased_item?.title || 'Whatnot sale').slice(0, 200);
-    const body = { itemId: ours, title, channel: 'Whatnot', salePrice, quantitySold: quantity, soldAt: order.created_at || new Date().toISOString(),
-      feeAmount: whatnotFee(salePrice, deps.feeSettings, { first }), externalRef: whatnotOrderRef(orderId, it.id) };
-    first = false;
-    if (!(salePrice > 0)) { recorded.push({ itemId: ours, skipped: 'no price' }); continue; }
+    // A giveaway still uses up the item: recorded at $0 so its cost counts.
+    const giveaway = giveawayOrder || !(salePrice > 0);
+    const body = { itemId: ours, title, channel: 'Whatnot', salePrice: giveaway ? 0 : salePrice, quantitySold: quantity, soldAt: order.created_at || new Date().toISOString(),
+      feeAmount: giveaway ? 0 : whatnotFee(salePrice, deps.feeSettings, { first }), externalRef: whatnotOrderRef(orderId, it.id), ...(giveaway ? { giveaway: true } : {}) };
+    if (!giveaway) first = false;
+    // A Whatnot-only giveaway (nothing of ours) has nothing to record.
+    if (giveaway && !ours) { recorded.push({ itemId: '', title, giveaway: true, skipped: 'not ours' }); continue; }
     let r = await deps.recordSale(body);
     // Already sold here, or not one of ours any more: the money still counts.
-    if (!r.ok && ours && (r.status === 404 || r.status === 409)) r = await deps.recordSale({ ...body, itemId: '' });
+    if (!r.ok && ours && !giveaway && (r.status === 404 || r.status === 409)) r = await deps.recordSale({ ...body, itemId: '' });
+    if (!r.ok && giveaway && (r.status === 404 || r.status === 409)) { recorded.push({ itemId: ours, title, giveaway: true, skipped: 'already gone' }); continue; }
     if (!r.ok) throw new Error('Could not record Whatnot sale ' + orderId + ': ' + (r.data?.error || r.status));
-    recorded.push({ itemId: ours, title, salePrice, quantity, duplicate: !!r.data?.duplicate, unlinked: !!r.data?.unlinked });
+    recorded.push({ itemId: ours, title, salePrice: body.salePrice, quantity, giveaway, duplicate: !!r.data?.duplicate, unlinked: !!r.data?.unlinked });
   }
   await deps.kvPut(doneKey, 'recorded');
   return { orderId, status, recorded };
@@ -289,4 +294,102 @@ export async function reconcileWhatnotOrders(deps, { pages = 2 } = {}) {
     if (!cursor) break;
   }
   return results;
+}
+
+// --- Shows -------------------------------------------------------------------
+// Store, 2026-10-31: "I want show sales to auto calc all the stuff" -- no
+// report import. Each Whatnot show is kept in whatnot_shows (by its Whatnot
+// id) with the same report_summary PAST SHOWS reads: gross, fees, cost of
+// goods, giveaways, net, buyers. Until Whatnot's own show analytics are
+// ready the fees are estimated; after that they are Whatnot's real
+// numbers (fees = gross sales - estimated earnings, giveaway shipping
+// included) and the show is final.
+export const WHATNOT_SHOW_STATUS = { scheduled: 'planning', live: 'live', stopped: 'live', ended: 'ended' };
+const amount = m => Number(m?.amount) || 0;
+const r2 = n => Math.round(n * 100) / 100;
+
+// The show's orders, newest first, stopping once past the show's start.
+export async function whatnotShowOrders(api, showId, sinceIso) {
+  const out = [];
+  let cursor = '';
+  for (let page = 0; page < 40; page++) {
+    const r = await api('GET', `/orders?limit=50${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`);
+    if (!r.ok) throw new Error('Whatnot orders: ' + whatnotErrorText(r));
+    const data = r.data?.data || [];
+    for (const o of data) if (o.show_id === showId) out.push(o);
+    cursor = r.data?.next_cursor || '';
+    const oldest = data[data.length - 1]?.created_at || '';
+    if (!cursor || (sinceIso && oldest && oldest < sinceIso)) break;
+  }
+  return out;
+}
+
+// costs: { [orderId]: cost of our items in it } from the recorded sales.
+export function summarizeWhatnotShow({ orders, analytics, costs = {}, feeSettings = {}, now = new Date() }) {
+  const live = (orders || []).filter(o => !['cancelled', 'failed'].includes(o.status));
+  const isGiveaway = o => o.transaction_type === 'giveaway' || !(amount(o.amounts?.subtotal) > 0);
+  const sold = live.filter(o => !isGiveaway(o)), given = live.filter(isGiveaway);
+  const final = analytics?.calculation_status === 'GENERATED' && analytics.sales != null && analytics.estimated_earnings != null;
+  const ordersGross = sold.reduce((n, o) => n + amount(o.amounts?.subtotal), 0);
+  const gross = final ? amount(analytics.sales) : ordersGross;
+  const fees = final ? Math.max(0, gross - amount(analytics.estimated_earnings)) : sold.reduce((n, o) => n + whatnotFee(amount(o.amounts?.subtotal), feeSettings), 0);
+  const cogs = sold.reduce((n, o) => n + (Number(costs[o.id]) || 0), 0);
+  const giveawayCost = given.reduce((n, o) => n + (Number(costs[o.id]) || 0), 0);
+  const net = gross - fees - cogs - giveawayCost;
+  const byBuyer = {};
+  for (const o of sold) {
+    const name = o.buyer?.username || o.buyer?.display_name;
+    if (!name) continue;
+    const b = byBuyer[name] || (byBuyer[name] = { buyer: name, items: 0, total: 0 });
+    b.items++; b.total = r2(b.total + amount(o.amounts?.subtotal));
+  }
+  return {
+    source: 'whatnot', final, savedAt: now.toISOString(),
+    gross: r2(gross), fees: r2(fees), cogs: r2(cogs), giveawayCost: r2(giveawayCost), shipping: 0, net: r2(net),
+    margin: gross > 0 ? Math.round(net / gross * 1000) / 10 : 0,
+    sold: sold.length, giveaways: given.length, orders: live.length,
+    cancelled: (orders || []).length - live.length,
+    buyers: Object.values(byBuyer).sort((a, b) => b.total - a.total),
+    buyersCount: analytics?.buyers_count ?? Object.keys(byBuyer).length,
+    peakViewers: analytics?.max_concurrent_viewers ?? null,
+    earnings: final ? r2(amount(analytics.estimated_earnings)) : null,
+    missingCost: sold.filter(o => costs[o.id] == null).length,
+  };
+}
+
+// deps: api, costsForOrders(orderIds) -> {orderId: cost}, upsertShow(row),
+// kvGet, kvPut, storeId, feeSettings.
+export async function refreshWhatnotShow(showOrId, deps, { withSummary = true } = {}) {
+  const show = typeof showOrId === 'object' ? showOrId : (await deps.api('GET', `/shows/${encodeURIComponent(showOrId)}`)).data;
+  if (!show?.id) return { skipped: 'no show' };
+  const status = WHATNOT_SHOW_STATUS[show.status];
+  if (!status) return { showId: show.id, skipped: show.status };
+  const finalKey = `whatnot-show-final:${deps.storeId}:${show.id}`;
+  const row = { whatnot_show_id: show.id, platform: 'whatnot', title: String(show.title || 'Whatnot show').slice(0, 200), status, started_at: show.scheduled_start_at || show.created_at || null, ended_at: show.ended_at || null };
+  if (status !== 'ended' || !withSummary || await deps.kvGet(finalKey)) { await deps.upsertShow(row); return { showId: show.id, status }; }
+  const ana = await deps.api('GET', `/analytics/shows/${encodeURIComponent(show.id)}`);
+  const analytics = ana.ok ? ana.data : null;
+  if (analytics?.start_time) row.started_at = analytics.start_time;
+  const since = new Date(Date.parse(row.started_at || show.created_at || Date.now()) - 6 * 3600 * 1000).toISOString();
+  const orders = await whatnotShowOrders(deps.api, show.id, since);
+  const costs = await deps.costsForOrders(orders.map(o => o.id));
+  row.report_summary = summarizeWhatnotShow({ orders, analytics, costs, feeSettings: deps.feeSettings });
+  await deps.upsertShow(row);
+  if (row.report_summary.final || analytics?.calculation_status === 'WILL_NOT_BE_CALCULATED') await deps.kvPut(finalKey, 1);
+  return { showId: show.id, status, summary: row.report_summary };
+}
+
+// Recent shows: kept up to date, and an ended show's numbers refreshed
+// until Whatnot's analytics make them final.
+export async function refreshRecentWhatnotShows(deps, { limit = 10 } = {}) {
+  const r = await deps.api('GET', `/shows?limit=${limit}`);
+  if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));
+  const out = [];
+  for (const show of r.data?.data || []) {
+    const recent = show.status !== 'ended' || !show.ended_at || Date.now() - Date.parse(show.ended_at) < 7 * 86400000;
+    if (!recent) continue;
+    try { out.push(await refreshWhatnotShow(show, deps)); }
+    catch (e) { out.push({ showId: show.id, error: e.message }); }
+  }
+  return out;
 }

@@ -47,7 +47,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows } from './scripts/whatnot-sync.mjs';
 import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
@@ -19599,7 +19599,27 @@ function whatnotDeps(env, ctx, storeId) {
     shape: row => shapeStorefrontItem(row),
     recordSale: async body => { const { res, data } = await focInternalPost(env, ctx, storeId, '/inventory/record-external-sale', body); return { ok: res.ok && data?.ok !== false, status: res.status, data }; },
     voidOrder: orderId => voidWhatnotOrder(env, storeId, orderId),
+    costsForOrders: orderIds => whatnotOrderCosts(env, storeId, orderIds),
+    upsertShow: row => upsertWhatnotShow(env, storeId, row),
   };
+}
+// What our items in each Whatnot order cost, from the sales recorded for it.
+async function whatnotOrderCosts(env, storeId, orderIds) {
+  const s = encodeURIComponent(storeId), costs = {};
+  for (let i = 0; i < orderIds.length; i += 20) {
+    const ors = orderIds.slice(i, i + 20).map(id => 'reference.like.' + encodeURIComponent('whatnot-api:' + id + ':') + '*').join(',');
+    const { data: pays } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${s}&provider=eq.whatnot&or=(${ors})&select=sale_id,reference`);
+    const orderBySale = new Map((pays || []).map(p => [p.sale_id, String(p.reference || '').split(':')[1]]));
+    if (!orderBySale.size) continue;
+    for (const id of orderBySale.values()) costs[id] = costs[id] || 0;
+    const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${s}&sale_id=in.(${[...orderBySale.keys()].map(encodeURIComponent).join(',')})&select=sale_id,cost_basis,quantity`);
+    for (const l of lines || []) { const o = orderBySale.get(l.sale_id); if (o) costs[o] = Math.round((costs[o] + (Number(l.cost_basis) || 0) * Math.max(1, Number(l.quantity) || 1)) * 100) / 100; }
+  }
+  return costs;
+}
+async function upsertWhatnotShow(env, storeId, row) {
+  const { response, data } = await supabaseAdminFetch(env, 'whatnot_shows?on_conflict=store_id,whatnot_show_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ store_id: storeId, ...row }]) });
+  if (response && !response.ok) throw new Error('Could not save Whatnot show: ' + (data?.message || response.status));
 }
 async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
@@ -19611,8 +19631,12 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   try { out.listings = await runWhatnotListingSync(storeId, deps, { force }); }
   catch (e) { out.listingsError = e.message; }
   if (orders) {
-    try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings: await whatnotFeeSettings(env, storeId) })).filter(r => !r.skipped); }
+    const feeSettings = await whatnotFeeSettings(env, storeId);
+    try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings })).filter(r => !r.skipped); }
     catch (e) { out.ordersError = e.message; }
+    // Shows after their orders, so an ended show counts every sale.
+    try { out.shows = await refreshRecentWhatnotShows({ ...deps, feeSettings }); }
+    catch (e) { out.showsError = e.message; }
   }
   await env.LBA_KV.put('whatnot-sync-last:' + storeId, JSON.stringify(out), { expirationTtl: 30 * 86400 });
   return out;
@@ -19624,13 +19648,16 @@ async function runScheduledWhatnotSync(env, ctx) {
 }
 // A Whatnot event, after the webhook route has checked and kept it.
 async function handleWhatnotEventRecord(env, ctx, record) {
-  if (!env.WHATNOT_API_KEY || !/^orders\./.test(String(record?.type || '')) || !record.body?.data?.id) return;
+  const type = String(record?.type || ''), data = record?.body?.data || {};
+  if (!env.WHATNOT_API_KEY || !/^(orders|shows)\./.test(type)) return;
   const storeId = whatnotStoreId(env);
   try {
     const deps = { ...whatnotDeps(env, ctx, storeId), feeSettings: await whatnotFeeSettings(env, storeId) };
-    const result = await processWhatnotOrder(record.body.data, deps);
-    console.log('Whatnot order', JSON.stringify(result));
-  } catch (e) { console.error('Whatnot order not recorded yet (the 10-minute run retries):', e.message); }
+    if (type.startsWith('orders.') && data.id) console.log('Whatnot order', JSON.stringify(await processWhatnotOrder(data, deps)));
+    // A show scheduled, live or ended: kept in Shows; an ended one gets its numbers.
+    const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
+    if (showId) console.log('Whatnot show', JSON.stringify(await refreshWhatnotShow(String(showId), deps)));
+  } catch (e) { console.error('Whatnot event not handled yet (the 10-minute run retries):', e.message); }
 }
 // A cancelled or failed Whatnot order: its sales are voided and the stock
 // put back (eBay follows), same as voiding a cancelled eBay order.

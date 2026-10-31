@@ -684,7 +684,7 @@ function pastShowsHtml(){
   if(!list.length) return '';
   return '<div style="margin-top:12px"><div class="ph" style="margin:0 0 4px">PAST SHOWS</div>' + list.slice(0, 12).map(function(sh){
     var s = sh.report_summary;
-    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);min-width:0">' + esc(showLabel(sh)) + '<br><span style="color:var(--dim)">' + (s.sold || 0) + ' sold · ' + (s.giveaways || 0) + ' giveaways · ' + (s.earnings != null ? 'Whatnot paid ' + usd(Number(s.earnings)) : 'fees ' + usd(Number(s.fees || 0))) + (s.perItem ? ' · ' + usd(Number(s.perItem)) + '/item' : '') + '</span></span>' +
+    return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text);min-width:0">' + esc(showLabel(sh)) + '<br><span style="color:var(--dim)">' + (s.sold || 0) + ' sold · ' + (s.giveaways || 0) + ' giveaways · ' + (s.earnings != null ? 'Whatnot paid ' + usd(Number(s.earnings)) : 'fees ' + usd(Number(s.fees || 0))) + (s.perItem ? ' · ' + usd(Number(s.perItem)) + '/item' : '') + (s.source === 'whatnot' && !s.final ? ' · estimated until Whatnot finishes its numbers' : '') + (s.peakViewers ? ' · ' + s.peakViewers + ' peak viewers' : '') + '</span></span>' +
       '<span style="text-align:right">' + usd(Number(s.gross || 0)) + '<br><b style="color:' + (Number(s.net || 0) >= 0 ? 'var(--g)' : 'var(--red)') + '">net ' + usd(Number(s.net || 0)) + '</b></span></div>';
   }).join('') + '</div>';
 }

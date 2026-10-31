@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import {
   whatnotCategoryId, whatnotDesired, syncWhatnotItem, runWhatnotListingSync,
   processWhatnotOrder, reconcileWhatnotOrders, whatnotFee, whatnotClient, WHATNOT_PROFILES,
+  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders,
 } from '../scripts/whatnot-sync.mjs';
 
 // Store, 2026-10-31: "Anything I checkbox will be put on whatnot and synced.
@@ -201,6 +202,72 @@ assert.equal(r.link.error, 'title: String too long');
   assert.equal(rec[0].recorded.length, 2);
 }
 
+// A giveaway still uses up the item (recorded at $0); a Whatnot-only giveaway has nothing to record.
+{
+  const kv = new Map(), sales = [];
+  const deps = {
+    storeId: 'S', feeSettings: {}, kvGet: async k => kv.get(k) ?? null, kvPut: async (k, v) => { kv.set(k, v); },
+    api: async () => ({ ok: true, status: 200, data: { data: [
+      { id: 'g1', quantity: 1, unit_price: { amount: '0.00' }, product_external_id: '22222222-2222-4222-8222-222222222222', purchased_item: { title: 'Pack giveaway' } },
+      { id: 'g2', quantity: 1, unit_price: { amount: '0.00' }, product_external_id: null, purchased_item: { title: 'Sticker' } },
+    ], next_cursor: null } }),
+    recordSale: async body => { sales.push(body); return { ok: true, status: 200, data: { ok: true } }; },
+    voidOrder: async () => 0,
+  };
+  const res = await processWhatnotOrder({ id: 'ordG', status: 'completed', transaction_type: 'giveaway' }, deps);
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0].giveaway, true); assert.equal(sales[0].salePrice, 0); assert.equal(sales[0].feeAmount, 0);
+  assert.equal(res.recorded[1].skipped, 'not ours');
+}
+
+// Shows: worked out from Whatnot's own orders and analytics, no import.
+{
+  const order = (id, sub, { buyer = 'amy', ...extra } = {}) => ({ id, status: 'completed', show_id: 'show1', created_at: '2026-10-31T23:00:00Z', amounts: { subtotal: { amount: String(sub) } }, buyer: { username: buyer }, ...extra });
+  const orders = [order('o1', 20), order('o2', 10, { buyer: 'bob' }), order('o3', 0, { transaction_type: 'giveaway' }), order('o4', 50, { status: 'cancelled' })];
+  const costs = { o1: 5, o2: 4, o3: 2 };
+  let sum = summarizeWhatnotShow({ orders, analytics: { calculation_status: 'PENDING' }, costs });
+  assert.equal(sum.final, false);
+  assert.equal(sum.gross, 30); assert.equal(sum.sold, 2); assert.equal(sum.giveaways, 1); assert.equal(sum.cancelled, 1);
+  assert.equal(sum.fees, whatnotFee(20, {}) + whatnotFee(10, {}), 'estimated until Whatnot has the numbers');
+  assert.equal(sum.cogs, 9); assert.equal(sum.giveawayCost, 2);
+  assert.equal(sum.net, Math.round((30 - sum.fees - 9 - 2) * 100) / 100);
+  assert.deepEqual(sum.buyers.map(b => b.buyer), ['amy', 'bob']);
+  sum = summarizeWhatnotShow({ orders, analytics: { calculation_status: 'GENERATED', sales: { amount: '30.00' }, estimated_earnings: { amount: '25.50' }, max_concurrent_viewers: 41, buyers_count: 2 }, costs });
+  assert.equal(sum.final, true); assert.equal(sum.fees, 4.5, "Whatnot's real fees: gross minus earnings"); assert.equal(sum.earnings, 25.5);
+  assert.equal(sum.net, 25.5 - 9 - 2); assert.equal(sum.peakViewers, 41);
+  assert.equal(summarizeWhatnotShow({ orders: [order('o9', 10)], costs: {} }).missingCost, 1, 'an order with nothing recorded yet is flagged');
+
+  // Orders paging stops once past the show's start.
+  let pages = 0;
+  const pagedApi = async (m, path) => { pages++; return { ok: true, status: 200, data: pages === 1 ? { data: [order('a', 1), { ...order('b', 1), show_id: 'other' }], next_cursor: 'c2' } : { data: [{ ...order('c', 1), created_at: '2026-10-01T00:00:00Z' }], next_cursor: 'c3' } }; };
+  const got = await whatnotShowOrders(pagedApi, 'show1', '2026-10-30T00:00:00Z');
+  assert.deepEqual(got.map(o => o.id), ['a', 'c']); assert.equal(pages, 2);
+
+  // refresh: saved with its Whatnot id; final once analytics are generated.
+  const kv = new Map(), saved = [];
+  let analyticsStatus = 'PENDING';
+  const api = async (m, path) => {
+    if (path === '/shows/show1') return { ok: true, status: 200, data: { id: 'show1', title: 'Friday Rips', status: 'ended', scheduled_start_at: '2026-10-31T22:00:00.000Z', ended_at: '2026-11-01T01:00:00.000Z' } };
+    if (path === '/analytics/shows/show1') return { ok: true, status: 200, data: analyticsStatus === 'GENERATED' ? { calculation_status: 'GENERATED', start_time: '2026-10-31T22:05:00.000Z', sales: { amount: '30.00' }, estimated_earnings: { amount: '25.50' } } : { calculation_status: analyticsStatus } };
+    if (path.startsWith('/orders?')) return { ok: true, status: 200, data: { data: orders, next_cursor: null } };
+    throw new Error(path);
+  };
+  const deps = { storeId: 'S', api, feeSettings: {}, kvGet: async k => kv.get(k) ?? null, kvPut: async (k, v) => { kv.set(k, v); }, costsForOrders: async ids => { assert.deepEqual(ids, ['o1', 'o2', 'o3', 'o4']); return costs; }, upsertShow: async row => { saved.push(row); } };
+  await refreshWhatnotShow('show1', deps);
+  assert.equal(saved[0].whatnot_show_id, 'show1'); assert.equal(saved[0].status, 'ended'); assert.equal(saved[0].title, 'Friday Rips');
+  assert.equal(saved[0].report_summary.final, false);
+  analyticsStatus = 'GENERATED';
+  await refreshWhatnotShow('show1', deps);
+  assert.equal(saved[1].report_summary.final, true); assert.equal(saved[1].started_at, '2026-10-31T22:05:00.000Z');
+  await refreshWhatnotShow('show1', deps);
+  assert.equal(saved[2].report_summary, undefined, 'once final, the numbers are left alone');
+  // A scheduled show is kept as planning, no numbers yet.
+  saved.length = 0;
+  await refreshWhatnotShow({ id: 'show2', title: 'Next week', status: 'scheduled' }, deps);
+  assert.deepEqual(saved[0], { whatnot_show_id: 'show2', platform: 'whatnot', title: 'Next week', status: 'planning', started_at: null, ended_at: null });
+  assert.equal((await refreshWhatnotShow({ id: 'show3', status: 'cancelled' }, deps)).skipped, 'cancelled');
+}
+
 // The client: Bearer token, retries a 429.
 {
   const seen = [];
@@ -235,4 +302,7 @@ const bridge = fs.readFileSync('scripts/whatnot-bridge.js', 'utf8');
 assert.match(bridge, /\.or\('reference\.like\.whatnot-live:%,reference\.like\.whatnot-api:%'\)/);
 assert.match(bridge, /reason = liveHit\.auto \? 'Already recorded from Whatnot automatically'/);
 assert.match(worker, /reference=like\.\$\{encodeURIComponent\('whatnot-api:' \+ orderId \+ ':'\)\}\*/, 'a cancellation voids only that order\'s automatic sales');
+assert.match(worker, /whatnot_shows\?on_conflict=store_id,whatnot_show_id/);
+assert.match(worker, /const showId = type\.startsWith\('shows\.'\) \? \(data\.show_id \|\| data\.id\) : '';/);
+assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql', 'utf8'), /create unique index if not exists whatnot_shows_store_whatnot_id on public\.whatnot_shows\(store_id, whatnot_show_id\)/);
 console.log('whatnot sync checks passed');
