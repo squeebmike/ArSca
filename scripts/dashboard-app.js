@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.28.3-order-pickup';
+const APP_VERSION = '2026.10.31.1-label-stock';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -44952,7 +44952,7 @@ function labelBatchEntryFromItem(item){
   // stockQty: how many copies are in stock; with "one label per copy" on,
   // that's how many labels this item prints.
   const stockQty = Math.max(1, inventoryAvailableQuantity(item));
-  const entry = { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:labelPrintPerStock() ? stockQty : 1, stockQty };
+  const entry = { id:item.id, name:item.name, condition:item.condition||'', sku:labelBarcodeValue(item), price:inventoryListPrice ? inventoryListPrice(item) : (item.salePrice || item.market || 0), badge:labelBadgeText(item), meta:labelMetaText(item), qty:labelPrintPerStock() ? stockQty : 1, stockQty, stockCount:Math.max(0, Number(inventoryAvailableQuantity(item)) || 0) };
   return isComicLabelItem(item) ? { ...entry, ...comicLabelParts(item) } : entry;
 }
 
@@ -45029,6 +45029,7 @@ function openLabelPrintModal(seedItemId, presetBatch){
   const codeStyleEl = document.getElementById('label-print-code-style'); if(codeStyleEl) codeStyleEl.value = localStorage.getItem('label_print_code_style') || 'qr';
   const rotateEl = document.getElementById('label-print-rotate'); if(rotateEl) rotateEl.checked = localStorage.getItem('label_print_rotate') === '1';
   const perStockEl = document.getElementById('label-print-per-stock'); if(perStockEl) perStockEl.checked = labelPrintPerStock();
+  const stockCountEl = document.getElementById('label-print-stock-count'); if(stockCountEl) stockCountEl.checked = labelPrintStockCount();
   renderLabelPrintBatchList();
   document.getElementById('label-print-modal')?.classList.add('on');
   setTimeout(() => document.getElementById('label-print-search')?.focus(), 100);
@@ -45096,6 +45097,16 @@ function removeFromLabelPrintBatch(itemId){
 // Remembered per device; on by default -- a stack of the same comic needs a
 // label on every copy.
 function labelPrintPerStock(){ try { return localStorage.getItem('label_print_per_stock') !== '0'; } catch(e) { return true; } }
+// Store ask, 2026-10-31: "so we know how many books we have left" -- a small
+// "17 LEFT · 10/31" on the label: the count when it was printed, dated, since
+// it's a snapshot (scan the label for the live count).
+function labelPrintStockCount(){ try { return localStorage.getItem('label_print_stock_count') !== '0'; } catch(e) { return true; } }
+function setLabelPrintStockCount(on){ try { localStorage.setItem('label_print_stock_count', on ? '1' : '0'); } catch(e) {} }
+function labelStockText(b){
+  if(!labelPrintStockCount() || b?.stockCount == null) return '';
+  const now = new Date();
+  return Number(b.stockCount) + ' LEFT · ' + (now.getMonth() + 1) + '/' + now.getDate();
+}
 function setLabelPrintPerStock(on){
   try { localStorage.setItem('label_print_per_stock', on ? '1' : '0'); } catch(e) {}
   labelPrintBatch.forEach(b => { b.qty = on ? Math.max(1, Number(b.stockQty) || 1) : 1; });
@@ -45404,12 +45415,13 @@ async function printInventoryLabels(){
         <div class="wrap-back">
           <div class="wrap-shopname">${escHtml(storeBrandName().toUpperCase())}</div>
           ${barcodeImg}
+          ${labelStockText(b) ? `<div class="wrap-stock">${escHtml(labelStockText(b))}</div>` : ''}
         </div>
       </div>` : `<div class="label">
       ${storeName ? `<div class="label-store">${escHtml(storeName)}</div>` : ''}
       <div class="label-name">${escHtml(b.name)}</div>
       ${barcodeImg}
-      <div class="label-bottom"><span class="label-sku">${escHtml(b.condition || b.meta || '')}</span><span class="label-price">${fdLabelPrice$(b.price)}</span></div>
+      <div class="label-bottom"><span class="label-sku">${escHtml([b.condition || b.meta || '', labelStockText(b)].filter(Boolean).join(' · '))}</span><span class="label-price">${fdLabelPrice$(b.price)}</span></div>
     </div>`;
     // Rotated roll printing needs each label's own "page" footprint swapped
     // to match the rotated @page size below -- wrapping (rather than
@@ -45496,6 +45508,7 @@ async function printInventoryLabels(){
       .label.wrap .wrap-front { width:44%; padding:10px 8px 5px; justify-content:flex-start; gap:3px; border-right:2px dashed #000; }
       .label.wrap .wrap-back { width:56%; padding:6px 4px 4px; justify-content:flex-start; gap:4px; }
       .wrap-shopname { font-size:8px; font-weight:700; letter-spacing:.01em; text-align:center; white-space:nowrap; }
+      .wrap-stock { font-size:6px; font-weight:700; line-height:1; text-align:right; align-self:flex-end; white-space:nowrap; }
       .wrap-name { font-size:8px; font-weight:700; line-height:1.1; max-height:27px; overflow:hidden; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; flex-shrink:0; }
       .wrap-name:has(+ .wrap-badge) { max-height:18px; -webkit-line-clamp:2; }
       .wrap-badge { font-size:7px; font-weight:700; line-height:1.1; max-height:16px; overflow:hidden; text-transform:uppercase; text-align:center; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; flex-shrink:0; }
@@ -45725,7 +45738,15 @@ async function renderInventoryLabelCanvas(b, opts = labelRenderOptions()){
     drawLines([storeBrandName().toUpperCase()], bx + backW / 2, fy + bPadT, 8, shopH, 'center');
     // The code image: width:100%, flex:1, object-fit:contain -- the largest
     // square that fits in what's left of the face.
-    const boxTop = fy + bPadT + shopH + 4, boxBottom = fy + iH - bPadB;
+    // .wrap-stock { 6px bold; bottom-right } under the code when it's on.
+    const stockText = labelStockText(b);
+    const stockH = stockText ? 6 + 4 : 0;
+    if(stockText){
+      setFont(6);
+      t.textAlign = 'right'; t.textBaseline = 'alphabetic';
+      t.fillText(stockText, bx + backW - bPadX, fy + iH - bPadB - 1);
+    }
+    const boxTop = fy + bPadT + shopH + 4, boxBottom = fy + iH - bPadB - stockH;
     const boxW = backW - bPadX * 2, boxH = boxBottom - boxTop;
     const size = Math.min(boxW, boxH);
     codeBox = { x:bx + bPadX + (boxW - size) / 2, y:boxTop + (boxH - size) / 2, w:size, h:size };
@@ -45756,7 +45777,7 @@ async function renderInventoryLabelCanvas(b, opts = labelRenderOptions()){
     t.fillText(fdLabelPrice$(b.price), left + contentW, y + rowH / 2);
     setFont(s.sku, false);
     t.fillStyle = LABEL_PNG_MUTED; t.textAlign = 'left';
-    t.fillText(String(b.condition || b.meta || ''), left, y + rowH / 2);
+    t.fillText([b.condition || b.meta || '', labelStockText(b)].filter(Boolean).join(' · '), left, y + rowH / 2);
     t.fillStyle = '#000';
   }
   ctx.imageSmoothingEnabled = true;
