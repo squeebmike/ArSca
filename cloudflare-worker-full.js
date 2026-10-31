@@ -46,7 +46,8 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
-import { handleWhatnotWebhook, handleWhatnotStatus } from './scripts/whatnot-api.mjs';
+import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows } from './scripts/whatnot-sync.mjs';
 import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
@@ -13512,10 +13513,37 @@ async function routeRequest(request, env, ctx) {
     // Whatnot Seller API: events Whatnot sends, and their status for Settings
     // (scripts/whatnot-api.mjs).
     if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
-      return await handleWhatnotWebhook(request, env, { json });
+      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)) });
     }
     if (url.pathname === '/whatnot/status' && request.method === 'GET') {
       return await handleWhatnotStatus(request, env, { requireStoreUser, json }, url);
+    }
+    // POST /whatnot/sync -- push checked items to Whatnot now (a save on the
+    // dashboard calls it; the 10-minute run does the same on its own).
+    if (url.pathname === '/whatnot/sync' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env)) return json({ ok: false, error: 'Whatnot is connected to a different store' }, 403);
+      if (!env.WHATNOT_API_KEY) return json({ ok: false, error: 'WHATNOT_API_KEY is not set' }, 503);
+      const body = await request.json().catch(() => ({}));
+      const result = await runWhatnotSyncForStore(env, ctx, storeId, { force: body.force === true, orders: body.orders === true });
+      return json({ ok: true, ...result });
+    }
+    // GET /whatnot/items?store_id= -- each checked item's Whatnot listing
+    // (id, quantity and price there, last problem), for the dashboard.
+    if (url.pathname === '/whatnot/items' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.LBA_KV) return json({ ok: true, items: {} });
+      const linked = (await env.LBA_KV.get('whatnot-linked:' + storeId, 'json')) || {};
+      const items = {};
+      for (const id of Object.keys(linked).slice(0, 500)) {
+        const link = await env.LBA_KV.get(`whatnot-link:${storeId}:${id}`, 'json');
+        if (link) items[id] = { qty: link.qty, price: link.price, url: link.url || '', error: link.error || '', syncedAt: link.syncedAt || link.errorAt || '' };
+      }
+      return json({ ok: true, items, last: await env.LBA_KV.get('whatnot-sync-last:' + storeId, 'json') });
     }
     if (url.pathname === '/orders/board' && request.method === 'GET') {
       return await handleOrdersBoard(request, env, { requireStoreUser, supabaseAdminFetch, json }, url);
@@ -13657,7 +13685,7 @@ async function routeRequest(request, env, ctx) {
           await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: null, title: (giveaway ? 'Giveaway: ' : '') + unlinkedTitle, category: String(body.category || '').slice(0, 60) || guessSaleCategoryFromTitle(unlinkedTitle), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: '', image_url: '' }]) });
           await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
+            body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id || null, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
           return json({ ok: true, itemId: null, saleId, salePrice, feeAmount, profit, depleted: false, channel, unlinked: true });
         }
 
@@ -13677,7 +13705,7 @@ async function routeRequest(request, env, ctx) {
         await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: (giveaway ? 'Giveaway: ' : '') + (d.name || 'Item'), category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
         await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
+          body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id || null, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
 
         const currentQty = Number(d.quantity ?? d.qty ?? 1) || 0;
         const remaining = Math.max(0, currentQty - quantitySold);
@@ -19085,6 +19113,7 @@ export default {
     // at a time (scripts/pokemon-daily-sync.mjs); everything else stays on
     // the 6-hour trigger.
     if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(Promise.all([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)])); return; }
+    if (event?.cron === WHATNOT_SYNC_CRON) { ctx.waitUntil(runScheduledWhatnotSync(env, ctx)); return; }
     ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
   },
 };
@@ -19556,6 +19585,97 @@ async function runScheduledPokemonServerSync(env) {
 // a store without one is skipped. Lookups go through the Worker's own
 // PriceCharting routes, so pacing and matching stay the same as the
 // dashboard's.
+// --- Whatnot (scripts/whatnot-sync.mjs) ---------------------------------------
+// Every 10 minutes: checked items pushed to Whatnot (quantity and price),
+// and recent Whatnot orders recorded in case a webhook was missed.
+const WHATNOT_SYNC_CRON = '*/10 * * * *';
+function whatnotDeps(env, ctx, storeId) {
+  return {
+    storeId,
+    api: whatnotClient(env),
+    db: (path, opts) => supabaseAdminFetch(env, path, opts),
+    kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
+    kvPut: (k, v) => v == null ? env.LBA_KV.delete(k) : env.LBA_KV.put(k, JSON.stringify(v)),
+    shape: row => shapeStorefrontItem(row),
+    recordSale: async body => { const { res, data } = await focInternalPost(env, ctx, storeId, '/inventory/record-external-sale', body); return { ok: res.ok && data?.ok !== false, status: res.status, data }; },
+    voidOrder: orderId => voidWhatnotOrder(env, storeId, orderId),
+    costsForOrders: orderIds => whatnotOrderCosts(env, storeId, orderIds),
+    upsertShow: row => upsertWhatnotShow(env, storeId, row),
+  };
+}
+// What our items in each Whatnot order cost, from the sales recorded for it.
+async function whatnotOrderCosts(env, storeId, orderIds) {
+  const s = encodeURIComponent(storeId), costs = {};
+  for (let i = 0; i < orderIds.length; i += 20) {
+    const ors = orderIds.slice(i, i + 20).map(id => 'reference.like.' + encodeURIComponent('whatnot-api:' + id + ':') + '*').join(',');
+    const { data: pays } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${s}&provider=eq.whatnot&or=(${ors})&select=sale_id,reference`);
+    const orderBySale = new Map((pays || []).map(p => [p.sale_id, String(p.reference || '').split(':')[1]]));
+    if (!orderBySale.size) continue;
+    for (const id of orderBySale.values()) costs[id] = costs[id] || 0;
+    const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${s}&sale_id=in.(${[...orderBySale.keys()].map(encodeURIComponent).join(',')})&select=sale_id,cost_basis,quantity`);
+    for (const l of lines || []) { const o = orderBySale.get(l.sale_id); if (o) costs[o] = Math.round((costs[o] + (Number(l.cost_basis) || 0) * Math.max(1, Number(l.quantity) || 1)) * 100) / 100; }
+  }
+  return costs;
+}
+async function upsertWhatnotShow(env, storeId, row) {
+  const { response, data } = await supabaseAdminFetch(env, 'whatnot_shows?on_conflict=store_id,whatnot_show_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ store_id: storeId, ...row }]) });
+  if (response && !response.ok) throw new Error('Could not save Whatnot show: ' + (data?.message || response.status));
+}
+async function whatnotFeeSettings(env, storeId) {
+  const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
+  return data?.[0]?.receipt_settings || {};
+}
+async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true } = {}) {
+  const deps = whatnotDeps(env, ctx, storeId);
+  const out = { at: new Date().toISOString() };
+  try { out.listings = await runWhatnotListingSync(storeId, deps, { force }); }
+  catch (e) { out.listingsError = e.message; }
+  if (orders) {
+    const feeSettings = await whatnotFeeSettings(env, storeId);
+    try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings })).filter(r => !r.skipped); }
+    catch (e) { out.ordersError = e.message; }
+    // Shows after their orders, so an ended show counts every sale.
+    try { out.shows = await refreshRecentWhatnotShows({ ...deps, feeSettings }); }
+    catch (e) { out.showsError = e.message; }
+  }
+  await env.LBA_KV.put('whatnot-sync-last:' + storeId, JSON.stringify(out), { expirationTtl: 30 * 86400 });
+  return out;
+}
+async function runScheduledWhatnotSync(env, ctx) {
+  if (!env.WHATNOT_API_KEY || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env)); }
+  catch (e) { console.error('Whatnot sync failed:', e.message); }
+}
+// A Whatnot event, after the webhook route has checked and kept it.
+async function handleWhatnotEventRecord(env, ctx, record) {
+  const type = String(record?.type || ''), data = record?.body?.data || {};
+  if (!env.WHATNOT_API_KEY || !/^(orders|shows)\./.test(type)) return;
+  const storeId = whatnotStoreId(env);
+  try {
+    const deps = { ...whatnotDeps(env, ctx, storeId), feeSettings: await whatnotFeeSettings(env, storeId) };
+    if (type.startsWith('orders.') && data.id) console.log('Whatnot order', JSON.stringify(await processWhatnotOrder(data, deps)));
+    // A show scheduled, live or ended: kept in Shows; an ended one gets its numbers.
+    const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
+    if (showId) console.log('Whatnot show', JSON.stringify(await refreshWhatnotShow(String(showId), deps)));
+  } catch (e) { console.error('Whatnot event not handled yet (the 10-minute run retries):', e.message); }
+}
+// A cancelled or failed Whatnot order: its sales are voided and the stock
+// put back (eBay follows), same as voiding a cancelled eBay order.
+async function voidWhatnotOrder(env, storeId, orderId) {
+  const s = encodeURIComponent(storeId);
+  const { data: payments } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${s}&provider=eq.whatnot&reference=like.${encodeURIComponent('whatnot-api:' + orderId + ':')}*&select=id,sale_id`);
+  let voided = 0;
+  for (const saleId of [...new Set((payments || []).map(p => p.sale_id).filter(Boolean))]) {
+    const { data: rows } = await supabaseAdminFetch(env, `pos_sales?id=eq.${encodeURIComponent(saleId)}&store_id=eq.${s}&status=in.(completed,succeeded)`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ status: 'voided' }) });
+    if (!rows?.length) continue;
+    const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${s}&select=id,item_id,quantity,title`);
+    await restockVoidedSaleLines(env, { storeId, saleId, lines: lines || [], userId: null });
+    await supabaseAdminFetch(env, `pos_payments?sale_id=eq.${encodeURIComponent(saleId)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'refunded' }) });
+    voided++;
+  }
+  return voided;
+}
+
 async function runScheduledPriceChartingServerSync(env) {
   if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));

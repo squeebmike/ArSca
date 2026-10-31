@@ -38,7 +38,9 @@
   "triggers": {
     "crons": [
       "0 */6 * * *",
-      "17 * * * *"
+      "17 * * * *",
+      // Whatnot: checked items pushed, recent orders recorded (WHATNOT_SYNC_CRON).
+      "*/10 * * * *"
     ]
   },
   "workers_dev": true,

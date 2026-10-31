@@ -3,10 +3,9 @@
 // shows.created, shows.ended, shipments.parcel_updated, ...) once the store
 // points a webhook at /whatnot/webhook in Seller Hub -> Seller API.
 //
-// What happens with each event (record the sale, lower stock elsewhere, ...)
-// waits until the API reference is readable from here: this only checks the
-// signature, drops repeats, and keeps every event for 30 days so the first
-// real payloads show exactly what Whatnot sends.
+// This checks the signature, drops repeats and keeps every event for 30
+// days; order events are then recorded (scripts/whatnot-sync.mjs) after the
+// answer goes back.
 //
 // Signatures follow the Standard Webhooks spec: headers webhook-id,
 // webhook-timestamp and webhook-signature ("v1,<base64>" entries), signed
@@ -76,6 +75,8 @@ export async function handleWhatnotWebhook(request, env, deps) {
   const record = { id, type, receivedAt: new Date(at).toISOString(), sellerId: String(body?.seller_id || request.headers.get('x-whatnot-seller-id') || ''), body };
   await env.LBA_KV.put(eventKey(storeId, at, id), JSON.stringify(record), { expirationTtl: EVENT_TTL });
   await env.LBA_KV.put('whatnot-webhook-seen:' + id, '1', { expirationTtl: SEEN_TTL });
+  // Orders are recorded after answering (Whatnot waits 5 seconds at most).
+  try { deps.onEvent?.(record); } catch (_) {}
   return deps.json({ ok: true });
 }
 

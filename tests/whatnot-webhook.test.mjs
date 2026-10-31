@@ -48,6 +48,16 @@ assert.equal(JSON.parse(kv.get(stored[0])).type, 'orders.created');
 res = await post(await headers());
 assert.deepEqual(await res.json(), { ok: true, duplicate: true }, 'a retry is acknowledged, not kept twice');
 assert.equal([...kv.keys()].filter(k => k.startsWith('whatnot-event:')).length, 1);
+// Order events are handed on for recording, after the answer.
+{
+  const handed = [];
+  kv.clear();
+  const r2 = await handleWhatnotWebhook(new Request('https://w.example/whatnot/webhook', { method: 'POST', headers: await headers(), body }), { WHATNOT_WEBHOOK_SECRET: secret, LBA_KV }, { json, onEvent: rec => handed.push(rec) });
+  assert.equal(r2.status, 200);
+  assert.equal(handed.length, 1); assert.equal(handed[0].type, 'orders.created'); assert.equal(handed[0].body.data.id, 'ord_1');
+  await handleWhatnotWebhook(new Request('https://w.example/whatnot/webhook', { method: 'POST', headers: await headers(), body }), { WHATNOT_WEBHOOK_SECRET: secret, LBA_KV }, { json, onEvent: rec => handed.push(rec) });
+  assert.equal(handed.length, 1, 'a retried delivery is not recorded twice');
+}
 res = await post(await headers({ 'webhook-signature': 'v1,forged' }));
 assert.equal(res.status, 401, 'a forged event is refused');
 
@@ -65,7 +75,7 @@ assert.equal(other.status, 403, 'another store (the pilot) cannot see it');
 
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /if \(url\.pathname === '\/whatnot\/webhook' && request\.method === 'POST'\) \{\s*return await handleWhatnotWebhook\(request, env, \{ json \}\);/);
+assert.match(worker, /if \(url\.pathname === '\/whatnot\/webhook' && request\.method === 'POST'\) \{\s*return await handleWhatnotWebhook\(request, env, \{ json, onEvent: /);
 assert.match(worker, /whatnot: !!env\.WHATNOT_API_KEY,/, '/health says whether the key is set');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /\{id:'whatnot',group:'online',feature:'whatnot',label:'Whatnot'/);
