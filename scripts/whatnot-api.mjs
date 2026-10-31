@@ -11,7 +11,7 @@
 // Signatures follow the Standard Webhooks spec: headers webhook-id,
 // webhook-timestamp and webhook-signature ("v1,<base64>" entries), signed
 // content "<id>.<timestamp>.<raw body>", HMAC-SHA256 with the secret
-// (WHATNOT_WEBHOOK_SECRET, "whsec_<base64>").
+// (WHATNOT_WEBHOOK_SECRET: Whatnot's "wn_wh_<base64>", or "whsec_<base64>").
 import { PLATFORM_STORE_ID } from './store-features.mjs';
 
 const EVENT_TTL = 30 * 86400;
@@ -48,7 +48,7 @@ export async function verifyStandardWebhook(secret, headers, rawBody, nowSeconds
   if (!id || !/^\d+$/.test(timestamp) || !signatures.length) return 'missing webhook headers';
   if (Math.abs(nowSeconds - Number(timestamp)) > MAX_SKEW_SECONDS) return 'timestamp too old or in the future';
   let keyBytes;
-  try { keyBytes = b64ToBytes(String(secret).replace(/^whsec_/, '').trim()); } catch (_) { return 'webhook secret is not valid base64'; }
+  try { keyBytes = b64ToBytes(String(secret).trim().replace(/^(whsec_|wn_wh_)/, '')); } catch (_) { return 'webhook secret is not valid base64'; }
   const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const expected = bytesToB64(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${id}.${timestamp}.${rawBody}`)));
   const ok = signatures.some(s => { const [version, sig] = s.split(','); return version === 'v1' && sig && sameString(sig, expected); });
@@ -73,7 +73,7 @@ export async function handleWhatnotWebhook(request, env, deps) {
   const type = String(body?.type || body?.topic || body?.event || request.headers.get('webhook-event') || 'unknown').slice(0, 80);
   const storeId = whatnotStoreId(env);
   const at = Date.now();
-  const record = { id, type, receivedAt: new Date(at).toISOString(), sellerId: request.headers.get('x-whatnot-seller-id') || '', body };
+  const record = { id, type, receivedAt: new Date(at).toISOString(), sellerId: String(body?.seller_id || request.headers.get('x-whatnot-seller-id') || ''), body };
   await env.LBA_KV.put(eventKey(storeId, at, id), JSON.stringify(record), { expirationTtl: EVENT_TTL });
   await env.LBA_KV.put('whatnot-webhook-seen:' + id, '1', { expirationTtl: SEEN_TTL });
   return deps.json({ ok: true });
