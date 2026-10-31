@@ -142,6 +142,7 @@ on:
       - scripts/topps/public-checklist-policy.mjs
       - scripts/ebay-order-money.mjs
       - scripts/orders-board.mjs
+      - scripts/whatnot-api.mjs
       - scripts/sitemap-cache.mjs
       - wrangler.deploy.jsonc
       - .github/workflows/deploy-worker.yml
