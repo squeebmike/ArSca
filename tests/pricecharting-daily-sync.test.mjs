@@ -77,7 +77,7 @@ assert.deepEqual(await runPriceChartingServerSync('store-1', deps, new Date('202
 
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /if \(event\?\.cron === POKEMON_SYNC_CRON\) \{ ctx\.waitUntil\(Promise\.all\(\[runScheduledPokemonServerSync\(env\), runScheduledPriceChartingServerSync\(env\)\]\)\); return; \}/, 'runs hourly');
+assert.match(worker, /if \(event\?\.cron === POKEMON_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\), runScheduledPriceChartingServerSync\(env\)\]\); return; \}/, 'runs hourly, awaited (not left to waitUntil)');
 assert.match(worker, /if \(!\(storeEnv\.PRICECHARTING_TOKEN \|\| storeEnv\.PRICECHARTING_API_KEY\)\) continue;/, 'each store on its own key');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /if\(p\.mode === 'comic-live'\) return \{ \.\.\.common, mode:'comic-live', provider:'comic'/, 'the dashboard reviews server comic changes like its own');

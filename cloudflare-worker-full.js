@@ -19115,12 +19115,20 @@ export default {
   // /dealscan/latest reads) instead of only ever being reachable by an
   // on-demand click.
   async scheduled(event, env, ctx) {
-    // The hourly trigger only runs the Pokémon daily price update, a batch
-    // at a time (scripts/pokemon-daily-sync.mjs); everything else stays on
-    // the 6-hour trigger.
-    if (event?.cron === POKEMON_SYNC_CRON) { ctx.waitUntil(Promise.all([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)])); return; }
-    if (event?.cron === WHATNOT_SYNC_CRON) { ctx.waitUntil(runScheduledWhatnotSync(env, ctx)); return; }
-    ctx.waitUntil(Promise.all([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]));
+    // The jobs are awaited here, not handed to ctx.waitUntil: work left to
+    // waitUntil gets only ~30 seconds after this handler returns, while an
+    // awaited scheduled handler gets the full scheduled-run time. 2026-10-31:
+    // the comic/sports PriceCharting sync (about one PriceCharting call per
+    // 1.1 s) was cut off every hour before its first save -- 0 of 416 items
+    // checked all day -- while the quick Pokemon batches fit in the 30 s.
+    // allSettled: one job failing never cuts another short.
+    // The hourly trigger runs the daily price updates, a batch at a time
+    // (scripts/pokemon-daily-sync.mjs, scripts/pricecharting-daily-sync.mjs);
+    // Whatnot has its own 10-minute trigger; everything else stays on the
+    // 6-hour trigger.
+    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPokemonServerSync(env), runScheduledPriceChartingServerSync(env)]); return; }
+    if (event?.cron === WHATNOT_SYNC_CRON) { await Promise.allSettled([runScheduledWhatnotSync(env, ctx)]); return; }
+    await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]);
   },
 };
 
