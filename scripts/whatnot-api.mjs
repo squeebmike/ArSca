@@ -71,18 +71,22 @@ export async function handleWhatnotWebhook(request, env, deps) {
   try { body = JSON.parse(rawBody); } catch (_) { body = { raw: rawBody.slice(0, 4000) }; }
   const type = String(body?.type || body?.topic || body?.event || request.headers.get('webhook-event') || 'unknown').slice(0, 80);
   const storeId = whatnotStoreId(env);
-  // Live Studio owns its atomic effect deduplication. Await acceptance before
-  // acknowledging so a failed handoff is retried. It never writes inventory.
-  if (env.MANA_LIVE_STUDIO && body?.version === 'v2') {
-    try { await env.MANA_LIVE_STUDIO.getByName(storeId).receiveWhatnot(id, body); }
-    catch (_) { return deps.json({ ok:false, error:'Live Studio delivery unavailable; retry' },503); }
-  }
   const at = Date.now();
   const record = { id, type, receivedAt: new Date(at).toISOString(), sellerId: String(body?.seller_id || request.headers.get('x-whatnot-seller-id') || ''), body };
   await env.LBA_KV.put(eventKey(storeId, at, id), JSON.stringify(record), { expirationTtl: EVENT_TTL });
   await env.LBA_KV.put('whatnot-webhook-seen:' + id, '1', { expirationTtl: SEEN_TTL });
   // Orders are recorded after answering (Whatnot waits 5 seconds at most).
   try { deps.onEvent?.(record); } catch (_) {}
+  // Live Studio (the show overlay) gets the event in the background. A sale
+  // is never held up or retried because of the overlay: stock and sales come
+  // first. Its effects ignore events over 60 seconds old anyway, so a
+  // Whatnot retry (31+ seconds later) wouldn't animate. It never writes
+  // inventory and dedupes events itself.
+  if (env.MANA_LIVE_STUDIO && body?.version === 'v2') {
+    const handoff = Promise.resolve().then(() => env.MANA_LIVE_STUDIO.getByName(storeId).receiveWhatnot(id, body))
+      .catch(e => console.warn('Live Studio did not get Whatnot event', id, e?.message || e));
+    if (deps.background) deps.background(handoff); else await handoff;
+  }
   return deps.json({ ok: true });
 }
 

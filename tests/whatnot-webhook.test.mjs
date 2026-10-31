@@ -61,6 +61,22 @@ assert.equal([...kv.keys()].filter(k => k.startsWith('whatnot-event:')).length, 
 res = await post(await headers({ 'webhook-signature': 'v1,forged' }));
 assert.equal(res.status, 401, 'a forged event is refused');
 
+// Live Studio (show overlay): handed the event in the background after the
+// sale side; an overlay outage never turns into a refused delivery.
+{
+  kv.clear();
+  const v2 = JSON.stringify({ type: 'orders.created', version: 'v2', data: { id: 'ord_2' } });
+  const h = async () => new Headers({ 'webhook-id': 'msg_2', 'webhook-timestamp': String(now), 'webhook-signature': await sign('msg_2', now, v2) });
+  const order = [];
+  const studio = { getByName: () => ({ receiveWhatnot: async () => { order.push('overlay'); throw new Error('overlay down'); } }) };
+  const later = [];
+  const r = await handleWhatnotWebhook(new Request('https://w.example/whatnot/webhook', { method: 'POST', headers: await h(), body: v2 }), { WHATNOT_WEBHOOK_SECRET: secret, LBA_KV, MANA_LIVE_STUDIO: studio }, { json, onEvent: () => order.push('sale'), background: p => later.push(p) });
+  assert.equal(r.status, 200, 'the overlay being down does not refuse the delivery');
+  assert.equal(later.length, 1, 'the overlay runs in the background, not before the answer');
+  await Promise.all(later);
+  assert.deepEqual(order, ['sale', 'overlay'], 'the sale side goes first');
+  assert.ok([...kv.keys()].some(k => k.startsWith('whatnot-event:')), 'the event is kept');
+}
 // Status for Settings: owners and admins of the Whatnot store only.
 const env = { WHATNOT_API_KEY: 'k', WHATNOT_WEBHOOK_SECRET: secret, LBA_KV };
 const deps = { json, requireStoreUser: async (req, e, storeId, roles) => roles.includes('owner') && !roles.includes('employee') ? { user: {} } : { error: json({}, 403) } };
@@ -75,7 +91,7 @@ assert.equal(other.status, 403, 'another store (the pilot) cannot see it');
 
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /if \(url\.pathname === '\/whatnot\/webhook' && request\.method === 'POST'\) \{\s*return await handleWhatnotWebhook\(request, env, \{ json, onEvent: /);
+assert.match(worker, /if \(url\.pathname === '\/whatnot\/webhook' && request\.method === 'POST'\) \{\s*return await handleWhatnotWebhook\(request, env, \{ json, onEvent: [^\n]*background: p => ctx\?\.waitUntil\?\.\(p\) \}\);/);
 assert.match(worker, /whatnot: !!env\.WHATNOT_API_KEY,/, '/health says whether the key is set');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /\{id:'whatnot',group:'online',feature:'whatnot',label:'Whatnot'/);

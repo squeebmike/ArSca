@@ -13516,7 +13516,7 @@ async function routeRequest(request, env, ctx) {
     // Whatnot Seller API: events Whatnot sends, and their status for Settings
     // (scripts/whatnot-api.mjs).
     if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
-      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)) });
+      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)), background: p => ctx?.waitUntil?.(p) });
     }
     if (url.pathname.startsWith('/live-studio/')) {
       return await handleLiveStudio(request, env, { json, requireStoreUser, readJsonWithLimit }, url);
