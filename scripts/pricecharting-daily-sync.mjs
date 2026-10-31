@@ -20,6 +20,7 @@ export const PC_SYNC_BATCH = 80;
 export const PC_SYNC_START_HOUR = 3; // Pacific
 const IDS_PER_CALL = 40;      // /pricing/pricecharting/products/batch
 const LOOKUPS_PER_CALL = 15;  // /pricing/pricecharting/comics/by-upc
+const TRANSIENT_LOOKUP = /paused|unavailable|timed? ?out|no answer|PriceCharting (?:429|5\d\d)|invalid price response|too large/i;
 const CHUNK = 20;             // looked up, then saved, a group at a time
 
 const SPORTS_CATEGORY = /^(sports?(\s+cards?)?|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis|boxing)(\s+cards?)?$/i;
@@ -233,14 +234,34 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
     // Linked ones: their saved product.
     const ids = [...new Set(group.map(x => pricechartingIdOf(x.kind, x.row.data)).filter(Boolean))];
     const byId = new Map();
+    // A lookup that failed (PriceCharting paused, timed out, down) is not
+    // "no price": the item is left unchecked so the next run tries it again.
+    // 2026-10-31: 66 of the first 80 were marked checked-with-no-price after
+    // the provider paused, and wouldn't have been retried until tomorrow.
+    const lookupFailed = new Map();
     for (let i = 0; i < ids.length; i += IDS_PER_CALL) {
-      let got = {};
-      try { got = await deps.products(ids.slice(i, i + IDS_PER_CALL)) || {}; } catch (_) {}
-      for (const [id, r] of Object.entries(got)) if (r?.ok && r.product) byId.set(id, r.product);
+      const part = ids.slice(i, i + IDS_PER_CALL);
+      let got = null;
+      try { got = await deps.products(part); } catch (e) { got = null; }
+      if (!got || typeof got !== 'object') { for (const id of part) lookupFailed.set(id, 'no answer'); continue; }
+      for (const id of part) {
+        const r = got[id];
+        if (r?.ok && r.product) byId.set(id, r.product);
+        // Only a passing problem is retried; PriceCharting saying the product
+        // doesn't exist is a real "no price" (checked, so it can't crowd out
+        // the rest every hour).
+        else if (TRANSIENT_LOOKUP.test(String(r?.error || 'no answer'))) lookupFailed.set(id, String(r?.error || 'no answer').slice(0, 120));
+      }
     }
     await progress('saving ' + (g + 1) + '-' + (g + group.length));
+    const groupFailedAll = ids.length > 0 && ids.every(id => lookupFailed.has(id));
     for (const { row, kind } of group) {
       const id = pricechartingIdOf(kind, row.data);
+      if (id && lookupFailed.has(id)) {
+        out.lookupFailed = (out.lookupFailed || 0) + 1;
+        out.lookupError ||= lookupFailed.get(id);
+        continue;
+      }
       const hit = id ? { product: byId.get(id) || null, viaTitle: false } : (found.get(row.id) || { product: null, viaTitle: false });
       let plan;
       try {
@@ -255,6 +276,9 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
       else if (plan.kind === 'review') { out.review++; queue.push(plan.proposal); }
       else out.noPrice++;
     }
+    // PriceCharting answered nothing for a whole group (paused or down):
+    // stop here; the next run picks up the same items.
+    if (groupFailedAll) { out.stoppedEarly = true; out.stopReason = 'PriceCharting unavailable: ' + (out.lookupError || ''); break; }
   }
   if (queue.length) {
     const key = 'price-sync-review:' + storeId;
@@ -266,3 +290,4 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
   out.left = Math.max(0, nextBatch(rows, now, 100000).length - out.checked);
   return out;
 }
+export { TRANSIENT_LOOKUP };

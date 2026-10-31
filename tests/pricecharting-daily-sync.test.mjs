@@ -134,5 +134,23 @@ console.log('pricecharting daily sync chunked checks passed');
   assert.deepEqual(stages, ['picked', 'loaded 25', 'looking up 1-20', 'saving 1-20', 'looking up 21-25', 'saving 21-25']);
   assert.match(workerSrc, /await writeRun\(\{ stage: 'started' \}\);/, 'a row as soon as the run starts');
 }
+// A passing PriceCharting failure leaves the item for the next run; a whole
+// group failing stops the run; "no such product" is still a checked item.
+{
+  const mk = n => ({ id: 'q' + n, status: 'in_stock', data: { category: 'Comic', name: 'Q #' + n, pricechartingProductId: String(700 + n), market: 5 } });
+  const all3 = Array.from({ length: 30 }, (_, n) => mk(n));
+  const saved = [];
+  let call = 0;
+  const res = await runPriceChartingServerSync('store-1', {
+    kvGet: async () => null, kvPut: async () => {}, comicLookup: async () => ({}),
+    products: async ids => { call++; return Object.fromEntries(ids.map((id, i) => [id, call === 1 ? (i === 0 ? { ok: false, error: 'No such product' } : i < 5 ? { ok: true, product: { productId: id, comicPrices: { ungraded: 5 } } } : { ok: false, error: 'Price provider temporarily paused' }) : { ok: false, error: 'Price provider temporarily paused' }])); },
+    db: async (path, opts) => { if (opts?.method === 'PATCH') { saved.push(path); return { response: { ok: true } }; } return { data: path.includes('k_category') ? all3.map(r => ({ id: r.id, status: r.status, k_category: 'Comic', k_pricechartingProductId: r.data.pricechartingProductId })) : all3.filter(r => decodeURIComponent(path).includes(r.id)) }; },
+  }, at3am);
+  assert.equal(saved.length, 5, 'the 4 priced and the 1 PriceCharting has no product for; the paused ones wait');
+  assert.equal(res.lookupFailed, 25, '15 in the first group, all 10 of the second');
+  assert.match(res.lookupError, /paused/);
+  assert.equal(res.stoppedEarly, true, 'the second group got nothing at all: stop');
+  assert.match(res.stopReason, /PriceCharting unavailable/);
+}
 console.log('pricecharting progress checks passed');
 
