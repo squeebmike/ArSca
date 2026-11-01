@@ -77,7 +77,7 @@ assert.deepEqual(await runPriceChartingServerSync('store-1', deps, new Date('202
 
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /if \(event\?\.cron === POKEMON_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledPriceChartingServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\)\]\); return; \}/, 'runs hourly, awaited, one sync after the other');
+assert.match(worker, /if \(event\?\.cron === POKEMON_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledPriceChartingServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledMorningHealth\(env\)\]\); return; \}/, 'runs hourly, awaited, one sync after the other');
 assert.match(worker, /if \(!\(storeEnv\.PRICECHARTING_TOKEN \|\| storeEnv\.PRICECHARTING_API_KEY\)\) continue;/, 'each store on its own key');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /if\(p\.mode === 'comic-live'\) return \{ \.\.\.common, mode:'comic-live', provider:'comic'/, 'the dashboard reviews server comic changes like its own');
