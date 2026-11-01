@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/mtg-academy.mjs
+      - scripts/mtg-judge.mjs
+      - tests/mtg-learning.test.mjs
       - cloudflare-worker-full.js
       - scripts/foc-preorders.mjs
       - scripts/card-intake.mjs
@@ -336,6 +339,9 @@ jobs:
           // them here (against real internet access, unlike this
           // repository's own sandboxed dev environment) is real proof they
           // actually render, not just that the code parses.
+          await request('MTG Academy page', '/mtg-rules', {}, res => res.ok);
+          await request('MTG Rules Boss page', '/mtg-judge', {}, res => res.ok);
+          await request('anonymous MTG AI question rejected', '/mtg-judge/ask', {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}, res => res.status === 401);
           await request('FAQ page', '/faq', {}, res => res.ok);
           await request('News page', '/news', {}, res => res.ok);
           await request('Category index page', '/category', {}, res => res.ok);
