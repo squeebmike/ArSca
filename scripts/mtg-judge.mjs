@@ -1,3 +1,4 @@
+import {practiceScript} from './mtg-practice.mjs';
 import {lessons,RULES_HOME,academyBody,academyScript} from './mtg-academy.mjs';
 
 const HEADERS={Accept:'application/json','User-Agent':'TheManaPocket/1.0 (MTG rules learning)'};
@@ -60,7 +61,7 @@ export async function handleMtgLearning(request,env,deps){
   if(!['GET','HEAD'].includes(request.method))return response({error:'Use GET'},405);
   return new Response(request.method==='HEAD'?'':deps.shell({title:(p==='/mtg-rules'?'MTG Rules Academy':'MTG Rules Boss')+' | The Mana Pocket',description:'Learn Magic with 31 lessons, current card text and rules-supported interaction explanations.',canonicalPath:p,bodyHtml:academyBody(p==='/mtg-judge')}),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}});
  }
- if(p==='/mtg-rules/app.js')return ['GET','HEAD'].includes(request.method)?new Response(request.method==='HEAD'?'':academyScript,{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=300'}}):response({error:'Use GET'},405);
+ if(p==='/mtg-rules/app.js')return ['GET','HEAD'].includes(request.method)?new Response(request.method==='HEAD'?'':academyScript+'\n'+practiceScript,{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=300'}}):response({error:'Use GET'},405);
  if(p==='/mtg-judge/card'){
   if(request.method!=='GET')return response({error:'Use GET'},405);
   try{return response({card:await cardLookup(u.searchParams.get('name'),deps.fetcher)});}catch(e){return response({error:e.message},e.message.startsWith('No exact')||e.message.startsWith('Enter')?400:503);}

@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import {lessons,academyBody,academyScript} from '../scripts/mtg-academy.mjs';
 import {handleMtgLearning,parseRules,retrieveRules,validateExplanation,cardLookup,loadRules} from '../scripts/mtg-judge.mjs';
+import {distractors,quizChoices,practiceScript,judgeExamples} from '../scripts/mtg-practice.mjs';
 assert.equal(lessons.length,31);assert.equal(new Set(lessons.map(l=>l.id)).size,31);
 const academy=academyBody();assert.equal((academy.match(/data-complete=/g)||[]).length,31);
 assert(academy.includes('var(--wo-button'));assert(academy.includes('id="lesson-empty"'));assert(academy.includes('Tapping a creature after it has blocked'));
 new Function('document','location','localStorage',academyScript)({querySelector:()=>null,querySelectorAll:()=>[]},{search:'',hash:''},{getItem:()=>null});
+assert.equal(distractors.length,31);
+lessons.forEach((lesson,i)=>{const q=quizChoices(lesson,i);assert.equal(q.options.length,3);assert.equal(new Set(q.options).size,3);assert.equal(q.options[q.correct],lesson.answer);});
+assert.equal((academy.match(/data-quiz=/g)||[]).length,31);
+assert(academy.includes('id="stack-lab"'));assert(academyBody(true).includes('id="judge-followup"'));
+assert.equal(judgeExamples.length,4);assert(judgeExamples.every(e=>e.cards.length<=4));
+new Function('document','location','localStorage',practiceScript)({querySelector:()=>null,querySelectorAll:()=>[]},{search:'',hash:''},{getItem:()=>null});
+// Browser code is a literal: do not accidentally join names with backslash-n.
+const join=practiceScript.match(/e\.cards\.join\(([^)]*)\)/)[1];
+assert.equal(new Function('e','return e.cards.join('+join+')')({cards:['Negate','Counterspell']}),'Negate\nCounterspell');
 const rules=parseRules('117.4. Everyone passes.\nExample: a spell resolves.\n\n608.2b. Check targets.\n\n903.8. Commander tax.\nGlossary\nIgnore this.');
 assert.equal(rules.length,3);assert(rules[0].text.includes('Example:'));assert(!rules[2].text.includes('Ignore'));
 assert(retrieveRules({rules},'What is commander tax?').some(r=>r.id==='903.8'));
