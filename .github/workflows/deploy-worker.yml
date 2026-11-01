@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/mtg-play-lessons.mjs
       - scripts/mtg-practice.mjs
       - scripts/mtg-academy.mjs
       - scripts/mtg-judge.mjs
