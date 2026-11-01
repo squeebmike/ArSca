@@ -95,7 +95,8 @@ assert.equal(whatnotListingCost('Anything', {}), null);
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 for (const route of ["'/whatnot/apply-costs' && request.method === 'POST'", "'/whatnot/shows/next' && request.method === 'GET'", "'/whatnot/show-add' && request.method === 'POST'"]) assert.ok(worker.includes(route), route);
-assert.match(worker, /const saved = \{ \.\.\.\(existing\?\.listingCosts \? \{ listingCosts: existing\.listingCosts \} : \{\}\), \.\.\.settings,/, 'the export screen saving its own copy keeps the costs');
+assert.match(worker, /if \(existing\?\.listingCosts && !settings\.listingCosts\) kept\.listingCosts = existing\.listingCosts;/, 'the export screen saving its own copy keeps the costs');
+assert.match(worker, /if \(existing && 'autoTitles' in existing && !\('autoTitles' in settings\)\) kept\.autoTitles = existing\.autoTitles;/, 'and the auto-title choice');
 assert.match(worker, /listingSettings: await whatnotListingSettings\(env, storeId\) \};\n    if \(type\.startsWith\('orders\.'\)/, 'webhook sales use the costs');
 const dash = fs.readFileSync('dashboard.html', 'utf8');
 assert.match(dash, /onclick="addSelectedToNextWhatnotShow\(\)"[^>]*>ADD TO NEXT WHATNOT SHOW</);

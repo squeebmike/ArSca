@@ -48,7 +48,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13528,8 +13528,11 @@ async function routeRequest(request, env, ctx) {
       // The Whatnot tab's export screen saves this object from its own copy;
       // costs set in Settings -> Whatnot (listingCosts) are kept when a save
       // doesn't carry them.
-      const existing = settings.listingCosts ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
-      const saved = { ...(existing?.listingCosts ? { listingCosts: existing.listingCosts } : {}), ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
+      const existing = settings.listingCosts && 'autoTitles' in settings ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
+      const kept = {};
+      if (existing?.listingCosts && !settings.listingCosts) kept.listingCosts = existing.listingCosts;
+      if (existing && 'autoTitles' in existing && !('autoTitles' in settings)) kept.autoTitles = existing.autoTitles;
+      const saved = { ...kept, ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
       await env.LBA_KV.put(key, JSON.stringify(saved));
       return json({ ok: true, settings: saved });
     }
@@ -13602,13 +13605,82 @@ async function routeRequest(request, env, ctx) {
       const itemIds = [...new Set((parsed.data?.itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 25);
       const showId = String(parsed.data?.showId || '');
       if (!itemIds.length || !/^[0-9a-f-]{36}$/i.test(showId)) return json({ ok: false, error: 'itemIds and showId are required' }, 400);
-      const deps = whatnotDeps(env, ctx, storeId);
+      const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
       const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
+      // { auction: { amount } | { percent } }: sold as an auction in the show.
+      const a = parsed.data?.auction;
+      const auction = a && (Number(a.percent) > 0 || Number(a.amount) > 0) ? (Number(a.percent) > 0 ? { percent: Math.min(100, Number(a.percent)) } : { amount: Number(a.amount) }) : null;
       const results = await addItemsToWhatnotShow(itemIds, showId, { ...deps,
         rows: async ids => (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [],
         profileId: kind => profileIds[kind] || '',
-        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } });
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction });
       return json({ ok: true, added: results.filter(r => r.added).length, results });
+    }
+    // Whatnot tools for the dashboard (owner/admin/manager of the Whatnot store).
+    if (['/whatnot/buy-it-now', '/whatnot/label', '/whatnot/tracking', '/whatnot/report', '/whatnot/insights'].includes(url.pathname)) {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const deps = whatnotDeps(env, ctx, storeId);
+      const body = request.method === 'POST' ? ((await readJsonWithLimit(request, 16 * 1024)).data || {}) : {};
+      // BACK TO BUY IT NOW: auctioned items return to the shop.
+      if (url.pathname === '/whatnot/buy-it-now' && request.method === 'POST') {
+        const ids = [...new Set((body.itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 50);
+        const results = await backToBuyItNow(ids, deps);
+        return json({ ok: true, done: results.filter(r => r.done).length, results });
+      }
+      // CREATE LABEL: Whatnot makes the label with the shipment's saved
+      // settings (printed from Whatnot; the board shows its tracking).
+      if (url.pathname === '/whatnot/label' && request.method === 'POST') {
+        const shipmentId = String(body.shipmentId || '');
+        if (!/^[A-Za-z0-9-]{6,80}$/.test(shipmentId)) return json({ ok: false, error: 'shipmentId required' }, 400);
+        const r = await deps.api('POST', `/shipments/${encodeURIComponent(shipmentId)}/generate_label`, {});
+        if (!r.ok) return json({ ok: false, error: whatnotErrorText(r) }, 400);
+        return json({ ok: true, queued: true });
+      }
+      // ADD TRACKING: shipped with your own label. The order's items (from
+      // the sales recorded for it) go under the tracking code.
+      if (url.pathname === '/whatnot/tracking' && request.method === 'POST') {
+        const orderId = String(body.orderId || ''), trackingCode = String(body.trackingCode || '').trim(), carrier = String(body.carrier || '').trim();
+        if (!orderId || !trackingCode || !carrier) return json({ ok: false, error: 'orderId, carrier and trackingCode required' }, 400);
+        const { data: pays } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${encodeURIComponent(storeId)}&provider=eq.whatnot&reference=like.${encodeURIComponent('whatnot-api:' + orderId + ':')}*&select=reference`);
+        const itemIds = [...new Set((pays || []).map(p => String(p.reference).split(':')[2]).filter(Boolean))];
+        if (!itemIds.length) return json({ ok: false, error: 'No items recorded for that order' }, 404);
+        const r = await deps.api('POST', '/shipments/add_tracking_code', { order_item_ids: itemIds, tracking_code: trackingCode, carrier });
+        if (!r.ok) return json({ ok: false, error: whatnotErrorText(r) }, 400);
+        try { await syncWhatnotShipments(deps, { pages: 1 }); } catch (_) {}
+        return json({ ok: true });
+      }
+      // PAYOUTS: Whatnot's financial report for the last N days (made by
+      // Whatnot in the background; asked again until it's ready).
+      if (url.pathname === '/whatnot/report' && request.method === 'POST') {
+        const days = Math.max(1, Math.min(90, Number(body.days) || 7));
+        const end = new Date(), start = new Date(Date.now() - days * 86400000);
+        const r = await deps.api('POST', '/reports', { report_parameters: { report_type: 'seller_financial_report', start_date: start.toISOString(), end_date: end.toISOString() } });
+        if (!r.ok) return json({ ok: false, error: whatnotErrorText(r) }, 400);
+        return json({ ok: true, id: r.data?.id, status: r.data?.status });
+      }
+      if (url.pathname === '/whatnot/report' && request.method === 'GET') {
+        const id = String(url.searchParams.get('id') || '');
+        if (!/^[A-Za-z0-9-]{6,80}$/.test(id)) return json({ ok: false, error: 'id required' }, 400);
+        const r = await deps.api('GET', `/reports/${encodeURIComponent(id)}`);
+        if (!r.ok) return json({ ok: false, error: whatnotErrorText(r) }, 400);
+        if (r.data?.status !== 'completed' || !r.data?.report_url) return json({ ok: true, status: r.data?.status || 'pending' });
+        const csv = await fetch(r.data.report_url).then(x => x.ok ? x.text() : '').catch(() => '');
+        return json({ ok: true, status: 'completed', url: r.data.report_url, summary: summarizeFinancialReport(parseCsv(csv)), parameters: r.data.report_parameters || null });
+      }
+      // SHOW TRENDS + TOP BUYERS.
+      if (url.pathname === '/whatnot/insights' && request.method === 'GET') {
+        const s = encodeURIComponent(storeId);
+        const { data: shows } = await supabaseAdminFetch(env, `whatnot_shows?store_id=eq.${s}&status=eq.ended&report_summary=not.is.null&select=title,started_at,report_summary&order=started_at.desc&limit=40`);
+        const notes = (await env.LBA_KV.get('whatnot-board-orders:' + storeId, 'json').catch(() => null)) || {};
+        const amounts = {};
+        const { data: pays } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${s}&provider=eq.whatnot&reference=like.whatnot-api:*&select=reference,amount&limit=5000`);
+        for (const p of pays || []) { const o = String(p.reference).split(':')[1]; if (o) amounts[o] = (amounts[o] || 0) + (Number(p.amount) || 0); }
+        return json({ ok: true, ...whatnotInsights({ shows: shows || [], notes, amounts }) });
+      }
+      return json({ ok: false, error: 'Not found' }, 404);
     }
     // GET /whatnot/items?store_id= -- each checked item's Whatnot listing
     // (id, quantity and price there, last problem), for the dashboard.
@@ -19743,7 +19815,7 @@ async function whatnotFeeSettings(env, storeId) {
   return data?.[0]?.receipt_settings || {};
 }
 async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 25 } = {}) {
-  const deps = whatnotDeps(env, ctx, storeId);
+  const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   const out = { at: new Date().toISOString() };
   try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit }); }
   catch (e) { out.listingsError = e.message; }

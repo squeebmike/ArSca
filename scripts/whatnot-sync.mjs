@@ -88,7 +88,7 @@ export function whatnotProfileKind(item) {
 // --- What Whatnot should show ------------------------------------------------
 // item: the Worker's shapeStorefrontItem(row) -- the website's own price
 // rule, photos and category. data: the row's raw data.
-export function whatnotDesired(row, item) {
+export function whatnotDesired(row, item, { autoTitles = true } = {}) {
   const d = row.data || {};
   const categoryId = whatnotCategoryId(item);
   const status = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
@@ -101,7 +101,7 @@ export function whatnotDesired(row, item) {
     wanted,
     qty,
     price,
-    title: String(item.name || 'Item').slice(0, 200),
+    title: (autoTitles ? whatnotTitle(item, d) : String(item.name || 'Item')).slice(0, 200),
     // Whatnot won't publish without a description.
     description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
     categoryId,
@@ -123,8 +123,8 @@ export function whatnotContentKeys(want) {
 // link: what we last did on Whatnot for it ({productId, variantId, price,
 // qty, error, url}) or null. Returns the new link (null = nothing to keep)
 // and whether to try again on the next run.
-export async function syncWhatnotItem(api, row, item, link, { profileId, saveProfileId, newKey = () => crypto.randomUUID() } = {}) {
-  const want = whatnotDesired(row, item);
+export async function syncWhatnotItem(api, row, item, link, { profileId, saveProfileId, newKey = () => crypto.randomUUID(), autoTitles = true } = {}) {
+  const want = whatnotDesired(row, item, { autoTitles: autoTitles !== false });
   const base = { ...(link || {}), name: want.title };
   const fail = (r, why) => ({ link: { ...base, error: why || whatnotErrorText(r), errorAt: new Date().toISOString() }, retry: retryable(r), action: 'error' });
   let productId = link?.productId || '', variantId = link?.variantId || '';
@@ -235,6 +235,7 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 25, force =
     out.checked++;
     try {
       const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, {
+        autoTitles: deps.listingSettings?.autoTitles !== false,
         profileId: kind => profileIds[kind] || '',
         saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); },
       });
@@ -503,7 +504,7 @@ export async function nextWhatnotShow(api, now = Date.now()) {
 // Each item's Whatnot product (listed first if it isn't yet) added to the
 // show's lineup. deps: api, kvGet, kvPut, storeId, rows(ids) -> inventory
 // rows, shape(row), profileId, saveProfileId.
-export async function addItemsToWhatnotShow(itemIds, showId, deps) {
+export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = null } = {}) {
   const results = [];
   const rows = new Map(((await deps.rows(itemIds)) || []).map(r => [r.id, r]));
   const linked = (await deps.kvGet('whatnot-linked:' + deps.storeId)) || {};
@@ -514,13 +515,21 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps) {
     let link = await deps.kvGet(linkKey);
     if (!link?.productId || link.published !== true) {
       if (row.data?.sellOnWhatnot !== true) { results.push({ id, name: row.data?.name, error: 'Not set to sell on Whatnot' }); continue; }
-      const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, { profileId: deps.profileId, saveProfileId: deps.saveProfileId });
+      const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, { profileId: deps.profileId, saveProfileId: deps.saveProfileId, autoTitles: deps.listingSettings?.autoTitles !== false });
       if (r.link) { await deps.kvPut(linkKey, r.link); linked[id] = r.link.published === true || !(Number(r.link.qty) > 0) ? 'ok' : 'draft'; }
       link = r.link;
       if (!link?.productId) { results.push({ id, name: row.data?.name, error: link?.error || 'Could not list it on Whatnot' }); continue; }
     }
-    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { shows: { strategy: 'ADD', show_ids: [showId] } });
-    if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])] }); results.push({ id, name: row.data?.name, added: true }); }
+    // An auction: its starting bid set, then sold in the show (auctions are
+    // live-only -- it leaves the shop until BACK TO BUY IT NOW).
+    let start = null;
+    if (auction) {
+      start = auctionStartPrice(auction, Number(link.price) || Number(deps.shape(row).price) || 0);
+      const priced = await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, pricing: { auction: { start_price: money(start) } } }] });
+      if (!priced.ok) { results.push({ id, name: row.data?.name, error: whatnotErrorText(priced) }); continue; }
+    }
+    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { ...(auction ? { transaction_type: 'auction' } : {}), shows: { strategy: 'ADD', show_ids: [showId] } });
+    if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], ...(auction ? { auction: { startPrice: start, showId } } : {}) }); results.push({ id, name: row.data?.name, added: true, ...(start != null ? { startPrice: start } : {}) }); }
     else results.push({ id, name: row.data?.name, error: whatnotErrorText(m) });
   }
   await deps.kvPut('whatnot-linked:' + deps.storeId, linked);
@@ -674,4 +683,130 @@ export function whatnotAttributes(item, data = {}, categoryId) {
     if (item.isSigned) { add(392, 'true'); add(393, item.signedBy); }
   }
   return out;
+}
+
+// --- Auto titles -------------------------------------------------------------
+// Store, 2026-11-01: "do auto titles". Whatnot search reads titles: the
+// item's own name, with what buyers search for added when it isn't already
+// there -- year, set, card number, parallel, serial, RC, auto, grade.
+// Settings -> Whatnot can turn it off (autoTitles: false).
+export function whatnotTitle(item = {}, d = {}) {
+  const base = String(item.name || 'Item').replace(/\s+/g, ' ').trim();
+  const has = t => !t || base.toLowerCase().includes(String(t).toLowerCase());
+  const parts = [base];
+  const add = (t, where = 'end') => { const v = String(t || '').trim(); if (!v || has(v) || parts.some(p => p.toLowerCase().includes(v.toLowerCase()))) return; if (where === 'start') parts.unshift(v); else parts.push(v); };
+  const slug = item.categorySlug;
+  if (slug === 'sports-cards') {
+    add(item.set || item.brand, 'start'); add(item.year, 'start');
+    if (item.cardNumber && !/#\s*\S/.test(base)) add('#' + String(item.cardNumber).replace(/^#/, ''));
+    add(item.variant);
+    const serial = String(d.serial_number || d.serialNumber || '').trim();
+    if (serial && !/\/\s*\d+/.test(base)) add(serial.startsWith('/') ? serial : (/\//.test(serial) ? serial : '/' + serial));
+    if ((d.is_rookie === true || d.isRookie === true) && !/\b(rc|rookie)\b/i.test(base)) parts.push('RC');
+    if ((d.is_auto === true || item.isSigned) && !/\bauto/i.test(base)) parts.push('Auto');
+  } else if (['pokemon', 'mtg', 'yugioh', 'one-piece', 'lorcana'].includes(slug)) {
+    if (!item.isSealed && item.cardNumber && !has(item.cardNumber)) parts.push(String(item.cardNumber).startsWith('#') ? item.cardNumber : '#' + item.cardNumber);
+    add(item.set);
+    if (item.language && !/^en(glish)?$/i.test(item.language)) add(item.language);
+    if (item.isSealed && !/\bsealed\b/i.test(base)) parts.push('Sealed');
+  } else if (slug === 'comics') {
+    const c = item.comic || {};
+    const year = String(c.coverDate || c.storeDate || item.year || '').match(/\d{4}/)?.[0];
+    if (c.publisher || year) add('(' + [c.publisher, year].filter(Boolean).join(' ') + ')');
+  }
+  if (item.gradingCompany && item.grade && !new RegExp('\\b' + item.gradingCompany + '\\s*' + String(item.grade).replace('.', '\\.'), 'i').test(base)) parts.push(item.gradingCompany.toUpperCase() + ' ' + item.grade);
+  return parts.join(' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+}
+
+// --- Auctions ------------------------------------------------------------------
+// Starting bid: a set amount, or a percent of the item's price; whole
+// dollars (Whatnot's auction start is in whole units), at least $1.
+export function auctionStartPrice(spec = {}, price = 0) {
+  if (spec.percent != null) return Math.max(1, Math.round((Number(price) || 0) * Number(spec.percent) / 100));
+  return Math.max(1, Math.round(Number(spec.amount) || 1));
+}
+// Back to Buy It Now in the shop (after a show, or never auctioned after all).
+export async function backToBuyItNow(itemIds, deps) {
+  const out = [];
+  for (const id of itemIds) {
+    const linkKey = `whatnot-link:${deps.storeId}:${id}`;
+    const link = await deps.kvGet(linkKey);
+    if (!link?.productId) { out.push({ id, error: 'Not on Whatnot' }); continue; }
+    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { transaction_type: 'buy_it_now', reserve_for_live: false });
+    if (!m.ok) { out.push({ id, error: whatnotErrorText(m) }); continue; }
+    const { auction, ...rest } = link;
+    await deps.kvPut(linkKey, { ...rest, published: true });
+    out.push({ id, done: true });
+  }
+  return out;
+}
+
+// --- Payouts: Whatnot's financial report -----------------------------------------
+export function parseCsv(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  const s = String(text || '');
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (q) { if (ch === '"') { if (s[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += ch; continue; }
+    if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cell); cell = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && s[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  const [head, ...body] = rows.filter(r => r.length > 1 || r[0]);
+  return (body || []).map(r => Object.fromEntries((head || []).map((h, i) => [h.trim(), r[i] ?? ''])));
+}
+const num = v => { const n = Number(String(v || '').replace(/[$,]/g, '')); return Number.isFinite(n) ? n : 0; };
+export function summarizeFinancialReport(rows) {
+  const t = { lines: 0, orders: new Set(), sales: 0, buyerPaid: 0, shippingCharged: 0, commission: 0, processing: 0, taxOnFees: 0, coupons: 0, net: 0, byShow: {} };
+  for (const r of rows) {
+    t.lines++;
+    if (r.order_id) t.orders.add(r.order_id);
+    t.sales += num(r.post_coupon_price || r.original_item_price);
+    t.buyerPaid += num(r.buyer_paid);
+    t.shippingCharged += num(r.seller_shipping_charge);
+    t.commission += num(r.commission_fee);
+    t.processing += num(r.processing_fee);
+    t.taxOnFees += num(r.commission_tax) + num(r.processing_fee_tax);
+    t.coupons += num(r.coupon_cost);
+    t.net += num(r.transaction_amount);
+    const show = r.livestream_title || (r.livestream_id ? 'Show ' + r.livestream_id : 'Not in a show');
+    const b = t.byShow[show] || (t.byShow[show] = { sales: 0, fees: 0, net: 0, lines: 0 });
+    b.sales += num(r.post_coupon_price || r.original_item_price); b.fees += num(r.commission_fee) + num(r.processing_fee); b.net += num(r.transaction_amount); b.lines++;
+  }
+  const r2 = n => Math.round(n * 100) / 100;
+  const shows = Object.entries(t.byShow).map(([show, b]) => ({ show, sales: r2(b.sales), fees: r2(b.fees), net: r2(b.net), lines: b.lines })).sort((a, b) => b.net - a.net);
+  return { lines: t.lines, orders: t.orders.size, sales: r2(t.sales), buyerPaid: r2(t.buyerPaid), shippingCharged: r2(t.shippingCharged), commission: r2(t.commission), processing: r2(t.processing), taxOnFees: r2(t.taxOnFees), coupons: r2(t.coupons), fees: r2(t.commission + t.processing + t.taxOnFees), net: r2(t.net), shows };
+}
+
+// --- Trends and top buyers ---------------------------------------------------------
+// shows: whatnot_shows rows with report_summary; notes: order notes
+// (buyer/show); amounts: { orderId: total } from the recorded sales.
+export function whatnotInsights({ shows = [], notes = {}, amounts = {} }) {
+  const done = shows.filter(sh => sh.report_summary && typeof sh.report_summary === 'object');
+  const rows = done.map(sh => {
+    const s = sh.report_summary;
+    const orders = Number(s.orders || s.sold || 0);
+    return { title: sh.title, date: sh.started_at, gross: Number(s.gross) || 0, net: Number(s.net) || 0, margin: Number(s.margin) || 0, sold: Number(s.sold) || 0,
+      buyers: Number(s.buyersCount ?? (s.buyers || []).length) || 0, peakViewers: s.peakViewers ?? null, avgOrder: orders ? Math.round((Number(s.gross) || 0) / orders * 100) / 100 : 0, final: !!s.final };
+  }).sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const avg = k => rows.length ? Math.round(rows.reduce((n, r) => n + (Number(r[k]) || 0), 0) / rows.length * 100) / 100 : 0;
+  const buyers = {};
+  for (const [orderId, n] of Object.entries(notes)) {
+    if (!n.buyer || /^(cancelled|failed)$/.test(n.status || '')) continue;
+    const b = buyers[n.buyer] || (buyers[n.buyer] = { buyer: n.buyer, orders: 0, total: 0, shows: new Set(), last: '' });
+    b.orders++; b.total += Number(amounts[orderId]) || 0;
+    if (n.showId) b.shows.add(n.showId);
+    if (String(n.createdAt) > b.last) b.last = n.createdAt;
+  }
+  const top = Object.values(buyers).map(b => ({ buyer: b.buyer, orders: b.orders, total: Math.round(b.total * 100) / 100, shows: b.shows.size, last: b.last }))
+    .sort((a, b) => b.total - a.total || b.orders - a.orders).slice(0, 50);
+  return {
+    shows: rows,
+    averages: { gross: avg('gross'), net: avg('net'), margin: avg('margin'), sold: avg('sold'), buyers: avg('buyers'), peakViewers: avg('peakViewers'), avgOrder: avg('avgOrder') },
+    best: rows.slice().sort((a, b) => b.net - a.net)[0] || null,
+    buyers: top,
+    repeatBuyers: top.filter(b => b.shows > 1 || b.orders > 1).length,
+  };
 }
