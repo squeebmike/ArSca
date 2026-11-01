@@ -115,6 +115,25 @@ export function comicGuidePrice(d = {}, product = {}) {
   const factor = Number(factors[condition] ?? 1);
   return { price: Math.round(raw * factor * 100) / 100, path: 'comicPrices.ungraded' + (factor === 1 ? '' : ' * ' + condition + ' condition estimate'), label: 'PriceCharting raw guide' + (factor === 1 ? '' : ' · ' + condition + ' estimate') };
 }
+// Cover-price fallback (store, 2026-11-01: "do the cover price fallback").
+// A comic PriceCharting has no price for yet (most new releases) and that has
+// no price of any kind -- no market, sale price, floor or override -- gets
+// its cover price as its floor, so it can sell on the website and Whatnot.
+// Ratio / incentive variants never do: a 1:25 isn't a $4.99 book. They're
+// listed as needing a price instead.
+const INCENTIVE_RE = /\b1\s*:\s*\d+\b|\bratio\b|\binc(?:v|entive)?\b|\bRI\b/i;
+export function comicHasAnyPrice(d = {}) {
+  return [d.marketPrice, d.rawMarketPrice, d.market, d.price, d.displayPrice, d.salePrice, d.listPrice, d.minPrice, d.autoFloor, d.priceOverride].some(v => money(v) > 0);
+}
+export function comicIsIncentive(d = {}, sku = null) {
+  if (sku?.is_incentive === true) return true;
+  return INCENTIVE_RE.test([d.name, d.title, d.variant].filter(Boolean).join(' '));
+}
+export function comicCoverPrice(d = {}, sku = null) {
+  const meta = d.comicMetadata || {};
+  for (const v of [meta.selectedCover?.coverPrice, d.selectedComicCover?.coverPrice, meta.coverPrice, d.focComicDetail?.coverPrice, d.coverPrice]) { const n = money(v); if (n > 0) return n; }
+  return money(Number(sku?.msrp_cents || 0) / 100);
+}
 export function sportsGuidePrice(d = {}, product = {}) {
   const prices = product.prices || {};
   const { grader, grade } = gradingOf(d);
@@ -129,14 +148,23 @@ export function sportsGuidePrice(d = {}, product = {}) {
 
 // One row + its PriceCharting product -> what to write now, and/or what to queue.
 // viaTitle: a comic matched by title only -- never applied or linked without review.
-export function planRow(row, kind, product, { viaTitle = false, now = Date.now() } = {}) {
+export function planRow(row, kind, product, { viaTitle = false, now = Date.now(), sku = null } = {}) {
   const d = row.data || {};
   const at = new Date(now).toISOString();
   const checked = { ...d, priceSyncCheckedAt: at };
   const okProduct = product && product.productId && (kind !== 'comic' || /^comic books\b/i.test(String(product.consoleName || '')));
   const guide = okProduct ? (kind === 'comic' ? comicGuidePrice(d, product) : sportsGuidePrice(d, product)) : null;
   const fresh = money(guide?.price);
-  if (!(fresh > 0)) return { kind: 'no-price', data: checked };
+  if (!(fresh > 0)) {
+    if (kind === 'comic' && !comicHasAnyPrice(d)) {
+      if (comicIsIncentive(d, sku)) return { kind: 'no-price', needsPrice: true, data: checked };
+      const cover = comicCoverPrice(d, sku);
+      if (cover > 0) return { kind: 'cover', newPrice: cover, data: { ...checked, minPrice: cover, coverPriceFloor: true,
+        marketPriceSource: 'Cover price (no PriceCharting price yet)', priceSource: 'Cover price -- server sync', priceUpdatedAt: at, lastPriceUpdate: at } };
+      return { kind: 'no-price', needsPrice: true, data: checked };
+    }
+    return { kind: 'no-price', data: checked };
+  }
   const link = viaTitle ? {} : kind === 'comic'
     ? { pricechartingProductId: String(product.productId), pricechartingProductName: product.productName || d.pricechartingProductName || '', pricechartingComicPrices: product.comicPrices || null, providerUrl: d.providerUrl || product.url || '' }
     : { pricechartingProductId: String(product.productId), ...(String(d.providerUrl || '').trim() ? {} : product.url ? { providerUrl: product.url } : {}) };
@@ -164,7 +192,7 @@ export function planRow(row, kind, product, { viaTitle = false, now = Date.now()
 // This hour's rows: linked ones, plus comics a barcode or title can look up.
 export function nextBatch(rows = [], now = Date.now(), size = PC_SYNC_BATCH) {
   return rows.map(row => ({ row, kind: syncKind(row) })).filter(x => x.kind && !checkedToday(x.row.data, now))
-    .filter(x => pricechartingIdOf(x.kind, x.row.data) || (x.kind === 'comic' && (comicFullUpc(x.row.data) || comicTitleHint(x.row.data))))
+    .filter(x => pricechartingIdOf(x.kind, x.row.data) || (x.kind === 'comic' && (comicFullUpc(x.row.data) || comicTitleHint(x.row.data) || !comicHasAnyPrice(x.row.data))))
     .sort((a, b) => String(a.row.data?.priceSyncCheckedAt || '').localeCompare(String(b.row.data?.priceSyncCheckedAt || '')))
     .slice(0, size);
 }
@@ -176,7 +204,9 @@ export function nextBatch(rows = [], now = Date.now(), size = PC_SYNC_BATCH) {
 // only, a page at a time.
 const PICK_KEYS = ['category', 'archivedAt', 'dropship', 'ownershipType', 'source', 'priceSyncCheckedAt',
   'pricechartingProductId', 'providerProductId', 'sourceProductId', 'providerUrl', 'upc', 'barcode',
-  'name', 'title', 'series', 'issue', 'issueNumber', 'variant', 'comicMetadata', 'selectedComicCover', 'externalRefs', 'focComicDetail'];
+  'name', 'title', 'series', 'issue', 'issueNumber', 'variant', 'comicMetadata', 'selectedComicCover', 'externalRefs', 'focComicDetail',
+  // For the cover-price fallback: a comic with none of these is picked too.
+  'marketPrice', 'rawMarketPrice', 'market', 'price', 'displayPrice', 'salePrice', 'listPrice', 'minPrice', 'autoFloor', 'priceOverride', 'focSkuId'];
 const PICK_SELECT = 'id,status,' + PICK_KEYS.map(k => `k_${k}:data->${k}`).join(',');
 const PICK_CATEGORY = 'comic|sport|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis|boxing';
 async function loadCandidateRows(deps, s) {
@@ -196,7 +226,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
   const s = encodeURIComponent(storeId);
   const rows = await loadCandidateRows(deps, s);
   const picked = nextBatch(rows, now);
-  const out = { checked: 0, applied: 0, unchanged: 0, review: 0, noPrice: 0, failed: 0, left: 0, candidates: rows.length, picked: picked.length };
+  const out = { checked: 0, applied: 0, unchanged: 0, review: 0, noPrice: 0, coverPrice: 0, failed: 0, left: 0, candidates: rows.length, picked: picked.length };
   // Where the run got to, saved as it goes (a run cut off still shows it).
   const progress = async stage => { try { await deps.progress?.({ stage, ...out }); } catch (_) {} };
   await progress('picked');
@@ -209,6 +239,16 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
     for (const r of data || []) full.set(r.id, r);
   }
   const batch = picked.filter(x => full.has(x.row.id)).map(x => ({ row: full.get(x.row.id), kind: syncKind(full.get(x.row.id)) })).filter(x => x.kind);
+  // The FOC order line of a received book with no price at all: its cover
+  // price and whether it's a ratio variant (for the cover-price fallback).
+  const skus = new Map();
+  const skuIds = [...new Set(batch.filter(x => x.kind === 'comic' && !comicHasAnyPrice(x.row.data) && /^[0-9a-f-]{36}$/i.test(String(x.row.data?.focSkuId || ''))).map(x => x.row.data.focSkuId))];
+  for (let i = 0; i < skuIds.length; i += 40) {
+    try {
+      const { data } = await deps.db(`comic_skus?store_id=eq.${s}&id=in.(${skuIds.slice(i, i + 40).join(',')})&select=id,msrp_cents,is_incentive`);
+      for (const r of data || []) skus.set(String(r.id), r);
+    } catch (_) {}
+  }
   await progress('loaded ' + batch.length);
 
   // 20 at a time, each group saved before the next is looked up, so a run
@@ -224,7 +264,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
     await progress('looking up ' + (g + 1) + '-' + (g + group.length));
     // Comics with no link: barcode first, then series + issue + cover.
     const found = new Map();
-    const lookups = group.filter(x => !pricechartingIdOf(x.kind, x.row.data));
+    const lookups = group.filter(x => !pricechartingIdOf(x.kind, x.row.data) && (comicFullUpc(x.row.data) || comicTitleHint(x.row.data)));
     for (let i = 0; i < lookups.length; i += LOOKUPS_PER_CALL) {
       const part = lookups.slice(i, i + LOOKUPS_PER_CALL);
       let got = {};
@@ -266,7 +306,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
       let plan;
       try {
         // One odd item can't stop the rest.
-        plan = planRow(row, kind, hit.product, { viaTitle: hit.viaTitle, now });
+        plan = planRow(row, kind, hit.product, { viaTitle: hit.viaTitle, now, sku: skus.get(String(row.data?.focSkuId || '')) || null });
         const res = await deps.db(`inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: plan.data, updated_at: new Date(now).toISOString() }) });
         if (res?.response && !res.response.ok) throw new Error('save failed');
       } catch (e) { out.failed++; (out.errors ||= []).length < 5 && out.errors.push(row.id + ': ' + String(e.message || e).slice(0, 120)); continue; }
@@ -274,7 +314,11 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
       if (plan.kind === 'applied') out.applied++;
       else if (plan.kind === 'unchanged') out.unchanged++;
       else if (plan.kind === 'review') { out.review++; queue.push(plan.proposal); }
-      else out.noPrice++;
+      else if (plan.kind === 'cover') out.coverPrice++;
+      else {
+        out.noPrice++;
+        if (plan.needsPrice) { out.needsPrice = (out.needsPrice || 0) + 1; (out.needsPriceItems ||= []).length < 10 && out.needsPriceItems.push(String(row.data?.name || row.id).slice(0, 80)); }
+      }
     }
     // PriceCharting answered nothing for a whole group (paused or down):
     // stop here; the next run picks up the same items.
