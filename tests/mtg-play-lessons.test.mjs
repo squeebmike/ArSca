@@ -8,7 +8,7 @@ let s=createPlayState('first-turn');const initial=JSON.stringify(s);
 let wrong=playAction(s,'cast-bears');assert.equal(wrong.mana,0);assert.equal(wrong.hand.length,2);assert.equal(JSON.stringify(s),initial,'actions must not mutate prior states');
 s=playAction(s,'tap:forest-a');assert.equal(s.mana,1);s=playAction(s,'tap:forest-a');assert.equal(s.mana,1,'a tapped land cannot make more mana');
 s=playAction(s,'play-forest');assert.equal(s.yours.length,2);assert.equal(s.hand.length,1);s=playAction(s,'play-forest');assert.equal(s.yours.length,2);
-s=playAction(s,'tap:forest-b');s=playAction(s,'cast-bears');assert.equal(s.mana,0);assert.equal(s.stack[0].name,'Grizzly Bears');assert(!s.yours.some(c=>c.id==='bears'));
+s=playAction(s,'tap:forest-b');s=playAction(s,'cast-bears');assert.equal(s.mana,0);assert.equal(s.stack[0].name,'Grizzly Bears');assert.equal(s.stack[0].id,'bears','card identity persists from hand through the stack');assert(!s.yours.some(c=>c.id==='bears'));
 s=playAction(s,'pass');assert(s.yours.find(c=>c.id==='bears').sick);s=playAction(s,'attack-bears');assert.equal(s.opponentLife,20);assert(!s.yours.find(c=>c.id==='bears').attacking);
 s=playAction(s,'next-turn');assert(!s.yours.find(c=>c.id==='bears').sick);assert(s.yours.every(c=>!c.tapped));assert.equal(s.hand[0].name,'Forest');
 s=playAction(s,'tap:forest-a');assert.equal(s.mana,1);s=playAction(s,'combat');assert.equal(s.mana,0,'mana empties between phases');
@@ -19,7 +19,7 @@ s=createPlayState('response');lost=playAction(s,'pass');assert(lost.failed);asse
 s=playAction(s,'choose-growth');assert.equal(s.stage,'respond');assert.equal(s.hand.length,1);
 s=playAction(s,'tap:forest-a');s=playAction(s,'choose-growth');assert.equal(s.stage,'target');assert.equal(s.mana,1);assert.equal(s.hand.length,1);
 s=playAction(s,'target-player');assert.equal(s.stage,'target');assert.equal(s.mana,1);assert.equal(s.hand.length,1);
-s=playAction(s,'cancel-growth');assert.equal(s.stage,'respond');assert.equal(s.mana,1);s=playAction(s,'choose-growth');s=playAction(s,'target-bears');assert.equal(s.mana,0);assert.equal(s.hand.length,0);assert.deepEqual(s.stack.map(c=>c.name),['Lightning Bolt','Giant Growth']);
+s=playAction(s,'cancel-growth');assert.equal(s.stage,'respond');assert.equal(s.mana,1);s=playAction(s,'choose-growth');s=playAction(s,'target-bears');assert.equal(s.mana,0);assert.equal(s.hand.length,0);assert.deepEqual(s.stack.map(c=>c.name),['Lightning Bolt','Giant Growth']);assert.deepEqual(s.stack.map(c=>c.id),['bolt','growth'],'each spell has a stable identity for zone movement');
 s=playAction(s,'pass');assert.equal(s.stack.length,1);assert.equal(s.yours.find(c=>c.id==='bears').toughness,5);assert.equal(s.stage,'bolt-stack');
 s=playAction(s,'pass');let bears=s.yours.find(c=>c.id==='bears');assert.equal(bears.damage,3);assert.equal(bears.toughness,5);assert(!s.complete);
 s=playAction(s,'cleanup');bears=s.yours.find(c=>c.id==='bears');assert.equal(bears.toughness,2);assert.equal(bears.damage,0);assert(s.complete);assert(!s.failed);
