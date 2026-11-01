@@ -119,9 +119,31 @@ export function comicGuidePrice(d = {}, product = {}) {
 // A comic PriceCharting has no price for yet (most new releases) and that has
 // no price of any kind -- no market, sale price, floor or override -- gets
 // its cover price as its floor, so it can sell on the website and Whatnot.
-// Ratio / incentive variants never do: a 1:25 isn't a $4.99 book. They're
-// listed as needing a price instead.
+// Ratio / incentive variants and foils start higher (store, same day: "Ratio
+// and foils should have higher default prices than the cover"), in line with
+// the floors the store set on its own ratio books (1:10 $12-15, 1:25 $23-44,
+// foils $10):
+//   1:N ratio -> cover x (1 + N/5)   (1:10 = 3x, 1:25 = 6x)
+//   foil      -> cover x 2
+//   both      -> the higher one
+// rounded up to the dollar. A ratio book with no number found counts as 1:10.
+// With no cover price known, the book is listed as needing a price.
 const INCENTIVE_RE = /\b1\s*:\s*\d+\b|\bratio\b|\binc(?:v|entive)?\b|\bRI\b/i;
+const RATIO_NUM_RE = /\b1\s*:\s*(\d{1,4})\b|\bRI\b\s*\(?\s*(\d{1,4})\b/i;
+const FOIL_RE = /\bfoil\b/i;
+export function comicDefaultPrice(d = {}, sku = null, cover = comicCoverPrice(d, sku)) {
+  if (!(cover > 0)) return null;
+  const text = [d.name, d.title, d.variant].filter(Boolean).join(' ');
+  const incentive = comicIsIncentive(d, sku);
+  const m = text.match(RATIO_NUM_RE);
+  const n = incentive ? Math.max(2, Number(m?.[1] || m?.[2] || 10)) : 0;
+  const ratioX = incentive ? 1 + n / 5 : 1;
+  const foilX = FOIL_RE.test(text) ? 2 : 1;
+  const x = Math.max(ratioX, foilX);
+  if (x === 1) return { price: cover, label: 'Cover price' };
+  const why = ratioX >= foilX ? '1:' + n + ' ratio' : 'foil';
+  return { price: Math.ceil(cover * x - 1e-9), label: 'Cover price x ' + (Math.round(x * 10) / 10) + ' (' + why + ')' };
+}
 export function comicHasAnyPrice(d = {}) {
   return [d.marketPrice, d.rawMarketPrice, d.market, d.price, d.displayPrice, d.salePrice, d.listPrice, d.minPrice, d.autoFloor, d.priceOverride].some(v => money(v) > 0);
 }
@@ -157,10 +179,9 @@ export function planRow(row, kind, product, { viaTitle = false, now = Date.now()
   const fresh = money(guide?.price);
   if (!(fresh > 0)) {
     if (kind === 'comic' && !comicHasAnyPrice(d)) {
-      if (comicIsIncentive(d, sku)) return { kind: 'no-price', needsPrice: true, data: checked };
-      const cover = comicCoverPrice(d, sku);
-      if (cover > 0) return { kind: 'cover', newPrice: cover, data: { ...checked, minPrice: cover, coverPriceFloor: true,
-        marketPriceSource: 'Cover price (no PriceCharting price yet)', priceSource: 'Cover price -- server sync', priceUpdatedAt: at, lastPriceUpdate: at } };
+      const def = comicDefaultPrice(d, sku);
+      if (def) return { kind: 'cover', newPrice: def.price, data: { ...checked, minPrice: def.price, coverPriceFloor: true,
+        marketPriceSource: def.label + ' (no PriceCharting price yet)', priceSource: def.label + ' -- server sync', priceUpdatedAt: at, lastPriceUpdate: at } };
       return { kind: 'no-price', needsPrice: true, data: checked };
     }
     return { kind: 'no-price', data: checked };
