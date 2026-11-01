@@ -47,7 +47,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, addItemsToWhatnotShow } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -19695,6 +19695,12 @@ function whatnotDeps(env, ctx, storeId) {
     recordSale: async body => { const { res, data } = await focInternalPost(env, ctx, storeId, '/inventory/record-external-sale', body); return { ok: res.ok && data?.ok !== false, status: res.status, data }; },
     voidOrder: orderId => voidWhatnotOrder(env, storeId, orderId),
     costsForOrders: orderIds => whatnotOrderCosts(env, storeId, orderIds),
+    // Buyer, show and status of each order seen, for the orders board.
+    noteOrders: async orders => {
+      const key = 'whatnot-board-orders:' + storeId;
+      const { notes, changed } = orderBoardNotes((await env.LBA_KV.get(key, 'json').catch(() => null)) || {}, orders);
+      if (changed) await env.LBA_KV.put(key, JSON.stringify(notes));
+    },
     upsertShow: row => upsertWhatnotShow(env, storeId, row),
     // Kept shows past their start that aren't final yet (planning or live, or
     // ended within 3 days -- their numbers firm up when Whatnot's analytics land).
@@ -19742,6 +19748,9 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
     const listingSettings = await whatnotListingSettings(env, storeId);
     try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings, listingSettings })).filter(r => !r.skipped); }
     catch (e) { out.ordersError = e.message; }
+    // Shipments for the orders board (who's packed, labelled, on the way).
+    try { out.shipments = await syncWhatnotShipments(deps); }
+    catch (e) { out.shipmentsError = e.message; }
     // Shows after their orders, so an ended show counts every sale.
     try { out.shows = await refreshRecentWhatnotShows({ ...deps, feeSettings }); }
     catch (e) { out.showsError = e.message; }
@@ -19764,12 +19773,14 @@ async function runScheduledWhatnotSync(env, ctx) {
 // A Whatnot event, after the webhook route has checked and kept it.
 async function handleWhatnotEventRecord(env, ctx, record) {
   const type = String(record?.type || ''), data = record?.body?.data || {};
-  if (!env.WHATNOT_API_KEY || !/^(orders|shows)\./.test(type)) return;
+  if (!env.WHATNOT_API_KEY || !/^(orders|shows|shipments)\./.test(type)) return;
   const storeId = whatnotStoreId(env);
   try {
     const deps = { ...whatnotDeps(env, ctx, storeId), feeSettings: await whatnotFeeSettings(env, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
-    if (type.startsWith('orders.') && data.id) console.log('Whatnot order', JSON.stringify(await processWhatnotOrder(data, deps)));
+    if (type.startsWith('orders.') && data.id) { try { await deps.noteOrders([data]); } catch (_) {} console.log('Whatnot order', JSON.stringify(await processWhatnotOrder(data, deps))); }
     // A show scheduled, live or ended: kept in Shows; an ended one gets its numbers.
+    // A label printed, a tracking code added: the orders board updates now.
+    if (type.startsWith('shipments.')) console.log('Whatnot shipments', JSON.stringify(await syncWhatnotShipments(deps, { pages: 1 })));
     const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
     if (showId) console.log('Whatnot show', JSON.stringify(await refreshWhatnotShow(String(showId), deps)));
   } catch (e) { console.error('Whatnot event not handled yet (the 10-minute run retries):', e.message); }
