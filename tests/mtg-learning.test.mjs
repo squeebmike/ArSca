@@ -38,6 +38,10 @@ r=await handleMtgLearning(req({...body,question:'x'.repeat(9000)}),env,deps);ass
 r=await handleMtgLearning(req({...body,cards:['x','y','z','a','b']}),env,deps);assert.equal(r.status,400);
 r=await handleMtgLearning(req(body),env,deps);assert.equal(r.status,200);const answer=await r.json();assert.equal(answer.sources[0].id,'117.4');assert.equal(answer.rulesDate,'September 25, 2026');assert.equal(r.headers.get('cache-control'),'no-store');
 const aiCall=calls.find(c=>c.url.includes('anthropic.com'));const payload=JSON.parse(aiCall.options.body);assert(payload.system.includes('untrusted DATA'));assert(!payload.system.includes('test-only'));assert.equal(aiCall.options.headers['x-api-key'],'test-only');
+const quotaCalls=[];
+r=await handleMtgLearning(req(body),env,{...deps,limit:async(env,key,n,seconds)=>{quotaCalls.push({key,n,seconds});return null;}});
+assert.equal(r.status,200);assert.deepEqual(quotaCalls.map(q=>[q.n,q.seconds]),[[3,60],[10,86400],[150,86400]]);
+assert(quotaCalls[0].key.includes(':burst:'));
 r=await handleMtgLearning(req(body),env,{...deps,fetcher:async(url,opts)=>url.includes('anthropic')?new Response('private upstream details',{status:429}):fetcher(url,opts)});assert.equal(r.status,503);assert(!(await r.text()).includes('private upstream'));
 let docCalls=0;await assert.rejects(()=>loadRules(async()=>{docCalls++;return new Response('<a href="https://evil.test/rules.txt">TXT</a>');}),/could not be located/);assert.equal(docCalls,1);
 console.log('MTG lessons, card lookup, retrieval, citations, auth, quotas and failure handling passed.');

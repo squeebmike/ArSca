@@ -75,7 +75,7 @@ export async function handleMtgLearning(request,env,deps){
  if(typeof body.question!=='string'||body.question.trim().length<15||body.question.length>3000||!Array.isArray(body.cards)||body.cards.length>4||body.cards.some(c=>typeof c!=='string'||!c.trim()||c.length>120)||typeof body.format!=='string'||body.format.length>50)return response({error:'Include a question (15–3,000 characters), format, and up to four exact card names.'},400);
  // Existing persistent quota service: conservative abuse controls, not a
  // strict billing cap (KV is eventually consistent). Fail closed on errors.
- try{for(const [key,limit,seconds] of [['mtg-judge:user:'+auth.user.id,10,86400],['mtg-judge:global',150,86400],['mtg-judge:burst:'+auth.user.id,1,60]]){const limited=await deps.limit(env,key,limit,seconds);if(limited)return response({error:'Question limit reached. Please try later; lessons and card lookup remain open.'},429);}}catch{return response({error:'Question service is temporarily unavailable.'},503);}
+ try{for(const [key,limit,seconds] of [['mtg-judge:burst:'+auth.user.id,3,60],['mtg-judge:user:'+auth.user.id,10,86400],['mtg-judge:global',150,86400]]){const limited=await deps.limit(env,key,limit,seconds);if(limited)return response({error:'Question limit reached. Please try later; lessons and card lookup remain open.'},429);}}catch{return response({error:'Question service is temporarily unavailable.'},503);}
  try{
   const fetcher=deps.fetcher||fetch,cards=[];
   // Serialize upstream card calls; no parallel burst to Scryfall.
