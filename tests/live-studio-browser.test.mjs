@@ -21,8 +21,14 @@ try{
  await page.getByRole('button',{name:'Connect / reload'}).click();await page.getByText('Connected. Controls are live.').waitFor();
  await page.locator('[name=message]').fill('<b>Safe literal mana</b>');await page.getByRole('button',{name:'Save live settings'}).click();await page.getByText('Live settings saved.').waitFor();
  const frame=page.frameLocator('iframe');assert.equal(await frame.locator('#mana-message').textContent(),'<b>Safe literal mana</b>');assert.equal(await frame.locator('#mana-message b').count(),0);
- await page.getByRole('button',{name:'JACKPOT',exact:true}).click();await frame.getByText('JACKPOT!',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'BIG HIT',exact:true}).click();await frame.getByText('BIG HIT!',{exact:true}).waitFor();
  assert.equal(await frame.locator('#mana-coins i').count(),24);
+ // A pretend sale in the preview: score board, boss damage, comic burst.
+ await page.getByRole('button',{name:'DEMO A SALE (preview only)'}).click();await frame.locator('#mana-effect.k-sold').waitFor();
+ assert.equal(await frame.locator('#mana-gross').textContent(),'$12');assert.equal(await frame.locator('#mana-effect-word').textContent(),'BAM!');
+ // A word for a game of chance isn't saved.
+ await page.locator('[name=bossReward]').fill('Raffle for buyers');await page.getByRole('button',{name:'Save live settings'}).click();
+ await page.locator('[name=bossReward]').fill('$1 START ON THE GRAIL!');
  const box=await frame.locator('#mana-sign').boundingBox();assert.ok(box.width<240 && box.height<80,'sign stays small in camera preview');
  await page.getByRole('button',{name:'Create / replace OBS link'}).click();await page.waitForFunction(()=>document.querySelector('#mana-url').value.length>0);assert.match(await page.locator('#mana-url').inputValue(),/arcade-overlay.html#worker=/);
  await page.evaluate(()=>{storeId='22222222-2222-4222-8222-222222222222';});await page.getByRole('button',{name:'SOLD',exact:true}).click();await page.getByText('Store changed. Connect again before controlling the sign.').waitFor();

@@ -48,7 +48,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13545,7 +13545,12 @@ async function routeRequest(request, env, ctx) {
       return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)), background: p => ctx?.waitUntil?.(p) });
     }
     if (url.pathname.startsWith('/live-studio/')) {
-      return await handleLiveStudio(request, env, { json, requireStoreUser, readJsonWithLimit }, url);
+      const whatnotFor = storeId => storeId === whatnotStoreId(env) && env.WHATNOT_API_KEY ? whatnotClient(env) : null;
+      return await handleLiveStudio(request, env, { json, requireStoreUser, readJsonWithLimit,
+        // The show's orders from the last day, for SYNC TOTALS.
+        showOrders: async (storeId, showId) => { const api = whatnotFor(storeId); if (!api) throw new Error('Whatnot is not connected'); return whatnotShowOrders(api, showId, new Date(Date.now() - 86400000).toISOString()); },
+        currentShow: async storeId => { const api = whatnotFor(storeId); if (!api) throw new Error('Whatnot is not connected'); return currentWhatnotShow(api); },
+      }, url);
     }
     if (url.pathname === '/whatnot/status' && request.method === 'GET') {
       return await handleWhatnotStatus(request, env, { requireStoreUser, json }, url);

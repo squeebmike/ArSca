@@ -1,18 +1,98 @@
-.mana-overlay {margin:0;background:transparent;overflow:hidden;font-family:monospace;color:#caffb3}
-#mana-sign {position:absolute;box-sizing:border-box;overflow:hidden;border:4px solid #a855f7;border-radius:24px;background:#160a2bee;box-shadow:inset 0 0 22px #883bcb,0 0 12px #74fc79;width:700px;height:130px;left:190px;top:820px}
-.mana-liquid {position:absolute;inset:45% -10% -45%;border-radius:40%;background:linear-gradient(0deg,#329b39,#b7ff42);opacity:.65;animation:mana-bubble 6s ease-in-out infinite alternate}
-.mana-title {position:relative;text-align:center;font-weight:900;font-size:clamp(14px,2vw,26px);letter-spacing:4px;padding:12px 0 6px;text-shadow:2px 2px #6f1fac}
-.mana-track {position:relative;overflow:hidden;white-space:nowrap;font-size:24px;font-weight:bold}
+/* Live Studio overlay: 90s comic + arcade. 1080 x 1920, transparent. */
+.mana-overlay {--ink:#0b0612;--paper:#fff6d8;--red:#ff2a4f;--yel:#ffe23d;--cyan:#22e6ff;--mag:#ff3fd2;--lime:#b4ff3a;--pur:#6b2bd9;
+  margin:0;width:1080px;height:1920px;position:relative;background:transparent;overflow:hidden;font-family:'Press Start 2P',monospace;color:var(--paper)}
+.mana-panel {position:absolute;box-sizing:border-box;border:6px solid var(--ink);border-radius:6px;
+  background:radial-gradient(circle,#ffffff1f 1.6px,transparent 1.8px) 0 0/10px 10px,linear-gradient(160deg,#2a0f55,#14062b 70%);
+  box-shadow:8px 8px 0 var(--ink),0 0 0 3px var(--yel) inset,0 0 26px #ff3fd277}
+.mana-panel::after {content:"";position:absolute;inset:0;pointer-events:none;border-radius:2px;
+  background:repeating-linear-gradient(0deg,#0000 0 3px,#00000030 3px 4px);mix-blend-mode:multiply;animation:mana-flicker 4s steps(2) infinite}
+.mana-label {display:block;font-size:13px;letter-spacing:1px;color:var(--cyan);text-shadow:2px 2px 0 var(--ink);margin-bottom:8px}
+
+/* Score board + boss */
+#mana-hud {left:40px;width:1000px;padding:18px 22px 20px}
+.mana-hud-row {display:flex;justify-content:space-between;gap:12px;text-align:center}
+.mana-stat {flex:1}.mana-stat b {display:block;font-size:30px;color:var(--yel);text-shadow:3px 3px 0 var(--red),6px 6px 0 var(--ink)}
+.mana-stat b.bump {animation:mana-bump .5s ease-out}
+#mana-boss {position:relative;margin-top:18px}
+.mana-boss-top {display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;text-shadow:2px 2px 0 var(--ink)}
+#mana-boss-name {color:var(--red);font-family:Bangers,'Press Start 2P',sans-serif;font-size:30px;letter-spacing:2px;-webkit-text-stroke:1.5px var(--ink)}
+#mana-boss-hp {align-self:flex-end;color:var(--paper)}
+.mana-boss-bar {position:relative;height:34px;border:5px solid var(--ink);background:#3a0d18;box-shadow:inset 0 0 0 3px #ffffff40}
+#mana-boss-fill {position:absolute;inset:0 auto 0 0;width:100%;transition:width .6s steps(12);
+  background:repeating-linear-gradient(90deg,#0000 0 22px,#00000055 22px 26px),linear-gradient(180deg,#ff8a3d,var(--red) 55%,#a3001c)}
+#mana-boss-fill.low {background:repeating-linear-gradient(90deg,#0000 0 22px,#00000055 22px 26px),linear-gradient(180deg,#fff27a,#ffb000)}
+#mana-boss-ko {position:absolute;inset:-14px 0;display:none;align-items:center;justify-content:center;font-family:Bangers,sans-serif;font-style:normal;font-size:52px;color:var(--yel);-webkit-text-stroke:3px var(--ink);transform:rotate(-6deg)}
+#mana-boss.defeated #mana-boss-ko {display:flex;animation:mana-stamp .5s cubic-bezier(.2,2,.4,1)}
+#mana-boss.hit .mana-boss-bar {animation:mana-shake .45s}
+#mana-boss-hits {position:absolute;right:40px;top:44px;width:0;height:0;z-index:2}
+#mana-boss-hits b {position:absolute;right:0;font-family:Bangers,sans-serif;font-size:58px;color:var(--paper);-webkit-text-stroke:3px var(--ink);text-shadow:4px 4px 0 var(--red);white-space:nowrap;animation:mana-damage 1.4s ease-out forwards}
+#mana-combo {position:absolute;right:-14px;bottom:-34px;display:none;padding:8px 16px;background:var(--mag);border:5px solid var(--ink);box-shadow:5px 5px 0 var(--ink);font-family:Bangers,sans-serif;font-size:36px;letter-spacing:2px;color:var(--paper);-webkit-text-stroke:1.5px var(--ink);transform:rotate(4deg)}
+#mana-combo.on {display:block;animation:mana-stamp .4s cubic-bezier(.2,2,.4,1)}
+
+/* Marquee sign: a comic caption box */
+#mana-sign {overflow:hidden;background:radial-gradient(circle,#0b061222 1.6px,transparent 1.8px) 0 0/9px 9px,var(--yel);color:var(--ink);box-shadow:8px 8px 0 var(--ink),0 0 28px #ffe23d88}
+#mana-sign::after {display:none}
+.mana-title {position:relative;text-align:center;font-family:Bangers,sans-serif;font-size:clamp(20px,3vw,34px);letter-spacing:5px;padding:10px 0 2px;color:var(--red);-webkit-text-stroke:1.5px var(--ink)}
+.mana-track {position:relative;overflow:hidden;white-space:nowrap;font-size:22px}
 #mana-message {display:inline-block;padding-left:100%;animation:mana-scroll var(--mana-speed,16s) linear infinite}
-.mana-bubbles i {position:absolute;bottom:-20px;width:14px;height:14px;border:2px solid #b5ff71;border-radius:50%;animation:mana-rise 4s linear infinite;opacity:.8}
-#mana-effect {position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#210f30ed;font-size:36px;font-weight:900;color:#dcff67;text-shadow:3px 3px #b34aff;z-index:2}
+
+/* Now playing: a comic cover / trading card */
+#mana-card {width:360px;padding:14px;transform:rotate(-2deg)}
+.mana-card-head {font-family:Bangers,sans-serif;font-size:30px;letter-spacing:3px;color:var(--yel);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 3px 0 var(--red);margin-bottom:10px;text-align:center}
+.mana-card-art {position:relative;height:330px;border:5px solid var(--ink);background:#090311;display:grid;place-items:center;overflow:hidden}
+.mana-card-art::before {content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(115deg,#0000 30%,#ffffff55 45%,#0000 60%);background-size:250% 100%;animation:mana-foil 3.5s linear infinite}
+#mana-card-img {max-width:100%;max-height:100%;object-fit:contain;display:none}
+#mana-card-insert {font-size:26px;line-height:1.6;text-align:center;color:var(--lime);text-shadow:3px 3px 0 var(--ink);animation:mana-blink 1.1s steps(2) infinite}
+#mana-card-insert.still {animation:none;font-size:20px;color:#7d6a99}
+#mana-card.has-art #mana-card-img {display:block}#mana-card.has-art #mana-card-insert {display:none}
+#mana-card-title {margin-top:12px;font-size:15px;line-height:1.5;color:var(--paper);text-shadow:2px 2px 0 var(--ink);max-height:68px;overflow:hidden}
+#mana-card-detail {font-size:11px;line-height:1.5;color:var(--cyan);margin-top:6px;max-height:34px;overflow:hidden}
+#mana-card-price {position:absolute;right:-26px;top:58px;display:none;padding:10px 14px;background:var(--red);border:5px solid var(--ink);box-shadow:5px 5px 0 var(--ink);font-family:Bangers,sans-serif;font-size:34px;color:var(--paper);-webkit-text-stroke:1.2px var(--ink);transform:rotate(8deg)}
+#mana-card-price small {display:block;font-family:'Press Start 2P',monospace;font-size:9px;-webkit-text-stroke:0;color:var(--yel)}
+#mana-card.has-price #mana-card-price {display:block}
+#mana-card.big {width:1000px;transform:none;display:flex;flex-direction:column}
+#mana-card.big .mana-card-art {flex:1;height:auto;min-height:0}
+#mana-card.big .mana-card-head {position:absolute;left:24px;top:24px;z-index:2;padding:6px 12px;background:var(--ink);font-size:34px}
+#mana-card.big #mana-card-title {font-size:22px;max-height:70px}
+#mana-card.big #mana-card-price {top:30px;right:30px;font-size:52px}
+#mana-queue {width:300px;padding:12px 16px}
+#mana-queue .mana-card-head {font-size:24px;margin-bottom:6px}
+#mana-queue-list {margin:0;padding-left:30px;font-size:12px;line-height:1.7}
+#mana-queue-list li::marker {color:var(--yel)}
+
+/* Effects: a comic burst over the sign */
+#mana-effect {position:absolute;z-index:5;display:none;align-items:center;justify-content:center;pointer-events:none}
 #mana-effect.active {display:flex}
-#mana-coins {position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3}
-#mana-coins i {position:absolute;top:-30px;font-size:24px;color:#ffe96b;animation:mana-fall 1.8s linear infinite}
+.mana-burst {position:relative;min-width:620px;min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 70px;box-sizing:border-box;
+  background:radial-gradient(circle,#ffffff33 2px,transparent 2.4px) 0 0/12px 12px,var(--yel);
+  clip-path:polygon(50% 0,59% 14%,74% 3%,75% 20%,93% 13%,86% 31%,100% 36%,88% 49%,100% 63%,84% 67%,92% 86%,73% 80%,68% 100%,55% 85%,43% 100%,36% 82%,17% 94%,20% 74%,0 70%,13% 55%,2% 40%,18% 33%,8% 14%,28% 18%,31% 2%,42% 15%);
+  filter:drop-shadow(10px 10px 0 var(--ink));animation:mana-pop .45s cubic-bezier(.2,2,.4,1)}
+#mana-effect-word {font-family:Bangers,sans-serif;font-size:120px;line-height:.9;color:var(--red);-webkit-text-stroke:5px var(--ink);text-shadow:7px 7px 0 var(--ink);transform:rotate(-6deg)}
+#mana-effect-main {margin-top:14px;font-family:Bangers,sans-serif;font-size:72px;letter-spacing:2px;color:var(--paper);-webkit-text-stroke:3px var(--ink);text-shadow:5px 5px 0 var(--ink)}
+#mana-effect-sub {margin-top:12px;max-width:520px;font-size:18px;line-height:1.5;color:var(--ink)}
+#mana-effect.k-jackpot .mana-burst,#mana-effect.k-boss .mana-burst {background:linear-gradient(115deg,#ff3fd2,#22e6ff,#b4ff3a,#ffe23d,#ff2a4f,#ff3fd2);background-size:300% 300%;animation:mana-pop .45s cubic-bezier(.2,2,.4,1),mana-holo 2.2s linear infinite}
+#mana-effect.k-boss .mana-burst {min-width:860px;min-height:560px}
+#mana-effect.k-countdown #mana-effect-word {font-size:220px;font-family:'Press Start 2P',monospace;-webkit-text-stroke:0;color:var(--red);text-shadow:8px 8px 0 var(--ink)}
+#mana-effect.k-giveaway .mana-burst,#mana-effect.k-winner .mana-burst {background:radial-gradient(circle,#ffffff33 2px,transparent 2.4px) 0 0/12px 12px,var(--cyan)}
+#mana-effect.k-gameover .mana-burst,#mana-effect.k-ready .mana-burst,#mana-effect.k-coin .mana-burst {clip-path:none;border:8px solid var(--ink);background:repeating-linear-gradient(0deg,#0000 0 3px,#0006 3px 4px),#14062b;min-height:300px}
+#mana-effect.k-gameover #mana-effect-word,#mana-effect.k-ready #mana-effect-word,#mana-effect.k-coin #mana-effect-word {font-family:'Press Start 2P',monospace;font-size:56px;-webkit-text-stroke:0;color:var(--yel);text-shadow:5px 5px 0 var(--red);animation:mana-blink 1s steps(2) infinite}
+#mana-coins {position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4}
+#mana-coins i {position:absolute;top:-60px;width:40px;height:40px;border-radius:50%;border:4px solid var(--ink);background:radial-gradient(circle at 35% 30%,#fff7b0,#ffcc00 45%,#c98a00);font-style:normal;color:transparent;animation:mana-fall 2.2s linear infinite}
+.mana-hidden {display:none!important}
+
 @keyframes mana-scroll {to {transform:translateX(-100%)}}
-@keyframes mana-bubble {to {transform:translateY(-8%) rotate(8deg)}}
-@keyframes mana-rise {to {transform:translateY(-220px) scale(.5);opacity:0}}
-@keyframes mana-fall {to {transform:translateY(330px) rotate(270deg)}}
+@keyframes mana-fall {to {transform:translateY(2000px) rotate(540deg)}}
+@keyframes mana-pop {0% {transform:scale(.2) rotate(-12deg)} 100% {transform:scale(1) rotate(0)}}
+@keyframes mana-stamp {0% {transform:scale(2.4) rotate(-14deg);opacity:0} 100% {opacity:1}}
+@keyframes mana-bump {0% {transform:scale(1.6)} 100% {transform:scale(1)}}
+@keyframes mana-shake {0%,100% {transform:translate(0)} 20% {transform:translate(-10px,4px)} 40% {transform:translate(9px,-4px)} 60% {transform:translate(-6px,2px)} 80% {transform:translate(4px,-1px)}}
+@keyframes mana-damage {0% {transform:translateY(0) scale(.6);opacity:0} 15% {transform:translateY(-10px) scale(1.2);opacity:1} 100% {transform:translateY(-110px) scale(1);opacity:0}}
+@keyframes mana-blink {50% {opacity:0}}
+@keyframes mana-foil {0% {background-position:150% 0} 100% {background-position:-150% 0}}
+@keyframes mana-holo {0% {background-position:0 50%} 100% {background-position:300% 50%}}
+@keyframes mana-flicker {50% {opacity:.85}}
+@media(prefers-reduced-motion:reduce) {#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
+
 .mana-controls {padding:16px;border:1px solid #9457d3;border-radius:14px;background:#171024;color:#e7daf8;font:13px system-ui;margin-bottom:16px}
 .mana-controls h2 {margin:0 0 8px;font-size:18px;color:#c3ff80}
 .mana-controls .mana-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -23,4 +103,15 @@
 .mana-controls .mana-preview {position:relative;aspect-ratio:1080/1920;max-width:240px;margin:12px auto;background:linear-gradient(#20333d 0 44%,#080a11 44% 51%,#353144 51%);border:1px solid #76548b}
 .mana-controls iframe {position:absolute;inset:0;width:1080px;height:1920px;border:0;transform:scale(var(--preview-scale,.22));transform-origin:top left}
 .mana-controls small {display:block;color:#bbaacb;margin:8px 0;line-height:1.5}
-@media(prefers-reduced-motion:reduce) {.mana-liquid,.mana-bubbles i,#mana-coins i {animation:none} #mana-message {animation:none;padding-left:10px}}
+
+.mana-controls h3 {margin:16px 0 8px;font-size:14px;color:#ffe23d;letter-spacing:1px;border-top:1px solid #4c3463;padding-top:12px}
+.mana-controls .mana-row {display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0}
+.mana-controls .mana-row input {flex:1;min-width:180px}
+.mana-controls .mana-check span {display:flex;align-items:center;gap:6px}
+.mana-controls .mana-score {font:700 15px ui-monospace,monospace;color:#c3ff80;margin:6px 0}
+.mana-controls .mana-rules {border-left:3px solid #ffe23d;padding-left:8px;color:#e9dcb0}
+.mana-controls .mana-found,.mana-controls .mana-stage {display:grid;gap:4px;margin:6px 0}
+.mana-controls .mana-found-row,.mana-controls .mana-stage-row {display:flex;align-items:center;gap:6px;padding:4px 6px;background:#221733;border-radius:6px}
+.mana-controls .mana-found-row span,.mana-controls .mana-stage-row span {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mana-controls .mana-stage-row b {color:#ffe23d;font-size:11px;min-width:52px}
+.mana-controls .mana-found-row button,.mana-controls .mana-stage-row button {margin:0;padding:4px 8px}

@@ -11,7 +11,7 @@ export default {async fetch(req,env){
  const u=new URL(req.url), room=env.ROOM.getByName(u.searchParams.get('store')||'one');
  if(u.pathname==='/socket')return room.fetch(req);
  const b=req.method==='POST'?await req.json():{};
- const result=u.pathname==='/link'?await room.rotateOverlay():u.pathname==='/revoke'?await room.revokeOverlay():u.pathname==='/effect'?await room.trigger(b.kind):u.pathname==='/settings'?await room.update(b.settings,b.revision):u.pathname==='/event'?await room.receiveWhatnot(b.id,b.event):await room.snapshot();
+ const result=u.pathname==='/link'?await room.rotateOverlay():u.pathname==='/revoke'?await room.revokeOverlay():u.pathname==='/effect'?await room.trigger(b.kind):u.pathname==='/settings'?await room.update(b.settings,b.revision):u.pathname==='/event'?await room.receiveWhatnot(b.id,b.event):u.pathname==='/stage'?await room.setStage(b.stage):u.pathname==='/sync'?await room.syncStats(b.orders):u.pathname==='/reset'?await room.resetStats():await room.snapshot();
  return Response.json(result);
 }};`,resolveDir:process.cwd(),sourcefile:'runtime-harness.mjs'},bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers'],write:false});
 const options={workers:[{name:'studio-test',modules:true,script:result.outputFiles[0].text,compatibilityDate:'2026-08-20',durableObjects:{ROOM:{className:'ManaLiveStudio',useSQLite:true}}}]};
@@ -36,6 +36,21 @@ try {
  const effectId=(await call('/state')).effect.id;
  await call('/event',{id:'old-event',event:{...event,type:'shows.ended',timestamp:new Date(Date.now()-2000).toISOString()}});
  assert.equal((await call('/state')).effect.id,effectId,'out-of-order show event does not override newer event');
+ // Sales: the score board, boss damage and the comic burst (2026-11-01).
+ const sale=(id,amount,extra={})=>({type:'orders.created',version:'v2',seller_id:'s',timestamp:new Date().toISOString(),data:{id,show_id:'show',status:'pending_fulfillment',transaction_type:'buy_it_now',amounts:{subtotal:{amount:String(amount),currency:'USD'}},buyer:{username:'collector42'},...extra}});
+ msg=message(ws);await call('/event',{id:'sale-1',event:sale('o1',40)});let got=await msg;
+ assert.equal(got.type,'effect');assert.equal(got.effect.kind,'sold');assert.equal(got.effect.amount,40);assert.equal(got.stats.gross,40);assert.equal(JSON.stringify(got).includes('collector42'),false,'buyer names are off by default');
+ // A late webhook retry still counts, without a burst.
+ msg=message(ws);await call('/event',{id:'sale-2',event:{...sale('o2',10),timestamp:new Date(Date.now()-3600000).toISOString()}});got=await msg;
+ assert.equal(got.type,'stats');assert.equal(got.stats.gross,50);assert.equal(got.stats.sold,2);
+ msg=message(ws);await call('/event',{id:'sale-3',event:{...sale('o2',10,{status:'cancelled'}),type:'orders.updated'}});got=await msg;assert.equal(got.stats.gross,40,'a cancelled order comes back off');
+ msg=message(ws);await call('/settings',{revision:1,settings:{bossGoal:100}});await msg;
+ msg=message(ws);await call('/event',{id:'sale-4',event:sale('o3',75)});got=await msg;assert.equal(got.effect.kind,'boss');assert.equal(got.stats.boss.defeated,true);assert.ok(got.effect.reward);
+ msg=message(ws);await call('/stage',{stage:{now:{title:'Spawn #1',price:28,image:'https://x.example/a.jpg'},next:[{title:'X-Men #1'}]}});got=await msg;assert.equal(got.stage.now.title,'Spawn #1');
+ // An auction sale moves NOW PLAYING to the next item lined up.
+ msg=message(ws);await call('/event',{id:'sale-5',event:sale('o4',5,{transaction_type:'auction'})});got=await msg;assert.equal(got.stage.now.title,'X-Men #1');assert.equal(got.stage.next.length,0);
+ assert.equal((await call('/sync',{orders:[{id:'a',show_id:'show',status:'completed',amounts:{subtotal:{amount:'5'}},created_at:'2026-11-01T00:00:00Z'}]})).stats.gross,5);
+ assert.equal((await call('/reset')).stats.gross,0);
  closed=close(ws);ws.send(JSON.stringify({kind:'jackpot'}));assert.equal((await closed).code,1008,'overlay cannot send controls');
  const viewer=await socket();msg=message(viewer);viewer.send(JSON.stringify({token:link.token}));await msg;
  closed=close(viewer);await call('/revoke');assert.equal((await closed).code,1008);
