@@ -90,6 +90,7 @@ export function whatnotProfileKind(item) {
 // rule, photos and category. data: the row's raw data.
 export function whatnotDesired(row, item) {
   const d = row.data || {};
+  const categoryId = whatnotCategoryId(item);
   const status = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
   const wanted = d.sellOnWhatnot === true;
   const sellable = wanted && !['sold', 'archived', 'deleted', 'presale'].includes(status) && !item.awaitingReceipt && !item.dropship;
@@ -103,9 +104,18 @@ export function whatnotDesired(row, item) {
     title: String(item.name || 'Item').slice(0, 200),
     // Whatnot won't publish without a description.
     description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
-    categoryId: whatnotCategoryId(item),
+    categoryId,
+    attributes: categoryId ? whatnotAttributes(item, d, categoryId) : [],
     profileKind: whatnotProfileKind(item),
     media: (item.photos || []).filter(u => /^https:\/\//i.test(u)).slice(0, 8).map(url => ({ url })),
+  };
+}
+// What a listing's title/description/details and photos were last sent as,
+// so a change goes out once (the same listing is edited, never replaced).
+export function whatnotContentKeys(want) {
+  return {
+    contentKey: JSON.stringify([want.title, want.description, want.attributes || []]),
+    mediaKey: JSON.stringify((want.media || []).map(m => m.url)),
   };
 }
 
@@ -124,21 +134,41 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
     if (!want.categoryId) return { link: { ...base, error: 'No Whatnot category for "' + (item.category || 'this category') + '"', errorAt: new Date().toISOString() }, retry: false, action: 'error' };
     if (!(want.price > 0)) return { link: { ...base, error: 'No price', errorAt: new Date().toISOString() }, retry: false, action: 'error' };
     const knownProfile = await profileId?.(want.profileKind);
-    const created = await api('POST', '/products', {
+    const product = {
       title: want.title, description: want.description, external_id: row.id,
-      category: { id: want.categoryId }, media: want.media,
+      category: { id: want.categoryId }, media: want.media, attributes: want.attributes,
       dimension_profile: knownProfile ? { id: knownProfile } : WHATNOT_PROFILES[want.profileKind],
-    });
+    };
+    let created = await api('POST', '/products', product);
+    // Item details are extra: if Whatnot turns one down, list it without them.
+    if (!created.ok && created.status === 422 && want.attributes.length) { created = await api('POST', '/products', { ...product, attributes: [] }); base.detailsNote = 'Item details not accepted by Whatnot'; }
     if (!created.ok || !created.data?.id) return fail(created);
     productId = created.data.id;
     if (!knownProfile && created.data.dimension_profile?.id) await saveProfileId?.(want.profileKind, String(created.data.dimension_profile.id));
     const variants = await api('GET', `/products/${encodeURIComponent(productId)}/variants?limit=5`);
     variantId = variants.data?.data?.[0]?.id || '';
     if (!variantId) return fail(variants, 'Whatnot made the product but no variant came back');
-    Object.assign(base, { productId, variantId, url: created.data.url || '', createdAt: new Date().toISOString(), price: null, qty: null });
+    Object.assign(base, { productId, variantId, url: created.data.url || '', createdAt: new Date().toISOString(), price: null, qty: null }, whatnotContentKeys(want));
   }
 
   let action = link?.productId ? 'none' : 'created';
+  // Title, description, details and photos edited here go to the same
+  // listing (PATCH, never a new one): its saves and bookmarks stay.
+  // (Not for a listing being taken down: a deleted item has nothing to send.)
+  if (link?.productId && want.qty > 0) {
+    const keys = whatnotContentKeys(want);
+    const patch = {};
+    if (base.contentKey !== keys.contentKey) Object.assign(patch, { title: want.title, description: want.description, attributes: want.attributes });
+    if (base.mediaKey !== keys.mediaKey && want.media.length) patch.media = want.media;
+    if (Object.keys(patch).length) {
+      let r = await api('PATCH', `/products/${encodeURIComponent(productId)}`, patch);
+      if (!r.ok && r.status === 422 && patch.attributes?.length) { r = await api('PATCH', `/products/${encodeURIComponent(productId)}`, { ...patch, attributes: undefined }); base.detailsNote = 'Item details not accepted by Whatnot'; }
+      if (r.status === 404) return { link: null, retry: true, action: 'gone' };
+      if (!r.ok) return fail(r);
+      Object.assign(base, keys);
+      action = 'updated';
+    }
+  }
   if (want.qty > 0 && want.price > 0 && base.price !== want.price) {
     const priced = await api('PATCH', `/products/${encodeURIComponent(productId)}/variants`, { variants: [{ id: variantId, external_id: row.id, pricing: { buy_it_now: { price: money(want.price) } } }] });
     if (priced.status === 404) return { link: null, retry: true, action: 'gone' }; // deleted on Whatnot: made again next run
@@ -553,4 +583,95 @@ export async function syncWhatnotShipments(deps, { pages = 2, cap = 1500 } = {})
     await deps.kvPut(key, board);
   }
   return { changed };
+}
+
+// --- Item details (Whatnot attributes) ------------------------------------------
+// Store, 2026-11-01: "add title description and photos too ... What other item
+// info can we use to sell more items on Whatnot?" Whatnot's category
+// attributes are its search filters (condition, set, grade, player, rookie,
+// publisher...). Ids and allowed values from Whatnot's product taxonomy;
+// an ENUM value is only sent when it is one Whatnot allows.
+const pick = (v, allowed) => { const s = String(v || '').trim(); if (!s) return ''; const hit = allowed.find(a => a.toLowerCase() === s.toLowerCase()); return hit || ''; };
+const yes = v => v === true || /^(true|yes|1)$/i.test(String(v || ''));
+const TCG_CONDITION = ['Graded', 'New', 'Mint', 'Near Mint', 'Light Played', 'Moderately Played', 'Heavily Played', 'Damaged'];
+const SPORTS_CONDITION = ['Graded', 'Raw - Near Mint or Better', 'Raw - Excellent', 'Raw - Very Good', 'Raw - Poor'];
+const COMIC_CONDITION = ['Graded', 'Gem Mint', 'Mint', 'Near Mint', 'Very Fine', 'Fine', 'Very Good', 'Good', 'Fair', 'Poor'];
+const GRADERS = ['PSA', 'CGC', 'BECKETT', 'SGC', 'TAG', 'ARS'];
+const COMIC_GRADERS = { cgc: 'Certified Guaranty Company (CGC)', cbcs: 'Comic Book Certification Service (CBCS)', pgx: 'Professional Grading Experts (PGX)' };
+const COMIC_GRADES = ['10.0', '9.9', '9.8', '9.6', '9.4', '9.2', '9.0', '8.5', '8.0', '7.5', '7.0', '6.5', '6.0', '5.5', '5.0', '4.5', '4.0', '3.5', '3.0', '2.5', '2.0', '1.8', '1.5', '0.5'];
+const POKEMON_LANG = ['English', 'Japanese', 'Dutch', 'German', 'French', 'Italian', 'Spanish', 'Portuguese', 'Korean', 'Traditional Chinese', 'Polish'];
+const SPORTS_CATS = new Set(['586', '590', '593', '599', '574', '602', '596', '2666', '610', '607', '139']);
+function tcgCondition(item) {
+  if (item.gradingCompany) return 'Graded';
+  if (item.isSealed) return 'New';
+  const c = String(item.condition || '').toLowerCase();
+  if (/^(nm|near mint)/.test(c)) return 'Near Mint';
+  if (/^(lp|light)/.test(c)) return 'Light Played';
+  if (/^(mp|moderate)/.test(c)) return 'Moderately Played';
+  if (/^(hp|heav)/.test(c)) return 'Heavily Played';
+  if (/^(dmg|damage)/.test(c)) return 'Damaged';
+  if (/^mint/.test(c)) return 'Mint';
+  return '';
+}
+function sportsCondition(item) {
+  if (item.gradingCompany) return 'Graded';
+  const c = String(item.condition || '').toLowerCase();
+  if (!c || /^(nm|near mint|mint|gem)/.test(c)) return 'Raw - Near Mint or Better';
+  if (/^(ex|excellent|lp)/.test(c)) return 'Raw - Excellent';
+  if (/^(vg|very good|mp)/.test(c)) return 'Raw - Very Good';
+  return 'Raw - Poor';
+}
+function comicCondition(item) {
+  if (item.gradingCompany) return 'Graded';
+  const c = String(item.condition || '').toLowerCase();
+  if (/^(nm|near mint)/.test(c)) return 'Near Mint';
+  if (/^(vf|very fine)/.test(c)) return 'Very Fine';
+  if (/^(vg|very good)/.test(c)) return 'Very Good';
+  return pick(item.condition, COMIC_CONDITION);
+}
+const firstName = v => Array.isArray(v) ? String(v[0]?.name || v[0] || '') : String(v || '');
+export function whatnotAttributes(item, data = {}, categoryId) {
+  const out = [];
+  const add = (id, value) => { const v = String(value ?? '').trim(); if (v) out.push({ id: String(id), value: v.slice(0, 200) }); };
+  const grader = String(item.gradingCompany || '').toUpperCase().replace('BGS', 'BECKETT');
+  const graded = !!item.gradingCompany;
+  const cert = data.cert_number || data.certNumber || '';
+  const cat = String(categoryId || '');
+  if (['2', '9', '8', '567', '2013', '269'].includes(cat)) {
+    add(84, tcgCondition(item));
+    if (cat === '2') {
+      add(936, item.set);
+      add(937, pick(item.language || 'English', POKEMON_LANG));
+      const name = String(item.name || '').toLowerCase();
+      add(893, item.isSealed ? (/booster box/.test(name) ? 'Booster Box' : /elite trainer|\betb\b/.test(name) ? 'Elite Trainer Box' : /blister/.test(name) ? 'Blister Pack' : /build (&|and) battle/.test(name) ? 'Build & Battle Box' : /booster|pack/.test(name) ? 'Booster Pack' : '') : 'Card');
+      add(197, item.isSealed ? '' : item.cardNumber);
+    }
+    if (cat === '9') { add(85, item.set); add(82, item.isSealed ? 'Sealed' : 'Single Card'); add(81, /^(en|english)?$/i.test(String(item.language || '')) ? 'English' : 'Non-English'); }
+    if (cat === '2' && graded) { add(192, 'true'); add(193, pick(grader, GRADERS)); add(194, item.grade); add(195, cert); }
+  } else if (SPORTS_CATS.has(cat)) {
+    add(11264, sportsCondition(item));
+    add(198, item.player); add(196, item.brand); add(199, item.variant); add(200, item.year); add(197, item.cardNumber);
+    if (graded) { add(192, 'true'); add(193, pick(grader, GRADERS)); add(194, item.grade); add(195, cert); }
+    add(10663, yes(data.is_auto) || item.isSigned ? 'Yes' : 'No');
+    add(10665, yes(data.is_rookie || data.isRookie) ? 'Yes' : 'No');
+    add(10664, yes(data.is_patch) ? 'Yes' : 'No');
+  } else if (cat === '244' || cat === '243') {
+    const c = item.comic || {};
+    add(13483, comicCondition(item));
+    add(141, c.publisher || item.brand);
+    const year = String(c.coverDate || c.storeDate || item.year || '').match(/\d{4}/)?.[0];
+    add(136, year);
+    add(137, c.seriesName || item.set);
+    add(138, c.number);
+    add(139, firstName(c.coverArtists) || firstName(c.artists));
+    add(140, firstName(c.characters));
+    if (graded) {
+      add(389, 'true');
+      add(144, COMIC_GRADERS[String(item.gradingCompany).toLowerCase()] || '');
+      add(145, pick(Number(item.grade) ? Number(item.grade).toFixed(1) : '', COMIC_GRADES));
+      add(390, cert);
+    }
+    if (item.isSigned) { add(392, 'true'); add(393, item.signedBy); }
+  }
+  return out;
 }
