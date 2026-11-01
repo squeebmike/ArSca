@@ -300,6 +300,8 @@ export async function reconcileWhatnotOrders(deps, { pages = 2 } = {}) {
   for (let page = 0; page < pages; page++) {
     const r = await deps.api('GET', `/orders?limit=50${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`);
     if (!r.ok) throw new Error('Whatnot orders: ' + whatnotErrorText(r));
+    // Buyer, show and status for the orders board, one write per page.
+    try { await deps.noteOrders?.(r.data?.data || []); } catch (_) {}
     for (const order of r.data?.data || []) {
       try { results.push(await processWhatnotOrder(order, deps)); }
       catch (e) { results.push({ orderId: order.id, error: e.message }); }
@@ -493,4 +495,62 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps) {
   }
   await deps.kvPut('whatnot-linked:' + deps.storeId, linked);
   return results;
+}
+
+// --- Orders board -------------------------------------------------------------
+// Store, 2026-11-01: Whatnot orders on the orders board with who bought what,
+// which show, and where the shipment is. Orders' buyer/show/status are kept
+// as they are seen (orderBoardNotes); shipments are read from Whatnot every
+// run, only those changed since the last look.
+export const SHIPPED_STATUSES = new Set(['dropped_off', 'in_transit', 'delivered']);
+export function orderBoardNotes(existing = {}, orders = [], cap = 1500) {
+  const next = { ...existing };
+  let changed = false;
+  for (const o of orders) {
+    if (!o?.id) continue;
+    const note = { buyer: String(o.buyer?.username || o.buyer?.display_name || ''), showId: String(o.show_id || ''), status: String(o.status || ''), createdAt: String(o.created_at || '') };
+    const before = next[o.id];
+    if (!before || before.buyer !== note.buyer || before.showId !== note.showId || before.status !== note.status) { next[o.id] = note; changed = true; }
+  }
+  const ids = Object.keys(next);
+  if (ids.length > cap) { ids.sort((a, b) => String(next[b].createdAt).localeCompare(String(next[a].createdAt))).slice(cap).forEach(id => { delete next[id]; }); changed = true; }
+  return { notes: next, changed };
+}
+// deps: api, kvGet, kvPut, storeId.
+export async function syncWhatnotShipments(deps, { pages = 2, cap = 1500 } = {}) {
+  const key = 'whatnot-board-ship:' + deps.storeId;
+  const board = (await deps.kvGet(key)) || { orders: {}, seen: {} };
+  board.orders ||= {}; board.seen ||= {};
+  // The first look goes further back, so earlier orders show as shipped.
+  if (!Object.keys(board.seen).length) pages = Math.max(pages, 6);
+  let cursor = '', changed = 0;
+  for (let page = 0; page < pages; page++) {
+    const r = await deps.api('GET', `/shipments?limit=50${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`);
+    if (!r.ok) throw new Error('Whatnot shipments: ' + whatnotErrorText(r));
+    for (const sh of r.data?.data || []) {
+      if (!sh?.id || board.seen[sh.id] === (sh.updated_at || sh.status)) continue;
+      const items = await deps.api('GET', `/shipments/${encodeURIComponent(sh.id)}/items?limit=50`);
+      if (!items.ok) continue;
+      const orderIds = [...new Set((items.data?.data || []).map(it => it.order_id).filter(Boolean))];
+      const info = {
+        shipmentId: sh.id, status: String(sh.status || ''), url: sh.url || '',
+        carrier: sh.tracking?.carrier || '', trackingCode: sh.tracking?.tracking_code || '',
+        buyer: sh.recipient?.username || sh.recipient?.display_name || '', dropoffDue: sh.dropoff_due || '',
+        orders: orderIds.length, updatedAt: sh.updated_at || sh.created_at || '',
+      };
+      for (const id of orderIds) board.orders[id] = info;
+      board.seen[sh.id] = sh.updated_at || sh.status;
+      changed++;
+    }
+    cursor = r.data?.next_cursor || '';
+    if (!cursor) break;
+  }
+  if (changed) {
+    const ids = Object.keys(board.orders);
+    if (ids.length > cap) ids.sort((a, b) => String(board.orders[b].updatedAt).localeCompare(String(board.orders[a].updatedAt))).slice(cap).forEach(id => { delete board.orders[id]; });
+    const keepShips = new Set(Object.values(board.orders).map(i => i.shipmentId));
+    for (const id of Object.keys(board.seen)) if (!keepShips.has(id)) delete board.seen[id];
+    await deps.kvPut(key, board);
+  }
+  return { changed };
 }

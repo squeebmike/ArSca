@@ -12,6 +12,7 @@ const DAY = 24 * 60 * 60 * 1000;
 // days of the later of "ordered" and "last book due" -- the store's own
 // listings promise 1 business day.
 export const SHIP_LATE_AFTER_DAYS = 3;
+const SHIPPED_STATUSES = new Set(['dropped_off', 'in_transit', 'delivered']);
 
 const text = (v, max = 200) => String(v ?? '').trim().slice(0, max);
 const dayOf = v => (v ? String(v).slice(0, 10) : '');
@@ -61,6 +62,9 @@ export function buildOrdersBoard({
   payments = [], lines = [], inventoryById = new Map(), receivedSkuIds = new Set(),
   storefrontOrders = [], storefrontLines = [], focOrders = [], focItems = [],
   shippedMarks = new Set(), skuByTitle = new Map(), today,
+  // Whatnot's own view (scripts/whatnot-sync.mjs): orders' buyer/show/status,
+  // each order's shipment, and show titles by Whatnot show id.
+  whatnotInfo = { orders: {}, ship: {}, showTitles: {} },
 }) {
   const linesBySale = new Map();
   for (const l of lines) { const list = linesBySale.get(l.sale_id) || []; list.push(l); linesBySale.set(l.sale_id, list); }
@@ -92,8 +96,12 @@ export function buildOrdersBoard({
     const ref = String(p.reference || '');
     const orderId = provider === 'ebay'
       ? text(p.provider_metadata?.ebayOrderId || ref, 60)
-      : text(ref.replace(/^whatnot:/i, '').split(':')[0] || p.sale_id, 60);
+      // "whatnot:<order>:..." (show report) or "whatnot-api:<order>:<item>"
+      // (recorded from Whatnot's own orders) -- the order is the first part.
+      : text(ref.replace(/^whatnot(?:-api)?:/i, '').split(':')[0] || p.sale_id, 60);
     if (!orderId) continue;
+    // Whatnot says the order was cancelled: nothing to ship.
+    if (provider === 'whatnot' && /^(cancelled|failed)$/.test(String(whatnotInfo.orders?.[orderId]?.status || ''))) continue;
     const key = provider + ':' + orderId;
     const o = market.get(key) || { channel: provider, id: orderId, number: orderId, buyer: text(p.provider_metadata?.buyer || p.provider_metadata?.buyerUsername || '', 80), createdAt: p.created_at, total: 0, items: [], labelled: false, saleIds: new Set() };
     if (String(p.created_at || '') < String(o.createdAt || '')) o.createdAt = p.created_at;
@@ -102,6 +110,23 @@ export function buildOrdersBoard({
     if (!o.saleIds.has(p.sale_id)) { o.saleIds.add(p.sale_id); for (const l of linesBySale.get(p.sale_id) || []) o.items.push(itemFromLine(l)); }
     market.set(key, o);
   }
+  // Whatnot: buyer, show and shipment from Whatnot itself; orders packed in
+  // one shipment (same buyer, bundled) are marked as shipping together.
+  const shipCount = new Map();
+  for (const o of market.values()) {
+    if (o.channel !== 'whatnot') continue;
+    const note = whatnotInfo.orders?.[o.id] || {}, ship = whatnotInfo.ship?.[o.id] || null;
+    if (!o.buyer) o.buyer = text(note.buyer || ship?.buyer || '', 80);
+    if (note.showId) { o.showId = note.showId; o.show = text(whatnotInfo.showTitles?.[note.showId] || '', 120); }
+    if (ship) {
+      o.shipment = { id: ship.shipmentId, status: ship.status, carrier: ship.carrier || '', tracking: ship.trackingCode || '', url: ship.url || '', dropoffDue: ship.dropoffDue || '' };
+      shipCount.set(ship.shipmentId, (shipCount.get(ship.shipmentId) || 0) + 1);
+      if (SHIPPED_STATUSES.has(ship.status)) { o.shipped = true; o.shippedBy = 'Whatnot: ' + ship.status.replace(/_/g, ' ') + (ship.trackingCode ? ' · ' + [ship.carrier, ship.trackingCode].filter(Boolean).join(' ') : ''); }
+    }
+    // Whatnot calls the order completed (delivered): done, shipment or not.
+    if (!o.shipped && note.status === 'completed') { o.shipped = true; o.shippedBy = 'Whatnot: completed'; }
+  }
+  for (const o of market.values()) if (o.shipment) o.shipsWith = Math.max(0, (shipCount.get(o.shipment.id) || 1) - 1);
   const finish = o => {
     const shipped = !!o.shipped || o.labelled || shippedMarks.has(o.channel + ':' + o.id);
     const { status, reason, expectedDate } = orderStatus({ items: o.items, shipped, createdAt: o.createdAt, today, pickup: !!o.pickup });
@@ -231,7 +256,17 @@ export async function handleOrdersBoard(request, env, deps, url) {
       } while (cursor);
     } catch (_) {}
   }
-  const board = buildOrdersBoard({ payments: payments || [], lines, inventoryById, receivedSkuIds, storefrontOrders: storefrontOrders || [], storefrontLines, focOrders: focOrders || [], focItems, shippedMarks, skuByTitle, today });
+  // Whatnot's own view of its orders (kept by the Whatnot sync).
+  const whatnotInfo = { orders: {}, ship: {}, showTitles: {} };
+  if (env.LBA_KV) {
+    try { whatnotInfo.orders = (await env.LBA_KV.get('whatnot-board-orders:' + storeId, 'json')) || {}; } catch (_) {}
+    try { whatnotInfo.ship = ((await env.LBA_KV.get('whatnot-board-ship:' + storeId, 'json')) || {}).orders || {}; } catch (_) {}
+  }
+  try {
+    const { data: shows } = await db(`whatnot_shows?store_id=eq.${sid}&whatnot_show_id=not.is.null&select=whatnot_show_id,title&order=started_at.desc&limit=200`);
+    for (const sh of shows || []) whatnotInfo.showTitles[sh.whatnot_show_id] = sh.title;
+  } catch (_) {}
+  const board = buildOrdersBoard({ payments: payments || [], lines, inventoryById, receivedSkuIds, storefrontOrders: storefrontOrders || [], storefrontLines, focOrders: focOrders || [], focItems, shippedMarks, skuByTitle, today, whatnotInfo });
   // Shipped orders older than 30 days just clutter the board.
   const cutoff = new Date(Date.now() - 30 * DAY).toISOString();
   for (const k of Object.keys(board.channels)) board.channels[k] = board.channels[k].filter(o => o.status !== 'shipped' || String(o.createdAt) >= cutoff);

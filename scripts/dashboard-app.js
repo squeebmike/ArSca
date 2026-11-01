@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.01.1-whatnot-show-costs';
+const APP_VERSION = '2026.11.01.2-whatnot-orders-board';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21627,7 +21627,7 @@ function renderOrdersBoardFromCache(){
       const on = _ordersBoardChannel === c;
       const n = c === 'all' ? channels.reduce((m, ch) => m + open(ch), 0) : open(c);
       return `<button class="hbtn" onclick="setOrdersBoardChannel('${c}')" style="${on ? 'background:rgba(0,255,179,.12);border-color:var(--g);color:var(--g)' : ''}">${c === 'all' ? 'ALL' : escHtml(ORDER_CHANNEL_LABEL[c].toUpperCase())} <span style="opacity:.7">${n}</span></button>`;
-    }).join('');
+    }).join('') + ((data.channels?.whatnot || []).some(o => o.status !== 'shipped') ? '<button class="hbtn" style="color:var(--purple, #c77dff)" onclick="openWhatnotPackList()">WHATNOT PACK LIST</button>' : '');
   }
   let orders = (_ordersBoardChannel === 'all' ? channels : [_ordersBoardChannel]).flatMap(c => data.channels?.[c] || []);
   if(filter === 'open') orders = orders.filter(o => o.status !== 'shipped');
@@ -21635,7 +21635,7 @@ function renderOrdersBoardFromCache(){
   const rank = { late:0, ready:1, waiting:2, shipped:3 };
   orders.sort((a, b) => (rank[a.status] - rank[b.status]) || String(a.expectedDate || '9999').localeCompare(String(b.expectedDate || '9999')) || String(b.createdAt).localeCompare(String(a.createdAt)));
   if(!orders.length){
-    list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Nothing here.' + (data.channels?.whatnot?.length ? '' : ' Whatnot orders show up once a show report is imported (Whatnot tab).') + '</div>';
+    list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">Nothing here.' + (data.channels?.whatnot?.length ? '' : ' Whatnot orders show up here on their own as they come in.') + '</div>';
     return;
   }
   list.innerHTML = orders.map(o => {
@@ -21652,7 +21652,9 @@ function renderOrdersBoardFromCache(){
     }).join('') || '<div style="font-size:10px;color:var(--dim)">No item details saved for this order.</div>';
     const actions = [];
     if(o.channel === 'ebay') actions.push(`<a class="hbtn" style="font-size:9px;text-decoration:none" href="https://www.ebay.com/sh/ord/details?orderid=${encodeURIComponent(o.id)}" target="_blank" rel="noopener">OPEN ON EBAY</a>`);
-    if((o.channel === 'ebay' || o.channel === 'whatnot') && o.shippedBy !== 'eBay label'){
+    if(o.channel === 'whatnot' && o.shipment?.url) actions.push(`<a class="hbtn" style="font-size:9px;text-decoration:none" href="${escHtml(o.shipment.url)}" target="_blank" rel="noopener">OPEN ON WHATNOT</a>`);
+    // Whatnot reports its own shipments: shipped is automatic there.
+    if((o.channel === 'ebay' || (o.channel === 'whatnot' && !o.shipment)) && o.shippedBy !== 'eBay label'){
       actions.push(o.shipped
         ? `<button class="hbtn" style="font-size:9px" onclick="markOrderShipped('${o.channel}','${escHtml(o.id)}',false)">UNDO SHIPPED</button>`
         : `<button class="hbtn" style="font-size:9px;color:var(--g)" onclick="markOrderShipped('${o.channel}','${escHtml(o.id)}',true)">MARK SHIPPED</button>`);
@@ -21672,6 +21674,7 @@ function renderOrdersBoardFromCache(){
         </div>
         <span style="font-family:var(--font-mono);font-size:9px;font-weight:700;color:${st.color};background:${st.bg};border:1px solid ${st.color};border-radius:4px;padding:2px 6px;white-space:nowrap">${o.status === 'ready' && o.pickup ? 'READY FOR PICKUP' : st.label}${o.status === 'waiting' && o.expectedDate ? ' · IN BY ' + escHtml(orderBoardDate(o.expectedDate).toUpperCase()) : ''}</span>
       </div>
+      ${o.channel === 'whatnot' && (o.show || o.shipment) ? `<div style="font-size:10px;color:var(--dim);margin-top:3px">${o.show ? '📺 ' + escHtml(o.show) : ''}${o.shipment ? (o.show ? ' · ' : '') + '📦 ' + escHtml(whatnotShipLabel(o.shipment)) : ''}${o.shipsWith ? ' · <b style="color:var(--gold)">ships with ' + o.shipsWith + ' other order' + (o.shipsWith === 1 ? '' : 's') + '</b>' : ''}</div>` : ''}
       <div style="font-size:10px;color:${st.color};margin:4px 0 2px">${escHtml(o.reason || '')}${o.shipped && o.shippedBy ? ' · ' + escHtml(o.shippedBy) : ''}${!o.shipped && o.handedOverCount ? ' · ' + Number(o.handedOverCount) + ' already ' + (o.pickup ? 'picked up' : 'shipped') : ''}</div>
       ${items}
       ${actions.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center">${actions.join('')}</div>` : ''}
@@ -21699,6 +21702,46 @@ async function completeFocOrderFromBoard(orderId, pickup){
     renderOrdersBoard();
   } catch(e) { toast_dash(e.message || String(e)); }
 }
+// Whatnot's shipment status, in words.
+const WHATNOT_SHIP_WORDS = { created:'not labelled yet', label_generated:'label printed', dropped_off:'dropped off', in_transit:'in transit', delivered:'delivered', failed:'delivery failed', cancelled:'cancelled' };
+function whatnotShipLabel(sh){
+  const words = WHATNOT_SHIP_WORDS[sh.status] || String(sh.status || '').replace(/_/g, ' ');
+  const due = sh.dropoffDue && !['dropped_off','in_transit','delivered'].includes(sh.status) ? ' · drop off by ' + orderBoardDate(sh.dropoffDue) : '';
+  return words + (sh.tracking ? ' · ' + [sh.carrier, sh.tracking].filter(Boolean).join(' ') : '') + due;
+}
+// PACK LIST: open Whatnot orders grouped by show, then buyer -- what goes in
+// each box, with orders Whatnot ships together kept together. Printable.
+function openWhatnotPackList(){
+  const orders = (_ordersBoard?.channels?.whatnot || []).filter(o => o.status !== 'shipped');
+  if(!orders.length){ toast_dash('No open Whatnot orders to pack'); return; }
+  const byShow = new Map();
+  for(const o of orders){
+    const show = o.show || 'Not from a show';
+    if(!byShow.has(show)) byShow.set(show, new Map());
+    const buyers = byShow.get(show);
+    const who = o.buyer || 'Unknown buyer';
+    if(!buyers.has(who)) buyers.set(who, []);
+    buyers.get(who).push(o);
+  }
+  const esc = escHtml;
+  let html = '<!doctype html><html><head><meta charset="utf-8"><title>Whatnot pack list</title><style>body{font:13px system-ui,sans-serif;margin:16px;color:#111}h1{font-size:18px}h2{font-size:15px;margin:18px 0 6px;border-bottom:2px solid #111}.b{border:1px solid #bbb;border-radius:6px;padding:8px;margin:6px 0;break-inside:avoid}.b h3{margin:0 0 4px;font-size:14px}.m{color:#555;font-size:11px}li{margin:2px 0}@media print{button{display:none}}</style></head><body>';
+  html += '<h1>Whatnot pack list</h1><div class="m">' + orders.length + ' open order' + (orders.length === 1 ? '' : 's') + ' · ' + new Date().toLocaleString() + '</div><button onclick="print()">PRINT</button>';
+  for(const [show, buyers] of byShow){
+    html += '<h2>' + esc(show) + '</h2>';
+    for(const [who, list] of [...buyers].sort((a, b) => a[0].localeCompare(b[0]))){
+      const items = list.flatMap(o => (o.items || []).map(it => ({ ...it, order:o.number || o.id })));
+      const ship = list.find(o => o.shipment)?.shipment;
+      html += '<div class="b"><h3>☐ ' + esc(who) + ' <span class="m">(' + items.reduce((n, it) => n + (it.qty || 1), 0) + ' item' + (items.length === 1 ? '' : 's') + ', ' + list.length + ' order' + (list.length === 1 ? '' : 's') + ')</span></h3>'
+        + (ship ? '<div class="m">📦 ' + esc(whatnotShipLabel(ship)) + '</div>' : '')
+        + '<ul>' + items.map(it => '<li>' + (it.qty > 1 ? '<b>' + it.qty + '×</b> ' : '') + esc(it.title || 'Item') + ' <span class="m">#' + esc(it.order) + '</span></li>').join('') + '</ul></div>';
+    }
+  }
+  const w = window.open('', '_blank');
+  if(!w){ toast_dash('Allow pop-ups to open the pack list'); return; }
+  w.document.write(html + '</body></html>');
+  w.document.close();
+}
+window.openWhatnotPackList = openWhatnotPackList;
 async function markOrderShipped(channel, orderId, shipped){
   try {
     const res = await storeWorkerFetch('/orders/mark-shipped', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:getActiveStoreId(), channel, orderId, shipped }) });
