@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.01.2-whatnot-orders-board';
+const APP_VERSION = '2026.11.01.3-whatnot-tools';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4484,6 +4484,94 @@ function whatnotSyncSummaryHtml(last, items){
   if(problems.length) html += problems.slice(0, 20).map(([id, l]) => `<div style="color:var(--red)">${escHtml(byId(id)?.name || l.name || id)}: ${escHtml(l.error)}</div>`).join('');
   return html;
 }
+// BACK TO BUY IT NOW (bulk bar): auctioned items return to the shop.
+async function backToBuyItNowSelected(){
+  const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in' && i.sellOnWhatnot === true).map(i => i.supabaseRowId || i.id);
+  if(!ids.length){ toast_dash('Select items that sell on Whatnot'); return; }
+  if(!confirm('Put ' + ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' back in your Whatnot shop as Buy It Now?')) return;
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/buy-it-now?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not update Whatnot');
+    toast_dash(d.done + ' back to Buy It Now');
+  } catch(e) { toast_dash(e.message || String(e)); }
+}
+// Orders board: CREATE LABEL (Whatnot makes it; print it in Whatnot) and
+// ADD TRACKING (shipped with your own label).
+async function createWhatnotLabel(shipmentId){
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/label?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ shipmentId }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not create the label');
+    toast_dash('Label requested -- print it from Whatnot (OPEN ON WHATNOT). The board updates when it is ready.');
+  } catch(e) { toast_dash(e.message || String(e)); }
+}
+async function addWhatnotTracking(orderId){
+  const carrier = prompt('Carrier (USPS, UPS, FedEx...)', 'USPS');
+  if(!carrier) return;
+  const trackingCode = prompt('Tracking number');
+  if(!trackingCode) return;
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/tracking?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ orderId, carrier:carrier.trim(), trackingCode:trackingCode.trim() }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add tracking');
+    toast_dash('Tracking added on Whatnot');
+    renderOrdersBoard();
+  } catch(e) { toast_dash(e.message || String(e)); }
+}
+window.createWhatnotLabel = createWhatnotLabel;
+window.addWhatnotTracking = addWhatnotTracking;
+// PAYOUTS: Whatnot's own financial report -- sales, real fees, what it paid.
+async function runWhatnotPayouts(days){
+  const out = document.getElementById('whatnot-payouts');
+  if(!out) return;
+  out.textContent = 'Asking Whatnot for the last ' + days + ' days...';
+  try {
+    const sid = encodeURIComponent(getActiveStoreId());
+    let r = await storeWorkerFetch(WORKER + '/whatnot/report?store_id=' + sid, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ days }) });
+    let d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not ask Whatnot');
+    const id = d.id;
+    for(let i = 0; i < 30; i++){
+      await new Promise(res => setTimeout(res, 4000));
+      r = await storeWorkerFetch(WORKER + '/whatnot/report?store_id=' + sid + '&id=' + encodeURIComponent(id), { cache:'no-store' });
+      d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.ok) throw new Error(d.error || 'Could not read the report');
+      if(d.status === 'failed' || d.status === 'cancelled') throw new Error('Whatnot could not make the report (' + d.status + ')');
+      if(d.status === 'completed') break;
+      out.textContent = 'Whatnot is making the report (' + (d.status || 'pending') + ')...';
+    }
+    if(d.status !== 'completed'){ out.textContent = 'Still being made -- try again in a minute.'; return; }
+    const s = d.summary || {};
+    const m = n => '$' + Number(n || 0).toFixed(2);
+    out.innerHTML = `<div style="color:var(--text)">Last ${days} days on Whatnot: ${s.orders || 0} orders</div>
+      <div>Sales ${m(s.sales)} · fees ${m(s.fees)} (commission ${m(s.commission)}, processing ${m(s.processing)}, tax on fees ${m(s.taxOnFees)})${s.coupons ? ' · coupons ' + m(s.coupons) : ''}${s.shippingCharged ? ' · shipping ' + m(s.shippingCharged) : ''}</div>
+      <div style="color:var(--g)"><b>Whatnot paid you ${m(s.net)}</b></div>
+      ${(s.shows || []).slice(0, 10).map(x => `<div>${escHtml(x.show)}: ${m(x.sales)} sales, ${m(x.fees)} fees, ${m(x.net)} paid</div>`).join('')}
+      ${d.url ? `<a class="hbtn" style="display:inline-block;margin-top:4px;text-decoration:none" href="${escHtml(d.url)}" target="_blank" rel="noopener">DOWNLOAD WHATNOT'S CSV</a>` : ''}`;
+  } catch(e) { out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+// SHOW TRENDS + TOP BUYERS.
+async function renderWhatnotInsights(){
+  const out = document.getElementById('whatnot-insights');
+  if(!out) return;
+  out.textContent = 'Loading...';
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/insights?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not load');
+    const m = n => '$' + Number(n || 0).toFixed(2);
+    const a = d.averages || {};
+    const shows = (d.shows || []).map(x => `<tr><td>${escHtml(new Date(x.date).toLocaleDateString('en-US', { month:'short', day:'numeric' }))}</td><td>${escHtml(String(x.title || '').slice(0, 40))}</td><td>${m(x.gross)}</td><td style="color:${x.net >= 0 ? 'var(--g)' : 'var(--red)'}">${m(x.net)}</td><td>${x.sold}</td><td>${x.buyers}</td><td>${x.peakViewers ?? ''}</td><td>${m(x.avgOrder)}</td></tr>`).join('');
+    const buyers = (d.buyers || []).slice(0, 25).map(b => `<tr><td>${escHtml(b.buyer)}</td><td>${b.orders}</td><td>${m(b.total)}</td><td>${b.shows}</td><td>${b.last ? escHtml(new Date(b.last).toLocaleDateString('en-US', { month:'short', day:'numeric' })) : ''}</td></tr>`).join('');
+    const tbl = 'style="width:100%;border-collapse:collapse;font-size:10px;margin-top:4px"';
+    out.innerHTML = `<div style="color:var(--text);margin-top:6px">SHOW TRENDS (${(d.shows || []).length} shows)</div>
+      <div>Average show: ${m(a.gross)} gross, ${m(a.net)} profit, ${a.sold} sold, ${a.buyers} buyers, ${a.peakViewers} peak viewers, ${m(a.avgOrder)} per order${d.best ? ' · best: ' + escHtml(String(d.best.title).slice(0, 40)) + ' (' + m(d.best.net) + ')' : ''}</div>
+      ${shows ? `<table ${tbl}><tr><th align="left">Date</th><th align="left">Show</th><th align="left">Gross</th><th align="left">Profit</th><th align="left">Sold</th><th align="left">Buyers</th><th align="left">Peak</th><th align="left">Avg order</th></tr>${shows}</table>` : '<div>No finished shows yet.</div>'}
+      <div style="color:var(--text);margin-top:10px">TOP BUYERS (${d.repeatBuyers || 0} came back more than once)</div>
+      ${buyers ? `<table ${tbl}><tr><th align="left">Buyer</th><th align="left">Orders</th><th align="left">Spent</th><th align="left">Shows</th><th align="left">Last</th></tr>${buyers}</table>` : '<div>No buyers yet.</div>'}`;
+  } catch(e) { out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
 // Cost of listings made straight on Whatnot (no inventory item), so show
 // profit counts them: rules by title ("contains" -> cost per unit, first
 // match wins) and a default. Saved with the other Whatnot settings
@@ -4504,8 +4592,9 @@ async function renderWhatnotCostsPanel(){
   el.innerHTML = '<div style="color:var(--text)">COST OF WHATNOT-ONLY LISTINGS</div>'
     + '<div>Listings made straight on Whatnot (mystery comics, bundles) have no item here, so their cost is set by title. One rule per line: words in the title | cost each. First match wins.</div>'
     + '<textarea id="whatnot-cost-rules" class="tsi" rows="4" style="width:100%;margin-top:4px" placeholder="ManaPocket | 1.50&#10;TOOFER | 3.00&#10;Bundle | 6.00">' + escHtml(rules) + '</textarea>'
+    + '<label style="display:flex;gap:6px;align-items:center;margin:6px 0;cursor:pointer"><input type="checkbox" id="whatnot-auto-titles"' + (settings.autoTitles === false ? '' : ' checked') + '> Build Whatnot titles from item details (year, set, card #, parallel, RC, grade) -- the dashboard name stays as it is</label>'
     + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Anything else: $<input id="whatnot-cost-default" class="tsi" style="width:80px;margin:0" inputmode="decimal" placeholder="none" value="' + escHtml(lc.defaultCost ?? '') + '">'
-    + '<button class="hbtn" style="margin:0" onclick="saveWhatnotCosts()">SAVE COSTS</button><button class="hbtn" style="margin:0" onclick="applyWhatnotCostsToPast()">APPLY TO PAST SALES</button></div><div id="whatnot-costs-result"></div>';
+    + '<button class="hbtn" style="margin:0" onclick="saveWhatnotCosts()">SAVE</button><button class="hbtn" style="margin:0" onclick="applyWhatnotCostsToPast()">APPLY TO PAST SALES</button></div><div id="whatnot-costs-result"></div>';
 }
 async function saveWhatnotCosts(){
   const out = document.getElementById('whatnot-costs-result');
@@ -4514,7 +4603,8 @@ async function saveWhatnotCosts(){
     const current = (await r.json()).settings || {};
     const def = String(document.getElementById('whatnot-cost-default')?.value || '').replace(/[$\s]/g, '');
     const listingCosts = { rules:parseWhatnotCostRules(document.getElementById('whatnot-cost-rules')?.value), defaultCost:def === '' || !isFinite(Number(def)) ? null : Math.round(Number(def) * 100) / 100 };
-    const res = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:{ ...current, listingCosts } }) });
+    const autoTitles = document.getElementById('whatnot-auto-titles')?.checked !== false;
+    const res = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:{ ...current, listingCosts, autoTitles } }) });
     const d = await res.json().catch(() => ({}));
     if(!res.ok || !d.ok) throw new Error(d.error || 'Could not save');
     if(out) out.innerHTML = '<span style="color:var(--g)">Saved: ' + listingCosts.rules.length + ' rule(s)' + (listingCosts.defaultCost != null ? ', $' + listingCosts.defaultCost.toFixed(2) + ' for anything else' : '') + '. New Whatnot sales use them.</span>';
@@ -4534,7 +4624,7 @@ async function applyWhatnotCostsToPast(){
 // ADD TO NEXT WHATNOT SHOW (inventory bulk bar): the selected items go into
 // the next scheduled show's lineup. Any not on Whatnot yet get SELL ON
 // WHATNOT ticked and are listed first.
-async function addSelectedToNextWhatnotShow(){
+async function addSelectedToNextWhatnotShow(asAuction){
   const items = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in');
   if(!items.length){ toast_dash('Select inventory items first'); return; }
   let show = null;
@@ -4547,14 +4637,23 @@ async function addSelectedToNextWhatnotShow(){
   if(!show){ toast_dash('No upcoming Whatnot show -- schedule one in Whatnot first'); return; }
   const when = show.startsAt ? new Date(show.startsAt).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
   const notListed = items.filter(i => i.sellOnWhatnot !== true);
-  if(!confirm('Add ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' to "' + show.title + '"' + (when ? ' (' + when + ')' : '') + '?' + (notListed.length ? '\n\n' + notListed.length + ' not on Whatnot yet will get SELL ON WHATNOT ticked and be listed first.' : ''))) return;
+  // AUCTION IN NEXT SHOW: a starting bid, a dollar amount or a percent of price.
+  let auction = null;
+  if(asAuction){
+    const ans = prompt('Starting bid for each item: a dollar amount (like 1) or a percent of its price (like 50%).\nAuctions only sell in the show; they leave your shop until BACK TO BUY IT NOW.', '1');
+    if(ans == null) return;
+    const m = String(ans).trim().match(/^\$?\s*(\d+(?:\.\d+)?)\s*(%)?$/);
+    if(!m){ toast_dash('Enter a number like 1 or 50%'); return; }
+    auction = m[2] ? { percent:Number(m[1]) } : { amount:Number(m[1]) };
+  }
+  if(!confirm((auction ? 'Auction ' : 'Add ') + items.length + ' item' + (items.length === 1 ? '' : 's') + (auction ? ' (starting at ' + (auction.percent ? auction.percent + '% of price' : '$' + Math.max(1, Math.round(auction.amount))) + ')' : '') + ' in "' + show.title + '"' + (when ? ' (' + when + ')' : '') + '?' + (notListed.length ? '\n\n' + notListed.length + ' not on Whatnot yet will get SELL ON WHATNOT ticked and be listed first.' : ''))) return;
   for(const item of notListed){ try { await updateBuiltInInventoryItem(item, { sellOnWhatnot:true }); } catch(e) {} }
   const ids = items.map(i => i.supabaseRowId || i.id);
   let added = 0; const problems = [];
   for(let i = 0; i < ids.length; i += 25){
     toast_dash('Adding to the show: ' + Math.min(i + 25, ids.length) + ' of ' + ids.length + '...');
     try {
-      const r = await storeWorkerFetch(WORKER + '/whatnot/show-add?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId:show.id }) });
+      const r = await storeWorkerFetch(WORKER + '/whatnot/show-add?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId:show.id, ...(auction ? { auction } : {}) }) });
       const d = await r.json().catch(() => ({}));
       if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add to the show');
       added += d.added || 0;
@@ -4584,7 +4683,9 @@ async function renderWhatnotConnection(){
     if(d.apiKeySet) {
       try { const { items, last } = await whatnotItemLinks(); body.innerHTML += whatnotSyncSummaryHtml(last, items); } catch(e) {}
       body.innerHTML += '<div style="margin-top:6px">Check SELL ON WHATNOT on an item to list it (Buy It Now, same price as here). Quantity and price follow every change; a Whatnot sale lowers stock here.</div><button class="hbtn" style="margin-top:6px" onclick="syncWhatnotNow()">SYNC WITH WHATNOT NOW</button><div id="whatnot-sync-result"></div>';
-      body.insertAdjacentHTML('beforeend', '<div id="whatnot-costs-panel" style="margin-top:12px"></div>');
+      body.insertAdjacentHTML('beforeend', '<div id="whatnot-costs-panel" style="margin-top:12px"></div>'
+        + '<div style="margin-top:12px;color:var(--text)">PAYOUTS <span style="color:var(--dim)">Whatnot\'s own numbers: sales, real fees, what it paid</span></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="hbtn" style="margin:0" onclick="runWhatnotPayouts(7)">LAST 7 DAYS</button><button class="hbtn" style="margin:0" onclick="runWhatnotPayouts(30)">LAST 30 DAYS</button></div><div id="whatnot-payouts"></div>'
+        + '<div style="margin-top:12px"><button class="hbtn" style="margin:0" onclick="renderWhatnotInsights()">SHOW TRENDS &amp; TOP BUYERS</button></div><div id="whatnot-insights"></div>');
       renderWhatnotCostsPanel();
     }
   } catch(e) {
@@ -21653,6 +21754,8 @@ function renderOrdersBoardFromCache(){
     const actions = [];
     if(o.channel === 'ebay') actions.push(`<a class="hbtn" style="font-size:9px;text-decoration:none" href="https://www.ebay.com/sh/ord/details?orderid=${encodeURIComponent(o.id)}" target="_blank" rel="noopener">OPEN ON EBAY</a>`);
     if(o.channel === 'whatnot' && o.shipment?.url) actions.push(`<a class="hbtn" style="font-size:9px;text-decoration:none" href="${escHtml(o.shipment.url)}" target="_blank" rel="noopener">OPEN ON WHATNOT</a>`);
+    if(o.channel === 'whatnot' && !o.shipped && o.shipment?.status === 'created') actions.push(`<button class="hbtn" style="font-size:9px;color:var(--g)" onclick="createWhatnotLabel('${escHtml(o.shipment.id)}')">CREATE LABEL</button>`);
+    if(o.channel === 'whatnot' && !o.shipped && (!o.shipment || o.shipment.status === 'created')) actions.push(`<button class="hbtn" style="font-size:9px" onclick="addWhatnotTracking('${escHtml(o.id)}')">ADD TRACKING</button>`);
     // Whatnot reports its own shipments: shipped is automatic there.
     if((o.channel === 'ebay' || (o.channel === 'whatnot' && !o.shipment)) && o.shippedBy !== 'eBay label'){
       actions.push(o.shipped
