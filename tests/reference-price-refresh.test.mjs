@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {referencePriceRequest,referencePriceAlarm,priceApiRequest,priceProductIdentity,apiReferencePrices,refreshedReferencePrices} from '../scripts/reference-price-refresh.mjs';
+import {referencePriceRequest,referencePriceAlarm,priceApiRequest,priceProductIdentity,apiReferencePrices,refreshedReferencePrices,WEBSITE_FRESH_MS,WEBSITE_DAILY_CALLS,WEBSITE_429_PAUSE_MS} from '../scripts/reference-price-refresh.mjs';
 const ref={productId:'123',title:'Shohei Ohtani #1',consoleId:'baseball-cards-2026-topps-five-star'};
 const data={status:'success',id:'123','product-name':ref.title,'console-name':'Baseball Cards 2026 Topps Five Star','loose-price':1234,'graded-price':2500,'manual-only-price':9900,'new-price':99999};
 const originalNow=Date.now;let now=1800000000000;Date.now=()=>now;
@@ -14,12 +14,12 @@ try{
  await Promise.all(Array.from({length:20},()=>referencePriceRequest(owner,request(ref))));assert.equal((await storage.list({prefix:'pc-demand:'})).size,1);assert.equal(calls.length,0,'page views enqueue without upstream calls');
  await referencePriceAlarm(owner);assert.equal(calls.length,1);let result=await(await referencePriceRequest(owner,request(ref))).json();assert.equal(result.referencePrices.ungraded,12.34);assert.equal(result.stale,false);assert.ok(!JSON.stringify(result).includes('private-test-token'));
  await referencePriceAlarm(owner);assert.equal(calls.length,1,'fresh or empty queue does not scan');
- now+=86400001;await referencePriceRequest(owner,request(ref));response=new Error('outage');await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34);assert.ok(alarm>=now+60000);
+ now+=WEBSITE_FRESH_MS+1;await referencePriceRequest(owner,request(ref));response=new Error('outage');await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34);assert.ok(alarm>=now+60000);
  now+=3600001;response={...data,'product-name':'Wrong player #1'};await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34,'bad identity never erases last verified price');
- now+=86400001;response={...data,'loose-price':0,'graded-price':0,'manual-only-price':0};await referencePriceRequest(owner,request(ref));await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34,'blank provider price preserves previous value');
- now+=86400001;response=new Response('limited',{status:429});await referencePriceRequest(owner,request(ref));await referencePriceAlarm(owner);assert.ok(values.get('pc-paused-until')>=now+3600000);const count=calls.length;await referencePriceAlarm(owner);assert.equal(calls.length,count,'quota pause is persistent');
+ now+=WEBSITE_FRESH_MS+1;response={...data,'loose-price':0,'graded-price':0,'manual-only-price':0};await referencePriceRequest(owner,request(ref));await referencePriceAlarm(owner);assert.equal(values.get('pc-cache:123').referencePrices.ungraded,12.34,'blank provider price preserves previous value');
+ now+=WEBSITE_FRESH_MS+1;response=new Response('limited',{status:429});await referencePriceRequest(owner,request(ref));await referencePriceAlarm(owner);assert.ok(values.get('pc-paused-until')>=now+3600000);const count=calls.length;await referencePriceAlarm(owner);assert.equal(calls.length,count,'quota pause is persistent');
  const paused=await(await referencePriceRequest(owner,request(ref))).json();assert.equal(paused.providerStatus,429);assert.ok(paused.retryAt>=now+3600000);assert.ok(!JSON.stringify(paused).includes('private-test-token'));
- now+=3600001;response=data;await referencePriceAlarm(owner);const last=calls.at(-1).at;now+=1100;
+ now+=3600001;response=data;const before429=calls.length;await referencePriceAlarm(owner);assert.equal(calls.length,before429,'after a 429 the website waits 12 hours; the store goes first');const last=calls.at(-1).at;now+=1100;
  const apiRequest=()=>new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'456'}})});
  await priceApiRequest(owner,apiRequest());assert.ok(calls.at(-1).at-last>=1100,'staff and public refresh share persisted rate gate');
  assert.equal((await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'https://evil.test',params:{t:'other'}})}))).status,400);
@@ -44,5 +44,37 @@ try{
  await Promise.all(['901','902','903'].map(id=>priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id}})}))));
  assert.equal(calls.length,3);for(let i=1;i<calls.length;i++)assert.ok(calls[i].at-calls[i-1].at>=1050,'concurrent API calls must start at least one second apart');
  await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'903'}})}));assert.equal(calls.length,3,'staff repeated lookup uses shared five-minute cache');
+ // 2026-11-01: website card views used up PriceCharting's limit (429 for
+ // hours). A website price is good for a week, website refreshes have a daily
+ // allowance, and a 429 holds them 12 hours while store calls go on.
+ {
+  values.clear();alarm=null;calls=[];response=data;let t=1900000000000;Date.now=()=>t;
+  const card=i=>({productId:String(5000+i),title:'Card #'+i,consoleId:'baseball-cards-2026-topps-five-star'});
+  const fill=async n=>{for(let i=0;i<n;i++)await referencePriceRequest(owner,request(card(i)));};
+  const drain=async n=>{for(let i=0;i<n;i++){t+=1200;await referencePriceAlarm(owner);}};
+  await fill(WEBSITE_DAILY_CALLS+20);
+  await drain(WEBSITE_DAILY_CALLS+20);
+  assert.equal(calls.length,WEBSITE_DAILY_CALLS,'website refreshes stop at the daily allowance');
+  assert.ok(alarm>=Date.parse(new Date(t).toISOString().slice(0,10)+'T00:00:00Z')+86400000,'and wait for tomorrow');
+  // A store lookup still goes through the same day.
+  t+=1200;await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'777'}})}));
+  assert.equal(calls.length,WEBSITE_DAILY_CALLS+1,'the store\'s own lookups are not held by the website allowance');
+  // Next day: the rest go.
+  t=Date.parse(new Date(t).toISOString().slice(0,10)+'T00:00:00Z')+86400000+5000;
+  await drain(1);assert.equal(calls.length,WEBSITE_DAILY_CALLS+2);
+  // A 429 from anyone: website refreshes wait 12 hours; store lookups retry after 1.
+  t+=1200;response=new Response('limited',{status:429});
+  await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'888'}})}));
+  const at429=calls.length;response=data;
+  t+=3600000+2000;await referencePriceAlarm(owner);assert.equal(calls.length,at429,'website still waiting');
+  await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'889'}})}));
+  assert.equal(calls.length,at429+1,'the store\'s lookup goes after an hour');
+  t+=WEBSITE_429_PAUSE_MS;await drain(1);assert.equal(calls.length,at429+2,'website resumes after 12 hours');
+  // A price checked within the week isn't refreshed for a page view.
+  values.set('pc-cache:5000',{...card(0),checkedAt:t-6*86400000,referencePrices:{ungraded:3}});
+  const view=await(await referencePriceRequest(owner,request(card(0)))).json();assert.equal(view.queued,false);assert.equal(view.referencePrices.ungraded,3);
+  Date.now=originalNow;
+ }
  console.log('Demand price cache, exact identity, quota/outage preservation and shared rate checks passed');
+ console.log('Website PriceCharting allowance, 12-hour 429 hold and week-long website prices passed');
 }finally{Date.now=originalNow;}
