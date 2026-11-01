@@ -18,7 +18,7 @@ async function upstream(owner,path,params,serverToken){
  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(identity)),cacheKey='pc-api:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
  const cached=await store.get(cacheKey);if(cached&&now-cached.at<300000)return new Response(cached.text,{headers:{'Content-Type':'application/json'}});
  const due=Math.max(Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0));
- if(due-now>GAP){await store.put('pc-last-provider-error','provider_paused');return reply({error:'Price provider temporarily paused'},503);}
+ if(due-now>GAP){await store.put('pc-last-provider-error','provider_paused');const last=Number(await store.get('pc-last-provider-status'))||0;return reply({error:'Price provider temporarily paused'+(last>=400?' (PriceCharting HTTP '+last+')':''),providerStatus:last||null,retryAt:new Date(due).toISOString()},503);}
  if(due>now)await new Promise(resolve=>setTimeout(resolve,due-now));
  await store.put('pc-next-call',Date.now()+GAP);
  const url=new URL(path,'https://www.pricecharting.com');
@@ -27,7 +27,7 @@ async function upstream(owner,path,params,serverToken){
   await store.put('pc-last-provider-error','request_started');
   const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(8000)});
   await store.put('pc-last-provider-status',response.status);await store.delete('pc-last-provider-error');
-  if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));return reply({error:'Price provider unavailable'},response.status);}
+  if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));return reply({error:'Price provider unavailable (PriceCharting HTTP '+response.status+')'},response.status);}
   const text=await response.text();if(text.length>2000000)return reply({error:'Price response too large'},502);
   try{const data=JSON.parse(text);if(data.status!=='error'&&text.length<100000)await store.put(cacheKey,{at:Date.now(),text});}catch{return reply({error:'Invalid price response'},502);}
   return new Response(text,{headers:{'Content-Type':'application/json'}});
