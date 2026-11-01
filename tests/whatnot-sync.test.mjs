@@ -346,7 +346,7 @@ assert.equal(r.link.error, 'title: String too long');
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /const WHATNOT_SYNC_CRON = '\*\/10 \* \* \* \*';/);
-assert.match(worker, /if \(event\?\.cron === WHATNOT_SYNC_CRON\) \{ await Promise\.allSettled\(\[runScheduledWhatnotSync\(env, ctx\)\]\); return; \}/);
+assert.match(worker, /if \(event\?\.cron === WHATNOT_SYNC_CRON\) \{[\s\S]{0,300}await Promise\.allSettled\(\[runScheduledWhatnotSync\(env, ctx\), sixHourRun \? null : runScheduledEbayNewSales\(env\)\]\);/);
 assert.match(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'), /"\*\/10 \* \* \* \*"/, 'the 10-minute trigger is deployed');
 assert.match(worker, /handleWhatnotWebhook\(request, env, \{ json, onEvent: record => ctx\?\.waitUntil\?\.\(handleWhatnotEventRecord\(env, ctx, record\)\), background: /);
 assert.match(worker, /focInternalPost\(env, ctx, storeId, '\/inventory\/record-external-sale', body\)/);

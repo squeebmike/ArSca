@@ -37,3 +37,20 @@ assert.match(schedBody, /\} catch \(e\) \{ console\.error\('Scheduled eBay order
 assert.match(worker, /await Promise\.allSettled\(\[runScheduledDealScans\(env\), runScheduledEbayReprice\(env\), runScheduledEbayOrderSync\(env\), runScheduledShopifyOrderSync\(env\), runScheduledStorefrontReviewRequests\(env\)(?:, runScheduled\w+\(env\))*\]\);/, 'runScheduledEbayOrderSync must be wired into the scheduled() cron handler alongside the existing jobs');
 
 console.log('eBay scheduled order-sync checks passed');
+
+// Every 10 minutes: new eBay sales only (store, 2026-10-31). The quantity
+// check (which emails) and the sold-out presale cleanup stay on the 6-hour run.
+{
+  const fnSrc = worker.slice(worker.indexOf('async function runScheduledEbayNewSales(env) {'), worker.indexOf('async function runScheduledEbayOrderSync(env) {'));
+  assert.match(fnSrc, /await syncEbayOrdersForStore\(env, storeId, ebayToken, [^;]*\{ reconcile: false, confirmedBy: null \}\);/);
+  assert.doesNotMatch(fnSrc, /qty-reconcile|end-sold-out-ebay-presales|sendEmail/, 'no emails or cleanup every 10 minutes');
+  const sched = worker.slice(worker.indexOf('if (event?.cron === WHATNOT_SYNC_CRON) {'), worker.indexOf('if (event?.cron === WHATNOT_SYNC_CRON) {') + 700);
+  assert.match(sched, /const sixHourRun = at\.getUTCMinutes\(\) === 0 && at\.getUTCHours\(\) % 6 === 0;/, "skips the 6-hour run's minute so the two never overlap");
+  assert.match(sched, /sixHourRun \? null : runScheduledEbayNewSales\(env\)/);
+  // The minute check itself.
+  const isSix = iso => { const at = new Date(iso); return at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0; };
+  assert.equal(isSix('2026-11-01T06:00:00Z'), true);
+  assert.equal(isSix('2026-11-01T06:10:00Z'), false);
+  assert.equal(isSix('2026-11-01T07:00:00Z'), false);
+  console.log('10-minute eBay sale check wiring passed');
+}
