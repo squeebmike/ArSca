@@ -37,6 +37,10 @@ async function upstream(owner,path,params,serverToken){
   await store.put('pc-last-provider-error','request_started');
   const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(8000)});
   await store.put('pc-last-provider-status',response.status);await store.delete('pc-last-provider-error');
+  // 404: PriceCharting has no such product. That one item has no price; it
+  // is not a reason to pause every lookup (2026-11-01: each 404 paused all
+  // calls for a minute and the price sync stopped after a few items).
+  if(response.status===404)return reply({error:'No such product (PriceCharting HTTP 404)'},404);
   if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));if(response.status===429)await store.put('pc-website-paused-until',Date.now()+WEBSITE_429_PAUSE_MS);return reply({error:'Price provider unavailable (PriceCharting HTTP '+response.status+')'},response.status);}
   const text=await response.text();if(text.length>2000000)return reply({error:'Price response too large'},502);
   try{const data=JSON.parse(text);if(data.status!=='error'&&text.length<100000)await store.put(cacheKey,{at:Date.now(),text});}catch{return reply({error:'Invalid price response'},502);}

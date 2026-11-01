@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { syncKind, pricechartingIdOf, comicGuidePrice, sportsGuidePrice, pcGradeBucket, planRow, nextBatch, runPriceChartingServerSync, PC_SYNC_BATCH, comicCoverPrice, comicIsIncentive, comicHasAnyPrice, comicDefaultPrice } from '../scripts/pricecharting-daily-sync.mjs';
+import { TRANSIENT_LOOKUP, syncKind, pricechartingIdOf, comicGuidePrice, sportsGuidePrice, pcGradeBucket, planRow, nextBatch, runPriceChartingServerSync, PC_SYNC_BATCH, comicCoverPrice, comicIsIncentive, comicHasAnyPrice, comicDefaultPrice } from '../scripts/pricecharting-daily-sync.mjs';
 
 // Store, 2026-10-31: comics, sports and Magic hadn't updated since 10/28 --
 // their daily update only ran when a dashboard was open after 3 AM. Comics
@@ -217,3 +217,6 @@ console.log('pricecharting progress checks passed');
   assert.deepEqual(res.needsPriceItems, ['MYSTERY BOOK']);
 }
 console.log('pricecharting cover-price fallback checks passed');
+// A product PriceCharting doesn't have is a real "no price", not a pause to wait out.
+assert.equal(TRANSIENT_LOOKUP.test('No such product (PriceCharting HTTP 404)'), false);
+assert.equal(TRANSIENT_LOOKUP.test('Price provider temporarily paused (PriceCharting HTTP 429)'), true);
