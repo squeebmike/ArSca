@@ -53,3 +53,28 @@ console.log('MTG lessons, card lookup, retrieval, citations, auth, quotas and fa
 assert.equal(verifiedCardImage("https://evil.example/normal/card.jpg"),null);
 assert.equal(verifiedCardImage("javascript:alert(1)"),null);
 assert.equal(verifiedCardImage("https://cards.scryfall.io/normal/front/a/b/card.jpg"),"https://cards.scryfall.io/normal/front/a/b/card.jpg");
+
+// Renew the existing customer session without consuming an AI question.
+for(const signed of [true,false]){
+ let authCalls=0;
+ const status=await handleMtgLearning(new Request('https://example.test/mtg-judge/session'),{}, {...deps,auth:async()=>{authCalls++;return signed?{user:{id:'private-user'}}:{error:new Response('',{status:401})};},limit:()=>{throw Error('Session check must not use quota');}});
+ assert.equal(status.status,signed?200:401);assert.deepEqual(await status.json(),{signedIn:signed});assert.equal(authCalls,1);assert.equal(status.headers.get('Cache-Control'),'no-store');
+}
+const sessionSource=academyScript.slice(academyScript.indexOf(" const sessionKey="),academyScript.indexOf(" if($('#judge-auth-status')){window"));
+function sessionHarness(saved,fetcher){
+ const store=new Map(saved?[['mp-foc-session-v1',JSON.stringify(saved)]]:[]),labels={};
+ const storage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v)};
+ const client=new Function('$','localStorage','fetch',sessionSource+';return {activeSession,refreshSignIn,checkSignIn,api};')(key=>labels[key]||(labels[key]={}),storage,fetcher);
+ return {client,store,labels};
+}
+const stale={access_token:'expired-test',refresh_token:'refresh-test',expires_at:1};
+let sessionRequests=[];
+let h=sessionHarness(stale,async(url,options)=>{sessionRequests.push({url,options});return url.includes('/auth/v1/token')?Response.json({access_token:'renewed-test',refresh_token:'rotated-test',expires_in:3600}):Response.json({signedIn:true});});
+await Promise.all([h.client.activeSession(),h.client.activeSession()]);assert.equal(sessionRequests.length,1);assert.equal(JSON.parse(h.store.get('mp-foc-session-v1')).refresh_token,'rotated-test');
+await h.client.checkSignIn();assert.match(h.labels['#judge-auth-status'].textContent,/Signed in/);assert.equal(h.labels['#judge-auth-link'].href,'/account');
+let attempts=0,refreshes=0;
+h=sessionHarness({...stale,expires_at:Math.floor(Date.now()/1000)+3600},async url=>{if(url.includes('/auth/v1/token')){refreshes++;return Response.json({access_token:'renewed-test',refresh_token:'rotated-test'});}attempts++;return attempts===1?Response.json({error:'expired'},{status:401}):Response.json({answer:'ok'});});
+assert.equal((await h.client.api('/mtg-judge/ask',{question:'test'})).answer,'ok');assert.equal(attempts,2);assert.equal(refreshes,1);
+h=sessionHarness(stale,async()=>new Response('',{status:503}));await assert.rejects(()=>h.client.activeSession(),/temporarily unavailable/);assert.equal(JSON.parse(h.store.get('mp-foc-session-v1')).access_token,'expired-test');
+h=sessionHarness(null,async()=>{throw Error('No session should not fetch');});await h.client.checkSignIn();assert.match(h.labels['#judge-auth-status'].textContent,/Sign in/);
+console.log('MTG customer-session renewal, status, retry and outage preservation passed.');

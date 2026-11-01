@@ -61,7 +61,8 @@ export function validateExplanation(raw,sources){
 }
 export async function handleMtgLearning(request,env,deps){
  const u=new URL(request.url),p=u.pathname.replace(/\/$/,'');
- if(!['/mtg-rules','/mtg-rules/app.js','/mtg-judge','/mtg-judge/status','/mtg-judge/card','/mtg-judge/ask'].includes(p))return null;
+ if(!['/mtg-rules','/mtg-rules/app.js','/mtg-judge','/mtg-judge/status','/mtg-judge/session','/mtg-judge/card','/mtg-judge/ask'].includes(p))return null;
+ if(p==='/mtg-judge/session'){if(request.method!=='GET')return response({error:'Use GET'},405);try{const auth=await deps.auth(request,env);return response({signedIn:!auth.error},auth.error?401:200);}catch{return response({error:'Sign-in service temporarily unavailable.'},503);}}
  if(p==='/mtg-judge/status')return request.method==='GET'?response({aiConfigured:!!env.ANTHROPIC_API_KEY&&!!env.LBA_KV}):response({error:'Use GET'},405);
  if(['/mtg-rules','/mtg-judge'].includes(p)){
   if(!['GET','HEAD'].includes(request.method))return response({error:'Use GET'},405);
