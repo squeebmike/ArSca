@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {
   whatnotCategoryId, whatnotDesired, syncWhatnotItem, runWhatnotListingSync,
   processWhatnotOrder, reconcileWhatnotOrders, whatnotFee, whatnotClient, WHATNOT_PROFILES,
-  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders, refreshRecentWhatnotShows,
+  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders, refreshRecentWhatnotShows, whatnotAttributes,
 } from '../scripts/whatnot-sync.mjs';
 
 // Store, 2026-10-31: "Anything I checkbox will be put on whatnot and synced.
@@ -189,6 +189,47 @@ assert.equal(r.link.error, 'title: String too long');
   // A link from before publishing was checked (marked 1) is checked once.
   kv.set('whatnot-linked:S', { z: 1 });
   assert.equal((await runWhatnotListingSync('S', deps)).checked, 1);
+}
+
+// Item details (Whatnot's search filters), only allowed values.
+{
+  const v = (attrs, id) => attrs.find(a => a.id === String(id))?.value;
+  let a = whatnotAttributes({ name: 'Charizard ex', set: 'Obsidian Flames', cardNumber: '223', condition: 'NM', language: 'English' }, {}, '2');
+  assert.equal(v(a, 84), 'Near Mint'); assert.equal(v(a, 936), 'Obsidian Flames'); assert.equal(v(a, 893), 'Card'); assert.equal(v(a, 197), '223'); assert.equal(v(a, 937), 'English');
+  a = whatnotAttributes({ name: 'Surging Sparks Elite Trainer Box', isSealed: true }, {}, '2');
+  assert.equal(v(a, 84), 'New'); assert.equal(v(a, 893), 'Elite Trainer Box'); assert.equal(v(a, 197), undefined);
+  a = whatnotAttributes({ name: 'Pikachu', gradingCompany: 'PSA', grade: '10' }, { cert_number: '12345' }, '2');
+  assert.equal(v(a, 84), 'Graded'); assert.equal(v(a, 193), 'PSA'); assert.equal(v(a, 194), '10'); assert.equal(v(a, 195), '12345');
+  a = whatnotAttributes({ player: 'Cal Raleigh', brand: 'Topps', variant: 'Refractor', year: '2023', cardNumber: '192', condition: 'NM' }, { is_rookie: true }, '586');
+  assert.equal(v(a, 11264), 'Raw - Near Mint or Better'); assert.equal(v(a, 198), 'Cal Raleigh'); assert.equal(v(a, 199), 'Refractor'); assert.equal(v(a, 10665), 'Yes'); assert.equal(v(a, 10663), 'No');
+  a = whatnotAttributes({ condition: 'NM', comic: { publisher: 'DC Comics', seriesName: 'Absolute Batman', number: '25', coverDate: '2026-11-01', coverArtists: [{ name: 'Clay Mann' }] }, gradingCompany: 'CGC', grade: '9.8' }, {}, '244');
+  assert.equal(v(a, 13483), 'Graded'); assert.equal(v(a, 141), 'DC Comics'); assert.equal(v(a, 137), 'Absolute Batman'); assert.equal(v(a, 138), '25'); assert.equal(v(a, 136), '2026'); assert.equal(v(a, 139), 'Clay Mann');
+  assert.equal(v(a, 144), 'Certified Guaranty Company (CGC)'); assert.equal(v(a, 145), '9.8');
+  a = whatnotAttributes({ condition: 'Weird' }, {}, '9');
+  assert.equal(v(a, 84), undefined, 'no value Whatnot would refuse');
+}
+// Title, description, details and photos edited here go to the same listing.
+{
+  const w = fakeWhatnot();
+  const patches = [];
+  const api = async (m, path, body) => { if (m === 'PATCH' && /^\/products\/p\d+$/.test(path)) { patches.push(body); return { ok: true, status: 200, data: {} }; } return w.api(m, path, body); };
+  let r = await syncWhatnotItem(api, row(), shape(row()), null, opts);
+  assert.ok(r.link.contentKey && r.link.mediaKey);
+  assert.ok(w.calls.find(c => c.path === '/products').body.attributes.length > 0, 'details sent when listing');
+  r = await syncWhatnotItem(api, row(), shape(row()), r.link, opts);
+  assert.equal(patches.length, 0, 'nothing changed: nothing sent');
+  r = await syncWhatnotItem(api, row({ name: 'Charizard (Base Set)' }), shape(row({ name: 'Charizard (Base Set)' })), r.link, opts);
+  assert.equal(patches.length, 1); assert.equal(patches[0].title, 'Charizard (Base Set)');
+  assert.equal(patches[0].media, undefined, 'photos not re-sent when they did not change');
+  assert.equal(r.link.productId, 'p1', 'same listing');
+  const newPhoto = it => ({ ...shape(it), photos: ['https://img.example/b.jpg'] });
+  r = await syncWhatnotItem(api, row({ name: 'Charizard (Base Set)' }), newPhoto(row({ name: 'Charizard (Base Set)' })), r.link, opts);
+  assert.deepEqual(patches[1].media, [{ url: 'https://img.example/b.jpg' }]);
+  // Details Whatnot turns down: the rest still goes.
+  let tries = 0;
+  const picky = async (m, path, body) => { if (m === 'PATCH' && /^\/products\/p\d+$/.test(path)) { tries++; return body.attributes ? { ok: false, status: 422, data: { detail: [{ loc: ['body', 'attributes'], msg: 'bad' }] } } : { ok: true, status: 200, data: {} }; } return w.api(m, path, body); };
+  r = await syncWhatnotItem(picky, row({ name: 'New name' }), shape(row({ name: 'New name' })), r.link, opts);
+  assert.equal(tries, 2); assert.equal(r.link.detailsNote, 'Item details not accepted by Whatnot'); assert.equal(r.link.error, undefined);
 }
 
 // Orders: each item recorded once, through record-external-sale.
