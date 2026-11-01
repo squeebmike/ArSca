@@ -9,6 +9,7 @@ async function boundedText(r,max){
  const reader=r.body.getReader();let bytes=0,out='';const decoder=new TextDecoder();
  try{for(;;){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>max)throw new Error('Source too large');out+=decoder.decode(value,{stream:true});}return out+decoder.decode();}finally{await reader.cancel().catch(()=>{});}
 }
+export function verifiedCardImage(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='cards.scryfall.io'&&u.pathname.startsWith('/normal/')?u.href:null;}catch{return null;}}
 export async function cardLookup(name,fetcher=fetch){
  if(typeof name!=='string'||!name.trim()||name.length>120)throw new Error('Enter an exact card name (120 characters or fewer).');
  const r=await fetcher('https://api.scryfall.com/cards/named?exact='+encodeURIComponent(name.trim()),{headers:HEADERS,signal:AbortSignal.timeout(12000),cf:{cacheTtl:3600,cacheEverything:true}});
@@ -18,7 +19,7 @@ export async function cardLookup(name,fetcher=fetch){
  await new Promise(resolve=>setTimeout(resolve,100));
  const rr=await fetcher('https://api.scryfall.com/cards/'+encodeURIComponent(c.id)+'/rulings',{headers:HEADERS,signal:AbortSignal.timeout(12000),cf:{cacheTtl:3600,cacheEverything:true}});
  const rulings=JSON.parse(await boundedText(rr,300000));
- return {name:c.name,url:c.scryfall_uri,checkedAt:new Date().toISOString(),faces:(c.card_faces||[c]).map(f=>({name:f.name,manaCost:f.mana_cost||'',type:f.type_line||'',text:f.oracle_text||''})),rulings:(rulings.data||[]).slice(0,30).map(r=>({date:r.published_at,text:r.comment}))};
+ return {name:c.name,url:c.scryfall_uri,checkedAt:new Date().toISOString(),faces:(c.card_faces||[c]).map(f=>({name:f.name,manaCost:f.mana_cost||'',type:f.type_line||'',text:f.oracle_text||'',image:verifiedCardImage(f.image_uris?.normal||c.image_uris?.normal)})),rulings:(rulings.data||[]).slice(0,30).map(r=>({date:r.published_at,text:r.comment}))};
 }
 export function parseRules(text){
  const rules=[];let current;

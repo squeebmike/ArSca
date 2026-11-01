@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {lessons,academyBody,academyScript} from '../scripts/mtg-academy.mjs';
-import {handleMtgLearning,parseRules,retrieveRules,validateExplanation,cardLookup,loadRules} from '../scripts/mtg-judge.mjs';
+import {handleMtgLearning,parseRules,retrieveRules,validateExplanation,cardLookup,loadRules,verifiedCardImage} from '../scripts/mtg-judge.mjs';
 import {distractors,quizChoices,practiceScript,judgeExamples} from '../scripts/mtg-practice.mjs';
 assert.equal(lessons.length,31);assert.equal(new Set(lessons.map(l=>l.id)).size,31);
 const academy=academyBody();assert.equal((academy.match(/data-complete=/g)||[]).length,31);
@@ -25,9 +25,9 @@ const priorityRules={rules:[{id:'117.3b',text:'Priority after resolution.'},{id:
 const prioritySources=retrieveRules(priorityRules,'Can I respond when someone plays a land and a triggered ability triggers?');
 assert(prioritySources.some(r=>r.id==='117.3c'));assert(prioritySources.some(r=>r.id==='603.3'));assert(prioritySources.some(r=>r.id==='117.5'));
 assert.equal(validateExplanation(JSON.stringify({answer:'Please clarify',steps:[],needed:['Whose turn?'],ruleIds:[]}),rules).sources.length,0);
-let calls=[];const goodCard={id:'test',name:'Test // Face',scryfall_uri:'https://scryfall.com/card/test',card_faces:[{name:'Test',oracle_text:'Front',type_line:'Creature'},{name:'Face',oracle_text:'Back',type_line:'Land'}]};
+let calls=[];const goodCard={id:'test',name:'Test // Face',scryfall_uri:'https://scryfall.com/card/test',card_faces:[{name:'Test',image_uris:{normal:'https://cards.scryfall.io/normal/front/a/b/test.jpg'},oracle_text:'Front',type_line:'Creature'},{name:'Face',oracle_text:'Back',type_line:'Land'}]};
 const fetcher=async(url,options)=>{calls.push({url,options});if(url.includes('/rulings'))return Response.json({data:[{published_at:'2026-01-01',comment:'A ruling.'}]});if(url.includes('api.scryfall.com'))return Response.json(goodCard);if(url.includes('anthropic.com'))return Response.json({content:[{type:'text',text:JSON.stringify({answer:'The top object resolves after everyone passes.',steps:['Check priority.'],needed:[],ruleIds:['117.4']})}]});throw Error('Unexpected URL');};
-const card=await cardLookup('Test // Face',fetcher);assert.equal(card.faces.length,2);assert.equal(card.rulings[0].text,'A ruling.');assert(calls[0].url.includes('exact=Test%20%2F%2F%20Face'));
+const card=await cardLookup('Test // Face',fetcher);assert.equal(card.faces.length,2);assert.equal(card.faces[0].image,'https://cards.scryfall.io/normal/front/a/b/test.jpg');assert.equal(card.faces[1].image,null);assert.equal(card.rulings[0].text,'A ruling.');assert(calls[0].url.includes('exact=Test%20%2F%2F%20Face'));
 await assert.rejects(()=>cardLookup('wrong',async()=>new Response('',{status:404})),/No exact/);
 const deps={shell:({bodyHtml})=>bodyHtml,fetcher,auth:async()=>({user:{id:'signed-user'}}),limit:async()=>null,loadRules:async()=>({rules,date:'September 25, 2026',url:'https://media.wizards.com/rules.txt'})};
 const env={ANTHROPIC_API_KEY:'test-only',LBA_KV:{}};
@@ -49,3 +49,7 @@ assert(quotaCalls[0].key.includes(':burst:'));
 r=await handleMtgLearning(req(body),env,{...deps,fetcher:async(url,opts)=>url.includes('anthropic')?new Response('private upstream details',{status:429}):fetcher(url,opts)});assert.equal(r.status,503);assert(!(await r.text()).includes('private upstream'));
 let docCalls=0;await assert.rejects(()=>loadRules(async()=>{docCalls++;return new Response('<a href="https://evil.test/rules.txt">TXT</a>');}),/could not be located/);assert.equal(docCalls,1);
 console.log('MTG lessons, card lookup, retrieval, citations, auth, quotas and failure handling passed.');
+
+assert.equal(verifiedCardImage("https://evil.example/normal/card.jpg"),null);
+assert.equal(verifiedCardImage("javascript:alert(1)"),null);
+assert.equal(verifiedCardImage("https://cards.scryfall.io/normal/front/a/b/card.jpg"),"https://cards.scryfall.io/normal/front/a/b/card.jpg");
