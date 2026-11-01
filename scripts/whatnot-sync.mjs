@@ -495,6 +495,15 @@ export async function applyWhatnotListingCosts(deps) {
 
 // --- Add items to a show ------------------------------------------------------
 // Store, 2026-11-01: "add to next show". The next scheduled show, soonest first.
+// The show that's live now, else the next scheduled one (Live Studio's
+// USE LIVE / NEXT SHOW).
+export async function currentWhatnotShow(api, now = Date.now()) {
+  const r = await api('GET', '/shows?status=live&limit=5');
+  const live = r.ok ? (r.data?.data || [])[0] : null;
+  if (live) return { id: live.id, title: live.title || '', live: true, startsAt: live.scheduled_start_at || '' };
+  const next = await nextWhatnotShow(api, now);
+  return next ? { id: next.id, title: next.title || '', live: false, startsAt: next.scheduled_start_at || '' } : null;
+}
 export async function nextWhatnotShow(api, now = Date.now()) {
   const r = await api('GET', '/shows?status=scheduled&limit=20&reverse=false');
   if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));

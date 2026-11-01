@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken } from './live-studio-model.mjs';
+import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
 
 export class ManaLiveStudio extends DurableObject {
   constructor(ctx, env) {
@@ -10,11 +10,16 @@ export class ManaLiveStudio extends DurableObject {
   }
   read() {
     const row = this.sql.exec('SELECT value FROM studio WHERE id=1').toArray()[0];
-    return row ? JSON.parse(row.value) : { settings:{...DEFAULT_STUDIO}, revision:0, effect:null, tokenHash:'', tokenExpires:0, showEventAt:0 };
+    const s = row ? JSON.parse(row.value) : { settings:{...DEFAULT_STUDIO}, revision:0, effect:null, tokenHash:'', tokenExpires:0, showEventAt:0 };
+    // Settings added later fill in from the defaults.
+    s.settings = { ...DEFAULT_STUDIO, ...s.settings };
+    s.stats ||= emptyStats(s.settings.showId);
+    s.stage ||= { now:null, next:[] };
+    return s;
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:publicStats(state.stats, state.settings), stage:state.stage, serverNow:Date.now() };
   }
   snapshot() { return this.publicState(); }
   update(settings, revision) {
@@ -31,6 +36,29 @@ export class ManaLiveStudio extends DurableObject {
     s.effect = makeEffect(kind,s.settings);
     this.write(s);
     this.broadcast({type:'effect', effect:s.effect, serverNow:Date.now()});
+    return this.publicState(s);
+  }
+  // Now playing / next up, from the dashboard.
+  setStage(input) {
+    const s = this.read();
+    s.stage = validateStage(input);
+    this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
+    return this.publicState(s);
+  }
+  resetStats() {
+    const s = this.read();
+    s.stats = emptyStats(s.settings.showId);
+    this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
+    return this.publicState(s);
+  }
+  // Totals rebuilt from Whatnot's order list for the selected show.
+  syncStats(orders) {
+    const s = this.read();
+    s.stats = statsFromOrders(orders, s.settings);
+    this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);
   }
   async rotateOverlay() {
@@ -53,19 +81,33 @@ export class ManaLiveStudio extends DurableObject {
     this.sql.exec('DELETE FROM seen WHERE expires < ?', now);
     if (this.sql.exec('SELECT id FROM seen WHERE id=?',id).toArray().length) return {duplicate:true};
     const s = this.read();
-    const effect = whatnotEffect(event,s.settings,now);
+    const isOrder = /^orders\./.test(String(event?.type || ''));
+    // Orders count toward the show's totals even when they arrive late (a
+    // webhook retry); only a fresh one plays an effect.
+    const ours = s.settings.automatic && event?.version === 'v2' && event.data?.show_id === s.settings.showId && (!s.settings.sellerId || event.seller_id === s.settings.sellerId);
+    let effect = null, statsChanged = false, stageMoved = false;
+    if (isOrder && ours) {
+      const r = applyOrder(s.stats, event.data, s.settings, now);
+      statsChanged = r.stats !== s.stats;
+      s.stats = r.stats;
+      if (r.effect && eventIsFresh(event, s.settings, now)) effect = r.effect;
+      // A fresh auction sale moves NOW PLAYING to the next item.
+      const moved = effect && r.effect.kind !== 'winner' ? advanceStage(s.stage, event.data, s.settings) : null;
+      if (moved) { s.stage = moved; statsChanged = true; stageMoved = true; }
+    } else if (!isOrder) effect = whatnotEffect(event,s.settings,now);
     let emitted=false;
     this.ctx.storage.transactionSync(()=>{
       this.sql.exec('INSERT INTO seen VALUES (?,?)',id,now+7*86400000);
       if (effect) {
-        if (event.type.startsWith('shows.') && effect.at <= s.showEventAt) return;
+        if (event.type.startsWith('shows.') && effect.at <= s.showEventAt) { if (statsChanged) this.write(s); return; }
         if (event.type.startsWith('shows.')) s.showEventAt=effect.at;
-        s.effect=makeEffect(effect.kind,s.settings,now);
-        this.write(s);
+        s.effect=makeEffect(effect.kind,s.settings,now,effect);
         emitted=true;
       }
+      if (emitted || statsChanged) this.write(s);
     });
-    if (emitted) this.broadcast({type:'effect',effect:s.effect,serverNow:now});
+    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:publicStats(s.stats,s.settings),...(stageMoved?{stage:s.stage}:{}),serverNow:now});
+    else if (statsChanged) this.broadcast({type:'stats',stats:publicStats(s.stats,s.settings),serverNow:now});
     return {ok:true};
   }
   async fetch(request) {

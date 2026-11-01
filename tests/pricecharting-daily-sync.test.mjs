@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { syncKind, pricechartingIdOf, comicGuidePrice, sportsGuidePrice, pcGradeBucket, planRow, nextBatch, runPriceChartingServerSync, PC_SYNC_BATCH } from '../scripts/pricecharting-daily-sync.mjs';
+import { syncKind, pricechartingIdOf, comicGuidePrice, sportsGuidePrice, pcGradeBucket, planRow, nextBatch, runPriceChartingServerSync, PC_SYNC_BATCH, comicCoverPrice, comicIsIncentive, comicHasAnyPrice, comicDefaultPrice } from '../scripts/pricecharting-daily-sync.mjs';
 
 // Store, 2026-10-31: comics, sports and Magic hadn't updated since 10/28 --
 // their daily update only ran when a dashboard was open after 3 AM. Comics
@@ -154,3 +154,66 @@ console.log('pricecharting daily sync chunked checks passed');
 }
 console.log('pricecharting progress checks passed');
 
+
+// Cover-price fallback (store, 2026-11-01): a comic PriceCharting has no
+// price for yet, with no price of any kind, gets its cover price as its floor.
+// Ratio variants and foils start higher than cover.
+{
+  const none = { category: 'Comic', name: 'NEW BOOK #1 CVR A', market: 0, salePrice: 0, minPrice: 0, priceOverride: 0 };
+  assert.equal(comicHasAnyPrice(none), false);
+  assert.equal(comicHasAnyPrice({ ...none, minPrice: 12 }), true, 'a floor the store set is a price');
+  assert.equal(comicCoverPrice({ comicMetadata: { coverPrice: 3.99 } }), 3.99);
+  assert.equal(comicCoverPrice({}, { msrp_cents: 499 }), 4.99, 'a received FOC book: its order line');
+  for (const name of ['THUNDERCATS #1 CVR K INC 1:10 RATIO', 'Power Rangers Green #3 E 1:10 Ratio INCV', 'TMNT #23 Variant RI (10)']) assert.equal(comicIsIncentive({ name }), true, name);
+  assert.equal(comicIsIncentive({ name: 'NEW BOOK #1 CVR A' }, { is_incentive: true }), true);
+  assert.equal(comicIsIncentive({ name: 'Absolute Batman #25 CVR A' }), false);
+
+  let p = planRow(row('n1', { ...none, comicMetadata: { coverPrice: 4.99 } }), 'comic', null);
+  assert.equal(p.kind, 'cover');
+  assert.equal(p.data.minPrice, 4.99);
+  assert.equal(p.data.coverPriceFloor, true);
+  assert.ok(p.data.priceSyncCheckedAt);
+  p = planRow(row('n2', { ...none, name: 'X #1 CVR K INC 1:25 RATIO' }), 'comic', null, { sku: { msrp_cents: 499 } });
+  assert.equal(p.data.minPrice, 30, 'a 1:25 at $4.99: 6x cover, rounded up');
+  assert.match(p.data.marketPriceSource, /1:25 ratio/);
+  const dp = (name, cover = 4.99, sku = null) => comicDefaultPrice({ name }, sku, cover)?.price;
+  assert.equal(dp('THUNDERCATS #1 CVR K INC 1:10 RATIO'), 15, '1:10 = 3x');
+  assert.equal(dp('X #2 CVR M INC 1:7 RATIO'), 12, '1:7 = 2.4x');
+  assert.equal(dp('TMNT #23 Variant RI (10)'), 15, 'RI (10) is 1:10');
+  assert.equal(dp('Power Rangers Green #3 D Foil Variant'), 10, 'a foil = 2x');
+  assert.equal(dp('Power Rangers Green #3 E 1:10 Ratio INCV Foil Variant'), 15, 'ratio and foil: the higher');
+  assert.equal(dp('X #1 Ratio Variant'), 15, 'a ratio with no number counts as 1:10');
+  assert.equal(dp('X #1 CVR B', 4.99, { is_incentive: true }), 15, 'an incentive by its order line');
+  assert.equal(dp('X #1 CVR A'), 4.99, 'a regular cover: the cover price');
+  assert.equal(comicDefaultPrice({ name: 'X #1 1:25' }, null, 0), null);
+  assert.equal(planRow(row('n3', { ...none, minPrice: 7, comicMetadata: { coverPrice: 3.99 } }), 'comic', null).kind, 'no-price', 'a book with a floor keeps it');
+  assert.equal(planRow(row('n4', { ...none, market: 6, comicMetadata: { coverPrice: 3.99 } }), 'comic', null).kind, 'no-price', 'a book with a price keeps it');
+  assert.equal(planRow(row('n5', none), 'comic', null).needsPrice, true, 'no cover price known: needs a price');
+  assert.equal(planRow(row('n6', { ...none, comicMetadata: { coverPrice: 3.99 } }), 'comic', comicProduct(9)).kind, 'applied', 'a PriceCharting price still wins');
+  assert.equal(planRow(row('s9', { category: 'Sports', name: 'Card', market: 0 }), 'sports', null).kind, 'no-price', 'comics only');
+
+  // End to end: the FOC order line is read for books with no price.
+  const books = [
+    { id: 'f1', status: 'in_stock', data: { ...none, name: 'NEW BOOK #1 CVR A', focSkuId: '11111111-1111-1111-1111-111111111111' } },
+    { id: 'f2', status: 'in_stock', data: { ...none, name: 'NEW BOOK #1 CVR K', focSkuId: '22222222-2222-2222-2222-222222222222' } },
+    { id: 'f3', status: 'in_stock', data: { ...none, name: 'MYSTERY BOOK' } },
+  ];
+  const saved = new Map(); let skuReads = 0;
+  const res = await runPriceChartingServerSync('store-1', {
+    kvGet: async () => null, kvPut: async () => {}, products: async () => ({}),
+    comicLookup: async () => ({}),
+    db: async (path, opts) => {
+      if (opts?.method === 'PATCH') { saved.set(path.match(/id=eq\.([^&]+)/)[1], JSON.parse(opts.body).data); return { response: { ok: true } }; }
+      if (path.startsWith('comic_skus')) { skuReads++; return { data: [{ id: '11111111-1111-1111-1111-111111111111', msrp_cents: 399, is_incentive: false }, { id: '22222222-2222-2222-2222-222222222222', msrp_cents: 499, is_incentive: true }] }; }
+      return { data: path.includes('k_category') ? books.map(r => ({ id: r.id, status: r.status, k_category: 'Comic', k_name: r.data.name })) : books.filter(r => decodeURIComponent(path).includes(r.id)) };
+    },
+  }, at3am);
+  assert.equal(skuReads, 1);
+  assert.equal(res.coverPrice, 2);
+  assert.equal(saved.get('f1').minPrice, 3.99);
+  assert.equal(saved.get('f2').minPrice, 15, 'an incentive by its order line, no ratio in the name: 1:10, 3x $4.99');
+  assert.equal(saved.get('f3').minPrice, 0, 'no cover price known: left for the store');
+  assert.equal(res.needsPrice, 1);
+  assert.deepEqual(res.needsPriceItems, ['MYSTERY BOOK']);
+}
+console.log('pricecharting cover-price fallback checks passed');
