@@ -1,4 +1,4 @@
-import {lessons,RULES_HOME,academyBody,academyClient} from './mtg-academy.mjs';
+import {lessons,RULES_HOME,academyBody,academyScript} from './mtg-academy.mjs';
 
 const HEADERS={Accept:'application/json','User-Agent':'TheManaPocket/1.0 (MTG rules learning)'};
 const response=(data,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'no-store'}});
@@ -60,7 +60,7 @@ export async function handleMtgLearning(request,env,deps){
   if(!['GET','HEAD'].includes(request.method))return response({error:'Use GET'},405);
   return new Response(request.method==='HEAD'?'':deps.shell({title:(p==='/mtg-rules'?'MTG Rules Academy':'MTG Rules Boss')+' | The Mana Pocket',description:'Learn Magic with 31 lessons, current card text and rules-supported interaction explanations.',canonicalPath:p,bodyHtml:academyBody(p==='/mtg-judge')}),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}});
  }
- if(p==='/mtg-rules/app.js')return ['GET','HEAD'].includes(request.method)?new Response(request.method==='HEAD'?'':'('+academyClient.toString()+')();',{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=300'}}):response({error:'Use GET'},405);
+ if(p==='/mtg-rules/app.js')return ['GET','HEAD'].includes(request.method)?new Response(request.method==='HEAD'?'':academyScript,{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=300'}}):response({error:'Use GET'},405);
  if(p==='/mtg-judge/card'){
   if(request.method!=='GET')return response({error:'Use GET'},405);
   try{return response({card:await cardLookup(u.searchParams.get('name'),deps.fetcher)});}catch(e){return response({error:e.message},e.message.startsWith('No exact')||e.message.startsWith('Enter')?400:503);}
@@ -71,7 +71,7 @@ export async function handleMtgLearning(request,env,deps){
  if(!env.ANTHROPIC_API_KEY||!env.LBA_KV)return response({error:'AI explanations are temporarily unavailable. Card lookup and lessons are still available.'},503);
  // Read the body with a real streaming bound, including chunked requests.
  let body;try{body=JSON.parse(await boundedText(new Response(request.body),8000));}catch{return response({error:'Enter a valid question of 3,000 characters or fewer.'},400);}
- if(typeof body.question!=='string'||body.question.trim().length<15||body.question.length>3000||!Array.isArray(body.cards)||body.cards.length>4||body.cards.some(c=>typeof c!=='string'||!c.trim()||c.length>120)||typeof body.format!=='string'||body.format.length>50)return response({error:'Include a question (15â€“3,000 characters), format, and up to four exact card names.'},400);
+ if(typeof body.question!=='string'||body.question.trim().length<15||body.question.length>3000||!Array.isArray(body.cards)||body.cards.length>4||body.cards.some(c=>typeof c!=='string'||!c.trim()||c.length>120)||typeof body.format!=='string'||body.format.length>50)return response({error:'Include a question (15–3,000 characters), format, and up to four exact card names.'},400);
  // Existing persistent quota service: conservative abuse controls, not a
  // strict billing cap (KV is eventually consistent). Fail closed on errors.
  try{for(const [key,limit,seconds] of [['mtg-judge:user:'+auth.user.id,10,86400],['mtg-judge:global',150,86400],['mtg-judge:burst:'+auth.user.id,1,60]]){const limited=await deps.limit(env,key,limit,seconds);if(limited)return response({error:'Question limit reached. Please try later; lessons and card lookup remain open.'},429);}}catch{return response({error:'Question service is temporarily unavailable.'},503);}

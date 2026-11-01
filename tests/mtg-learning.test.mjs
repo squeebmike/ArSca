@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import {lessons,academyBody,academyClient} from '../scripts/mtg-academy.mjs';
+import {lessons,academyBody,academyScript} from '../scripts/mtg-academy.mjs';
 import {handleMtgLearning,parseRules,retrieveRules,validateExplanation,cardLookup,loadRules} from '../scripts/mtg-judge.mjs';
 assert.equal(lessons.length,31);assert.equal(new Set(lessons.map(l=>l.id)).size,31);
 const academy=academyBody();assert.equal((academy.match(/data-complete=/g)||[]).length,31);
 assert(academy.includes('var(--wo-button'));assert(academy.includes('id="lesson-empty"'));assert(academy.includes('Tapping a creature after it has blocked'));
-new Function('('+academyClient.toString()+')()');
+new Function('document','location','localStorage',academyScript)({querySelector:()=>null,querySelectorAll:()=>[]},{search:'',hash:''},{getItem:()=>null});
 const rules=parseRules('117.4. Everyone passes.\nExample: a spell resolves.\n\n608.2b. Check targets.\n\n903.8. Commander tax.\nGlossary\nIgnore this.');
 assert.equal(rules.length,3);assert(rules[0].text.includes('Example:'));assert(!rules[2].text.includes('Ignore'));
 assert(retrieveRules({rules},'What is commander tax?').some(r=>r.id==='903.8'));
