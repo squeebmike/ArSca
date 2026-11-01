@@ -513,8 +513,11 @@ export async function nextWhatnotShow(api, now = Date.now()) {
 // Each item's Whatnot product (listed first if it isn't yet) added to the
 // show's lineup. deps: api, kvGet, kvPut, storeId, rows(ids) -> inventory
 // rows, shape(row), profileId, saveProfileId.
-export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = null } = {}) {
+// starts: { [itemId]: dollars } -- show prep's own starting bid per item
+// (an auction even when no auction rule is given).
+export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = null, starts = null } = {}) {
   const results = [];
+  const auctioned = [];
   const rows = new Map(((await deps.rows(itemIds)) || []).map(r => [r.id, r]));
   const linked = (await deps.kvGet('whatnot-linked:' + deps.storeId)) || {};
   for (const id of itemIds) {
@@ -532,17 +535,78 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
     // An auction: its starting bid set, then sold in the show (auctions are
     // live-only -- it leaves the shop until BACK TO BUY IT NOW).
     let start = null;
-    if (auction) {
-      start = auctionStartPrice(auction, Number(link.price) || Number(deps.shape(row).price) || 0);
+    const own = starts && Number(starts[id]) > 0 ? { amount: Number(starts[id]) } : null;
+    const rule = own || auction;
+    if (rule) {
+      start = auctionStartPrice(rule, Number(link.price) || Number(deps.shape(row).price) || 0);
       const priced = await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, pricing: { auction: { start_price: money(start) } } }] });
       if (!priced.ok) { results.push({ id, name: row.data?.name, error: whatnotErrorText(priced) }); continue; }
     }
-    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { ...(auction ? { transaction_type: 'auction' } : {}), shows: { strategy: 'ADD', show_ids: [showId] } });
-    if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], ...(auction ? { auction: { startPrice: start, showId } } : {}) }); results.push({ id, name: row.data?.name, added: true, ...(start != null ? { startPrice: start } : {}) }); }
+    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { ...(rule ? { transaction_type: 'auction' } : {}), shows: { strategy: 'ADD', show_ids: [showId] } });
+    if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], ...(rule ? { auction: { startPrice: start, showId } } : {}) }); results.push({ id, name: row.data?.name, added: true, ...(start != null ? { startPrice: start } : {}) }); if (rule) auctioned.push(id); }
     else results.push({ id, name: row.data?.name, error: whatnotErrorText(m) });
   }
   await deps.kvPut('whatnot-linked:' + deps.storeId, linked);
+  // Which items each show auctions: after the show, the ones still here go
+  // back to the shop (returnUnsoldToShop), and the wrap-up lists them.
+  if (auctioned.length) {
+    const key = `whatnot-show-items:${deps.storeId}:${showId}`;
+    await deps.kvPut(key, [...new Set([...(((await deps.kvGet(key)) || [])), ...auctioned])].slice(0, 500));
+  }
   return results;
+}
+
+// After a show: auctioned items still in stock (unsold, or more copies left)
+// go back to Buy It Now in the shop. Once per show.
+// Waits 30 minutes after the show is first seen ended, so the last orders
+// are recorded first and a sold book can't go back on sale.
+export const UNSOLD_RETURN_WAIT_MS = 30 * 60000;
+export async function returnUnsoldToShop(showId, deps, { now = Date.now() } = {}) {
+  const doneKey = `whatnot-unsold-returned:${deps.storeId}:${showId}`;
+  if (await deps.kvGet(doneKey)) return { showId, skipped: 'already returned' };
+  const seenKey = `whatnot-show-ended-seen:${deps.storeId}:${showId}`;
+  const seen = Number(await deps.kvGet(seenKey)) || 0;
+  if (!seen) { await deps.kvPut(seenKey, now); return { showId, waiting: true }; }
+  if (now - seen < UNSOLD_RETURN_WAIT_MS) return { showId, waiting: true };
+  const ids = (await deps.kvGet(`whatnot-show-items:${deps.storeId}:${showId}`)) || [];
+  if (!ids.length) { await deps.kvPut(doneKey, { at: new Date().toISOString(), returned: [] }); return { showId, returned: [] }; }
+  const rows = (await deps.rows(ids)) || [];
+  const here = rows.filter(r => r.status === 'in_stock' && Number(r.data?.quantity ?? r.data?.qty ?? 1) > 0).map(r => r.id);
+  const results = here.length ? await backToBuyItNow(here, deps) : [];
+  const returned = results.filter(r => r.done).map(r => r.id);
+  await deps.kvPut(doneKey, { at: new Date().toISOString(), returned, failed: results.filter(r => r.error).length });
+  return { showId, returned, failed: results.filter(r => r.error) };
+}
+
+// The wrap-up after a show: its numbers, what sold to whom (a pack list),
+// buyers new and returning (a thank-you list), and what didn't sell.
+// lines: [{ orderId, title, price, quantity }]; notes: the orders board's
+// { [orderId]: { buyer, showId, status, createdAt } }.
+export function showWrapUp({ show = {}, summary = null, notes = {}, lines = [], unsold = [], returned = null } = {}) {
+  const showOrders = Object.entries(notes).filter(([, n]) => n.showId === show.id && !/^(cancelled|failed)$/.test(n.status || ''));
+  const startAt = Date.parse(show.started_at || '') || Infinity;
+  const seenBefore = new Set(Object.values(notes).filter(n => n.buyer && n.showId !== show.id && Date.parse(n.createdAt || '') < startAt).map(n => n.buyer));
+  const byBuyer = new Map();
+  for (const [orderId, n] of showOrders) {
+    const buyer = n.buyer || '(unknown buyer)';
+    const b = byBuyer.get(buyer) || { buyer, orders: 0, items: [], total: 0, returning: seenBefore.has(buyer) };
+    b.orders++;
+    for (const l of lines.filter(x => x.orderId === orderId)) { b.items.push({ title: l.title, price: Number(l.price) || 0, quantity: Number(l.quantity) || 1 }); b.total += Number(l.price) || 0; }
+    b.total = Math.round(b.total * 100) / 100;
+    byBuyer.set(buyer, b);
+  }
+  const buyers = [...byBuyer.values()].sort((a, b) => b.total - a.total || a.buyer.localeCompare(b.buyer));
+  const sold = lines.filter(l => showOrders.some(([id]) => id === l.orderId));
+  return {
+    show: { id: show.id, title: show.title || 'Whatnot show', status: show.status, startedAt: show.started_at || null, endedAt: show.ended_at || null },
+    numbers: summary ? { gross: summary.gross, fees: summary.fees, cogs: summary.cogs, net: summary.net, margin: summary.margin, sold: summary.sold, giveaways: summary.giveaways, buyers: summary.buyersCount, peakViewers: summary.peakViewers ?? null, final: !!summary.final } : null,
+    sold: sold.map(l => ({ title: l.title, price: Number(l.price) || 0, quantity: Number(l.quantity) || 1 })),
+    buyers,
+    newBuyers: buyers.filter(b => !b.returning).map(b => b.buyer),
+    returningBuyers: buyers.filter(b => b.returning).map(b => b.buyer),
+    unsold: unsold.map(r => ({ id: r.id, name: r.data?.name || '', price: Number(r.data?.salePrice || r.data?.marketPrice || r.data?.market || 0) || 0 })),
+    returned,
+  };
 }
 
 // --- Orders board -------------------------------------------------------------

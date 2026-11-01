@@ -73,6 +73,15 @@ try{
   // A price checked within the week isn't refreshed for a page view.
   values.set('pc-cache:5000',{...card(0),checkedAt:t-6*86400000,referencePrices:{ungraded:3}});
   const view=await(await referencePriceRequest(owner,request(card(0)))).json();assert.equal(view.queued,false);assert.equal(view.referencePrices.ungraded,3);
+  // A product PriceCharting doesn't have (404) is that item's answer; it
+  // doesn't pause every other lookup (2026-11-01: the sync stopped after a few).
+  values.delete('pc-paused-until');values.delete('pc-website-paused-until');t+=1200;response=new Response('nope',{status:404});
+  const r404=await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'404404'}})}));
+  assert.equal(r404.status,404);assert.match((await r404.json()).error,/No such product/);
+  assert.equal(values.get('pc-paused-until'),undefined,'no pause after a 404');
+  t+=1200;response=data;const before404=calls.length;
+  await priceApiRequest(owner,new Request('https://archive/price-api',{method:'POST',body:JSON.stringify({path:'/api/product',params:{id:'404405'}})}));
+  assert.equal(calls.length,before404+1,'the next lookup goes straight through');
   Date.now=originalNow;
  }
  console.log('Demand price cache, exact identity, quota/outage preservation and shared rate checks passed');

@@ -57,7 +57,7 @@ function paintStage() {
   $('mana-card-price').innerHTML='';
   if(now?.price){const s=document.createElement('small');s.textContent='GUIDE';$('mana-card-price').append(s,document.createTextNode(usd(now.price)));}
   card.classList.toggle('mana-hidden',!settings.showCard||(!now&&!settings.attract));
-  const list=$('mana-queue-list');list.replaceChildren(...(stage.next||[]).map(n=>{const li=document.createElement('li');li.textContent=n.title+(n.price?' · '+usd(n.price):'');return li;}));
+  const list=$('mana-queue-list');list.replaceChildren(...(stage.next||[]).slice(0,3).map(n=>{const li=document.createElement('li');li.textContent=n.title+(n.price?' · '+usd(n.price):'');return li;}));
   queue.classList.toggle('mana-hidden',!settings.showQueue||settings.bigArt||!(stage.next||[]).length);
 }
 

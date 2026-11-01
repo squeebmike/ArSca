@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.01.4-arcade-overlay';
+const APP_VERSION = '2026.11.01.5-show-prep';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -49120,3 +49120,180 @@ async function toppsLoadParallels(cardId){
   window.__arscaIsModalDirty = isModalDirty;
   window.__arscaCloseModal = closeModal;
 })();
+
+// ── Whatnot SHOW PREP (scripts/whatnot-show-prep.mjs) ─────────────────────
+// Store, 2026-11-01: "build the show prep and all whatnot features". Pick a
+// theme; the dashboard suggests a lineup from inventory with a running order
+// and a starting bid each; LINE IT UP puts them in the next Whatnot show as
+// auctions and loads the overlay's NOW PLAYING / NEXT STAGE in that order.
+let _showPrep = { show:null, lineup:[], mod:null };
+async function whatnotPrepModule(){ return _showPrep.mod || (_showPrep.mod = await import('./whatnot-show-prep.mjs?v=' + encodeURIComponent(APP_VERSION))); }
+function whatnotPrepModal(id, title){
+  let modal = document.getElementById(id);
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = id; modal.className = 'ppsb-modal';
+    modal.innerHTML = `<div class="ppsb-inner" style="max-width:760px;width:100%;margin:30px auto;padding:18px;max-height:92vh;overflow:auto"><div class="ppsb-header"><span class="ppsb-title">${title}</span><button class="hbtn" onclick="document.getElementById('${id}').classList.remove('on')">✕</button></div><div class="wn-body" style="font-family:var(--font-mono);font-size:11px;color:var(--dim);line-height:1.6"></div></div>`;
+    modal.addEventListener('click', e => { if(e.target === modal) modal.classList.remove('on'); });
+    document.body.appendChild(modal);
+  }
+  modal.classList.add('on');
+  return modal.querySelector('.wn-body');
+}
+async function openWhatnotShowPrep(){
+  const body = whatnotPrepModal('whatnot-prep-modal', '🎯 SHOW PREP');
+  const cats = [...new Set(all.filter(i => i.source === 'built_in' && i.status === 'in_stock').map(i => String(i.category || '').trim()).filter(Boolean))].sort();
+  body.innerHTML = `<div id="wn-prep-show">Finding your next Whatnot show…</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0">
+      <label>THEME (words to match)<input id="wn-prep-theme" class="tsi" placeholder="e.g. spider-man, psa 10, 1990s"></label>
+      <label>CATEGORY<select id="wn-prep-cat" class="tsi"><option value="">Any</option>${cats.map(c => `<option>${escHtml(c)}</option>`).join('')}</select></label>
+      <label>HOW MANY<input id="wn-prep-count" class="tsi" type="number" min="1" max="60" value="20"></label>
+      <label>LOWEST PRICE ($)<input id="wn-prep-min" class="tsi" type="number" min="0" value="0"></label>
+      <label>STARTING BIDS<select id="wn-prep-rule" class="tsi"><option value="protect">Protect cost (start at what it cost)</option><option value="dollar">$1 starts</option><option value="percent">Percent of price</option></select></label>
+      <label>PERCENT (if percent)<input id="wn-prep-pct" class="tsi" type="number" min="1" max="100" value="50"></label>
+      <label>$1 OPENERS<input id="wn-prep-hooks" class="tsi" type="number" min="0" max="10" value="2"></label>
+    </div>
+    <button class="hbtn" style="width:100%;padding:12px;color:var(--g)" onclick="suggestWhatnotLineup()">SUGGEST LINEUP</button>
+    <div id="wn-prep-list" style="margin-top:12px"></div>`;
+  _showPrep.show = null;
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/shows/next?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not reach Whatnot');
+    _showPrep.show = d.show;
+    document.getElementById('wn-prep-show').innerHTML = d.show
+      ? `For <b style="color:var(--text)">${escHtml(d.show.title)}</b>${d.show.startsAt ? ' · ' + escHtml(new Date(d.show.startsAt).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })) : ''}`
+      : '<span style="color:var(--gold)">No upcoming Whatnot show -- schedule one in Whatnot first (you can still build the lineup).</span>';
+  } catch(e) { document.getElementById('wn-prep-show').innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+async function suggestWhatnotLineup(){
+  const m = await whatnotPrepModule();
+  const v = id => document.getElementById(id)?.value;
+  const cands = m.prepCandidates(all, { theme:v('wn-prep-theme'), category:v('wn-prep-cat'), minPrice:Number(v('wn-prep-min')) || 0 });
+  const built = m.buildLineup(cands, { count:Number(v('wn-prep-count')) || 20, rule:v('wn-prep-rule'), percent:Number(v('wn-prep-pct')) || 50, hooks:Number(v('wn-prep-hooks')) || 0 });
+  _showPrep.lineup = built.lineup;
+  renderWhatnotLineup(cands.length);
+}
+function renderWhatnotLineup(found){
+  const el = document.getElementById('wn-prep-list');
+  if(!el || !_showPrep.mod) return;
+  const L = _showPrep.lineup, t = _showPrep.mod.lineupTotals(L);
+  const ROLE = { hook:['OPENER','var(--g)'], main:['',''], big:['BIG HIT','var(--gold)'], closer:['CLOSER','var(--gold)'] };
+  if(!L.length){ el.innerHTML = '<div style="color:var(--gold)">Nothing in stock matches. Try fewer theme words or another category.</div>'; return; }
+  el.innerHTML = `<div style="color:var(--text)">${L.length} items${found != null ? ' (of ' + found + ' that match)' : ''} · worth ${fd$(t.value)} · cost ${fd$(t.cost)} · starting bids add up to ${fd$(t.starts)}${t.underCost ? ' · <span style="color:var(--gold)">' + t.underCost + ' start under cost</span>' : ''}</div>
+    <table style="width:100%;border-collapse:collapse;margin-top:6px">${L.map((e, i) => `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:4px;color:var(--dim)">${i + 1}</td>
+      <td style="padding:4px;color:var(--text)">${escHtml(e.title)}${ROLE[e.role][0] ? ` <span style="color:${ROLE[e.role][1]};font-size:9px">${ROLE[e.role][0]}</span>` : ''}${e.sellOnWhatnot ? '' : ' <span style="font-size:9px" title="Gets SELL ON WHATNOT ticked when lined up">+WN</span>'}</td>
+      <td style="padding:4px;white-space:nowrap">${fd$(e.price)}${e.cost ? ' <span style="font-size:9px">cost ' + fd$(e.cost) + '</span>' : ''}</td>
+      <td style="padding:4px;white-space:nowrap">start $<input type="number" min="1" value="${e.start}" style="width:60px" class="tsi" onchange="_showPrep.lineup[${i}].start=Math.max(1,Math.round(Number(this.value)||1));renderWhatnotLineup()"></td>
+      <td style="padding:4px;white-space:nowrap"><button class="hbtn" style="padding:2px 6px;margin:0" onclick="moveWhatnotLineup(${i},-1)">↑</button><button class="hbtn" style="padding:2px 6px;margin:0" onclick="moveWhatnotLineup(${i},1)">↓</button><button class="hbtn" style="padding:2px 6px;margin:0" onclick="_showPrep.lineup.splice(${i},1);renderWhatnotLineup()">✕</button></td></tr>`).join('')}</table>
+    <button class="hbtn" style="width:100%;padding:12px;margin-top:10px;color:var(--gold)" onclick="lineUpWhatnotShow()">LINE IT UP${_showPrep.show ? ' IN "' + escHtml(_showPrep.show.title) + '"' : ''}</button>
+    <div id="wn-prep-result"></div>
+    <div style="font-size:10px;margin-top:6px">Auctions sell in the show only -- they leave the shop until the show ends, then anything unsold goes back on its own (Settings: SHOW WRAP-UP). Whatnot runs each auction; the overlay follows this order.</div>`;
+}
+function moveWhatnotLineup(i, d){
+  const L = _showPrep.lineup, j = i + d;
+  if(j < 0 || j >= L.length) return;
+  [L[i], L[j]] = [L[j], L[i]];
+  renderWhatnotLineup();
+}
+async function lineUpWhatnotShow(){
+  const out = document.getElementById('wn-prep-result');
+  const show = _showPrep.show, L = _showPrep.lineup;
+  if(!show){ alert('Schedule the show in Whatnot first, then open SHOW PREP again.'); return; }
+  if(!L.length) return;
+  if(!confirm('Put ' + L.length + ' items in "' + show.title + '" as auctions (starting bids as shown) and load them into the overlay in this order?')) return;
+  const byId = new Map(all.map(i => [i.id, i]));
+  for(const e of L){ const item = byId.get(e.id); if(item && item.sellOnWhatnot !== true){ try { await updateBuiltInInventoryItem(item, { sellOnWhatnot:true }); } catch(_) {} } }
+  const rowId = e => { const item = byId.get(e.id); return item?.supabaseRowId || e.id; };
+  let added = 0; const problems = [];
+  for(let i = 0; i < L.length; i += 25){
+    const part = L.slice(i, i + 25);
+    if(out) out.textContent = 'Adding to the show: ' + Math.min(i + 25, L.length) + ' of ' + L.length + '…';
+    try {
+      const starts = Object.fromEntries(part.map(e => [rowId(e), e.start]));
+      const r = await storeWorkerFetch(WORKER + '/whatnot/show-add?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:part.map(rowId), showId:show.id, starts }) });
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add to the show');
+      added += d.added || 0;
+      (d.results || []).filter(x => x.error).forEach(x => problems.push((x.name || x.id) + ': ' + x.error));
+    } catch(e) { problems.push(e.message || String(e)); }
+  }
+  // The overlay: NOW PLAYING is the first, the rest NEXT STAGE (auto-advances on each auction sale).
+  let overlay = '';
+  try {
+    const r = await storeWorkerFetch(WORKER + '/live-studio/stage?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ stage:_showPrep.mod.lineupStage(L) }) });
+    const d = await r.json().catch(() => ({}));
+    overlay = r.ok && d.ok ? ' · overlay loaded in this order' : ' · overlay not loaded (' + (d.error || r.status) + ')';
+  } catch(e) { overlay = ' · overlay not loaded'; }
+  _whatnotItemsCache = null;
+  if(out) out.innerHTML = `<span style="color:${problems.length ? 'var(--gold)' : 'var(--g)'}">${added} of ${L.length} in "${escHtml(show.title)}"${escHtml(overlay)}</span>${problems.length ? '<div style="color:var(--red)">' + problems.slice(0, 15).map(escHtml).join('<br>') + '</div>' : ''}`;
+}
+
+// ── Whatnot SHOW WRAP-UP ──────────────────────────────────────────────────
+// After a show: its numbers, a pack list by buyer, new vs returning buyers
+// (a thank-you list), and what didn't sell -- back in the shop on its own
+// 30 minutes after the show ends, or now with BACK TO SHOP.
+let _showWrap = null;
+async function openWhatnotShowWrap(showId){
+  const body = whatnotPrepModal('whatnot-wrap-modal', '📦 SHOW WRAP-UP');
+  body.textContent = 'Loading…';
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/show-wrap?store_id=' + encodeURIComponent(getActiveStoreId()) + (showId ? '&show_id=' + encodeURIComponent(showId) : ''), { cache:'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not load');
+    _showWrap = d;
+    const w = d.wrap;
+    if(!w){ body.textContent = 'No Whatnot shows yet.'; return; }
+    const n = w.numbers || {};
+    const pick = `<select class="tsi" onchange="openWhatnotShowWrap(this.value)">${(d.shows || []).map(s => `<option value="${escHtml(s.id)}"${s.id === w.show.id ? ' selected' : ''}>${escHtml((s.started_at ? new Date(s.started_at).toLocaleDateString('en-US', { month:'short', day:'numeric' }) + ' · ' : '') + s.title + ' (' + s.status + ')')}</option>`).join('')}</select>`;
+    const stat = (label, val) => `<div style="flex:1;min-width:90px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center"><div style="font-size:9px">${label}</div><div style="font-size:16px;color:var(--text);font-weight:800">${val}</div></div>`;
+    const buyers = w.buyers.map(b => `<tr style="border-top:1px solid var(--border)"><td style="padding:3px">@${escHtml(b.buyer)} ${b.returning ? '<span style="color:var(--g);font-size:9px">RETURNING</span>' : '<span style="color:var(--gold);font-size:9px">NEW</span>'}</td><td>${b.items.length}</td><td>${fd$(b.total)}</td></tr>`).join('');
+    const ret = w.returned;
+    body.innerHTML = `${pick}
+      ${w.numbers ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">${stat('GROSS', fd$(n.gross))}${stat('FEES', fd$(n.fees))}${stat('PROFIT', fd$(n.net))}${stat('SOLD', n.sold ?? 0)}${stat('BUYERS', n.buyers ?? w.buyers.length)}${stat('PEAK VIEWERS', n.peakViewers ?? '–')}</div>${n.final ? '' : '<div style="font-size:10px">Whatnot&#39;s final numbers land a few hours after the show; these are from the orders so far.</div>'}` : '<div style="margin:10px 0">Numbers show up once the show ends.</div>'}
+      <div style="color:var(--text);margin-top:8px">BUYERS · ${w.newBuyers.length} new, ${w.returningBuyers.length} returning</div>
+      ${buyers ? `<table style="width:100%;border-collapse:collapse">${buyers}</table>` : '<div>No orders recorded for this show yet.</div>'}
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button class="hbtn" onclick="printWhatnotWrapPackList()">PRINT PACK LIST</button><button class="hbtn" onclick="copyWhatnotThanks()">COPY THANK-YOU LIST</button></div>
+      <div style="color:var(--text);margin-top:12px">DIDN'T SELL · ${w.unsold.length}</div>
+      ${w.unsold.length ? w.unsold.map(u => `<div>${escHtml(u.name)}${u.price ? ' · ' + fd$(u.price) : ''}</div>`).join('') : '<div>Everything auctioned sold (or none were lined up through SHOW PREP / AUCTION IN NEXT SHOW).</div>'}
+      ${ret ? `<div style="color:var(--g)">${(ret.returned || []).length} put back in the shop ${ret.at ? escHtml(new Date(ret.at).toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' })) : ''}</div>` : (w.show.status === 'ended' && d.unsoldBackToShop ? '<div>Going back to the shop automatically (30 minutes after the show ends).</div>' : '')}
+      ${w.unsold.length ? '<button class="hbtn" style="margin-top:6px;color:var(--gold)" onclick="whatnotWrapBackToShop()">BACK TO SHOP NOW</button>' : ''}
+      <label style="display:flex;gap:6px;align-items:center;margin-top:12px;cursor:pointer"><input type="checkbox" id="wn-unsold-auto"${d.unsoldBackToShop ? ' checked' : ''} onchange="saveWhatnotUnsoldSetting(this.checked)"> After each show, put unsold auction items back in the shop automatically</label>
+      <div id="wn-wrap-result"></div>`;
+  } catch(e) { body.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+function printWhatnotWrapPackList(){
+  const w = _showWrap?.wrap; if(!w) return;
+  const win = window.open('', '_blank', 'width=720,height=900');
+  if(!win){ toast_dash('Allow pop-ups to open the pack list'); return; }
+  const sections = w.buyers.map(b => `<section style="break-inside:avoid;border-bottom:1px solid #ccc;padding:8px 0"><h2 style="margin:0 0 4px;font:900 16px Arial">@${escHtml(b.buyer)} <span style="font:400 12px Arial">${b.items.length} item${b.items.length === 1 ? '' : 's'} · $${b.total.toFixed(2)}</span></h2>${b.items.map(i => `<div style="font:13px Arial;padding:2px 0">☐ ${escHtml(i.title)}${i.quantity > 1 ? ' ×' + i.quantity : ''} <span style="color:#555">$${i.price.toFixed(2)}</span></div>`).join('')}</section>`).join('');
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pack list</title></head><body style="margin:24px;color:#000"><h1 style="font:900 20px Arial;margin:0 0 4px">PACK LIST · ${escHtml(w.show.title)}</h1><div style="font:12px Arial;margin-bottom:10px">${w.buyers.length} buyers · ${w.sold.length} items</div>${sections || 'No orders yet.'}<script>print()<\/script></body></html>`);
+  win.document.close();
+}
+async function copyWhatnotThanks(){
+  const w = _showWrap?.wrap; if(!w) return;
+  const text = [w.newBuyers.length ? 'Welcome & thank you: ' + w.newBuyers.map(b => '@' + b).join(' ') : '', w.returningBuyers.length ? 'Thanks for coming back: ' + w.returningBuyers.map(b => '@' + b).join(' ') : ''].filter(Boolean).join('\n');
+  try { await navigator.clipboard.writeText(text); toast_dash('Thank-you list copied'); } catch(e) { prompt('Copy the thank-you list:', text); }
+}
+async function whatnotWrapBackToShop(){
+  const w = _showWrap?.wrap; if(!w?.unsold.length) return;
+  if(!confirm('Put ' + w.unsold.length + ' unsold item(s) back in the Whatnot shop as Buy It Now?')) return;
+  const out = document.getElementById('wn-wrap-result');
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/buy-it-now?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:w.unsold.map(u => u.id) }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not put them back');
+    if(out) out.innerHTML = '<span style="color:var(--g)">' + d.done + ' back in the shop.</span>';
+  } catch(e) { if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+async function saveWhatnotUnsoldSetting(on){
+  try {
+    const r = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const current = (await r.json()).settings || {};
+    const res = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:{ ...current, unsoldBackToShop:!!on } }) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok) throw new Error(d.error || 'Could not save');
+    toast_dash(on ? 'Unsold items go back to the shop after each show' : 'Unsold items stay out of the shop until you put them back');
+  } catch(e) { toast_dash(e.message || String(e)); }
+}

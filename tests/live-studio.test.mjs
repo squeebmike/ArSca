@@ -52,7 +52,8 @@ assert.equal(validateSettings({automatic:true,showId:'show-a'}).showId,'show-a',
 assert.throws(()=>validateSettings({bossGoal:0}),/bossGoal/);
 // Stage: text cleaned, only https images, three next up at most.
 const st=validateStage({now:{title:'Spawn #1',detail:'CGC 9.8',image:'javascript:alert(1)',price:'120'},next:[{title:'a'},{title:'b'},{title:'c'},{title:'d'},{title:''}]});
-assert.equal(st.now.image,'');assert.equal(st.now.price,120);assert.equal(st.next.length,3);
+assert.equal(st.now.image,'');assert.equal(st.now.price,120);assert.equal(st.next.length,4,'a prepped show keeps its whole lineup (up to 60)');
+assert.equal(validateStage({next:Array.from({length:80},(_,i)=>({title:'#'+i}))}).next.length,60);
 assert.equal(validateStage({now:{title:'X',image:'https://still-resonance-4f87.swarnerauto.workers.dev/p.jpg'}}).now.image,'https://still-resonance-4f87.swarnerauto.workers.dev/p.jpg');
 // Score board: every order counts -- auction and Buy It Now -- and the boss takes the damage.
 const live={...DEFAULT_STUDIO,automatic:true,showId:'show-a',bossGoal:100,jackpotAmount:50};

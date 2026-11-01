@@ -148,7 +148,7 @@ export function validateStage(input) {
   if (!input || typeof input !== 'object') throw new Error('Stage required');
   const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price) } : null;
   const now = item(input.now);
-  const next = Array.isArray(input.next) ? input.next.slice(0, 3).map(item).filter(x => x && x.title) : [];
+  const next = Array.isArray(input.next) ? input.next.slice(0, 60).map(item).filter(x => x && x.title) : [];
   for (const t of [now?.title, now?.detail, ...next.map(n => n.title)]) { const w = chanceWordIn(t); if (w) throw new Error(`"${w}" reads as a game of chance -- Whatnot doesn't allow those.`); }
   return { now: now && now.title ? now : null, next };
 }
