@@ -111,10 +111,13 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
  const parallelId=url.searchParams.get('parallel');
  const chosenCard=parallelId&&originalCard?selectedParallelCard(set,originalCard,parallelId):originalCard;
  if(parallelId&&!chosenCard)return missing();
+ // Crawlers read the saved PriceCharting price; they never queue a refresh
+ // (2026-11-01: website refreshes used up PriceCharting's limit).
+ if((url.searchParams.has('reference')||url.searchParams.has('market'))&&/bot|crawl|spider|slurp|preview|headless|lighthouse|facebookexternalhit|scrap/i.test(request.headers.get('User-Agent')||''))deps={...deps,priceRefresh:false};
  if(url.searchParams.has('reference')){
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
   const imageStatus=url.searchParams.get('image-status')==='1'&&url.searchParams.get('reference')==='3'&&url.searchParams.get('price-refresh')==='0';
-  let reference;try{reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,{...deps,imageStatus,priceRefresh:url.searchParams.get('price-refresh')!=='0',requireArchiveRead:url.searchParams.get('reference')==='3'&&url.searchParams.get('price-refresh')==='0'});}catch(error){if(error.code!=='REFERENCE_ARCHIVE_UNAVAILABLE')throw error;return Response.json({error:'Stored references temporarily unavailable',retryable:true},{status:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex','Access-Control-Allow-Origin':'https://squeebmike.github.io','Retry-After':'5'}});}
+  let reference;try{reference=await sportsReferenceImage(env,deps.ctx,set,chosenCard,{...deps,imageStatus,priceRefresh:deps.priceRefresh!==false&&url.searchParams.get('price-refresh')!=='0',requireArchiveRead:url.searchParams.get('reference')==='3'&&url.searchParams.get('price-refresh')==='0'});}catch(error){if(error.code!=='REFERENCE_ARCHIVE_UNAVAILABLE')throw error;return Response.json({error:'Stored references temporarily unavailable',retryable:true},{status:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex','Access-Control-Allow-Origin':'https://squeebmike.github.io','Retry-After':'5'}});}
   if(reference)return Response.json({reference},{headers:{'Cache-Control':imageStatus?'no-store':'public,max-age=3600','X-Robots-Tag':'noindex',...(url.searchParams.get('reference')==='3'?{'Access-Control-Allow-Origin':'https://squeebmike.github.io'}:{})}});
   if(url.searchParams.get('reference')==='3')return Response.json({reference:null},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex','Access-Control-Allow-Origin':'https://squeebmike.github.io'}});
   // The main card photo needs the same marketplace fallback as its versions.

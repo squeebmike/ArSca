@@ -12,6 +12,16 @@ reference.referencePrices={currency:'USD',ungraded:7.5,grade9:25,psa10:80,captur
  const response=await handleBaseballCatalog(new Request(auditUrl),auditEnv,auditUrl,{escape:s=>String(s),listItems:async()=>{throw Error('no inventory scan');},available:()=>true});
  assert.equal((await response.json()).reference.productId,'12345');assert.equal(requests.length,1);assert.equal(requests[0].refresh,false,'stored coverage endpoint does not enqueue a price scan');
 }
+// 2026-11-01: website card views used up PriceCharting's limit. A crawler
+// gets the saved price but never queues a refresh; a person still can.
+for (const [agent, refresh] of [['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', false], ['Mozilla/5.0 (compatible; bingbot/2.0)', false], ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1', true]]) {
+ const ref={...reference,consoleId:'baseball-cards-2026-bowman-chrome',productId:'12345'},seen=[];
+ const botEnv={CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:()=>({fetch:async input=>{const request=new Request(input);const path=new URL(request.url).pathname;if(path==='/reference-price'){seen.push(await request.json());return Response.json({referencePrices:reference.referencePrices,queued:false});}if(path==='/image-refresh-demand')return Response.json({queued:false});return Response.json({cards:[ref],archived:true});}})}};
+ const u=new URL('https://www.themanapocket.com/baseball/checklists/2026-bowman-chrome-baseball/cards/2026-bowman-chrome-baseball-66?reference=1');
+ const r=await handleBaseballCatalog(new Request(u,{headers:{'User-Agent':agent}}),botEnv,u,{escape:s=>String(s),listItems:async()=>{throw Error('no inventory scan');},available:()=>true});
+ assert.equal((await r.json()).reference.referencePrices.ungraded,7.5,'the saved price is shown');
+ assert.equal(seen.length,1);assert.equal(seen[0].refresh,refresh,agent);
+}
 const href='https://www.ebay.com/itm/123?campid=5339046175';
 const store=new Map();let inventoryReads=0;
 const env={EBAY_PARTNER_CAMPAIGN_ID:'5339046175',LBA_KV:{get:async key=>store.get(key)||null,put:async(key,value)=>store.set(key,JSON.parse(value))},CARD_REFERENCE_ARCHIVE:{idFromName:x=>x,get:()=>({fetch:async()=>Response.json({cards:[reference],archived:true})})}};

@@ -1,5 +1,15 @@
 // Shared server-only PriceCharting cache and demand queue. No catalog scanner.
 const DAY=86400000, GAP=1100, LIMIT=500;
+// Website card pages (sports cards) ask for their PriceCharting price when
+// they load. 2026-11-01: PriceCharting answered 429 (too many requests) for
+// hours and the comic/sports price sync stopped -- every card page view with
+// a price older than a day queued a call, the queue ran nonstop (one every
+// 1.1 s), and crawlers kept it full. Now a website price is good for a week,
+// website refreshes get a daily allowance, and after a 429 they wait 12
+// hours so the store's own price sync and dashboard lookups go first.
+export const WEBSITE_FRESH_MS=7*DAY, WEBSITE_DAILY_CALLS=300, WEBSITE_429_PAUSE_MS=12*3600000;
+const utcDay=t=>new Date(t).toISOString().slice(0,10);
+const nextUtcDay=t=>Date.parse(utcDay(t)+'T00:00:00Z')+DAY;
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const reply=(value,status=200)=>Response.json(value,{status});
 const coordinatorName='pricecharting-global-v1';
@@ -27,7 +37,7 @@ async function upstream(owner,path,params,serverToken){
   await store.put('pc-last-provider-error','request_started');
   const response=await (owner.env.referencePriceFetch||fetch)(url,{headers:{Accept:'application/json'},redirect:'manual',signal:AbortSignal.timeout(8000)});
   await store.put('pc-last-provider-status',response.status);await store.delete('pc-last-provider-error');
-  if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));return reply({error:'Price provider unavailable (PriceCharting HTTP '+response.status+')'},response.status);}
+  if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));if(response.status===429)await store.put('pc-website-paused-until',Date.now()+WEBSITE_429_PAUSE_MS);return reply({error:'Price provider unavailable (PriceCharting HTTP '+response.status+')'},response.status);}
   const text=await response.text();if(text.length>2000000)return reply({error:'Price response too large'},502);
   try{const data=JSON.parse(text);if(data.status!=='error'&&text.length<100000)await store.put(cacheKey,{at:Date.now(),text});}catch{return reply({error:'Invalid price response'},502);}
   return new Response(text,{headers:{'Content-Type':'application/json'}});
@@ -63,33 +73,43 @@ export async function referencePriceRequest(owner,request){
   const store=owner.ctx.storage,now=Date.now(),key='pc-cache:'+ref.productId,cache=await store.get(key);
   // Product IDs are not accepted as a substitute for the already matched identity.
   const same=cache&&cache.title===ref.title&&cache.consoleId===ref.consoleId;
-  const fresh=same&&now-cache.checkedAt<DAY;
+  const fresh=same&&now-cache.checkedAt<WEBSITE_FRESH_MS;
   let queued=false;
   if(ref.refresh!==false&&!fresh&&(owner.env.PRICECHARTING_TOKEN||owner.env.PRICECHARTING_API_KEY)){
    const pending=await store.list({prefix:'pc-demand:',limit:LIMIT});
    if(pending.has('pc-demand:'+ref.productId)||pending.size<LIMIT){
     await store.put('pc-mode',true);await store.put('pc-demand:'+ref.productId,{productId:ref.productId,title:ref.title,consoleId:ref.consoleId});
     queued=true;
-    const next=Math.max(now+1,Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0));const alarm=await store.getAlarm();if(!alarm||alarm>next)await store.setAlarm(next);
+    const next=Math.max(now+1,await websiteDue(store,now));const alarm=await store.getAlarm();if(!alarm||alarm>next)await store.setAlarm(next);
    }
   }
   return reply({referencePrices:same?cache.referencePrices||null:null,checkedAt:same?cache.checkedAt:null,stale:!fresh,queued,retryAt:Number(await store.get('pc-paused-until')||0)>now?await store.get('pc-paused-until'):null,providerStatus:await store.get('pc-last-provider-status')||null,providerError:await store.get('pc-last-provider-error')||null});
  });
 }
+// When the website queue may make its next call: after the shared spacing,
+// any pause, a 429's 12-hour wait, and -- once today's allowance is used --
+// the next UTC day.
+async function websiteDue(store,now){
+ const used=await store.get('pc-website-calls')||{};
+ const spent=used.day===utcDay(now)&&used.count>=WEBSITE_DAILY_CALLS;
+ return Math.max(Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0),Number(await store.get('pc-website-paused-until')||0),spent?nextUtcDay(now):0);
+}
 export async function referencePriceAlarm(owner){
  if(!await owner.ctx.storage.get('pc-mode'))return false;
  await owner.ctx.blockConcurrencyWhile(async()=>{
-  const store=owner.ctx.storage,now=Date.now(),due=Math.max(Number(await store.get('pc-next-call')||0),Number(await store.get('pc-paused-until')||0));
+  const store=owner.ctx.storage,now=Date.now(),due=await websiteDue(store,now);
   const pending=await store.list({prefix:'pc-demand:',limit:1});if(!pending.size)return;
   if(now<due){await store.setAlarm(due);return;}
   const [key,ref]=pending.entries().next().value,token=owner.env.PRICECHARTING_TOKEN||owner.env.PRICECHARTING_API_KEY;
   if(!token)return;
   try{
+   const day=utcDay(now),used=await store.get('pc-website-calls')||{};
+   await store.put('pc-website-calls',{day,count:(used.day===day?used.count:0)+1});
    const response=await upstream(owner,'/api/product',{id:ref.productId});
    if(!response.ok){const pause=Math.max(Number(await store.get('pc-paused-until')||0),Date.now()+60000);await store.put('pc-paused-until',pause);await store.setAlarm(pause);return;}
    const data=await response.json();if(data.status!=='success'||!priceProductIdentity(data,ref)){const old=await store.get('pc-cache:'+ref.productId);await store.put('pc-cache:'+ref.productId,{...ref,checkedAt:Date.now(),referencePrices:old?.title===ref.title&&old?.consoleId===ref.consoleId?old.referencePrices:null,reason:'identity_or_provider_response_unverified'});await store.delete(key);}
    else{const old=await store.get('pc-cache:'+ref.productId),prices=apiReferencePrices(data,Date.now()),same=old?.title===ref.title&&old?.consoleId===ref.consoleId;await store.put('pc-cache:'+ref.productId,{...ref,checkedAt:Date.now(),referencePrices:prices||(same?old.referencePrices:null)||null});await store.delete(key);}
   }catch{await store.put('pc-last-provider-error','coordinator_failure');await store.put('pc-paused-until',Date.now()+60000);}
-  if((await store.list({prefix:'pc-demand:',limit:1})).size)await store.setAlarm(Math.max(Date.now()+GAP,Number(await store.get('pc-paused-until')||0)));
+  if((await store.list({prefix:'pc-demand:',limit:1})).size)await store.setAlarm(Math.max(Date.now()+GAP,await websiteDue(store,Date.now())));
  });return true;
 }
