@@ -48,7 +48,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13542,10 +13542,11 @@ async function routeRequest(request, env, ctx) {
       // The Whatnot tab's export screen saves this object from its own copy;
       // costs set in Settings -> Whatnot (listingCosts) are kept when a save
       // doesn't carry them.
-      const existing = settings.listingCosts && 'autoTitles' in settings ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
+      const existing = settings.listingCosts && 'autoTitles' in settings && 'unsoldBackToShop' in settings ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
       const kept = {};
       if (existing?.listingCosts && !settings.listingCosts) kept.listingCosts = existing.listingCosts;
       if (existing && 'autoTitles' in existing && !('autoTitles' in settings)) kept.autoTitles = existing.autoTitles;
+      if (existing && 'unsoldBackToShop' in existing && !('unsoldBackToShop' in settings)) kept.unsoldBackToShop = existing.unsoldBackToShop;
       const saved = { ...kept, ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
       await env.LBA_KV.put(key, JSON.stringify(saved));
       return json({ ok: true, settings: saved });
@@ -13629,14 +13630,17 @@ async function routeRequest(request, env, ctx) {
       // { auction: { amount } | { percent } }: sold as an auction in the show.
       const a = parsed.data?.auction;
       const auction = a && (Number(a.percent) > 0 || Number(a.amount) > 0) ? (Number(a.percent) > 0 ? { percent: Math.min(100, Number(a.percent)) } : { amount: Number(a.amount) }) : null;
+      // SHOW PREP: a starting bid per item.
+      const starts = {};
+      for (const [id, v] of Object.entries(parsed.data?.starts || {})) if (itemIds.includes(id) && Number(v) >= 1 && Number(v) <= 100000) starts[id] = Math.round(Number(v));
       const results = await addItemsToWhatnotShow(itemIds, showId, { ...deps,
         rows: async ids => (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [],
         profileId: kind => profileIds[kind] || '',
-        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction });
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction, starts: Object.keys(starts).length ? starts : null });
       return json({ ok: true, added: results.filter(r => r.added).length, results });
     }
     // Whatnot tools for the dashboard (owner/admin/manager of the Whatnot store).
-    if (['/whatnot/buy-it-now', '/whatnot/label', '/whatnot/tracking', '/whatnot/report', '/whatnot/insights'].includes(url.pathname)) {
+    if (['/whatnot/buy-it-now', '/whatnot/label', '/whatnot/tracking', '/whatnot/report', '/whatnot/insights', '/whatnot/show-wrap'].includes(url.pathname)) {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
       if (auth.error) return auth.error;
@@ -13688,6 +13692,33 @@ async function routeRequest(request, env, ctx) {
         if (r.data?.status !== 'completed' || !r.data?.report_url) return json({ ok: true, status: r.data?.status || 'pending' });
         const csv = await fetch(r.data.report_url).then(x => x.ok ? x.text() : '').catch(() => '');
         return json({ ok: true, status: 'completed', url: r.data.report_url, summary: summarizeFinancialReport(parseCsv(csv)), parameters: r.data.report_parameters || null });
+      }
+      // SHOW WRAP-UP: a show's numbers, pack list, new and returning buyers,
+      // and what didn't sell (scripts/whatnot-sync.mjs showWrapUp).
+      if (url.pathname === '/whatnot/show-wrap' && request.method === 'GET') {
+        const s = encodeURIComponent(storeId);
+        const { data: shows } = await supabaseAdminFetch(env, `whatnot_shows?store_id=eq.${s}&whatnot_show_id=not.is.null&select=whatnot_show_id,title,status,started_at,ended_at,report_summary&order=started_at.desc.nullslast&limit=12`);
+        const list = (shows || []).map(x => ({ id: x.whatnot_show_id, title: x.title, status: x.status, started_at: x.started_at, ended_at: x.ended_at, summary: x.report_summary }));
+        const want = String(url.searchParams.get('show_id') || '');
+        const chosen = list.find(x => x.id === want) || list.find(x => x.status === 'ended') || list[0];
+        if (!chosen) return json({ ok: true, shows: [], wrap: null });
+        const notes = (await env.LBA_KV.get('whatnot-board-orders:' + storeId, 'json').catch(() => null)) || {};
+        const orderIds = Object.entries(notes).filter(([, n]) => n.showId === chosen.id).map(([id]) => id);
+        const lines = [];
+        for (let i = 0; i < orderIds.length; i += 20) {
+          const ors = orderIds.slice(i, i + 20).map(id => 'reference.like.' + encodeURIComponent('whatnot-api:' + id + ':') + '*').join(',');
+          const { data: pays } = await supabaseAdminFetch(env, `pos_payments?store_id=eq.${s}&provider=eq.whatnot&or=(${ors})&select=sale_id,reference`);
+          const orderBySale = new Map((pays || []).map(p => [p.sale_id, String(p.reference || '').split(':')[1]]));
+          if (!orderBySale.size) continue;
+          const { data: saleLines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${s}&sale_id=in.(${[...orderBySale.keys()].map(encodeURIComponent).join(',')})&select=sale_id,title,unit_price,quantity`);
+          for (const l of saleLines || []) lines.push({ orderId: orderBySale.get(l.sale_id), title: l.title, price: Math.round((Number(l.unit_price) || 0) * Math.max(1, Number(l.quantity) || 1) * 100) / 100, quantity: Number(l.quantity) || 1 });
+        }
+        const ids = (await env.LBA_KV.get(`whatnot-show-items:${storeId}:${chosen.id}`, 'json').catch(() => null)) || [];
+        const unsold = ((await deps.rows(ids)) || []).filter(r => r.status === 'in_stock' && Number(r.data?.quantity ?? r.data?.qty ?? 1) > 0);
+        const returned = await env.LBA_KV.get(`whatnot-unsold-returned:${storeId}:${chosen.id}`, 'json').catch(() => null);
+        const settings = await whatnotListingSettings(env, storeId);
+        return json({ ok: true, shows: list.map(({ summary, ...x }) => x), unsoldBackToShop: settings.unsoldBackToShop !== false,
+          wrap: showWrapUp({ show: chosen, summary: chosen.summary, notes, lines, unsold, returned }) });
       }
       // SHOW TRENDS + TOP BUYERS.
       if (url.pathname === '/whatnot/insights' && request.method === 'GET') {
@@ -19798,6 +19829,7 @@ function whatnotDeps(env, ctx, storeId) {
       if (changed) await env.LBA_KV.put(key, JSON.stringify(notes));
     },
     upsertShow: row => upsertWhatnotShow(env, storeId, row),
+    rows: async ids => ids.length ? (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [] : [],
     // Kept shows past their start that aren't final yet (planning or live, or
     // ended within 3 days -- their numbers firm up when Whatnot's analytics land).
     openShowIds: async () => {
@@ -19850,12 +19882,21 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
     // Shows after their orders, so an ended show counts every sale.
     try { out.shows = await refreshRecentWhatnotShows({ ...deps, feeSettings }); }
     catch (e) { out.showsError = e.message; }
+    // A show that ended: its unsold auction items go back to the shop
+    // (Settings -> Whatnot can turn this off). Once per show.
+    if (listingSettings.unsoldBackToShop !== false) {
+      for (const sh of out.shows || []) {
+        if (sh.status !== 'ended' || !sh.showId) continue;
+        try { const r = await returnUnsoldToShop(sh.showId, deps); if (r.returned?.length || r.failed?.length) (out.unsold ||= []).push(r); }
+        catch (e) { (out.unsold ||= []).push({ showId: sh.showId, error: e.message }); }
+      }
+    }
   }
   await env.LBA_KV.put('whatnot-sync-last:' + storeId, JSON.stringify(out), { expirationTtl: 30 * 86400 });
   // A run that did something (or hit a problem) is also kept where it can be
   // checked from outside the Worker (server_job_runs).
   const l = out.listings || {};
-  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError || out.shows?.some(x => x.summary || x.error)) {
+  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
     await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
   }
   return out;

@@ -16,7 +16,8 @@ export async function handleLiveStudio(request,env,deps,url) {
     try { return deps.json({ok:true,show:await deps.currentShow(storeId)}); } catch { return deps.json({ok:false,error:'Could not reach Whatnot'},502); }
   }
   if (request.method!=='POST') return deps.json({ok:false,error:'Not found'},404);
-  const parsed=await deps.readJsonWithLimit(request,8192);
+  // A prepped show's whole lineup (up to 60) fits.
+  const parsed=await deps.readJsonWithLimit(request,url.pathname==='/live-studio/stage'?65536:8192);
   if (parsed.error) return parsed.error;
   const body=parsed.data || {};
   try {
