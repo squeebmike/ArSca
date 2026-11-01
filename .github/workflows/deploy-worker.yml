@@ -149,6 +149,7 @@ on:
       - scripts/orders-board.mjs
       - scripts/whatnot-api.mjs
       - scripts/whatnot-sync.mjs
+      - scripts/morning-health.mjs
       - scripts/live-studio-api.mjs
       - scripts/live-studio-room.mjs
       - scripts/live-studio-model.mjs

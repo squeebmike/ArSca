@@ -137,7 +137,7 @@ function fakeDeps(rows, answer) {
 
 // Wiring: hourly trigger, review hand-off, dashboard skip.
 assert.match(wrangler, /"17 \* \* \* \*"/, 'hourly trigger');
-assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.includes('if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); return; }'), 'hourly trigger runs only the daily price syncs (Pokemon, and PriceCharting comics/sports)');
+assert.ok(worker.includes("const POKEMON_SYNC_CRON = '17 * * * *';") && worker.includes('if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); await Promise.allSettled([runScheduledMorningHealth(env)]); return; }'), 'hourly trigger runs the daily price syncs (Pokemon, and PriceCharting comics/sports), then the once-a-day morning summary');
 assert.ok(worker.includes("source: 'server-daily-sync'"), 'server calls are logged');
 assert.ok(worker.includes("url.pathname === '/price-sync/review'"), 'review queue route');
 assert.ok(deploy.includes('scripts/ppt-usage.mjs') && deploy.includes('scripts/pokemon-daily-sync.mjs'), 'deploys on change');
@@ -151,6 +151,6 @@ console.log('pokemon server sync + credit log tests passed');
 {
   const sched = worker.slice(worker.indexOf('  async scheduled(event, env, ctx) {'), worker.indexOf('\n  },\n};', worker.indexOf('  async scheduled(event, env, ctx) {')));
   assert.doesNotMatch(sched, /ctx\.waitUntil\(/, 'no scheduled job is left to waitUntil');
-  assert.equal((sched.match(/await Promise\.allSettled\(\[/g) || []).length, 4, 'all three schedules are awaited (the two price syncs one after the other)');
+  assert.equal((sched.match(/await Promise\.allSettled\(\[/g) || []).length, 5, 'all three schedules are awaited (the two price syncs one after the other, then the morning summary)');
 }
 

@@ -85,6 +85,7 @@ import { customerProfile, searchInventory, itemProfile } from './scripts/databas
 import { handleFanClubRequest } from './scripts/fan-club.mjs';
 import { handleCardIntakeRequest } from './scripts/card-intake.mjs';
 import { handleDailyTasksRequest } from './scripts/daily-tasks.mjs';
+import { buildMorningHealth, nextJobHealth, MORNING_HOUR } from './scripts/morning-health.mjs';
 
 // Local pacing also keeps staff batches orderly; every API call now passes
 // through the persistent account-wide coordinator. _pcQueueTail
@@ -4601,14 +4602,27 @@ function ebayQtyFixEmail({ fixed = [], failed = [], more = 0 }) {
 async function runScheduledEbayNewSales(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   for (const storeId of await storesWithEbayListings(env)) {
+    // Each check's outcome is noted for the morning summary.
+    let problem = '';
     try {
       let ebayToken = '';
-      try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
-      if (!ebayToken) continue;
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (e) { problem = 'eBay sign-in failed: ' + e.message; }
+      if (!ebayToken) { problem ||= 'eBay is not signed in'; continue; }
       const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
       await syncEbayOrdersForStore(env, storeId, ebayToken, syncSettings?.[0]?.receipt_settings || {}, { reconcile: false, confirmedBy: null });
-    } catch (e) { console.error('10-minute eBay sale check failed for store', storeId, e.message); }
+    } catch (e) { problem = e.message || 'failed'; console.error('10-minute eBay sale check failed for store', storeId, e.message); }
+    finally { await noteJobHealth(env, 'ebay:' + storeId, problem); }
   }
+}
+// A job's "last ran / last problem" note for the morning summary
+// (scripts/morning-health.mjs nextJobHealth: written on a change or hourly).
+async function noteJobHealth(env, name, error, detail = null) {
+  if (!env.LBA_KV) return;
+  try {
+    const key = 'job-health:' + name;
+    const { write, value } = nextJobHealth(await env.LBA_KV.get(key, 'json').catch(() => null), error, Date.now(), detail);
+    if (write) await env.LBA_KV.put(key, JSON.stringify(value), { expirationTtl: 14 * 86400 });
+  } catch (_) {}
 }
 async function runScheduledEbayOrderSync(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
@@ -19279,7 +19293,7 @@ export default {
     // 6-hour trigger.
     // One after the other, not together: each reads a lot of inventory, and
     // running both at once doubles what the Worker holds in memory.
-    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); return; }
+    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); await Promise.allSettled([runScheduledMorningHealth(env)]); return; }
     // Every 10 minutes: Whatnot, and new eBay sales (so a one-of-a-kind item
     // sold on eBay comes off everywhere else within minutes, not hours, even
     // with no dashboard open). Skipped at the 6-hour run's own minute, which
@@ -19733,7 +19747,7 @@ async function runScheduledPokemonServerSync(env) {
     const key = storeEnv.POKEMONPRICE_API_KEY || storeEnv.POKEMON_PRICE_TRACKER_API_KEY;
     if (!key) continue;
     const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + (storeEnv.STORE_KEYS_OWNER ? ':' + storeEnv.STORE_KEYS_OWNER : '')).catch(() => null) || 0);
-    if (quotaUntil && Date.now() < quotaUntil) continue;
+    if (quotaUntil && Date.now() < quotaUntil) { await noteJobHealth(env, 'pokemon:' + storeId, '', { note: 'daily PokemonPriceTracker credits used up until ' + new Date(quotaUntil).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit' }) + ' Pacific' }); continue; }
     const deps = {
       db: (path, opts) => supabaseAdminFetch(env, path, opts),
       kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
@@ -19750,8 +19764,9 @@ async function runScheduledPokemonServerSync(env) {
     try {
       const result = await runPokemonServerSync(storeId, deps);
       if (result.checked) console.log('Pokemon server sync', storeId, JSON.stringify(result));
+      await noteJobHealth(env, 'pokemon:' + storeId, result.failed && !result.checked ? 'every lookup failed (' + result.failed + ')' : '', { checked: result.checked || 0, ...(result.skipped ? { note: String(result.skipped) } : {}) });
       if (result.failed && !result.checked) continue; // this key is out of credits; another store's may not be
-    } catch (e) { console.error('Pokemon server sync failed for store', storeId, e.message); }
+    } catch (e) { await noteJobHealth(env, 'pokemon:' + storeId, e.message); console.error('Pokemon server sync failed for store', storeId, e.message); }
   }
 }
 
@@ -19881,6 +19896,49 @@ async function voidWhatnotOrder(env, storeId, orderId) {
     voided++;
   }
   return voided;
+}
+
+// The morning summary (scripts/morning-health.mjs): once a day, on the first
+// hourly run at or after 7 AM Pacific, to the store's FOC email.
+async function morningHealthFor(env, storeId, now = Date.now()) {
+  const s = encodeURIComponent(storeId), since = new Date(now - 86400000).toISOString();
+  const db = async path => (await supabaseAdminFetch(env, path).catch(() => ({ data: [] }))).data || [];
+  const kv = async key => env.LBA_KV ? await env.LBA_KV.get(key, 'json').catch(() => null) : null;
+  const [priceRuns, whatnotRuns, payments, webOrders, review, whatnotLast, ebay, pokemon] = await Promise.all([
+    db(`server_job_runs?job=eq.pricecharting-sync&store_id=eq.${s}&started_at=gte.${encodeURIComponent(since)}&select=started_at,result&order=started_at.desc&limit=48`),
+    db(`server_job_runs?job=eq.whatnot-sync&store_id=eq.${s}&started_at=gte.${encodeURIComponent(since)}&select=started_at,result&limit=200`),
+    db(`pos_payments?store_id=eq.${s}&created_at=gte.${encodeURIComponent(since)}&status=not.in.(refunded,failed,pending,canceled,cancelled,voided)&select=provider,method,amount&limit=2000`),
+    db(`storefront_orders?store_id=eq.${s}&fulfillment_status=neq.fulfilled&created_at=gte.${encodeURIComponent(new Date(now - 30 * 86400000).toISOString())}&select=id,sale_id,created_at&limit=500`),
+    kv('price-sync-review:' + storeId),
+    kv('whatnot-sync-last:' + storeId),
+    kv('job-health:ebay:' + storeId),
+    kv('job-health:pokemon:' + storeId),
+  ]);
+  // Only paid website orders count as waiting.
+  const saleIds = [...new Set(webOrders.map(o => o.sale_id).filter(Boolean))];
+  const paid = saleIds.length ? new Set((await db(`pos_sales?id=in.(${saleIds.map(encodeURIComponent).join(',')})&status=eq.completed&select=id`)).map(r => r.id)) : new Set();
+  const open = webOrders.filter(o => paid.has(o.sale_id));
+  return buildMorningHealth({
+    now, storeName: storeId === whatnotStoreId(env) ? 'The Mana Pocket' : '', priceRuns, whatnotRuns, whatnotLast,
+    whatnotConnected: !!env.WHATNOT_API_KEY && storeId === whatnotStoreId(env), health: { ebay, pokemon }, payments, day: 'last 24 hours',
+    openWebOrders: open.length, oldWebOrders: open.filter(o => now - Date.parse(o.created_at) > 2 * 86400000).length,
+    reviewWaiting: Array.isArray(review) ? review.length : 0,
+  });
+}
+async function runScheduledMorningHealth(env, now = Date.now()) {
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const hour = Number(new Date(now).toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: false })) % 24;
+  if (hour < MORNING_HOUR) return;
+  const storeId = whatnotStoreId(env), key = `morning-health-sent:${storeId}:${pacificToday(new Date(now))}`;
+  if (await env.LBA_KV.get(key).catch(() => '1')) return;
+  // Claimed before sending so overlapping runs can't both email; released if the send fails.
+  await env.LBA_KV.put(key, new Date(now).toISOString(), { expirationTtl: 3 * 86400 });
+  try {
+    const mail = await morningHealthFor(env, storeId, now);
+    const to = (await loadFocAutoList(env, storeId)).email || FOC_AUTOLIST_DEFAULT_EMAIL;
+    await sendEmail(env, to, mail.subject, mail.body);
+    await env.LBA_KV.put('morning-health-last:' + storeId, JSON.stringify({ at: new Date(now).toISOString(), to, subject: mail.subject, problems: mail.problems }), { expirationTtl: 30 * 86400 });
+  } catch (e) { await env.LBA_KV.delete(key).catch(() => {}); console.error('Morning summary failed:', e.message); }
 }
 
 async function runScheduledPriceChartingServerSync(env) {
