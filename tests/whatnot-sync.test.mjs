@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {
   whatnotCategoryId, whatnotDesired, syncWhatnotItem, runWhatnotListingSync,
   processWhatnotOrder, reconcileWhatnotOrders, whatnotFee, whatnotClient, WHATNOT_PROFILES,
-  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders,
+  summarizeWhatnotShow, refreshWhatnotShow, whatnotShowOrders, refreshRecentWhatnotShows,
 } from '../scripts/whatnot-sync.mjs';
 
 // Store, 2026-10-31: "Anything I checkbox will be put on whatnot and synced.
@@ -72,6 +72,24 @@ assert.deepEqual(wn.calls.find(c => c.method === 'PATCH').body.variants[0].prici
 assert.equal(wn.products.get('p1').qty, 3);
 let link = r.link;
 assert.equal(link.productId, 'p1'); assert.equal(link.qty, 3); assert.equal(link.price, 12.5);
+
+// Published only after the price and quantity are set (Whatnot publishes a
+// product once it has both); a draft is published on a later run.
+{
+  const order = wn.calls.map(c => c.method + ' ' + c.path.split('?')[0]);
+  assert.ok(order.indexOf('POST /merchandising/products/p1') > order.indexOf('POST /inventory/set'), 'publish after inventory: ' + order.join(', '));
+  assert.ok(order.indexOf('POST /merchandising/products/p1') > order.indexOf('PATCH /products/p1/variants'), 'publish after price');
+  assert.equal(link.published, true);
+  const w2 = fakeWhatnot();
+  let refuse = true;
+  const api2 = async (m, path, body) => (m === 'POST' && path.startsWith('/merchandising') && refuse) ? { ok: false, status: 422, data: { title: 'Cannot publish', detail: 'missing image' } } : w2.api(m, path, body);
+  let r2 = await syncWhatnotItem(api2, row(), shape(row()), null, opts);
+  assert.equal(r2.link.published, undefined);
+  assert.match(r2.link.note, /^Draft on Whatnot \(not in your shop yet\): Cannot publish: missing image/);
+  refuse = false;
+  r2 = await syncWhatnotItem(api2, row(), shape(row()), r2.link, opts);
+  assert.equal(r2.link.published, true, 'the draft goes out on the next run'); assert.equal(r2.link.note, undefined);
+}
 
 // Nothing changed: no calls.
 wn.calls.length = 0;
@@ -149,6 +167,28 @@ assert.equal(r.link.error, 'title: String too long');
   assert.equal(wn.products.get('p1').qty, 0);
   // The links live in KV, never in the item's data.
   assert.ok(kv.get('whatnot-link:S:b').productId === 'p2');
+}
+
+// The store run picks a draft up again even though the item didn't change.
+{
+  const w3 = fakeWhatnot();
+  let refuse = true;
+  const api3 = async (m, path, body) => (m === 'POST' && path.startsWith('/merchandising') && refuse) ? { ok: false, status: 422, data: { detail: 'missing image' } } : w3.api(m, path, body);
+  const kv = new Map();
+  const item = { id: 'z', status: 'in_stock', updated_at: '1', data: { name: 'Z', sellOnWhatnot: true, quantity: 1 } };
+  const deps = { api: api3, shape, kvGet: async k => kv.has(k) ? structuredClone(kv.get(k)) : null, kvPut: async (k, v) => { if (v == null) kv.delete(k); else kv.set(k, structuredClone(v)); },
+    db: async path => path.includes('select=id,updated_at') ? { data: [{ id: 'z', updated_at: '1' }] } : { data: [item] } };
+  await runWhatnotListingSync('S', deps);
+  assert.equal(kv.get('whatnot-linked:S').z, 'draft');
+  refuse = false;
+  const out = await runWhatnotListingSync('S', deps);
+  assert.equal(out.checked, 1, 'rechecked without an edit');
+  assert.equal(kv.get('whatnot-link:S:z').published, true);
+  assert.equal(kv.get('whatnot-linked:S').z, 'ok');
+  assert.equal((await runWhatnotListingSync('S', deps)).checked, 0, 'and left alone once published');
+  // A link from before publishing was checked (marked 1) is checked once.
+  kv.set('whatnot-linked:S', { z: 1 });
+  assert.equal((await runWhatnotListingSync('S', deps)).checked, 1);
 }
 
 // Orders: each item recorded once, through record-external-sale.
@@ -266,6 +306,27 @@ assert.equal(r.link.error, 'title: String too long');
   await refreshWhatnotShow({ id: 'show2', title: 'Next week', status: 'scheduled' }, deps);
   assert.deepEqual(saved[0], { whatnot_show_id: 'show2', platform: 'whatnot', title: 'Next week', status: 'planning', started_at: null, ended_at: null });
   assert.equal((await refreshWhatnotShow({ id: 'show3', status: 'cancelled' }, deps)).skipped, 'cancelled');
+}
+
+// A kept show that should have started is asked about directly, even when
+// Whatnot's show list doesn't include it.
+{
+  const asked = [];
+  const deps = { storeId: 'S', feeSettings: {}, kvGet: async () => null, kvPut: async () => {}, costsForOrders: async () => ({}), upsertShow: async () => {},
+    openShowIds: async () => ['listed', 'old-one'],
+    api: async (m, path) => {
+      asked.push(path);
+      if (path.startsWith('/shows?')) return { ok: true, status: 200, data: { data: [{ id: 'listed', title: 'L', status: 'scheduled' }] } };
+      if (path === '/shows/old-one') return { ok: true, status: 200, data: { id: 'old-one', title: 'Today', status: 'ended', ended_at: '2026-10-31T20:00:00.000Z', created_at: '2026-10-31T18:00:00.000Z' } };
+      if (path.startsWith('/analytics/')) return { ok: true, status: 200, data: { calculation_status: 'PENDING' } };
+      if (path.startsWith('/orders?')) return { ok: true, status: 200, data: { data: [], next_cursor: null } };
+      throw new Error(path);
+    } };
+  const res = await refreshRecentWhatnotShows(deps);
+  assert.ok(asked.includes('/shows/old-one'), 'the kept show is looked up directly');
+  assert.equal(asked.filter(p => p === '/shows/listed').length, 0, 'one already in the list is not asked twice');
+  assert.equal(res.find(r => r.showId === 'old-one').status, 'ended');
+  assert.match(fs.readFileSync('cloudflare-worker-full.js', 'utf8'), /openShowIds: async \(\) => \{/);
 }
 
 // The client: Bearer token, retries a 429.

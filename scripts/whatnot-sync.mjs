@@ -101,7 +101,8 @@ export function whatnotDesired(row, item) {
     qty,
     price,
     title: String(item.name || 'Item').slice(0, 200),
-    description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || null,
+    // Whatnot won't publish without a description.
+    description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
     categoryId: whatnotCategoryId(item),
     profileKind: whatnotProfileKind(item),
     media: (item.photos || []).filter(u => /^https:\/\//i.test(u)).slice(0, 8).map(url => ({ url })),
@@ -135,10 +136,6 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
     variantId = variants.data?.data?.[0]?.id || '';
     if (!variantId) return fail(variants, 'Whatnot made the product but no variant came back');
     Object.assign(base, { productId, variantId, url: created.data.url || '', createdAt: new Date().toISOString(), price: null, qty: null });
-    // Buy It Now in the shop any time, not held for live shows. Not fatal:
-    // the listing still works if Whatnot turns this down.
-    const merch = await api('POST', `/merchandising/products/${encodeURIComponent(productId)}`, { transaction_type: 'buy_it_now', reserve_for_live: false });
-    if (!merch.ok) base.note = 'Sale format not set: ' + whatnotErrorText(merch);
   }
 
   let action = link?.productId ? 'none' : 'created';
@@ -157,6 +154,16 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
     base.qty = want.qty;
     if (action === 'none') action = 'updated';
   }
+  // Published to the shop as Buy It Now any time (not held for live shows)
+  // only now: Whatnot publishes a product once it has a price, inventory,
+  // a description and a photo. 2026-10-31: this ran right after creating
+  // the product, before the price and quantity, so Whatnot kept the first
+  // listing as a draft. A draft is tried again on every run until it goes.
+  if (want.qty > 0 && base.published !== true) {
+    const merch = await api('POST', `/merchandising/products/${encodeURIComponent(productId)}`, { transaction_type: 'buy_it_now', reserve_for_live: false });
+    if (merch.ok) { base.published = true; delete base.note; if (action === 'none') action = 'updated'; }
+    else base.note = 'Draft on Whatnot (not in your shop yet): ' + whatnotErrorText(merch);
+  }
   delete base.error; delete base.errorAt;
   base.syncedAt = new Date().toISOString();
   return { link: base, retry: false, action };
@@ -171,12 +178,15 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 25, force =
   const { data: index } = await deps.db(`inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&select=id,updated_at&limit=5000`);
   const seenKey = 'whatnot-sync-seen:' + storeId;
   const seen = (!force && await deps.kvGet(seenKey)) || {};
-  const linkedIds = new Set(Object.keys((await deps.kvGet('whatnot-linked:' + storeId)) || {}));
+  const linkedState = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
+  const linkedIds = new Set(Object.keys(linkedState));
   const ids = new Map((index || []).map(r => [r.id, r.updated_at]));
   // Linked items that lost the checkbox and also got edited, deleted or
   // went missing from the index are checked too, so they go to 0.
   for (const id of linkedIds) if (!ids.has(id)) ids.set(id, 'missing');
-  const todo = [...ids].filter(([id, at]) => seen[id] !== at).slice(0, limit);
+  // A listing not confirmed published (a draft, or made before publishing
+  // was checked) is tried again every run.
+  const todo = [...ids].filter(([id, at]) => seen[id] !== at || linkedIds.has(id) && linkedState[id] !== 'ok').slice(0, limit);
   const out = { checked: 0, created: 0, updated: 0, errors: [], more: Math.max(0, [...ids].filter(([id, at]) => seen[id] !== at).length - limit) };
   if (!todo.length) return out;
   const rows = new Map();
@@ -198,7 +208,7 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 25, force =
         profileId: kind => profileIds[kind] || '',
         saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); },
       });
-      if (r.link) { await deps.kvPut(linkKey, r.link); linked[id] = 1; }
+      if (r.link) { await deps.kvPut(linkKey, r.link); linked[id] = r.link.productId && r.link.published !== true && Number(r.link.qty) > 0 ? 'draft' : 'ok'; }
       else if (link) { await deps.kvPut(linkKey, null); delete linked[id]; }
       if (r.action === 'created') out.created++;
       if (r.action === 'updated') out.updated++;
@@ -385,11 +395,21 @@ export async function refreshRecentWhatnotShows(deps, { limit = 10 } = {}) {
   const r = await deps.api('GET', `/shows?limit=${limit}`);
   if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));
   const out = [];
+  const done = new Set();
   for (const show of r.data?.data || []) {
     const recent = show.status !== 'ended' || !show.ended_at || Date.now() - Date.parse(show.ended_at) < 7 * 86400000;
     if (!recent) continue;
+    done.add(show.id);
     try { out.push(await refreshWhatnotShow(show, deps)); }
     catch (e) { out.push({ showId: show.id, error: e.message }); }
+  }
+  // Shows we keep that should have started and haven't been seen ending:
+  // asked about one by one. 2026-10-31: the first ten listed didn't include
+  // that day's show, so it stayed "planning" with no totals after it ended.
+  for (const id of (await deps.openShowIds?.()) || []) {
+    if (done.has(id)) continue;
+    try { out.push(await refreshWhatnotShow(String(id), deps)); }
+    catch (e) { out.push({ showId: id, error: e.message }); }
   }
   return out;
 }
