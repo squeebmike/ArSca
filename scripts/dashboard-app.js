@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.10.31.8-whatnot-publish';
+const APP_VERSION = '2026.11.01.1-whatnot-show-costs';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4484,6 +4484,87 @@ function whatnotSyncSummaryHtml(last, items){
   if(problems.length) html += problems.slice(0, 20).map(([id, l]) => `<div style="color:var(--red)">${escHtml(byId(id)?.name || l.name || id)}: ${escHtml(l.error)}</div>`).join('');
   return html;
 }
+// Cost of listings made straight on Whatnot (no inventory item), so show
+// profit counts them: rules by title ("contains" -> cost per unit, first
+// match wins) and a default. Saved with the other Whatnot settings
+// (/store/whatnot-settings); the Worker applies it to each such sale.
+function parseWhatnotCostRules(text){
+  return String(text || '').split(/\n/).map(line => line.trim()).filter(Boolean).map(line => {
+    const m = line.match(/^(.*?)[\s|=:,-]+\$?\s*(\d+(?:\.\d+)?)\s*$/);
+    return m && m[1].trim() ? { match:m[1].trim(), cost:Math.round(Number(m[2]) * 100) / 100 } : null;
+  }).filter(Boolean);
+}
+async function renderWhatnotCostsPanel(){
+  const el = document.getElementById('whatnot-costs-panel');
+  if(!el) return;
+  let settings = {};
+  try { const r = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' }); settings = (await r.json()).settings || {}; } catch(e) {}
+  const lc = settings.listingCosts || {};
+  const rules = (lc.rules || []).map(r => r.match + ' | ' + Number(r.cost).toFixed(2)).join('\n');
+  el.innerHTML = '<div style="color:var(--text)">COST OF WHATNOT-ONLY LISTINGS</div>'
+    + '<div>Listings made straight on Whatnot (mystery comics, bundles) have no item here, so their cost is set by title. One rule per line: words in the title | cost each. First match wins.</div>'
+    + '<textarea id="whatnot-cost-rules" class="tsi" rows="4" style="width:100%;margin-top:4px" placeholder="ManaPocket | 1.50&#10;TOOFER | 3.00&#10;Bundle | 6.00">' + escHtml(rules) + '</textarea>'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Anything else: $<input id="whatnot-cost-default" class="tsi" style="width:80px;margin:0" inputmode="decimal" placeholder="none" value="' + escHtml(lc.defaultCost ?? '') + '">'
+    + '<button class="hbtn" style="margin:0" onclick="saveWhatnotCosts()">SAVE COSTS</button><button class="hbtn" style="margin:0" onclick="applyWhatnotCostsToPast()">APPLY TO PAST SALES</button></div><div id="whatnot-costs-result"></div>';
+}
+async function saveWhatnotCosts(){
+  const out = document.getElementById('whatnot-costs-result');
+  try {
+    const r = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const current = (await r.json()).settings || {};
+    const def = String(document.getElementById('whatnot-cost-default')?.value || '').replace(/[$\s]/g, '');
+    const listingCosts = { rules:parseWhatnotCostRules(document.getElementById('whatnot-cost-rules')?.value), defaultCost:def === '' || !isFinite(Number(def)) ? null : Math.round(Number(def) * 100) / 100 };
+    const res = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:{ ...current, listingCosts } }) });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok) throw new Error(d.error || 'Could not save');
+    if(out) out.innerHTML = '<span style="color:var(--g)">Saved: ' + listingCosts.rules.length + ' rule(s)' + (listingCosts.defaultCost != null ? ', $' + listingCosts.defaultCost.toFixed(2) + ' for anything else' : '') + '. New Whatnot sales use them.</span>';
+  } catch(e) { if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+async function applyWhatnotCostsToPast(){
+  if(!confirm('Give past Whatnot-only sales that still show $0 cost the costs saved here, and work out the shows again?')) return;
+  const out = document.getElementById('whatnot-costs-result');
+  if(out) out.textContent = 'Applying...';
+  try {
+    const res = await storeWorkerFetch(WORKER + '/whatnot/apply-costs?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok || !d.ok) throw new Error(d.error || 'Could not apply');
+    if(out) out.innerHTML = '<span style="color:var(--g)">' + d.lines + ' sale(s) given a cost, $' + Number(d.total || 0).toFixed(2) + ' in all' + (d.noRule ? ' · ' + d.noRule + ' matched no rule (still $0)' : '') + ' · ' + ((d.shows || []).length) + ' show(s) worked out again.</span>';
+  } catch(e) { if(out) out.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+// ADD TO NEXT WHATNOT SHOW (inventory bulk bar): the selected items go into
+// the next scheduled show's lineup. Any not on Whatnot yet get SELL ON
+// WHATNOT ticked and are listed first.
+async function addSelectedToNextWhatnotShow(){
+  const items = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in');
+  if(!items.length){ toast_dash('Select inventory items first'); return; }
+  let show = null;
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/shows/next?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not reach Whatnot');
+    show = d.show;
+  } catch(e) { toast_dash(e.message || String(e)); return; }
+  if(!show){ toast_dash('No upcoming Whatnot show -- schedule one in Whatnot first'); return; }
+  const when = show.startsAt ? new Date(show.startsAt).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
+  const notListed = items.filter(i => i.sellOnWhatnot !== true);
+  if(!confirm('Add ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' to "' + show.title + '"' + (when ? ' (' + when + ')' : '') + '?' + (notListed.length ? '\n\n' + notListed.length + ' not on Whatnot yet will get SELL ON WHATNOT ticked and be listed first.' : ''))) return;
+  for(const item of notListed){ try { await updateBuiltInInventoryItem(item, { sellOnWhatnot:true }); } catch(e) {} }
+  const ids = items.map(i => i.supabaseRowId || i.id);
+  let added = 0; const problems = [];
+  for(let i = 0; i < ids.length; i += 25){
+    toast_dash('Adding to the show: ' + Math.min(i + 25, ids.length) + ' of ' + ids.length + '...');
+    try {
+      const r = await storeWorkerFetch(WORKER + '/whatnot/show-add?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId:show.id }) });
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add to the show');
+      added += d.added || 0;
+      (d.results || []).filter(x => x.error).forEach(x => problems.push((x.name || x.id) + ': ' + x.error));
+    } catch(e) { problems.push(e.message || String(e)); }
+  }
+  _whatnotItemsCache = null;
+  toast_dash(added + ' added to "' + show.title + '"' + (problems.length ? ' · ' + problems.length + ' not added' : ''));
+  if(problems.length) alert('Not added to the show:\n\n' + problems.slice(0, 20).join('\n'));
+}
 async function renderWhatnotConnection(){
   const body = document.getElementById('whatnot-connection-body');
   if(!body) return;
@@ -4503,6 +4584,8 @@ async function renderWhatnotConnection(){
     if(d.apiKeySet) {
       try { const { items, last } = await whatnotItemLinks(); body.innerHTML += whatnotSyncSummaryHtml(last, items); } catch(e) {}
       body.innerHTML += '<div style="margin-top:6px">Check SELL ON WHATNOT on an item to list it (Buy It Now, same price as here). Quantity and price follow every change; a Whatnot sale lowers stock here.</div><button class="hbtn" style="margin-top:6px" onclick="syncWhatnotNow()">SYNC WITH WHATNOT NOW</button><div id="whatnot-sync-result"></div>';
+      body.insertAdjacentHTML('beforeend', '<div id="whatnot-costs-panel" style="margin-top:12px"></div>');
+      renderWhatnotCostsPanel();
     }
   } catch(e) {
     body.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>';
