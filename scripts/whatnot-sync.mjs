@@ -273,11 +273,15 @@ export async function processWhatnotOrder(order, deps) {
     const title = String(it.purchased_item?.title || 'Whatnot sale').slice(0, 200);
     // A giveaway still uses up the item: recorded at $0 so its cost counts.
     const giveaway = giveawayOrder || !(salePrice > 0);
+    // A listing made straight on Whatnot has no inventory item: its cost
+    // comes from Settings -> Whatnot (whatnotListingCost).
+    const unitCost = ours ? null : whatnotListingCost(title, deps.listingSettings);
     const body = { itemId: ours, title, channel: 'Whatnot', salePrice: giveaway ? 0 : salePrice, quantitySold: quantity, soldAt: order.created_at || new Date().toISOString(),
-      feeAmount: giveaway ? 0 : whatnotFee(salePrice, deps.feeSettings, { first }), externalRef: whatnotOrderRef(orderId, it.id), ...(giveaway ? { giveaway: true } : {}) };
+      feeAmount: giveaway ? 0 : whatnotFee(salePrice, deps.feeSettings, { first }), externalRef: whatnotOrderRef(orderId, it.id), ...(giveaway ? { giveaway: true } : {}),
+      ...(unitCost != null ? { cost: Math.round(unitCost * quantity * 100) / 100 } : {}) };
     if (!giveaway) first = false;
-    // A Whatnot-only giveaway (nothing of ours) has nothing to record.
-    if (giveaway && !ours) { recorded.push({ itemId: '', title, giveaway: true, skipped: 'not ours' }); continue; }
+    // A Whatnot-only giveaway is recorded only when it has a cost to count.
+    if (giveaway && !ours && !(unitCost > 0)) { recorded.push({ itemId: '', title, giveaway: true, skipped: 'not ours' }); continue; }
     let r = await deps.recordSale(body);
     // Already sold here, or not one of ours any more: the money still counts.
     if (!r.ok && ours && !giveaway && (r.status === 404 || r.status === 409)) r = await deps.recordSale({ ...body, itemId: '' });
@@ -412,4 +416,81 @@ export async function refreshRecentWhatnotShows(deps, { limit = 10 } = {}) {
     catch (e) { out.push({ showId: id, error: e.message }); }
   }
   return out;
+}
+
+// --- Cost of Whatnot-only listings --------------------------------------------
+// Store, 2026-11-01: show profit counted listings made straight on Whatnot
+// ("Comic Book ManaPocket #12", bundles) at $0 cost. Settings -> Whatnot sets
+// a cost per unit by title: rules ("title contains X" -> cost, first match
+// wins) and a default. null = no cost set.
+export function whatnotListingCost(title, settings = {}) {
+  const lc = settings?.listingCosts || {};
+  const t = String(title || '').toLowerCase();
+  for (const r of Array.isArray(lc.rules) ? lc.rules : []) {
+    const m = String(r?.match || '').trim().toLowerCase();
+    const c = Number(r?.cost);
+    if (m && t.includes(m) && Number.isFinite(c) && c >= 0) return Math.round(c * 100) / 100;
+  }
+  const d = lc.defaultCost;
+  return d !== '' && d != null && Number.isFinite(Number(d)) && Number(d) >= 0 ? Math.round(Number(d) * 100) / 100 : null;
+}
+
+// Past Whatnot-only sales still at $0 cost get the cost the settings give
+// them (profit drops by the same amount), then ended shows are worked out
+// again. deps: db, storeId, listingSettings, refreshShows().
+export async function applyWhatnotListingCosts(deps) {
+  const s = encodeURIComponent(deps.storeId);
+  const out = { lines: 0, total: 0, noRule: 0 };
+  const { data: pays } = await deps.db(`pos_payments?store_id=eq.${s}&provider=eq.whatnot&reference=like.whatnot-api:*&select=sale_id&limit=5000`);
+  const saleIds = [...new Set((pays || []).map(p => p.sale_id).filter(Boolean))];
+  for (let i = 0; i < saleIds.length; i += 100) {
+    const { data: lines } = await deps.db(`pos_sale_lines?store_id=eq.${s}&sale_id=in.(${saleIds.slice(i, i + 100).map(encodeURIComponent).join(',')})&item_id=is.null&cost_basis=eq.0&select=id,title,quantity,profit`);
+    for (const l of lines || []) {
+      const unit = whatnotListingCost(String(l.title || '').replace(/^Giveaway: /, ''), deps.listingSettings);
+      if (unit == null || unit <= 0) { out.noRule++; continue; }
+      const qty = Math.max(1, Number(l.quantity) || 1);
+      const cost = Math.round(unit * qty * 100) / 100;
+      await deps.db(`pos_sale_lines?id=eq.${encodeURIComponent(l.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' },
+        // Same as record-external-sale's own unlinked lines: the line's whole cost.
+        body: JSON.stringify({ cost_basis: cost, profit: Math.round(((Number(l.profit) || 0) - cost) * 100) / 100 }) });
+      out.lines++; out.total = Math.round((out.total + cost) * 100) / 100;
+    }
+  }
+  if (deps.refreshShows) out.shows = await deps.refreshShows();
+  return out;
+}
+
+// --- Add items to a show ------------------------------------------------------
+// Store, 2026-11-01: "add to next show". The next scheduled show, soonest first.
+export async function nextWhatnotShow(api, now = Date.now()) {
+  const r = await api('GET', '/shows?status=scheduled&limit=20&reverse=false');
+  if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));
+  return (r.data?.data || []).filter(sh => Date.parse(sh.scheduled_start_at || '') > now - 3600000)
+    .sort((a, b) => Date.parse(a.scheduled_start_at) - Date.parse(b.scheduled_start_at))[0] || null;
+}
+// Each item's Whatnot product (listed first if it isn't yet) added to the
+// show's lineup. deps: api, kvGet, kvPut, storeId, rows(ids) -> inventory
+// rows, shape(row), profileId, saveProfileId.
+export async function addItemsToWhatnotShow(itemIds, showId, deps) {
+  const results = [];
+  const rows = new Map(((await deps.rows(itemIds)) || []).map(r => [r.id, r]));
+  const linked = (await deps.kvGet('whatnot-linked:' + deps.storeId)) || {};
+  for (const id of itemIds) {
+    const row = rows.get(id);
+    if (!row) { results.push({ id, error: 'Item not found' }); continue; }
+    const linkKey = `whatnot-link:${deps.storeId}:${id}`;
+    let link = await deps.kvGet(linkKey);
+    if (!link?.productId || link.published !== true) {
+      if (row.data?.sellOnWhatnot !== true) { results.push({ id, name: row.data?.name, error: 'Not set to sell on Whatnot' }); continue; }
+      const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, { profileId: deps.profileId, saveProfileId: deps.saveProfileId });
+      if (r.link) { await deps.kvPut(linkKey, r.link); linked[id] = r.link.published === true || !(Number(r.link.qty) > 0) ? 'ok' : 'draft'; }
+      link = r.link;
+      if (!link?.productId) { results.push({ id, name: row.data?.name, error: link?.error || 'Could not list it on Whatnot' }); continue; }
+    }
+    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { shows: { strategy: 'ADD', show_ids: [showId] } });
+    if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])] }); results.push({ id, name: row.data?.name, added: true }); }
+    else results.push({ id, name: row.data?.name, error: whatnotErrorText(m) });
+  }
+  await deps.kvPut('whatnot-linked:' + deps.storeId, linked);
+  return results;
 }

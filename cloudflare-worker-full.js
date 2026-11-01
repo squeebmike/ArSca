@@ -47,7 +47,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, addItemsToWhatnotShow } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13521,7 +13521,11 @@ async function routeRequest(request, env, ctx) {
       if (parsed.error) return parsed.error;
       const settings = parsed.data?.settings;
       if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return json({ ok: false, error: 'settings object is required' }, 400);
-      const saved = { ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
+      // The Whatnot tab's export screen saves this object from its own copy;
+      // costs set in Settings -> Whatnot (listingCosts) are kept when a save
+      // doesn't carry them.
+      const existing = settings.listingCosts ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
+      const saved = { ...(existing?.listingCosts ? { listingCosts: existing.listingCosts } : {}), ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
       await env.LBA_KV.put(key, JSON.stringify(saved));
       return json({ ok: true, settings: saved });
     }
@@ -13550,6 +13554,57 @@ async function routeRequest(request, env, ctx) {
       const body = await request.json().catch(() => ({}));
       const result = await runWhatnotSyncForStore(env, ctx, storeId, { force: body.force === true, orders: body.orders === true });
       return json({ ok: true, ...result });
+    }
+    // POST /whatnot/apply-costs -- past Whatnot-only sales still at $0 cost
+    // get the cost Settings -> Whatnot gives them; ended shows are worked
+    // out again (the last 20, so older shows get their totals too).
+    if (url.pathname === '/whatnot/apply-costs' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const deps = { ...whatnotDeps(env, ctx, storeId), feeSettings: await whatnotFeeSettings(env, storeId) };
+      const result = await applyWhatnotListingCosts({ ...deps, listingSettings: await whatnotListingSettings(env, storeId),
+        refreshShows: async () => {
+          const r = await deps.api('GET', '/shows?status=ended&limit=20');
+          const shows = r.ok ? r.data?.data || [] : [];
+          const done = [];
+          for (const show of shows) {
+            await env.LBA_KV.delete(`whatnot-show-final:${storeId}:${show.id}`);
+            try { const x = await refreshWhatnotShow(show, deps); if (x.summary) done.push({ title: show.title, net: x.summary.net }); } catch (e) { done.push({ title: show.title, error: e.message }); }
+          }
+          return done;
+        } });
+      return json({ ok: true, ...result });
+    }
+    // GET /whatnot/shows/next -- the next scheduled show, for ADD TO NEXT SHOW.
+    if (url.pathname === '/whatnot/shows/next' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const show = await nextWhatnotShow(whatnotClient(env));
+      return json({ ok: true, show: show ? { id: show.id, title: show.title, startsAt: show.scheduled_start_at, url: show.url || '' } : null });
+    }
+    // POST /whatnot/show-add { itemIds, showId } -- adds items to a show's
+    // lineup (listing any not on Whatnot yet first). Up to 25 a request.
+    if (url.pathname === '/whatnot/show-add' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const parsed = await readJsonWithLimit(request, 16 * 1024);
+      if (parsed.error) return parsed.error;
+      const itemIds = [...new Set((parsed.data?.itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 25);
+      const showId = String(parsed.data?.showId || '');
+      if (!itemIds.length || !/^[0-9a-f-]{36}$/i.test(showId)) return json({ ok: false, error: 'itemIds and showId are required' }, 400);
+      const deps = whatnotDeps(env, ctx, storeId);
+      const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
+      const results = await addItemsToWhatnotShow(itemIds, showId, { ...deps,
+        rows: async ids => (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [],
+        profileId: kind => profileIds[kind] || '',
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } });
+      return json({ ok: true, added: results.filter(r => r.added).length, results });
     }
     // GET /whatnot/items?store_id= -- each checked item's Whatnot listing
     // (id, quantity and price there, last problem), for the dashboard.
@@ -19659,14 +19714,19 @@ async function whatnotOrderCosts(env, storeId, orderIds) {
     const orderBySale = new Map((pays || []).map(p => [p.sale_id, String(p.reference || '').split(':')[1]]));
     if (!orderBySale.size) continue;
     for (const id of orderBySale.values()) costs[id] = costs[id] || 0;
-    const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${s}&sale_id=in.(${[...orderBySale.keys()].map(encodeURIComponent).join(',')})&select=sale_id,cost_basis,quantity`);
-    for (const l of lines || []) { const o = orderBySale.get(l.sale_id); if (o) costs[o] = Math.round((costs[o] + (Number(l.cost_basis) || 0) * Math.max(1, Number(l.quantity) || 1)) * 100) / 100; }
+    const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${s}&sale_id=in.(${[...orderBySale.keys()].map(encodeURIComponent).join(',')})&select=sale_id,item_id,cost_basis,quantity`);
+    // An inventory item's line carries its unit cost; a Whatnot-only listing's
+    // line carries its whole cost (record-external-sale, unlinked).
+    for (const l of lines || []) { const o = orderBySale.get(l.sale_id); if (o) costs[o] = Math.round((costs[o] + (Number(l.cost_basis) || 0) * (l.item_id ? Math.max(1, Number(l.quantity) || 1) : 1)) * 100) / 100; }
   }
   return costs;
 }
 async function upsertWhatnotShow(env, storeId, row) {
   const { response, data } = await supabaseAdminFetch(env, 'whatnot_shows?on_conflict=store_id,whatnot_show_id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ store_id: storeId, ...row }]) });
   if (response && !response.ok) throw new Error('Could not save Whatnot show: ' + (data?.message || response.status));
+}
+async function whatnotListingSettings(env, storeId) {
+  return (await env.LBA_KV.get('whatnot-settings:' + storeId, 'json').catch(() => null)) || {};
 }
 async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
@@ -19679,7 +19739,8 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   catch (e) { out.listingsError = e.message; }
   if (orders) {
     const feeSettings = await whatnotFeeSettings(env, storeId);
-    try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings })).filter(r => !r.skipped); }
+    const listingSettings = await whatnotListingSettings(env, storeId);
+    try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings, listingSettings })).filter(r => !r.skipped); }
     catch (e) { out.ordersError = e.message; }
     // Shows after their orders, so an ended show counts every sale.
     try { out.shows = await refreshRecentWhatnotShows({ ...deps, feeSettings }); }
@@ -19706,7 +19767,7 @@ async function handleWhatnotEventRecord(env, ctx, record) {
   if (!env.WHATNOT_API_KEY || !/^(orders|shows)\./.test(type)) return;
   const storeId = whatnotStoreId(env);
   try {
-    const deps = { ...whatnotDeps(env, ctx, storeId), feeSettings: await whatnotFeeSettings(env, storeId) };
+    const deps = { ...whatnotDeps(env, ctx, storeId), feeSettings: await whatnotFeeSettings(env, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
     if (type.startsWith('orders.') && data.id) console.log('Whatnot order', JSON.stringify(await processWhatnotOrder(data, deps)));
     // A show scheduled, live or ended: kept in Shows; an ended one gets its numbers.
     const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
