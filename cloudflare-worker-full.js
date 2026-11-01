@@ -4594,6 +4594,21 @@ function ebayQtyFixEmail({ fixed = [], failed = [], more = 0 }) {
   return { subject: fixed.length ? `eBay quantities fixed (${fixed.length})` : `eBay quantities need a look (${failed.length})`, body: lines.join('\n') };
 }
 
+// New eBay sales only, every 10 minutes (store, 2026-10-31: "make ebay check
+// every 10 minutes"). The quantity check (which emails) and the sold-out
+// presale cleanup stay on the 6-hour run below.
+async function runScheduledEbayNewSales(env) {
+  if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  for (const storeId of await storesWithEbayListings(env)) {
+    try {
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (_) { continue; }
+      if (!ebayToken) continue;
+      const { data: syncSettings } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`);
+      await syncEbayOrdersForStore(env, storeId, ebayToken, syncSettings?.[0]?.receipt_settings || {}, { reconcile: false, confirmedBy: null });
+    } catch (e) { console.error('10-minute eBay sale check failed for store', storeId, e.message); }
+  }
+}
 async function runScheduledEbayOrderSync(env) {
   if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   // Only stores listing on the connected eBay account (see storesWithEbayListings).
@@ -19129,7 +19144,16 @@ export default {
     // One after the other, not together: each reads a lot of inventory, and
     // running both at once doubles what the Worker holds in memory.
     if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); return; }
-    if (event?.cron === WHATNOT_SYNC_CRON) { await Promise.allSettled([runScheduledWhatnotSync(env, ctx)]); return; }
+    // Every 10 minutes: Whatnot, and new eBay sales (so a one-of-a-kind item
+    // sold on eBay comes off everywhere else within minutes, not hours, even
+    // with no dashboard open). Skipped at the 6-hour run's own minute, which
+    // records eBay sales itself along with its other eBay checks.
+    if (event?.cron === WHATNOT_SYNC_CRON) {
+      const at = new Date(event.scheduledTime || Date.now());
+      const sixHourRun = at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0;
+      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env)]);
+      return;
+    }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]);
   },
 };
