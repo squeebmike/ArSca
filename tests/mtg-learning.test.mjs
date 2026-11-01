@@ -20,6 +20,10 @@ assert.equal(rules.length,3);assert(rules[0].text.includes('Example:'));assert(!
 assert(retrieveRules({rules},'What is commander tax?').some(r=>r.id==='903.8'));
 assert.throws(()=>validateExplanation(JSON.stringify({answer:'CR 999.9 says yes',steps:[],needed:[],ruleIds:['117.4']}),rules));
 assert.throws(()=>validateExplanation(JSON.stringify({answer:'Yes',steps:[],needed:[],ruleIds:['999.9']}),rules));
+assert.throws(()=>validateExplanation(JSON.stringify({answer:'See 117.4.',steps:[],needed:[],ruleIds:['608.2b']}),rules));
+const priorityRules={rules:[{id:'117.3b',text:'Priority after resolution.'},{id:'117.3c',text:'Priority after a special action.'},{id:'117.5',text:'State-based actions and triggers.'},{id:'603.3',text:'Putting triggers on the stack.'}]};
+const prioritySources=retrieveRules(priorityRules,'Can I respond when someone plays a land and a triggered ability triggers?');
+assert(prioritySources.some(r=>r.id==='117.3c'));assert(prioritySources.some(r=>r.id==='603.3'));assert(prioritySources.some(r=>r.id==='117.5'));
 assert.equal(validateExplanation(JSON.stringify({answer:'Please clarify',steps:[],needed:['Whose turn?'],ruleIds:[]}),rules).sources.length,0);
 let calls=[];const goodCard={id:'test',name:'Test // Face',scryfall_uri:'https://scryfall.com/card/test',card_faces:[{name:'Test',oracle_text:'Front',type_line:'Creature'},{name:'Face',oracle_text:'Back',type_line:'Land'}]};
 const fetcher=async(url,options)=>{calls.push({url,options});if(url.includes('/rulings'))return Response.json({data:[{published_at:'2026-01-01',comment:'A ruling.'}]});if(url.includes('api.scryfall.com'))return Response.json(goodCard);if(url.includes('anthropic.com'))return Response.json({content:[{type:'text',text:JSON.stringify({answer:'The top object resolves after everyone passes.',steps:['Check priority.'],needed:[],ruleIds:['117.4']})}]});throw Error('Unexpected URL');};
