@@ -79,7 +79,13 @@ const MOUTHS = {
   grin: `<path d="M-180 40 Q0 270 180 40 Z"/>`,
   laughOpen: `<path d="M-180 40 Q0 270 180 40 Z" fill="none" stroke="${C.lime}" stroke-width="26" stroke-linejoin="round"/>` + `<path d="M-90 175 Q0 120 90 175 Q0 215 -90 175 Z"/>`,
   small: ln('M-130 80 Q0 165 130 80'),
-  talk: `<g class="br-talk-a"><ellipse cx="0" cy="120" rx="110" ry="30" fill="none" stroke="${C.lime}" stroke-width="22"/></g><g class="br-talk-b"><ellipse cx="0" cy="120" rx="100" ry="60" fill="none" stroke="${C.lime}" stroke-width="22"/></g><g class="br-talk-c"><ellipse cx="0" cy="120" rx="70" ry="45" fill="none" stroke="${C.lime}" stroke-width="22"/></g>` + rays(150, 110, 70, 115, [-30, 0, 30], 16),
+  // Talking (store: "His mouth is like the squiggles ... the lines move"): a
+  // rounded neon grille with bar lines, and a squiggle through it that
+  // changes shape as he talks -- his own grille, not anyone else's.
+  talk: `<rect x="-175" y="55" width="350" height="140" rx="44" fill="none" stroke="${C.lime}" stroke-width="20"/>` + ln('M-95 60 L-95 190 M-30 60 L-30 190 M35 60 L35 190 M100 60 L100 190', 12) +
+    `<g class="br-talk-a">${ln('M-165 125 Q-135 85 -105 125 T-45 125 T15 125 T75 125 T135 125 L165 125', 16)}</g>` +
+    `<g class="br-talk-b">${ln('M-165 125 Q-140 160 -115 125 T-65 125 T-15 125 T35 125 T85 125 T135 125 L165 125', 16)}</g>` +
+    `<g class="br-talk-c">${ln('M-165 125 Q-125 100 -85 125 T-5 125 T75 125 T155 125 L165 125', 16)}</g>` + rays(195, 125, 30, 75, [-30, 0, 30], 16),
   o: `<ellipse cx="0" cy="130" rx="42" ry="56" fill="none" stroke="${C.lime}" stroke-width="22"/>`,
   shock: `<path d="M-95 170 L-95 110 Q-95 50 0 50 Q95 50 95 110 L95 170 Z" fill="none" stroke="${C.lime}" stroke-width="24"/>`,
   think: ln('M-150 120 Q-80 70 -10 105', 24) + box(40, 100, 24, 24) + box(90, 100, 24, 24) + box(140, 100, 24, 24),
