@@ -31,8 +31,11 @@ export const DEFAULT_STUDIO = Object.freeze({
   bigArt: false, bigArtY: 1000,
   // When an auction sells, NOW PLAYING moves to the next item lined up.
   autoAdvance: true,
-  // ByteRider_97, the mascot (scripts/byterider.mjs): where he sits and how big.
-  mascotOn: true, mascotX: 840, mascotY: 640, mascotSize: 220,
+  // ByteRider_97, the mascot (scripts/byterider.mjs): the screen is his monitor.
+  // mascotFaceY: where his face's center sits; mascotScale: its size (%);
+  // mascotBorder: his bezel round the frame; mascotIdleFace: a faint face
+  // stays up between reactions (off: the cameras are clear).
+  mascotOn: true, mascotFaceY: 900, mascotScale: 100, mascotBorder: true, mascotIdleFace: false,
   showCombo: true, showBuyerNames: false, attract: true,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
@@ -53,7 +56,7 @@ export function validateSettings(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Settings required');
   const out = {};
   const limits = { x:[0,1080], y:[0,1920], width:[240,1080], height:[70,300], speed:[4,60], volume:[0,100], countdownSeconds:[3,15], jackpotAmount:[1,1000000],
-    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotX:[0,1000], mascotY:[0,1800], mascotSize:[100,420] };
+    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotFaceY:[250,1650], mascotScale:[40,150] };
   for (const [key,value] of Object.entries(input)) {
     if (!(key in DEFAULT_STUDIO)) throw new Error('Unknown setting: ' + key);
     if (limits[key]) {

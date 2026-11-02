@@ -8,11 +8,16 @@ import { DEFAULT_STUDIO, validateSettings, makeEffect, EFFECTS } from '../script
 // once, queues the rest, returns to idle and naps when the show is quiet.
 assert.deepEqual(MASCOT_STATES, ['idle', 'happy', 'talking', 'surprised', 'jackpot', 'glitch', 'sleeping', 'alert', 'countdown', 'celebrating', 'disappearing']);
 
-// The look: teal translucent shell, purple side panel, charcoal trim, lime
-// face on a dark scanlined screen, antenna -- and no limbs.
+// The look (store: "The border of the phone is his border. No square around
+// him. No antenna."): the whole 1080 x 1920 frame is his monitor -- teal
+// bezel at the screen's edge, charcoal trim, purple accent, neon-green
+// buttons, scanlines and corner fuzz -- and his big lime face in it.
+assert.match(BYTERIDER_SVG, /viewBox="0 0 1080 1920"/);
+assert.match(BYTERIDER_SVG, /class="br-bezel" x="12" y="12" width="1056" height="1896"/, 'the bezel runs round the screen edge');
 assert.match(BYTERIDER_SVG, /#2bd4c6/);assert.match(BYTERIDER_SVG, /#7b3fe4/);assert.match(BYTERIDER_SVG, /#b6ff3a/);
-assert.match(BYTERIDER_SVG, /class="br-antenna"/);assert.match(BYTERIDER_SVG, /id="br-scan"/);
-for (const part of ['br-eyes-normal', 'br-eyes-happy', 'br-eyes-wide', 'br-eyes-dollar', 'br-eyes-closed', 'br-m-smile', 'br-m-grin', 'br-m-o', 'br-m-flat', 'br-m-talk', 'br-static', 'br-screen-text']) assert.ok(BYTERIDER_SVG.includes(part), part);
+assert.match(BYTERIDER_SVG, /id="br-scan"/);assert.match(BYTERIDER_SVG, /id="br-fuzz"/);
+assert.doesNotMatch(BYTERIDER_SVG, /antenna/i, 'no antenna');
+for (const part of ['br-eyes-normal', 'br-eyes-happy', 'br-eyes-wide', 'br-eyes-dollar', 'br-eyes-closed', 'br-m-smile', 'br-m-grin', 'br-m-o', 'br-m-flat', 'br-m-talk', 'br-static', 'br-place']) assert.ok(BYTERIDER_SVG.includes(part), part);
 assert.doesNotMatch(BYTERIDER_SVG, /\b(arm|hand|leg|foot|feet)\b/i, 'no limbs');
 assert.deepEqual(EASTER_EGGS, ['RE:MIND', 'PRIMARY USER', 'SYSTEM REWIND', '1997']);
 assert.ok(BOOT_LINES.some(l => /PRIMARY USER/.test(l)));
@@ -49,8 +54,10 @@ m.play('nonsense');assert.equal(m.current.state, 'happy', 'an unknown reaction i
 // Settings and live triggers.
 assert.equal(DEFAULT_STUDIO.mascotOn, true);
 assert.ok(EFFECTS.includes('mascot'));
-assert.equal(validateSettings({ mascotSize: 300, mascotX: 100, mascotY: 900 }).mascotSize, 300);
-assert.throws(() => validateSettings({ mascotSize: 999 }), /mascotSize/);
+assert.equal(DEFAULT_STUDIO.mascotBorder, true);assert.equal(DEFAULT_STUDIO.mascotIdleFace, false, 'between reactions the cameras are clear');
+assert.equal(validateSettings({ mascotScale: 120, mascotFaceY: 700, mascotBorder: false }).mascotScale, 120);
+assert.throws(() => validateSettings({ mascotScale: 999 }), /mascotScale/);
+assert.throws(() => validateSettings({ mascotX: 10 }), /Unknown setting/, 'no box to place any more');
 const e = makeEffect('mascot', DEFAULT_STUDIO, 1, { mascotState: 'jackpot', say: 'NEW FOLLOWER! WELCOME!' });
 assert.equal(e.mascotState, 'jackpot');assert.equal(e.say, 'NEW FOLLOWER! WELCOME!');
 assert.throws(() => makeEffect('mascot', DEFAULT_STUDIO, 1, { mascotState: 'dance' }), /Unknown ByteRider/);

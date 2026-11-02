@@ -145,30 +145,35 @@
 .mana-controls .mana-found-row button,.mana-controls .mana-stage-row button {margin:0;padding:8px 10px;flex:0 0 auto}
 .mana-controls .mana-found-row span {cursor:pointer}
 
-/* ── ByteRider_97 (scripts/byterider.mjs) ───────────────────────────── */
-.byterider {position:absolute;z-index:6;pointer-events:none;width:var(--br-size,210px)}
+/* ── ByteRider_97 (scripts/byterider.mjs) ─────────────────────────────
+   The phone screen is his monitor: his bezel runs round the whole frame and
+   his face pops onto the screen when he reacts (glitch in, glitch out). */
+.byterider {position:absolute;inset:0;z-index:6;pointer-events:none}
 .byterider[hidden] {display:none}
-.byterider .br-rig {position:relative}
-.byterider .br-motion {transform-origin:50% 90%;animation:br-float 3.2s ease-in-out infinite}
-.byterider .br-svg {display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(6px 6px 0 #0b0612)}
+.byterider .br-svg {position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.byterider.br-no-border .br-frame {display:none}
+.byterider .br-scanlines {opacity:.35}
+.byterider .br-bezel {animation:br-bezel-glow 6s ease-in-out infinite}
+.byterider .br-led {animation:br-led 3s steps(1) infinite}
+.byterider .br-static {opacity:0}
+/* The face: hidden between reactions (cameras clear), up during them. */
+.byterider .br-face {opacity:0;transition:opacity .18s steps(3);filter:drop-shadow(0 0 22px rgba(182,255,58,.85)) drop-shadow(0 0 4px #0b0612)}
+.byterider.br-idle-face.br-idle .br-face {opacity:.22}
+.byterider:not(.br-idle) .br-face {opacity:.93;animation:br-glitch-in .32s steps(4)}
+.byterider.br-sleeping .br-face {opacity:.35;animation:none}
+.byterider .br-motion,.byterider .br-eye,.byterider .br-face {transform-box:fill-box;transform-origin:50% 50%}
 .byterider .br-eyes,.byterider .br-mouth {display:none}
 .byterider .br-eyes-normal,.byterider .br-m-smile {display:inline}
-.byterider .br-eye {transform-box:fill-box;transform-origin:50% 50%;animation:br-blink 4.6s infinite}
-.byterider .br-face {animation:br-look 9s ease-in-out infinite}
-.byterider .br-antenna {transform-box:fill-box;transform-origin:0% 100%;animation:br-antenna 2.6s ease-in-out infinite}
-.byterider .br-static {opacity:0}
-.byterider .br-screen-text {opacity:0}
+.byterider .br-eye {animation:br-blink 4.6s infinite}
+.br-bubble {position:absolute;left:50%;top:calc(var(--br-face-y,900px) + 330px * var(--br-face-s,1));transform:translateX(-50%);max-width:760px;width:max-content;padding:14px 22px;background:#05080a;color:#b6ff3a;border:5px solid #b6ff3a;border-radius:10px;box-shadow:6px 6px 0 #0b0612,0 0 26px rgba(182,255,58,.6);font:900 34px/1.2 Bangers,'Press Start 2P',sans-serif;letter-spacing:2px;text-align:center;text-shadow:0 0 10px rgba(182,255,58,.7);animation:br-pop .25s cubic-bezier(.2,2,.4,1)}
+.br-screen-text {position:absolute;left:0;right:0;top:calc(var(--br-face-y,900px) - 40px);text-align:center;font:400 44px 'Press Start 2P',monospace;color:#22e6ff;text-shadow:4px 0 #ff00d4,-4px 0 #22e6ff,0 0 18px #22e6ff;opacity:0}
 .byterider.br-screen-on .br-screen-text {opacity:1}
-.byterider.br-screen-on .br-face {opacity:.12}
-.byterider .br-glow {animation:br-flicker 7s steps(1) infinite}
-/* Anchored to his right edge and growing left, so it stays on screen when he sits at the right. */
-.br-bubble {position:absolute;right:0;bottom:100%;transform:translateY(-6px);max-width:320px;width:max-content;padding:10px 14px;background:#fff6d8;color:#0b0612;border:5px solid #0b0612;border-radius:16px;box-shadow:5px 5px 0 #0b0612;font:900 18px/1.25 Bangers,'Press Start 2P',sans-serif;letter-spacing:1px;text-align:center;animation:br-pop .25s cubic-bezier(.2,2,.4,1)}
-.br-bubble::after {content:"";position:absolute;right:30%;bottom:-17px;border:10px solid transparent;border-top-color:#0b0612}
-.br-zzz {position:absolute;right:4%;top:6%;display:none;font:900 26px Bangers,sans-serif;color:#b6ff3a;text-shadow:3px 3px 0 #0b0612}
+.byterider.br-screen-on .br-face {opacity:.08!important}
+.br-zzz {position:absolute;left:calc(50% + 260px * var(--br-face-s,1));top:calc(var(--br-face-y,900px) - 260px * var(--br-face-s,1));display:none;font:900 60px Bangers,sans-serif;color:#b6ff3a;text-shadow:4px 4px 0 #0b0612}
 .br-zzz i {position:absolute;font-style:normal;opacity:0;animation:br-zzz 3s linear infinite}
-.br-zzz i:nth-child(2) {animation-delay:1s;font-size:20px}.br-zzz i:nth-child(3) {animation-delay:2s;font-size:15px}
-.br-fx {position:absolute;left:50%;top:45%;width:0;height:0}
-.br-fx i {position:absolute;width:12px;height:12px;border:2px solid #0b0612;animation:br-particle 1.2s ease-out forwards}
+.br-zzz i:nth-child(2) {animation-delay:1s;font-size:46px}.br-zzz i:nth-child(3) {animation-delay:2s;font-size:34px}
+.br-fx {position:absolute;left:50%;top:var(--br-face-y,900px);width:0;height:0}
+.br-fx i {position:absolute;width:26px;height:26px;border:3px solid #0b0612;animation:br-particle 1.3s ease-out forwards}
 
 /* Expressions per state */
 .br-happy .br-eyes-normal,.br-happy .br-m-smile,.br-celebrating .br-eyes-normal,.br-celebrating .br-m-smile,
@@ -179,50 +184,48 @@
 .br-surprised .br-eyes-wide,.br-alert .br-eyes-wide,.br-countdown .br-eyes-wide,.br-surprised .br-m-o,.br-countdown .br-m-o,.br-alert .br-m-flat {display:inline}
 .br-jackpot .br-eyes-dollar,.br-sleeping .br-eyes-closed,.br-sleeping .br-m-flat,.br-talking .br-m-talk {display:inline}
 .br-talk-a,.br-talk-b,.br-talk-c {opacity:0}
-.br-talking .br-talk-a {animation:br-talk 0.42s steps(1) infinite}
-.br-talking .br-talk-b {animation:br-talk 0.42s steps(1) infinite -.14s}
-.br-talking .br-talk-c {animation:br-talk 0.42s steps(1) infinite -.28s}
+.br-talking .br-talk-a {animation:br-talk .42s steps(1) infinite}
+.br-talking .br-talk-b {animation:br-talk .42s steps(1) infinite -.14s}
+.br-talking .br-talk-c {animation:br-talk .42s steps(1) infinite -.28s}
 
-/* Motion per state */
+/* Motion per state (the face) and the bezel's reactions */
 .br-happy .br-motion {animation:br-bounce .45s ease-in-out 3}
-.br-happy .br-antenna,.br-celebrating .br-antenna {animation:br-antenna .3s ease-in-out infinite}
 .br-talking .br-motion {animation:br-nod .5s ease-in-out infinite}
 .br-surprised .br-motion {animation:br-tilt-back .5s cubic-bezier(.2,2,.4,1) forwards}
 .br-jackpot .br-motion {animation:br-shake .12s linear infinite}
-.br-jackpot .br-glow,.br-celebrating .br-glow {animation:br-flash .3s steps(2) infinite}
-.br-glitch .br-svg {animation:br-rgb .18s steps(2) infinite}
-.br-glitch .br-static {animation:br-static .12s steps(2) infinite}
+.br-jackpot .br-bezel,.br-celebrating .br-bezel {animation:br-bezel-party .25s steps(2) infinite}
+.br-glitch .br-face {opacity:.9;animation:br-rgb .18s steps(2) infinite}
+.br-glitch .br-static,.br-disappearing .br-static {animation:br-static .1s steps(2) infinite}
 .br-glitch .br-motion {animation:br-jitter .2s steps(2) infinite}
-.br-sleeping .br-motion {animation:br-float 6s ease-in-out infinite;filter:brightness(.6)}
+.br-glitch .br-bezel {stroke:#ff00d4;animation:br-rgb-bezel .2s steps(2) infinite}
 .br-sleeping .br-zzz {display:block}
-.br-sleeping .br-antenna {animation:none;transform:rotate(18deg)}
-.br-sleeping .br-led {fill:#ff8a3d}
-.br-alert .br-antenna {animation:br-antenna .12s linear infinite}
-.br-alert .br-svg {animation:br-alert .35s steps(2) infinite}
+.br-sleeping .br-led {fill:#ff8a3d;animation:none}
+.br-sleeping .br-bezel {stroke-opacity:.35;animation:none}
+.br-alert .br-bezel {animation:br-bezel-alert .35s steps(2) infinite}
 .br-countdown .br-motion {animation:br-countdown 5s ease-in forwards}
+.br-countdown .br-bezel {animation:br-bezel-glow .5s ease-in-out infinite}
 .br-celebrating .br-motion {animation:br-jump-spin .9s cubic-bezier(.3,1.6,.5,1) 3}
 .br-disappearing .br-motion {animation:br-vanish 2s steps(10) forwards}
-.br-disappearing .br-static {animation:br-static .1s steps(2) infinite}
 
-@keyframes br-float {50% {transform:translateY(-8px)}}
+@keyframes br-glitch-in {0% {opacity:0;transform:translateX(-30px) skewX(20deg)} 25% {opacity:1;transform:translateX(24px) skewX(-14deg)} 50% {opacity:.3} 75% {opacity:1;transform:translateX(-8px)} 100% {transform:none}}
+@keyframes br-bezel-glow {50% {stroke-opacity:.95}}
+@keyframes br-bezel-party {0% {stroke:#b6ff3a} 50% {stroke:#7b3fe4}}
+@keyframes br-bezel-alert {0% {stroke:#ff2a4f} 50% {stroke:#2bd4c6}}
+@keyframes br-rgb-bezel {0% {stroke:#ff00d4} 50% {stroke:#22e6ff}}
+@keyframes br-led {0%,92% {opacity:1} 94% {opacity:.2} 96% {opacity:1}}
 @keyframes br-blink {0%,94%,100% {transform:scaleY(1)} 96% {transform:scaleY(.1)}}
-@keyframes br-look {0%,40%,100% {transform:translateX(0)} 50%,58% {transform:translateX(-6px)} 70%,78% {transform:translateX(6px)}}
-@keyframes br-antenna {50% {transform:rotate(-14deg)}}
-@keyframes br-flicker {0%,96%,100% {opacity:1} 97% {opacity:.3} 98% {opacity:1} 99% {opacity:.5}}
-@keyframes br-pop {0% {transform:translateY(10px) scale(.4)} 100% {transform:translateY(-6px) scale(1)}}
-@keyframes br-zzz {0% {transform:translate(0,0);opacity:0} 20% {opacity:1} 100% {transform:translate(30px,-60px);opacity:0}}
+@keyframes br-pop {0% {transform:translateX(-50%) scale(.4)} 100% {transform:translateX(-50%) scale(1)}}
+@keyframes br-zzz {0% {transform:translate(0,0);opacity:0} 20% {opacity:1} 100% {transform:translate(70px,-150px);opacity:0}}
 @keyframes br-particle {to {transform:translate(var(--dx),var(--dy)) rotate(200deg);opacity:0}}
 @keyframes br-talk {0%,66%,100% {opacity:0} 0%,33% {opacity:1}}
-@keyframes br-bounce {0%,100% {transform:translateY(0) scale(1,1)} 30% {transform:translateY(4px) scale(1.12,.86)} 60% {transform:translateY(-26px) scale(.92,1.1)}}
-@keyframes br-nod {50% {transform:rotate(-3deg) translateY(-3px)}}
-@keyframes br-tilt-back {0% {transform:rotate(0)} 60% {transform:rotate(-14deg) translate(-8px,-14px) scale(1.06)} 100% {transform:rotate(-9deg) translate(-4px,-8px)}}
-@keyframes br-shake {0% {transform:translate(-4px,2px) rotate(-2deg)} 50% {transform:translate(4px,-2px) rotate(2deg)} 100% {transform:translate(-4px,2px) rotate(-2deg)}}
-@keyframes br-flash {50% {opacity:0}}
-@keyframes br-rgb {0% {filter:drop-shadow(-5px 0 0 #ff00d4) drop-shadow(5px 0 0 #00f0ff)} 100% {filter:drop-shadow(5px 1px 0 #ff00d4) drop-shadow(-5px -1px 0 #00f0ff)}}
-@keyframes br-static {0% {opacity:.35} 100% {opacity:.1}}
-@keyframes br-jitter {0% {transform:translate(3px,-2px) skewX(6deg)} 100% {transform:translate(-3px,2px) skewX(-6deg)}}
-@keyframes br-alert {50% {filter:drop-shadow(0 0 0 #0b0612) drop-shadow(0 0 14px #ff2a4f)}}
-@keyframes br-countdown {0% {transform:scale(1)} 60% {transform:scale(1.06) translateY(-4px)} 85% {transform:scale(1.1) translateY(-6px) rotate(-2deg)} 92% {transform:scale(1.1) rotate(2deg)} 100% {transform:scale(1.12) rotate(-2deg)}}
-@keyframes br-jump-spin {0%,100% {transform:translateY(0) rotate(0)} 40% {transform:translateY(-48px) rotate(-12deg) scale(1.05)} 70% {transform:translateY(-20px) rotate(10deg)}}
-@keyframes br-vanish {0% {transform:scale(1,1);opacity:1} 35% {transform:scale(1.15,.04);opacity:1} 50% {transform:scale(0,0);opacity:0} 65% {transform:scale(.02,1.15);opacity:1} 100% {transform:scale(1,1);opacity:1}}
+@keyframes br-bounce {0%,100% {transform:translateY(0) scale(1,1)} 30% {transform:translateY(12px) scale(1.1,.88)} 60% {transform:translateY(-60px) scale(.94,1.08)}}
+@keyframes br-nod {50% {transform:rotate(-3deg) translateY(-10px)}}
+@keyframes br-tilt-back {0% {transform:rotate(0)} 60% {transform:rotate(-12deg) translate(-20px,-40px) scale(1.08)} 100% {transform:rotate(-8deg) translate(-10px,-20px) scale(1.04)}}
+@keyframes br-shake {0% {transform:translate(-14px,6px) rotate(-2deg)} 50% {transform:translate(14px,-6px) rotate(2deg)} 100% {transform:translate(-14px,6px) rotate(-2deg)}}
+@keyframes br-rgb {0% {filter:drop-shadow(-14px 0 0 #ff00d4) drop-shadow(14px 0 0 #00f0ff)} 100% {filter:drop-shadow(14px 3px 0 #ff00d4) drop-shadow(-14px -3px 0 #00f0ff)}}
+@keyframes br-static {0% {opacity:.12} 100% {opacity:.03}}
+@keyframes br-jitter {0% {transform:translate(10px,-6px) skewX(8deg)} 100% {transform:translate(-10px,6px) skewX(-8deg)}}
+@keyframes br-countdown {0% {transform:scale(1)} 60% {transform:scale(1.06)} 85% {transform:scale(1.12) rotate(-2deg)} 92% {transform:scale(1.12) rotate(2deg)} 100% {transform:scale(1.14) rotate(-2deg)}}
+@keyframes br-jump-spin {0%,100% {transform:translateY(0) rotate(0)} 40% {transform:translateY(-110px) rotate(-10deg) scale(1.05)} 70% {transform:translateY(-40px) rotate(8deg)}}
+@keyframes br-vanish {0% {transform:scale(1,1);opacity:1} 35% {transform:scale(1.2,.03);opacity:1} 50% {transform:scale(0,0);opacity:0} 65% {transform:scale(.02,1.2);opacity:1} 100% {transform:scale(1,1);opacity:1}}
 @media(prefers-reduced-motion:reduce) {.byterider *,.byterider .br-motion {animation:none!important}}

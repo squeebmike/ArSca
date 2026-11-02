@@ -37,7 +37,7 @@ function apply(s) {
   // Bursts are centered on the sign.
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
-  if(mascotHost){Object.assign(mascotHost.style,{left:settings.mascotX+'px',top:settings.mascotY+'px'});mascotHost.style.setProperty('--br-size',settings.mascotSize+'px');mascot.show(settings.mascotOn!==false);}
+  if(mascot){mascot.place({y:settings.mascotFaceY,scale:settings.mascotScale,border:settings.mascotBorder,idleFace:settings.mascotIdleFace});mascot.show(settings.mascotOn!==false);}
   paintStage();paintStats(stats,false);
 }
 function paintStats(next,fromSale) {
