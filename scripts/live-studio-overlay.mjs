@@ -9,6 +9,8 @@ const token=params.get('token'), store=params.get('store'), endpoint=params.get(
 const preview=params.get('preview')==='1';
 // The fragment is never sent as a request URL or Referer. OBS retains its source URL for reloads.
 const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:Number(n)%1?2:0,maximumFractionDigits:2});
+// The sign's rising mana bubbles.
+for(let i=0;i<12;i++){const b=document.createElement('i');b.style.left=(i*8)+'%';b.style.animationDelay=-(i%5)+'s';document.querySelector('.mana-bubbles')?.append(b);}
 const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'px';el.classList.toggle('mana-hidden',!show);};
 
 function apply(s) {

@@ -30,10 +30,16 @@
 #mana-combo.on {display:block;animation:mana-stamp .4s cubic-bezier(.2,2,.4,1)}
 
 /* Marquee sign: a comic caption box */
-#mana-sign {overflow:hidden;background:radial-gradient(circle,#0b061222 1.6px,transparent 1.8px) 0 0/9px 9px,var(--yel);color:var(--ink);box-shadow:8px 8px 0 var(--ink),0 0 28px #ffe23d88}
+/* The center sign: the store's bubbling mana (purple frame, green mana
+   liquid, rising bubbles -- the original Live Studio sign), in the comic ink
+   outline and lettering of the rest of the overlay. */
+#mana-sign {overflow:hidden;border-color:var(--ink);border-radius:24px;background:radial-gradient(circle,#ffffff14 1.4px,transparent 1.6px) 0 0/9px 9px,#160a2bee;
+  box-shadow:0 0 0 4px #a855f7 inset,inset 0 0 26px #883bcb,8px 8px 0 var(--ink),0 0 18px #74fc79aa;color:#caffb3}
 #mana-sign::after {display:none}
-.mana-title {position:relative;text-align:center;font-family:Bangers,sans-serif;font-size:clamp(20px,3vw,34px);letter-spacing:5px;padding:10px 0 2px;color:var(--red);-webkit-text-stroke:1.5px var(--ink)}
-.mana-track {position:relative;overflow:hidden;white-space:nowrap;font-size:22px}
+.mana-liquid {position:absolute;inset:45% -10% -45%;border-radius:40%;background:linear-gradient(0deg,#329b39,#b7ff42);opacity:.65;animation:mana-liquid 6s ease-in-out infinite alternate}
+.mana-bubbles i {position:absolute;bottom:-20px;width:14px;height:14px;border:2px solid #b5ff71;border-radius:50%;animation:mana-rise 4s linear infinite;opacity:.8}
+.mana-title {position:relative;text-align:center;font-family:Bangers,sans-serif;font-size:clamp(22px,3vw,36px);letter-spacing:5px;padding:10px 0 2px;color:var(--lime);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 3px 0 #6f1fac}
+.mana-track {position:relative;overflow:hidden;white-space:nowrap;font-size:22px;color:#eaffd6;text-shadow:2px 2px 0 var(--ink)}
 #mana-message {display:inline-block;padding-left:100%;animation:mana-scroll var(--mana-speed,16s) linear infinite}
 
 /* Now playing: a comic cover / trading card */
@@ -81,6 +87,8 @@
 .mana-hidden {display:none!important}
 
 @keyframes mana-scroll {to {transform:translateX(-100%)}}
+@keyframes mana-liquid {to {transform:translateY(-8%) rotate(8deg)}}
+@keyframes mana-rise {to {transform:translateY(-220px) scale(.5);opacity:0}}
 @keyframes mana-fall {to {transform:translateY(2000px) rotate(540deg)}}
 @keyframes mana-pop {0% {transform:scale(.2) rotate(-12deg)} 100% {transform:scale(1) rotate(0)}}
 @keyframes mana-stamp {0% {transform:scale(2.4) rotate(-14deg);opacity:0} 100% {opacity:1}}
@@ -91,7 +99,7 @@
 @keyframes mana-foil {0% {background-position:150% 0} 100% {background-position:-150% 0}}
 @keyframes mana-holo {0% {background-position:0 50%} 100% {background-position:300% 50%}}
 @keyframes mana-flicker {50% {opacity:.85}}
-@media(prefers-reduced-motion:reduce) {#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
+@media(prefers-reduced-motion:reduce) {.mana-liquid,.mana-bubbles i,#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
 
 .mana-controls {padding:16px;border:1px solid #9457d3;border-radius:14px;background:#171024;color:#e7daf8;font:13px system-ui;margin-bottom:16px}
 .mana-controls h2 {margin:0 0 8px;font-size:18px;color:#c3ff80}
