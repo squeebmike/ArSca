@@ -34,7 +34,7 @@ try{
  const box=await frame.locator('#mana-sign').boundingBox();assert.ok(box.width<240 && box.height<80,'sign stays small in camera preview');
  // One tap hides the sign on stream (and again shows it).
  await page.getByRole('button',{name:/SIGN ON\/OFF/}).click();await page.getByText('Sign off',{exact:true}).waitFor();
- await frame.locator('#mana-sign.mana-hidden').waitFor({state:'attached'});assert.equal(saved.visible,false);
+ await frame.locator('#mana-sign.mana-hidden').waitFor({state:'attached'});assert.equal(await page.evaluate(()=>saved.visible),false,'saved live');
  await page.getByRole('button',{name:/SIGN ON\/OFF/}).click();await page.getByText('Sign on',{exact:true}).waitFor();
  await frame.locator('#mana-sign:not(.mana-hidden)').waitFor();
  await page.getByRole('button',{name:'Create / replace OBS link'}).click();await page.waitForFunction(()=>document.querySelector('#mana-url').value.length>0);assert.match(await page.locator('#mana-url').inputValue(),/arcade-overlay.html#worker=/);
