@@ -18,6 +18,16 @@ try{
  browser=await chromium.launch({headless:true,channel:process.env.STUDIO_BROWSER_CHANNEL || undefined});const page=await browser.newPage({viewport:{width:1000,height:1700}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('[name=width]').waitFor();
  await page.waitForFunction(()=>document.querySelector('[name=width]').value==='700');
+ // Before Connect, a ByteRider button still plays him in the preview (phone: "I didn't see it animate").
+ await page.getByRole('button',{name:/^HAPPY/}).click();
+ await page.frameLocator('iframe').locator('#byterider.br-happy').waitFor();
+ await page.getByText(/Preview only \(happy\)\. Tap Connect/).waitFor();
+ assert.equal((await page.evaluate(()=>calls)).filter(c=>c.body?.kind==='mascot').length,0,'nothing sent before Connect');
+ // PIN PREVIEW docks the preview in the corner (tap and watch on a phone).
+ await page.getByRole('button',{name:'📌 PIN PREVIEW'}).click();
+ assert.equal(await page.locator('.mana-preview').evaluate(e=>getComputedStyle(e).position),'fixed');
+ await page.getByRole('button',{name:'📌 UNPIN PREVIEW'}).click();
+ assert.equal(await page.locator('.mana-preview').evaluate(e=>getComputedStyle(e).position),'relative');
  await page.getByRole('button',{name:'Connect / reload'}).click();await page.getByText('Connected. Controls are live.').waitFor();
  await page.locator('[name=message]').fill('<b>Safe literal mana</b>');await page.getByRole('button',{name:'Save live settings'}).click();await page.getByText('Live settings saved.').waitFor();
  const frame=page.frameLocator('iframe');assert.equal(await frame.locator('#mana-message').textContent(),'<b>Safe literal mana</b>');assert.equal(await frame.locator('#mana-message b').count(),0);

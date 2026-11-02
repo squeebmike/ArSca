@@ -170,6 +170,8 @@
 .mana-controls input[type=checkbox] {width:auto}
 .mana-controls button {padding:9px;margin:5px 4px 5px 0;background:#39224e;color:#d3ffa2;border:1px solid #9164b2;border-radius:6px;cursor:pointer}
 .mana-controls .mana-preview {position:relative;aspect-ratio:1080/1920;max-width:240px;margin:12px auto;background:linear-gradient(#20333d 0 44%,#080a11 44% 51%,#353144 51%);border:1px solid #76548b}
+.mana-controls .mana-preview.pinned {position:fixed;right:10px;bottom:10px;width:150px;max-width:150px;margin:0;z-index:60;border:2px solid #b4ff3a;border-radius:10px;overflow:hidden;box-shadow:0 8px 24px #000c}
+.mana-controls #mana-br-status {flex:1;min-width:160px;margin:0}
 .mana-controls iframe {position:absolute;inset:0;width:1080px;height:1920px;border:0;transform:scale(var(--preview-scale,.22));transform-origin:top left}
 .mana-controls small {display:block;color:#bbaacb;margin:8px 0;line-height:1.5}
 
