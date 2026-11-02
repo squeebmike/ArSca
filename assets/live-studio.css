@@ -13,7 +13,20 @@
 .mana-hud-row {display:flex;justify-content:space-between;gap:12px;text-align:center}
 .mana-stat {flex:1}.mana-stat b {display:block;font-size:30px;color:var(--yel);text-shadow:3px 3px 0 var(--red),6px 6px 0 var(--ink)}
 .mana-stat b.bump {animation:mana-bump .5s ease-out}
-#mana-boss {position:relative;margin-top:18px}
+#mana-boss {position:relative;margin-top:14px;display:grid;grid-template-columns:120px 1fr;gap:18px;align-items:center}
+/* The boss: an original villain drawn at 48 px and shown big, pixel for pixel. */
+#mana-boss-sprite {width:120px;height:120px;image-rendering:pixelated;filter:drop-shadow(4px 4px 0 var(--ink));animation:mana-idle 1.1s steps(2) infinite}
+#mana-boss.hit #mana-boss-sprite {animation:mana-flash .45s steps(3)}
+#mana-boss.defeated #mana-boss-sprite {animation:none;filter:grayscale(1) brightness(.7) drop-shadow(4px 4px 0 var(--ink));transform:rotate(80deg) translate(14px,-6px)}
+#mana-boss-taunt {margin-top:8px;font-size:12px;color:var(--yel);text-shadow:2px 2px 0 var(--ink);min-height:14px}
+#mana-boss.defeated #mana-boss-taunt {color:#9b8fb0}
+#mana-effect-art {display:none;width:150px;height:150px;image-rendering:pixelated;filter:grayscale(1) drop-shadow(5px 5px 0 var(--ink));transform:rotate(-12deg);margin-bottom:-6px}
+#mana-effect.k-boss #mana-effect-art {display:block}
+/* The K.O.: the boss's name smaller, so the reward (what the room gets) is
+   never clipped by the burst's edge, on a solid strip so it always reads. */
+#mana-effect.k-boss #mana-effect-word {font-size:80px}
+#mana-effect.k-boss #mana-effect-main {font-size:56px;margin-top:6px}
+#mana-effect.k-boss #mana-effect-sub {background:var(--ink);color:var(--yel);padding:8px 14px;font-size:20px;margin-bottom:90px}
 .mana-boss-top {display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;text-shadow:2px 2px 0 var(--ink)}
 #mana-boss-name {color:var(--red);font-family:Bangers,'Press Start 2P',sans-serif;font-size:30px;letter-spacing:2px;-webkit-text-stroke:1.5px var(--ink)}
 #mana-boss-hp {align-self:flex-end;color:var(--paper)}
@@ -87,6 +100,8 @@
 .mana-hidden {display:none!important}
 
 @keyframes mana-scroll {to {transform:translateX(-100%)}}
+@keyframes mana-idle {50% {transform:translateY(-6px)}}
+@keyframes mana-flash {0%,100% {filter:brightness(1)} 33% {filter:brightness(3) saturate(0);transform:translateX(-8px)} 66% {transform:translateX(8px)}}
 @keyframes mana-liquid {to {transform:translateY(-8%) rotate(8deg)}}
 @keyframes mana-rise {to {transform:translateY(-220px) scale(.5);opacity:0}}
 @keyframes mana-fall {to {transform:translateY(2000px) rotate(540deg)}}
@@ -99,7 +114,7 @@
 @keyframes mana-foil {0% {background-position:150% 0} 100% {background-position:-150% 0}}
 @keyframes mana-holo {0% {background-position:0 50%} 100% {background-position:300% 50%}}
 @keyframes mana-flicker {50% {opacity:.85}}
-@media(prefers-reduced-motion:reduce) {.mana-liquid,.mana-bubbles i,#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
+@media(prefers-reduced-motion:reduce) {#mana-boss-sprite,.mana-liquid,.mana-bubbles i,#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
 
 .mana-controls {padding:16px;border:1px solid #9457d3;border-radius:14px;background:#171024;color:#e7daf8;font:13px system-ui;margin-bottom:16px}
 .mana-controls h2 {margin:0 0 8px;font-size:18px;color:#c3ff80}

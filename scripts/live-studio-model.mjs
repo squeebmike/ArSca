@@ -1,3 +1,4 @@
+import { BOSS_IDS } from './live-studio-bosses.mjs';
 // Live Studio: the OBS overlay for Whatnot shows. 90s comic + arcade look
 // (store, 2026-11-01: "I want 90s comic. Arcade style").
 //
@@ -20,7 +21,8 @@ export const DEFAULT_STUDIO = Object.freeze({
   automatic: false, sellerId: '', showId: '', jackpotAmount: 100, currency: 'USD',
   // Score board (top) and boss bar.
   showHud: true, hudY: 40,
-  showBoss: true, bossName: 'THE SPECULATOR', bossGoal: 500, bossReward: '$1 START ON THE GRAIL!',
+  // bossCharacter: one of the original villains in live-studio-bosses.mjs.
+  showBoss: true, bossCharacter: 'scalper', bossName: 'THE SCALPER', bossGoal: 500, bossReward: '$1 START ON THE GRAIL!',
   // Now playing card + next up.
   showCard: true, cardX: 40, cardY: 1340, showQueue: true,
   // Big photo: the now playing card fills the bottom camera with the item's
@@ -61,6 +63,7 @@ export function validateSettings(input) {
   const full = { ...DEFAULT_STUDIO, ...out };
   if (full.x + full.width > 1080 || full.y + full.height > 1920) throw new Error('Sign must fit within 1080 × 1920');
   if (!/^[A-Z]{3}$/.test(full.currency)) throw new Error('Use a three-letter currency');
+  if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
   for (const key of ['message', 'bossReward', 'bossName']) {
     const word = chanceWordIn(full[key]);
@@ -138,7 +141,7 @@ export function publicStats(stats, settings) {
   const s = stats && stats.showId === settings.showId ? stats : emptyStats(settings.showId);
   const hp = Math.max(0, settings.bossGoal - s.gross);
   return { gross: s.gross, sold: s.sold, giveaways: s.giveaways, biggest: s.biggest, combo: s.combo, lastSaleAt: s.lastSaleAt,
-    boss: { name: settings.bossName, goal: settings.bossGoal, hp, pct: Math.round(hp / settings.bossGoal * 1000) / 10, defeated: hp <= 0, reward: settings.bossReward } };
+    boss: { character: settings.bossCharacter, name: settings.bossName, goal: settings.bossGoal, hp, pct: Math.round(hp / settings.bossGoal * 1000) / 10, defeated: hp <= 0, reward: settings.bossReward } };
 }
 
 // Now playing + next up, set from the dashboard.
@@ -181,7 +184,7 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (Number.isFinite(extra.combo)) safe.combo = extra.combo;
   if (typeof extra.buyer === 'string' && extra.buyer) safe.buyer = extra.buyer.slice(0, 30);
   if (extra.record) safe.record = true;
-  if (kind === 'boss') { safe.reward = settings.bossReward; safe.bossName = settings.bossName; }
+  if (kind === 'boss') { safe.reward = settings.bossReward; safe.bossName = settings.bossName; safe.bossCharacter = settings.bossCharacter; }
   return { id:crypto.randomUUID(), kind, startsAt:now, endsAt:now + length, ...safe };
 }
 export async function digestToken(token) {

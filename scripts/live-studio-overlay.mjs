@@ -1,9 +1,10 @@
 import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats} from './live-studio-model.mjs';
+import {bossById, drawBoss} from './live-studio-bosses.mjs';
 const $=id=>document.getElementById(id);
 const sign=$('mana-sign'), text=$('mana-message'), effectEl=$('mana-effect'), coins=$('mana-coins');
 const hud=$('mana-hud'), boss=$('mana-boss'), card=$('mana-card'), queue=$('mana-queue');
 let settings={...DEFAULT_STUDIO}, stats=publicStats(emptyStats(),DEFAULT_STUDIO), stage={now:null,next:[]};
-let socket, retry=0, effect=null, offset=0, audio, lastBeep=-1, played=new Set(), shownGross=null;
+let drawnBoss='', socket, retry=0, effect=null, offset=0, audio, lastBeep=-1, played=new Set(), shownGross=null;
 const params=new URLSearchParams(location.hash.slice(1));
 const token=params.get('token'), store=params.get('store'), endpoint=params.get('worker');
 const preview=params.get('preview')==='1';
@@ -20,6 +21,8 @@ function apply(s) {
   sign.style.setProperty('--mana-speed',settings.speed+'s'); text.textContent=settings.message;
   place(hud,40,settings.hudY,settings.showHud);
   boss.classList.toggle('mana-hidden',!settings.showBoss);
+  // The boss's sprite and catchphrase, redrawn when the boss changes.
+  if(drawnBoss!==settings.bossCharacter){drawnBoss=settings.bossCharacter;void drawBoss($('mana-boss-sprite'),drawnBoss);}
   // Big photo: over the bottom camera, full width.
   card.classList.toggle('big',!!settings.bigArt);
   if(settings.bigArt){place(card,40,settings.bigArtY);card.style.height=Math.max(420,Math.min(900,1900-settings.bigArtY))+'px';}
@@ -40,6 +43,7 @@ function paintStats(next,fromSale) {
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
   const fill=$('mana-boss-fill');fill.style.width=Math.max(0,Math.min(100,b.pct??100))+'%';fill.classList.toggle('low',(b.pct??100)<=25);
   boss.classList.toggle('defeated',!!b.defeated);
+  $('mana-boss-taunt').textContent=b.defeated?'"I\'LL BE BACK NEXT SHOW..."':'"'+bossById(b.character||settings.bossCharacter).taunt+'"';
   if(fromSale && before!=null && stats.gross>before){
     for(const el of [$('mana-gross'),$('mana-sold')]){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
     if(settings.showBoss){
@@ -117,6 +121,7 @@ function draw() {
   const now=Date.now()+offset;
   if(effect && effect.endsAt>now) {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind;lastKind=effect.id;
+      if(effect.kind==='boss'){try{$('mana-effect-art').src=$('mana-boss-sprite').toDataURL();}catch{}}
       if(effect.kind!=='countdown'){const [w,m,s]=words(effect);$('mana-effect-word').textContent=w;$('mana-effect-main').textContent=m;$('mana-effect-sub').textContent=s;}}
     if(effect.kind==='countdown') {
       const n=Math.max(0,Math.ceil((effect.endsAt-1200-now)/1000));$('mana-effect-word').textContent=n||'GO!';$('mana-effect-main').textContent=n?'LAST CALL!':'';$('mana-effect-sub').textContent='';
