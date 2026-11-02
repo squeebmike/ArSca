@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.02.4-byterider-hype';
+const APP_VERSION = '2026.11.02.5-whatnot-tidy';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18081,7 +18081,10 @@ function switchTab(name, btn){
   if(activeTab === 'whatnot' && name !== 'whatnot') stopWhatnotScanCamera();
   activeTab = name;
   if(name === 'inventory') setTimeout(()=>{ filterTable(); setInvView(_invView); },0);
-  if(name === 'whatnot') setTimeout(()=>{ renderWhatnotSessionTally(); if(navigator.mediaDevices?.getUserMedia&&'BarcodeDetector' in window) startWhatnotScanCamera(); setTimeout(()=>document.getElementById('whatnot-scan-manual-input')?.focus(),80); },0);
+  // The scanner lives under OLDER TOOLS now: the camera and the scan box's
+  // focus only come on when that section is open (focus there would also
+  // switch off ByteRider's hotkeys).
+  if(name === 'whatnot') setTimeout(()=>{ renderWhatnotSessionTally(); if(document.getElementById('whatnot-older-tools')?.open) whatnotOlderToolsToggled(true); },0);
   if(name === 'scout') setTimeout(()=>{ renderPocketScoutSettings(); },0);
   if(name === 'browse') setTimeout(renderCustomerInventoryBrowser,0);
   // Refresh category-dependent helper rows (set browser buttons etc.) when switching to POS/Research
@@ -29446,6 +29449,13 @@ function whatnotFeeSettings(){
   if(flatEl) flatEl.value=fee.flat;
 })();
 
+function whatnotOlderToolsToggled(open){
+  if(!open){ stopWhatnotScanCamera(); return; }
+  if(activeTab !== 'whatnot') return;
+  if(navigator.mediaDevices?.getUserMedia&&'BarcodeDetector' in window) startWhatnotScanCamera();
+  setTimeout(()=>document.getElementById('whatnot-scan-manual-input')?.focus(),80);
+}
+window.whatnotOlderToolsToggled = whatnotOlderToolsToggled;
 function toggleWhatnotScanCamera(){ if(whatnotScanStream) stopWhatnotScanCamera(); else startWhatnotScanCamera(); }
 async function startWhatnotScanCamera(){
   if(!navigator.mediaDevices?.getUserMedia){setWhatnotScanStatus('Camera not available. Type the barcode instead.','var(--gold)');return;}
