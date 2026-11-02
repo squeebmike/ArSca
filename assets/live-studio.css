@@ -13,7 +13,24 @@
 .mana-hud-row {display:flex;justify-content:space-between;gap:12px;text-align:center}
 .mana-stat {flex:1}.mana-stat b {display:block;font-size:30px;color:var(--yel);text-shadow:3px 3px 0 var(--red),6px 6px 0 var(--ink)}
 .mana-stat b.bump {animation:mana-bump .5s ease-out}
-#mana-boss {position:relative;margin-top:18px}
+#mana-boss {position:relative;margin-top:14px;display:grid;grid-template-columns:120px 1fr;gap:18px;align-items:center}
+/* The boss: an original villain drawn at 48 px and shown big, pixel for pixel. */
+#mana-boss-sprite {width:120px;height:120px;image-rendering:pixelated;filter:drop-shadow(4px 4px 0 var(--ink)) drop-shadow(0 0 10px #ff2a4fcc);animation:mana-idle 1.1s steps(2) infinite}
+#mana-boss.hit #mana-boss-sprite {animation:mana-flash .45s steps(3)}
+#mana-boss.defeated #mana-boss-sprite {animation:none;filter:grayscale(1) brightness(.7) drop-shadow(4px 4px 0 var(--ink));transform:rotate(80deg) translate(14px,-6px)}
+#mana-boss-taunt {margin-top:8px;font-size:12px;color:var(--yel);text-shadow:2px 2px 0 var(--ink);min-height:14px}
+#mana-boss.defeated #mana-boss-taunt {color:#9b8fb0}
+#mana-effect-art {display:none;width:150px;height:150px;image-rendering:pixelated;filter:grayscale(1) drop-shadow(5px 5px 0 var(--ink));transform:rotate(-12deg);margin-bottom:-6px}
+#mana-effect.k-boss #mana-effect-art {display:block}
+/* Show start: BOSS FIGHT! VS -- the boss, full colour, glowing. */
+#mana-effect.k-ready #mana-effect-art {display:block;filter:drop-shadow(5px 5px 0 var(--ink)) drop-shadow(0 0 18px #ff2a4f);transform:rotate(-6deg) scale(1.1);animation:mana-idle .5s steps(2) infinite}
+#mana-effect.k-ready #mana-effect-main {font-family:Bangers,sans-serif;font-size:96px;color:var(--red);-webkit-text-stroke:4px var(--ink);text-shadow:6px 6px 0 var(--ink);animation:mana-stamp .5s cubic-bezier(.2,2,.4,1)}
+#mana-effect.k-ready #mana-effect-sub {color:var(--yel);font-size:16px;max-width:620px}
+/* The K.O.: the boss's name smaller, so the reward (what the room gets) is
+   never clipped by the burst's edge, on a solid strip so it always reads. */
+#mana-effect.k-boss #mana-effect-word {font-size:80px}
+#mana-effect.k-boss #mana-effect-main {font-size:56px;margin-top:6px}
+#mana-effect.k-boss #mana-effect-sub {background:var(--ink);color:var(--yel);padding:8px 14px;font-size:20px;margin-bottom:90px}
 .mana-boss-top {display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;text-shadow:2px 2px 0 var(--ink)}
 #mana-boss-name {color:var(--red);font-family:Bangers,'Press Start 2P',sans-serif;font-size:30px;letter-spacing:2px;-webkit-text-stroke:1.5px var(--ink)}
 #mana-boss-hp {align-self:flex-end;color:var(--paper)}
@@ -30,10 +47,16 @@
 #mana-combo.on {display:block;animation:mana-stamp .4s cubic-bezier(.2,2,.4,1)}
 
 /* Marquee sign: a comic caption box */
-#mana-sign {overflow:hidden;background:radial-gradient(circle,#0b061222 1.6px,transparent 1.8px) 0 0/9px 9px,var(--yel);color:var(--ink);box-shadow:8px 8px 0 var(--ink),0 0 28px #ffe23d88}
+/* The center sign: the store's bubbling mana (purple frame, green mana
+   liquid, rising bubbles -- the original Live Studio sign), in the comic ink
+   outline and lettering of the rest of the overlay. */
+#mana-sign {overflow:hidden;border-color:var(--ink);border-radius:24px;background:radial-gradient(circle,#ffffff14 1.4px,transparent 1.6px) 0 0/9px 9px,#160a2bee;
+  box-shadow:0 0 0 4px #a855f7 inset,inset 0 0 26px #883bcb,8px 8px 0 var(--ink),0 0 18px #74fc79aa;color:#caffb3}
 #mana-sign::after {display:none}
-.mana-title {position:relative;text-align:center;font-family:Bangers,sans-serif;font-size:clamp(20px,3vw,34px);letter-spacing:5px;padding:10px 0 2px;color:var(--red);-webkit-text-stroke:1.5px var(--ink)}
-.mana-track {position:relative;overflow:hidden;white-space:nowrap;font-size:22px}
+.mana-liquid {position:absolute;inset:45% -10% -45%;border-radius:40%;background:linear-gradient(0deg,#329b39,#b7ff42);opacity:.65;animation:mana-liquid 6s ease-in-out infinite alternate}
+.mana-bubbles i {position:absolute;bottom:-20px;width:14px;height:14px;border:2px solid #b5ff71;border-radius:50%;animation:mana-rise 4s linear infinite;opacity:.8}
+.mana-title {position:relative;text-align:center;font-family:Bangers,sans-serif;font-size:clamp(22px,3vw,36px);letter-spacing:5px;padding:10px 0 2px;color:var(--lime);-webkit-text-stroke:1.5px var(--ink);text-shadow:3px 3px 0 #6f1fac}
+.mana-track {position:relative;overflow:hidden;white-space:nowrap;font-size:22px;color:#eaffd6;text-shadow:2px 2px 0 var(--ink)}
 #mana-message {display:inline-block;padding-left:100%;animation:mana-scroll var(--mana-speed,16s) linear infinite}
 
 /* Now playing: a comic cover / trading card */
@@ -81,6 +104,10 @@
 .mana-hidden {display:none!important}
 
 @keyframes mana-scroll {to {transform:translateX(-100%)}}
+@keyframes mana-idle {50% {transform:translateY(-6px)}}
+@keyframes mana-flash {0%,100% {filter:brightness(1)} 33% {filter:brightness(3) saturate(0);transform:translateX(-8px)} 66% {transform:translateX(8px)}}
+@keyframes mana-liquid {to {transform:translateY(-8%) rotate(8deg)}}
+@keyframes mana-rise {to {transform:translateY(-220px) scale(.5);opacity:0}}
 @keyframes mana-fall {to {transform:translateY(2000px) rotate(540deg)}}
 @keyframes mana-pop {0% {transform:scale(.2) rotate(-12deg)} 100% {transform:scale(1) rotate(0)}}
 @keyframes mana-stamp {0% {transform:scale(2.4) rotate(-14deg);opacity:0} 100% {opacity:1}}
@@ -91,7 +118,7 @@
 @keyframes mana-foil {0% {background-position:150% 0} 100% {background-position:-150% 0}}
 @keyframes mana-holo {0% {background-position:0 50%} 100% {background-position:300% 50%}}
 @keyframes mana-flicker {50% {opacity:.85}}
-@media(prefers-reduced-motion:reduce) {#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
+@media(prefers-reduced-motion:reduce) {#mana-boss-sprite,.mana-liquid,.mana-bubbles i,#mana-coins i,#mana-card-insert,.mana-panel::after,.mana-card-art::before {animation:none} #mana-message {animation:none;padding-left:10px}}
 
 .mana-controls {padding:16px;border:1px solid #9457d3;border-radius:14px;background:#171024;color:#e7daf8;font:13px system-ui;margin-bottom:16px}
 .mana-controls h2 {margin:0 0 8px;font-size:18px;color:#c3ff80}
@@ -110,8 +137,95 @@
 .mana-controls .mana-check span {display:flex;align-items:center;gap:6px}
 .mana-controls .mana-score {font:700 15px ui-monospace,monospace;color:#c3ff80;margin:6px 0}
 .mana-controls .mana-rules {border-left:3px solid #ffe23d;padding-left:8px;color:#e9dcb0}
-.mana-controls .mana-found,.mana-controls .mana-stage {display:grid;gap:4px;margin:6px 0}
+/* minmax(0,1fr): a long title can't widen the list past the screen and push NOW / + NEXT off it (phones). */
+.mana-controls .mana-found,.mana-controls .mana-stage {display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:6px 0}
 .mana-controls .mana-found-row,.mana-controls .mana-stage-row {display:flex;align-items:center;gap:6px;padding:4px 6px;background:#221733;border-radius:6px}
 .mana-controls .mana-found-row span,.mana-controls .mana-stage-row span {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mana-controls .mana-stage-row b {color:#ffe23d;font-size:11px;min-width:52px}
-.mana-controls .mana-found-row button,.mana-controls .mana-stage-row button {margin:0;padding:4px 8px}
+.mana-controls .mana-found-row button,.mana-controls .mana-stage-row button {margin:0;padding:8px 10px;flex:0 0 auto}
+.mana-controls .mana-found-row span {cursor:pointer}
+
+/* ── ByteRider_97 (scripts/byterider.mjs) ─────────────────────────────
+   The phone screen is his monitor: his bezel runs round the whole frame and
+   his face pops onto the screen when he reacts (glitch in, glitch out). */
+.byterider {position:absolute;inset:0;z-index:6;pointer-events:none}
+.byterider[hidden] {display:none}
+.byterider .br-svg {position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.byterider.br-no-border .br-frame {display:none}
+.byterider .br-scanlines {opacity:.35}
+.byterider .br-bezel {animation:br-bezel-glow 6s ease-in-out infinite}
+.byterider .br-led {animation:br-led 3s steps(1) infinite}
+.byterider .br-static {opacity:0}
+/* The face: hidden between reactions (cameras clear), up during them. */
+.byterider .br-face {opacity:0;transition:opacity .18s steps(3);filter:drop-shadow(0 0 22px rgba(182,255,58,.85)) drop-shadow(0 0 4px #0b0612)}
+.byterider.br-idle-face.br-idle .br-face {opacity:.22}
+.byterider:not(.br-idle) .br-face {opacity:.93;animation:br-glitch-in .32s steps(4)}
+.byterider.br-sleeping .br-face {opacity:.35;animation:none}
+.byterider .br-motion,.byterider .br-eye,.byterider .br-face {transform-box:fill-box;transform-origin:50% 50%}
+.byterider .br-eyes,.byterider .br-mouth {display:none}
+.byterider .br-eyes-normal,.byterider .br-m-smile {display:inline}
+.byterider .br-eye {animation:br-blink 4.6s infinite}
+.br-bubble {position:absolute;left:50%;top:calc(var(--br-face-y,900px) + 330px * var(--br-face-s,1));transform:translateX(-50%);max-width:760px;width:max-content;padding:14px 22px;background:#05080a;color:#b6ff3a;border:5px solid #b6ff3a;border-radius:10px;box-shadow:6px 6px 0 #0b0612,0 0 26px rgba(182,255,58,.6);font:900 34px/1.2 Bangers,'Press Start 2P',sans-serif;letter-spacing:2px;text-align:center;text-shadow:0 0 10px rgba(182,255,58,.7);animation:br-pop .25s cubic-bezier(.2,2,.4,1)}
+.br-screen-text {position:absolute;left:0;right:0;top:calc(var(--br-face-y,900px) - 40px);text-align:center;font:400 44px 'Press Start 2P',monospace;color:#22e6ff;text-shadow:4px 0 #ff00d4,-4px 0 #22e6ff,0 0 18px #22e6ff;opacity:0}
+.byterider.br-screen-on .br-screen-text {opacity:1}
+.byterider.br-screen-on .br-face {opacity:.08!important}
+.br-zzz {position:absolute;left:calc(50% + 260px * var(--br-face-s,1));top:calc(var(--br-face-y,900px) - 260px * var(--br-face-s,1));display:none;font:900 60px Bangers,sans-serif;color:#b6ff3a;text-shadow:4px 4px 0 #0b0612}
+.br-zzz i {position:absolute;font-style:normal;opacity:0;animation:br-zzz 3s linear infinite}
+.br-zzz i:nth-child(2) {animation-delay:1s;font-size:46px}.br-zzz i:nth-child(3) {animation-delay:2s;font-size:34px}
+.br-fx {position:absolute;left:50%;top:var(--br-face-y,900px);width:0;height:0}
+.br-fx i {position:absolute;width:26px;height:26px;border:3px solid #0b0612;animation:br-particle 1.3s ease-out forwards}
+
+/* Expressions per state */
+.br-happy .br-eyes-normal,.br-happy .br-m-smile,.br-celebrating .br-eyes-normal,.br-celebrating .br-m-smile,
+.br-surprised .br-eyes-normal,.br-surprised .br-m-smile,.br-alert .br-eyes-normal,.br-alert .br-m-smile,
+.br-countdown .br-eyes-normal,.br-countdown .br-m-smile,.br-jackpot .br-eyes-normal,.br-jackpot .br-m-smile,
+.br-sleeping .br-eyes-normal,.br-sleeping .br-m-smile,.br-talking .br-m-smile {display:none}
+.br-happy .br-eyes-happy,.br-celebrating .br-eyes-happy,.br-happy .br-m-grin,.br-celebrating .br-m-grin,.br-jackpot .br-m-grin {display:inline}
+.br-surprised .br-eyes-wide,.br-alert .br-eyes-wide,.br-countdown .br-eyes-wide,.br-surprised .br-m-o,.br-countdown .br-m-o,.br-alert .br-m-flat {display:inline}
+.br-jackpot .br-eyes-dollar,.br-sleeping .br-eyes-closed,.br-sleeping .br-m-flat,.br-talking .br-m-talk {display:inline}
+.br-talk-a,.br-talk-b,.br-talk-c {opacity:0}
+.br-talking .br-talk-a {animation:br-talk .42s steps(1) infinite}
+.br-talking .br-talk-b {animation:br-talk .42s steps(1) infinite -.14s}
+.br-talking .br-talk-c {animation:br-talk .42s steps(1) infinite -.28s}
+
+/* Motion per state (the face) and the bezel's reactions */
+.br-happy .br-motion {animation:br-bounce .45s ease-in-out 3}
+.br-talking .br-motion {animation:br-nod .5s ease-in-out infinite}
+.br-surprised .br-motion {animation:br-tilt-back .5s cubic-bezier(.2,2,.4,1) forwards}
+.br-jackpot .br-motion {animation:br-shake .12s linear infinite}
+.br-jackpot .br-bezel,.br-celebrating .br-bezel {animation:br-bezel-party .25s steps(2) infinite}
+.br-glitch .br-face {opacity:.9;animation:br-rgb .18s steps(2) infinite}
+.br-glitch .br-static,.br-disappearing .br-static {animation:br-static .1s steps(2) infinite}
+.br-glitch .br-motion {animation:br-jitter .2s steps(2) infinite}
+.br-glitch .br-bezel {stroke:#ff00d4;animation:br-rgb-bezel .2s steps(2) infinite}
+.br-sleeping .br-zzz {display:block}
+.br-sleeping .br-led {fill:#ff8a3d;animation:none}
+.br-sleeping .br-bezel {stroke-opacity:.35;animation:none}
+.br-alert .br-bezel {animation:br-bezel-alert .35s steps(2) infinite}
+.br-countdown .br-motion {animation:br-countdown 5s ease-in forwards}
+.br-countdown .br-bezel {animation:br-bezel-glow .5s ease-in-out infinite}
+.br-celebrating .br-motion {animation:br-jump-spin .9s cubic-bezier(.3,1.6,.5,1) 3}
+.br-disappearing .br-motion {animation:br-vanish 2s steps(10) forwards}
+
+@keyframes br-glitch-in {0% {opacity:0;transform:translateX(-30px) skewX(20deg)} 25% {opacity:1;transform:translateX(24px) skewX(-14deg)} 50% {opacity:.3} 75% {opacity:1;transform:translateX(-8px)} 100% {transform:none}}
+@keyframes br-bezel-glow {50% {stroke-opacity:.95}}
+@keyframes br-bezel-party {0% {stroke:#b6ff3a} 50% {stroke:#7b3fe4}}
+@keyframes br-bezel-alert {0% {stroke:#ff2a4f} 50% {stroke:#2bd4c6}}
+@keyframes br-rgb-bezel {0% {stroke:#ff00d4} 50% {stroke:#22e6ff}}
+@keyframes br-led {0%,92% {opacity:1} 94% {opacity:.2} 96% {opacity:1}}
+@keyframes br-blink {0%,94%,100% {transform:scaleY(1)} 96% {transform:scaleY(.1)}}
+@keyframes br-pop {0% {transform:translateX(-50%) scale(.4)} 100% {transform:translateX(-50%) scale(1)}}
+@keyframes br-zzz {0% {transform:translate(0,0);opacity:0} 20% {opacity:1} 100% {transform:translate(70px,-150px);opacity:0}}
+@keyframes br-particle {to {transform:translate(var(--dx),var(--dy)) rotate(200deg);opacity:0}}
+@keyframes br-talk {0%,66%,100% {opacity:0} 0%,33% {opacity:1}}
+@keyframes br-bounce {0%,100% {transform:translateY(0) scale(1,1)} 30% {transform:translateY(12px) scale(1.1,.88)} 60% {transform:translateY(-60px) scale(.94,1.08)}}
+@keyframes br-nod {50% {transform:rotate(-3deg) translateY(-10px)}}
+@keyframes br-tilt-back {0% {transform:rotate(0)} 60% {transform:rotate(-12deg) translate(-20px,-40px) scale(1.08)} 100% {transform:rotate(-8deg) translate(-10px,-20px) scale(1.04)}}
+@keyframes br-shake {0% {transform:translate(-14px,6px) rotate(-2deg)} 50% {transform:translate(14px,-6px) rotate(2deg)} 100% {transform:translate(-14px,6px) rotate(-2deg)}}
+@keyframes br-rgb {0% {filter:drop-shadow(-14px 0 0 #ff00d4) drop-shadow(14px 0 0 #00f0ff)} 100% {filter:drop-shadow(14px 3px 0 #ff00d4) drop-shadow(-14px -3px 0 #00f0ff)}}
+@keyframes br-static {0% {opacity:.12} 100% {opacity:.03}}
+@keyframes br-jitter {0% {transform:translate(10px,-6px) skewX(8deg)} 100% {transform:translate(-10px,6px) skewX(-8deg)}}
+@keyframes br-countdown {0% {transform:scale(1)} 60% {transform:scale(1.06)} 85% {transform:scale(1.12) rotate(-2deg)} 92% {transform:scale(1.12) rotate(2deg)} 100% {transform:scale(1.14) rotate(-2deg)}}
+@keyframes br-jump-spin {0%,100% {transform:translateY(0) rotate(0)} 40% {transform:translateY(-110px) rotate(-10deg) scale(1.05)} 70% {transform:translateY(-40px) rotate(8deg)}}
+@keyframes br-vanish {0% {transform:scale(1,1);opacity:1} 35% {transform:scale(1.2,.03);opacity:1} 50% {transform:scale(0,0);opacity:0} 65% {transform:scale(.02,1.2);opacity:1} 100% {transform:scale(1,1);opacity:1}}
+@media(prefers-reduced-motion:reduce) {.byterider *,.byterider .br-motion {animation:none!important}}

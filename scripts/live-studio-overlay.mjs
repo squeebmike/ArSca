@@ -1,14 +1,21 @@
 import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats} from './live-studio-model.mjs';
+import {bossById, drawBoss} from './live-studio-bosses.mjs';
+import {createByteRider} from './byterider.mjs';
 const $=id=>document.getElementById(id);
 const sign=$('mana-sign'), text=$('mana-message'), effectEl=$('mana-effect'), coins=$('mana-coins');
 const hud=$('mana-hud'), boss=$('mana-boss'), card=$('mana-card'), queue=$('mana-queue');
 let settings={...DEFAULT_STUDIO}, stats=publicStats(emptyStats(),DEFAULT_STUDIO), stage={now:null,next:[]};
-let socket, retry=0, effect=null, offset=0, audio, lastBeep=-1, played=new Set(), shownGross=null;
+let drawnBoss='', socket, retry=0, effect=null, offset=0, audio, lastBeep=-1, played=new Set(), shownGross=null;
 const params=new URLSearchParams(location.hash.slice(1));
 const token=params.get('token'), store=params.get('store'), endpoint=params.get('worker');
 const preview=params.get('preview')==='1';
 // The fragment is never sent as a request URL or Referer. OBS retains its source URL for reloads.
 const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:Number(n)%1?2:0,maximumFractionDigits:2});
+// The sign's rising mana bubbles.
+for(let i=0;i<12;i++){const b=document.createElement('i');b.style.left=(i*8)+'%';b.style.animationDelay=-(i%5)+'s';document.querySelector('.mana-bubbles')?.append(b);}
+// ByteRider_97 lives in the overlay and reacts to the show (reactions below).
+const mascotHost=$('byterider'), mascot=mascotHost?createByteRider(mascotHost):null;
+let lastNowTitle=null, soldLine=0;
 const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'px';el.classList.toggle('mana-hidden',!show);};
 
 function apply(s) {
@@ -18,6 +25,8 @@ function apply(s) {
   sign.style.setProperty('--mana-speed',settings.speed+'s'); text.textContent=settings.message;
   place(hud,40,settings.hudY,settings.showHud);
   boss.classList.toggle('mana-hidden',!settings.showBoss);
+  // The boss's sprite and catchphrase, redrawn when the boss changes.
+  if(drawnBoss!==settings.bossCharacter){drawnBoss=settings.bossCharacter;void drawBoss($('mana-boss-sprite'),drawnBoss);}
   // Big photo: over the bottom camera, full width.
   card.classList.toggle('big',!!settings.bigArt);
   if(settings.bigArt){place(card,40,settings.bigArtY);card.style.height=Math.max(420,Math.min(900,1900-settings.bigArtY))+'px';}
@@ -28,6 +37,7 @@ function apply(s) {
   // Bursts are centered on the sign.
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
+  if(mascot){mascot.place({y:settings.mascotFaceY,scale:settings.mascotScale,border:settings.mascotBorder,idleFace:settings.mascotIdleFace});mascot.show(settings.mascotOn!==false);}
   paintStage();paintStats(stats,false);
 }
 function paintStats(next,fromSale) {
@@ -38,6 +48,7 @@ function paintStats(next,fromSale) {
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
   const fill=$('mana-boss-fill');fill.style.width=Math.max(0,Math.min(100,b.pct??100))+'%';fill.classList.toggle('low',(b.pct??100)<=25);
   boss.classList.toggle('defeated',!!b.defeated);
+  $('mana-boss-taunt').textContent=b.defeated?'"I\'LL BE BACK NEXT SHOW..."':'"'+bossById(b.character||settings.bossCharacter).taunt+'"';
   if(fromSale && before!=null && stats.gross>before){
     for(const el of [$('mana-gross'),$('mana-sold')]){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
     if(settings.showBoss){
@@ -59,6 +70,28 @@ function paintStage() {
   card.classList.toggle('mana-hidden',!settings.showCard||(!now&&!settings.attract));
   const list=$('mana-queue-list');list.replaceChildren(...(stage.next||[]).slice(0,3).map(n=>{const li=document.createElement('li');li.textContent=n.title+(n.price?' · '+usd(n.price):'');return li;}));
   queue.classList.toggle('mana-hidden',!settings.showQueue||settings.bigArt||!(stage.next||[]).length);
+  // A new item up (NEXT ITEM, or auto-advance after an auction sells): ByteRider calls it.
+  // Whatnot sends no "auction started" event; this is the closest real signal.
+  const title=now?.title||'';
+  if(lastNowTitle!==null&&title&&title!==lastNowTitle)mascot?.play('surprised',{text:'UP NEXT: '+(title.length>42?title.slice(0,40)+'…':title)});
+  lastNowTitle=title;
+}
+// What ByteRider_97 does for each show event. Lines take turns (no chance involved).
+const SOLD_LINES=['SOLD!','KA-CHING!','ANOTHER ONE!','NICE PULL!','STRAIGHT TO THE PILE!','GG, COLLECTOR!'];
+function react(e){
+  if(!mascot)return;
+  const amt=e.amount?' '+usd(e.amount):'';
+  switch(e.kind){
+    case 'sold': mascot.play('happy',{text:e.record?'NEW HI-SCORE!'+amt:e.combo>=3?e.combo+'× COMBO!'+amt:SOLD_LINES[soldLine++%SOLD_LINES.length]+amt});break;
+    case 'jackpot': mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
+    case 'boss': mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
+    case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
+    case 'ready': mascot.play('disappearing',{boot:true});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
+    case 'gameover': mascot.play('talking',{text:'GG! SAME TIME NEXT SHOW?'});setTimeout(()=>mascot.play('sleeping'),4500);break;
+    case 'giveaway': mascot.play('alert',{text:'FREE GIVEAWAY! ENTER IN THE WHATNOT APP!'});break;
+    case 'winner': mascot.play('celebrating',{text:e.buyer?'WINNER: @'+e.buyer+'!':'WE HAVE A WINNER!'});break;
+    case 'coin': mascot.play('talking',{text:'INSERT COIN!'});break;
+  }
 }
 
 // Chiptune: square-wave notes.
@@ -93,6 +126,9 @@ function receiveEffect(e,initial=false) {
   if(initial && e.kind!=='countdown') return;
   if(played.has(e.id)) return;
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
+  // A ByteRider reaction or line from the dashboard: just him, no burst.
+  if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
+  react(e);
   effect=e;lastBeep=-1;coins.replaceChildren();
   if(['jackpot','boss'].includes(e.kind)) rain(e.kind==='boss'?36:24);
   if(!initial && e.kind!=='countdown') (SOUNDS[e.kind]||SOUNDS.coin)();
@@ -107,6 +143,9 @@ function words(e) {
     case 'giveaway': return ['FREE GIVEAWAY!','','FREE TO ENTER IN THE WHATNOT APP'];
     case 'winner': return ['WINNER!',e.buyer?'@'+e.buyer:'','GIVEAWAY WINNER — PICKED BY WHATNOT'];
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
+    // Show start: a boss-fight intro card.
+    case 'ready': if(!settings.showBoss)return ['PLAYER 1 READY','',''];
+      return ['BOSS FIGHT!','VS',(settings.bossName||'')+' — "'+bossById(settings.bossCharacter).taunt+'"'];
     default: return [EFFECT_LABELS[e.kind]||'','',''];
   }
 }
@@ -115,6 +154,7 @@ function draw() {
   const now=Date.now()+offset;
   if(effect && effect.endsAt>now) {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind;lastKind=effect.id;
+      if(effect.kind==='boss'||(effect.kind==='ready'&&settings.showBoss)){try{$('mana-effect-art').src=$('mana-boss-sprite').toDataURL();}catch{}}
       if(effect.kind!=='countdown'){const [w,m,s]=words(effect);$('mana-effect-word').textContent=w;$('mana-effect-main').textContent=m;$('mana-effect-sub').textContent=s;}}
     if(effect.kind==='countdown') {
       const n=Math.max(0,Math.ceil((effect.endsAt-1200-now)/1000));$('mana-effect-word').textContent=n||'GO!';$('mana-effect-main').textContent=n?'LAST CALL!':'';$('mana-effect-sub').textContent='';

@@ -31,9 +31,9 @@ export class ManaLiveStudio extends DurableObject {
     this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);
   }
-  trigger(kind) {
+  trigger(kind, extra = {}) {
     const s = this.read();
-    s.effect = makeEffect(kind,s.settings);
+    s.effect = makeEffect(kind,s.settings,Date.now(),extra);
     this.write(s);
     this.broadcast({type:'effect', effect:s.effect, serverNow:Date.now()});
     return this.publicState(s);

@@ -25,7 +25,8 @@ export async function handleLiveStudio(request,env,deps,url) {
       const result=await room.update(body.settings,body.revision);
       return deps.json({ok:!result.conflict,...result},result.conflict?409:200);
     }
-    if (url.pathname==='/live-studio/effect') return deps.json({ok:true,...await room.trigger(body.kind)});
+    // A ByteRider_97 reaction: { kind:'mascot', state, text }.
+    if (url.pathname==='/live-studio/effect') return deps.json({ok:true,...await room.trigger(body.kind, body.kind==='mascot'?{mascotState:String(body.state||''),say:String(body.text||'').slice(0,200)}:{})});
     if (url.pathname==='/live-studio/overlay-link') return deps.json({ok:true,...await room.rotateOverlay()});
     if (url.pathname==='/live-studio/revoke') return deps.json(await room.revokeOverlay());
     if (url.pathname==='/live-studio/stage') return deps.json({ok:true,...await room.setStage(body.stage)});

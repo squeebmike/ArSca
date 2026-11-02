@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {DEFAULT_STUDIO,validateSettings,whatnotEffect,makeEffect,applyOrder,emptyStats,publicStats,statsFromOrders,validateStage,chanceWordIn,COMBO_WINDOW_MS,advanceStage} from '../scripts/live-studio-model.mjs';
 import {handleLiveStudio} from '../scripts/live-studio-api.mjs';
+import {BOSSES,BOSS_IDS,bossById,DEFAULT_BOSS} from '../scripts/live-studio-bosses.mjs';
 import {verifyStandardWebhook} from '../scripts/whatnot-api.mjs';
 
 assert.throws(()=>validateSettings({...DEFAULT_STUDIO,x:1000}),/fit/);
@@ -109,5 +110,14 @@ assert.equal(boss.reward,live.bossReward);assert.equal('secret' in boss,false);a
   assert.equal(validateSettings({bigArt:true,bigArtY:1000}).bigArt,true);
   assert.throws(()=>validateSettings({bigArtY:1500}),/bigArtY/);
 }
+// Original bosses (store, 2026-11-02: "The scalpers. The flipper... The dinged corner. With original artwork").
+assert.deepEqual(BOSS_IDS,['scalper','flipper','dinged','grader','shipping']);
+for (const id of BOSS_IDS) { const b=BOSSES[id]; assert.match(b.svg,/^<svg [^>]*viewBox="0 0 64 64">/); assert.ok(b.name&&b.taunt); assert.equal(chanceWordIn(b.name+' '+b.taunt),'',id); assert.doesNotMatch(b.svg+b.name+b.taunt,/marvel|dc comics|spider-?man|batman|<image|href=/i,'drawn here, nobody else\'s art'); }
+assert.equal(bossById('nope'),BOSSES[DEFAULT_BOSS]);
+assert.equal(DEFAULT_STUDIO.bossCharacter,'scalper');assert.equal(DEFAULT_STUDIO.bossName,'THE SCALPER');
+assert.equal(validateSettings({bossCharacter:'dinged'}).bossCharacter,'dinged');
+assert.throws(()=>validateSettings({bossCharacter:'hulk'}),/bossCharacter/);
+assert.equal(publicStats(emptyStats('s'),{...DEFAULT_STUDIO,showId:'s',bossCharacter:'flipper'}).boss.character,'flipper');
+assert.equal(makeEffect('boss',{...DEFAULT_STUDIO,bossCharacter:'grader'},1).bossCharacter,'grader');
 console.log('Live Studio validation, event filtering, authentication, conflict and signature tests passed');
 console.log('Live Studio score board, boss battle, combos, cancellations, giveaways, privacy and no-chance-words tests passed');

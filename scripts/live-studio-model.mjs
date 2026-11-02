@@ -1,3 +1,5 @@
+import { BOSS_IDS } from './live-studio-bosses.mjs';
+import { MASCOT_STATES } from './byterider.mjs';
 // Live Studio: the OBS overlay for Whatnot shows. 90s comic + arcade look
 // (store, 2026-11-01: "I want 90s comic. Arcade style").
 //
@@ -20,7 +22,8 @@ export const DEFAULT_STUDIO = Object.freeze({
   automatic: false, sellerId: '', showId: '', jackpotAmount: 100, currency: 'USD',
   // Score board (top) and boss bar.
   showHud: true, hudY: 40,
-  showBoss: true, bossName: 'THE SPECULATOR', bossGoal: 500, bossReward: '$1 START ON THE GRAIL!',
+  // bossCharacter: one of the original villains in live-studio-bosses.mjs.
+  showBoss: true, bossCharacter: 'scalper', bossName: 'THE SCALPER', bossGoal: 500, bossReward: '$1 START ON THE GRAIL!',
   // Now playing card + next up.
   showCard: true, cardX: 40, cardY: 1340, showQueue: true,
   // Big photo: the now playing card fills the bottom camera with the item's
@@ -28,10 +31,16 @@ export const DEFAULT_STUDIO = Object.freeze({
   bigArt: false, bigArtY: 1000,
   // When an auction sells, NOW PLAYING moves to the next item lined up.
   autoAdvance: true,
+  // ByteRider_97, the mascot (scripts/byterider.mjs): the screen is his monitor.
+  // mascotFaceY: where his face's center sits; mascotScale: its size (%);
+  // mascotBorder: his bezel round the frame; mascotIdleFace: a faint face
+  // stays up between reactions (off: the cameras are clear).
+  mascotOn: true, mascotFaceY: 900, mascotScale: 100, mascotBorder: true, mascotIdleFace: false,
   showCombo: true, showBuyerNames: false, attract: true,
 });
-export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner'];
-export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!' };
+// mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
+export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot'];
+export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97' };
 // Comic sound effects for a sale (a cycle, not chance -- the next one in line).
 export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', 'KA-CHING!', 'THWIP!', 'SNIKT!', 'BOOM!'];
 // Words for games of chance / raffles: not allowed on the sign or the boss reward.
@@ -47,7 +56,7 @@ export function validateSettings(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Settings required');
   const out = {};
   const limits = { x:[0,1080], y:[0,1920], width:[240,1080], height:[70,300], speed:[4,60], volume:[0,100], countdownSeconds:[3,15], jackpotAmount:[1,1000000],
-    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400] };
+    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotFaceY:[250,1650], mascotScale:[40,150] };
   for (const [key,value] of Object.entries(input)) {
     if (!(key in DEFAULT_STUDIO)) throw new Error('Unknown setting: ' + key);
     if (limits[key]) {
@@ -61,6 +70,7 @@ export function validateSettings(input) {
   const full = { ...DEFAULT_STUDIO, ...out };
   if (full.x + full.width > 1080 || full.y + full.height > 1920) throw new Error('Sign must fit within 1080 × 1920');
   if (!/^[A-Z]{3}$/.test(full.currency)) throw new Error('Use a three-letter currency');
+  if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
   for (const key of ['message', 'bossReward', 'bossName']) {
     const word = chanceWordIn(full[key]);
@@ -138,7 +148,7 @@ export function publicStats(stats, settings) {
   const s = stats && stats.showId === settings.showId ? stats : emptyStats(settings.showId);
   const hp = Math.max(0, settings.bossGoal - s.gross);
   return { gross: s.gross, sold: s.sold, giveaways: s.giveaways, biggest: s.biggest, combo: s.combo, lastSaleAt: s.lastSaleAt,
-    boss: { name: settings.bossName, goal: settings.bossGoal, hp, pct: Math.round(hp / settings.bossGoal * 1000) / 10, defeated: hp <= 0, reward: settings.bossReward } };
+    boss: { character: settings.bossCharacter, name: settings.bossName, goal: settings.bossGoal, hp, pct: Math.round(hp / settings.bossGoal * 1000) / 10, defeated: hp <= 0, reward: settings.bossReward } };
 }
 
 // Now playing + next up, set from the dashboard.
@@ -171,7 +181,7 @@ export function whatnotEffect(event, settings, now = Date.now()) {
   const big = amount?.currency === settings.currency && Number.isFinite(Number(amount.amount)) && Number(amount.amount) >= settings.jackpotAmount;
   return { kind: big ? 'jackpot' : 'sold', at };
 }
-const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000 };
+const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000 };
 export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (!EFFECTS.includes(kind)) throw new Error('Unknown effect');
   const length = kind === 'countdown' ? settings.countdownSeconds * 1000 + 1200 : DURATION[kind] ?? 5000;
@@ -181,7 +191,15 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (Number.isFinite(extra.combo)) safe.combo = extra.combo;
   if (typeof extra.buyer === 'string' && extra.buyer) safe.buyer = extra.buyer.slice(0, 30);
   if (extra.record) safe.record = true;
-  if (kind === 'boss') { safe.reward = settings.bossReward; safe.bossName = settings.bossName; }
+  if (kind === 'boss') { safe.reward = settings.bossReward; safe.bossName = settings.bossName; safe.bossCharacter = settings.bossCharacter; }
+  if (kind === 'mascot') {
+    if (!MASCOT_STATES.includes(extra.mascotState)) throw new Error('Unknown ByteRider reaction');
+    safe.mascotState = extra.mascotState;
+    const say = String(extra.say || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 120);
+    const word = chanceWordIn(say);
+    if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those.`);
+    if (say) safe.say = say;
+  }
   return { id:crypto.randomUUID(), kind, startsAt:now, endsAt:now + length, ...safe };
 }
 export async function digestToken(token) {
