@@ -125,3 +125,30 @@ console.log('ByteRider_97: look, state machine, queue, sleep, live triggers and 
   assert.match(ctl, /#mana-quick \[data-key=/);
   console.log('ByteRider says the marquee; the marquee switches off');
 }
+
+// Sounds and the hype meter (store: "do sounds and hype meter. And only on
+// Whatnot tab").
+{
+  const { hypeNow, hypeAfterSale, HYPE_MOOD, HYPE_MAX, HYPE_DECAY_MS } = await import('../scripts/live-studio-model.mjs');
+  let h = null, t = 1000;
+  for (let i = 0; i < 3; i++) h = hypeAfterSale(h, {}, t += 1000);
+  assert.equal(h.level, 3);assert.equal(HYPE_MOOD[h.level], 'excited');
+  h = hypeAfterSale(h, { big: true }, t += 1000);assert.equal(h.level, HYPE_MAX, 'a big hit fills two');
+  assert.equal(HYPE_MOOD[HYPE_MAX], 'glitch', 'OVERDRIVE');
+  h = hypeAfterSale(h, {}, t += 1000);assert.equal(h.level, HYPE_MAX, 'never past the top');
+  assert.equal(hypeNow(h, t + HYPE_DECAY_MS - 1).level, 5);
+  assert.equal(hypeNow(h, t + 2 * HYPE_DECAY_MS + 5).level, 3, 'a notch every 20 quiet seconds');
+  assert.equal(hypeNow(h, t + 10 * HYPE_DECAY_MS).level, 0);
+  assert.deepEqual(HYPE_MOOD.slice(1, 5), ['happy', 'happy', 'excited', 'dizzy']);
+  assert.equal(DEFAULT_STUDIO.mascotSounds, true);assert.equal(DEFAULT_STUDIO.showHype, true);
+  const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8');
+  assert.match(ov, /createByteRider\(mascotHost,\{onChange:e=>mascotSound\(e\)\}\)/, 'his moods and lines make sounds');
+  assert.match(ov, /if\(settings\.mascotSounds===false\)return;/);
+  assert.match(ov, /if\(settings\.muted\|\|preview\)return;/, 'mute still rules');
+  assert.match(ov, /hype=hypeAfterSale\(hype,\{\},Date\.now\(\)\)/);assert.match(ov, /mascot\.play\('glitch',\{text:'OVERDRIVE!!'/);
+  assert.ok(fs.readFileSync('arcade-overlay.html', 'utf8').includes('<div id="mana-hype"'));
+  const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
+  assert.ok(ctl.includes("box('mascotSounds',") && ctl.includes("box('showHype',"));
+  assert.match(ctl, /if\(typeof activeTab!=='undefined'&&activeTab!=='whatnot'\)return;/, 'shortcuts only on the Whatnot tab');
+  console.log('ByteRider sounds, hype meter and Whatnot-tab-only shortcuts checks passed');
+}

@@ -41,6 +41,9 @@ export const DEFAULT_STUDIO = Object.freeze({
   // text on the sign; mascotSaysMarquee has ByteRider say its lines (split at
   // • or |), one every mascotSayEvery seconds when he isn't busy.
   marqueeOn: true, mascotSaysMarquee: false, mascotSayEvery: 45,
+  // ByteRider's sounds (chiptune blips, under the overlay's volume and mute)
+  // and the hype meter (store, 2026-11-02: "do sounds and hype meter").
+  mascotSounds: true, showHype: true,
   showCombo: true, showBuyerNames: false, attract: true,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
@@ -56,6 +59,19 @@ const STRINGS = { message: 300, bossReward: 120, bossName: 40 };
 // The marquee's lines, as ByteRider says them.
 export function marqueeLines(message) {
   return String(message || '').split(/\s*[•|]\s*/).map(l => l.trim()).filter(Boolean).slice(0, 30);
+}
+// The hype meter: each sale fills it (a big hit or the boss K.O. by two),
+// every 20 quiet seconds it drains one, five is OVERDRIVE. ByteRider's mood
+// follows it: happy, happy, excited, dizzy, then glitching.
+export const HYPE_MAX = 5, HYPE_DECAY_MS = 20000;
+export const HYPE_MOOD = ['idle', 'happy', 'happy', 'excited', 'dizzy', 'glitch'];
+export function hypeNow(h, now = Date.now()) {
+  if (!h || !(h.level > 0)) return { level: 0, at: now };
+  const drops = Math.floor((now - h.at) / HYPE_DECAY_MS);
+  return drops > 0 ? { level: Math.max(0, h.level - drops), at: h.at + drops * HYPE_DECAY_MS } : h;
+}
+export function hypeAfterSale(h, { big = false } = {}, now = Date.now()) {
+  return { level: Math.min(HYPE_MAX, hypeNow(h, now).level + (big ? 2 : 1)), at: now };
 }
 export function chanceWordIn(text) {
   const m = String(text || '').match(CHANCE_WORDS);

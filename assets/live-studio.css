@@ -146,3 +146,12 @@
 .mana-controls .mana-found-row span {cursor:pointer}
 
 .mana-controls #mana-mascot kbd {font:700 10px ui-monospace,monospace;padding:1px 4px;border:1px solid #9164b2;border-radius:3px;color:#ffe23d;margin-left:2px}
+/* The hype meter: a neon bar on the right edge, inside ByteRider's border,
+   five segments, logo green to purple; at the top it pulses (OVERDRIVE). */
+#mana-hype {position:absolute;right:46px;top:620px;z-index:5;display:flex;flex-direction:column-reverse;align-items:center;gap:8px;padding:12px 8px;background:#05080acc;border:4px solid #b026ff;border-radius:14px;box-shadow:0 0 14px #b026ff99}
+#mana-hype b {font:400 11px 'Press Start 2P',monospace;color:#5cff1f;writing-mode:vertical-rl;transform:rotate(180deg);margin-top:4px;text-shadow:0 0 6px #5cff1f}
+#mana-hype i {width:30px;height:46px;border-radius:6px;background:#1c2412;border:2px solid #2a3a1a;transition:background .2s,box-shadow .2s}
+#mana-hype i.on {background:#5cff1f;border-color:#5cff1f;box-shadow:0 0 12px #5cff1f}
+#mana-hype i.on:nth-of-type(4),#mana-hype i.on:nth-of-type(5) {background:#b026ff;border-color:#b026ff;box-shadow:0 0 12px #b026ff}
+#mana-hype.max {animation:mana-hype-max .3s steps(2) infinite}
+@keyframes mana-hype-max {50% {border-color:#5cff1f;box-shadow:0 0 26px #5cff1f}}
