@@ -79,13 +79,13 @@ const MOUTHS = {
   grin: `<path d="M-180 40 Q0 270 180 40 Z"/>`,
   laughOpen: `<path d="M-180 40 Q0 270 180 40 Z" fill="none" stroke="${C.lime}" stroke-width="26" stroke-linejoin="round"/>` + `<path d="M-90 175 Q0 120 90 175 Q0 215 -90 175 Z"/>`,
   small: ln('M-130 80 Q0 165 130 80'),
-  // Talking (store: "His mouth is like the squiggles ... the lines move"): a
-  // rounded neon grille with bar lines, and a squiggle through it that
-  // changes shape as he talks -- his own grille, not anyone else's.
-  talk: `<rect x="-175" y="55" width="350" height="140" rx="44" fill="none" stroke="${C.lime}" stroke-width="20"/>` + ln('M-95 60 L-95 190 M-30 60 L-30 190 M35 60 L35 190 M100 60 L100 190', 12) +
-    `<g class="br-talk-a">${ln('M-165 125 Q-135 85 -105 125 T-45 125 T15 125 T75 125 T135 125 L165 125', 16)}</g>` +
-    `<g class="br-talk-b">${ln('M-165 125 Q-140 160 -115 125 T-65 125 T-15 125 T35 125 T85 125 T135 125 L165 125', 16)}</g>` +
-    `<g class="br-talk-c">${ln('M-165 125 Q-125 100 -85 125 T-5 125 T75 125 T155 125 L165 125', 16)}</g>` + rays(195, 125, 30, 75, [-30, 0, 30], 16),
+  // Talking (store: "When he talks it should move his mouth like Bender's
+  // mouth on Futurama. Don't surround the mouth. Do two horizontal lines"):
+  // two lines with bars between them that open and close while a squiggle
+  // wiggles through the middle -- three frames, swapped as he speaks.
+  talk: `<g class="br-talk-a">${ln('M-170 105 L170 105 M-170 145 L170 145', 20) + ln('M-110 105 L-110 145 M-40 105 L-40 145 M40 105 L40 145 M110 105 L110 145', 12) + ln('M-170 125 Q-140 108 -110 125 T-50 125 T10 125 T70 125 T130 125 L170 125', 14)}</g>` +
+    `<g class="br-talk-b">${ln('M-170 70 L170 70 M-170 185 L170 185', 20) + ln('M-110 70 L-110 185 M-40 70 L-40 185 M40 70 L40 185 M110 70 L110 185', 12) + ln('M-170 128 Q-145 165 -120 128 T-70 128 T-20 128 T30 128 T80 128 T130 128 L170 128', 14)}</g>` +
+    `<g class="br-talk-c">${ln('M-170 88 L170 88 M-170 165 L170 165', 20) + ln('M-110 88 L-110 165 M-40 88 L-40 165 M40 88 L40 165 M110 88 L110 165', 12) + ln('M-170 126 Q-130 98 -90 126 T-10 126 T70 126 T150 126 L170 126', 14)}</g>`,
   o: `<ellipse cx="0" cy="130" rx="42" ry="56" fill="none" stroke="${C.lime}" stroke-width="22"/>`,
   shock: `<path d="M-95 170 L-95 110 Q-95 50 0 50 Q95 50 95 110 L95 170 Z" fill="none" stroke="${C.lime}" stroke-width="24"/>`,
   think: ln('M-150 120 Q-80 70 -10 105', 24) + box(40, 100, 24, 24) + box(90, 100, 24, 24) + box(140, 100, 24, 24),
@@ -181,7 +181,7 @@ export function createByteRider(host, { mode = 'screen', sleepAfterMs = 5 * 6000
   host.innerHTML = `${mode === 'badge' ? BYTERIDER_BADGE_SVG : BYTERIDER_SVG}<div class="br-bubble" hidden></div><div class="br-screen-text" aria-hidden="true"></div><div class="br-zzz" aria-hidden="true"><i>Z</i><i>Z</i><i>z</i></div><div class="br-fx" aria-hidden="true"></div>`;
   const bubble = host.querySelector('.br-bubble'), fx = host.querySelector('.br-fx'), screenText = host.querySelector('.br-screen-text'), placeG = host.querySelector('.br-place');
   const machine = createMascotMachine({ sleepAfterMs });
-  let shown = '', screenTimer = null;
+  let shown = '', shownWear = '', screenTimer = null;
   const burst = (colors, n = 14) => {
     fx.replaceChildren();
     for (let i = 0; i < n; i++) { const p = document.createElement('i'); const a = (i / n) * Math.PI * 2, k = mode === 'badge' ? 0.3 : 1; p.style.setProperty('--dx', Math.round(Math.cos(a) * (260 + (i % 3) * 90) * k) + 'px'); p.style.setProperty('--dy', Math.round(Math.sin(a) * (240 + (i % 4) * 70) * k) + 'px'); p.style.background = colors[i % colors.length]; fx.append(p); }
@@ -194,15 +194,19 @@ export function createByteRider(host, { mode = 'screen', sleepAfterMs = 5 * 6000
     step();
   };
   const parts = [...host.querySelectorAll('.br-eyes,.br-mouth')];
-  const wear = state => {
-    const [eyes, mouth] = FACE_FOR[state] || FACE_FOR.idle;
+  // Whenever he's saying something, his mouth talks (the reaction keeps its eyes).
+  const wear = (state, speaking = false) => {
+    const [eyes, face] = FACE_FOR[state] || FACE_FOR.idle;
+    const mouth = speaking && !['sleeping', 'countdown', 'loading', 'processing'].includes(state) ? 'talk' : face;
+    host.classList.toggle('br-speaking', mouth === 'talk');
     for (const g of parts) g.style.display = (g.dataset.eyes ? g.dataset.eyes === eyes : g.dataset.mouth === mouth) ? '' : 'none';
   };
   const render = cur => {
+    const key = cur.state + '|' + (cur.text ? 1 : 0);
+    if (key !== shownWear) { wear(cur.state, !!cur.text); shownWear = key; }
     if (cur.state !== shown) {
       host.classList.remove(...MASCOT_STATES.map(s => 'br-' + s));
       host.classList.add('br-' + cur.state);
-      wear(cur.state);
       host.classList.toggle('br-magenta', MAGENTA.has(cur.state));
       shown = cur.state;
       if (cur.state === 'jackpot') burst(['#b6ff3a', '#7b3fe4', '#22e6ff', '#ffe23d'], 22);

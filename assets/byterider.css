@@ -32,9 +32,9 @@
 .br-fx i {position:absolute;width:26px;height:26px;border:3px solid #0b0612;animation:br-particle 1.3s ease-out forwards}
 
 .br-talk-a,.br-talk-b,.br-talk-c {opacity:0}
-.br-talking .br-talk-a {animation:br-talk .42s steps(1) infinite}
-.br-talking .br-talk-b {animation:br-talk .42s steps(1) infinite -.14s}
-.br-talking .br-talk-c {animation:br-talk .42s steps(1) infinite -.28s}
+.br-talking .br-talk-a,.br-speaking .br-talk-a {animation:br-talk .42s steps(1) infinite}
+.br-talking .br-talk-b,.br-speaking .br-talk-b {animation:br-talk .42s steps(1) infinite -.14s}
+.br-talking .br-talk-c,.br-speaking .br-talk-c {animation:br-talk .42s steps(1) infinite -.28s}
 
 /* Motion per state (the face) and the bezel's reactions */
 .br-happy .br-motion {animation:br-bounce .45s ease-in-out 3}
