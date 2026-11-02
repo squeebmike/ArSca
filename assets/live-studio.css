@@ -137,11 +137,13 @@
 .mana-controls .mana-check span {display:flex;align-items:center;gap:6px}
 .mana-controls .mana-score {font:700 15px ui-monospace,monospace;color:#c3ff80;margin:6px 0}
 .mana-controls .mana-rules {border-left:3px solid #ffe23d;padding-left:8px;color:#e9dcb0}
-.mana-controls .mana-found,.mana-controls .mana-stage {display:grid;gap:4px;margin:6px 0}
+/* minmax(0,1fr): a long title can't widen the list past the screen and push NOW / + NEXT off it (phones). */
+.mana-controls .mana-found,.mana-controls .mana-stage {display:grid;grid-template-columns:minmax(0,1fr);gap:4px;margin:6px 0}
 .mana-controls .mana-found-row,.mana-controls .mana-stage-row {display:flex;align-items:center;gap:6px;padding:4px 6px;background:#221733;border-radius:6px}
 .mana-controls .mana-found-row span,.mana-controls .mana-stage-row span {flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mana-controls .mana-stage-row b {color:#ffe23d;font-size:11px;min-width:52px}
-.mana-controls .mana-found-row button,.mana-controls .mana-stage-row button {margin:0;padding:4px 8px}
+.mana-controls .mana-found-row button,.mana-controls .mana-stage-row button {margin:0;padding:8px 10px;flex:0 0 auto}
+.mana-controls .mana-found-row span {cursor:pointer}
 
 /* ── ByteRider_97 (scripts/byterider.mjs) ───────────────────────────── */
 .byterider {position:absolute;z-index:6;pointer-events:none;width:var(--br-size,210px)}
