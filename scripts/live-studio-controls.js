@@ -32,6 +32,8 @@
   ${box('bigArt','BIG PHOTO: fill the bottom camera with the item\'s photo')}
   <div class="mana-grid">${num('bigArtY','Big photo top',0,1400)}</div>
   <small class="mana-rules">Whatnot can't start auctions from outside its app -- run each auction there; the overlay follows along. With BIG PHOTO, still hold the real book up before the timer starts: the stream is the record if a buyer says it wasn't as shown. Use your own photo of the actual copy, not a catalog cover, for anything where condition matters.</small>
+  <h3>Quick</h3>
+  <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button></div>
   <h3>Effects</h3>
   <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
@@ -72,6 +74,11 @@
   function preview(effect,demoStats){frame.contentWindow?.postMessage({type:'mana-preview',settings:values(),stage,stats:demoStats||stats||undefined,effect},location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
   host.querySelector('#mana-load').onclick=()=>run(async()=>{const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';});
+  // Quick switches (store: "I might not want the marquee sign to show
+  // sometimes"): flip the setting and save it live in one tap.
+  host.querySelector('#mana-quick').onclick=e=>{const b=e.target.closest('[data-toggle]');if(!b)return;
+    const box=form.elements.namedItem(b.dataset.toggle);box.checked=!box.checked;
+    void run(async()=>{try{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=(b.dataset.toggle==='visible'?'Sign ':'Marquee text ')+(box.checked?'on':'off');}catch(err){box.checked=!box.checked;throw err;}});};
   form.onsubmit=e=>{e.preventDefault();void run(async()=>{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Live settings saved.';});};
   form.oninput=e=>{
     // Picking a boss gives it its name, unless the store typed its own.
@@ -94,7 +101,7 @@
     if(!keys.checked||e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')||e.target?.isContentEditable)return;
     const k=e.key.length===1?e.key.toUpperCase():'';
     if(k==='S'){e.preventDefault();host.querySelector('#mana-say').focus();return;}
-    const b=host.querySelector(`#mana-mascot [data-key="${k}"]`);
+    const b=host.querySelector(`#mana-mascot [data-key="${k}"],#mana-quick [data-key="${k}"]`);
     if(b){e.preventDefault();b.click();}
   });
   host.querySelector('#mana-show').onclick=()=>run(async()=>{const d=await api('current-show');if(!d.show)throw Error('No live or scheduled Whatnot show found');form.elements.namedItem('showId').value=d.show.id;host.querySelector('#mana-show-name').textContent=(d.show.live?'LIVE: ':'NEXT: ')+(d.show.title||d.show.id);preview();status.textContent='Show picked -- tap Save live settings.';});

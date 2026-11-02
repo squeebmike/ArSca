@@ -32,6 +32,11 @@ try{
  await page.locator('[name=bossReward]').fill('Raffle for buyers');await page.getByRole('button',{name:'Save live settings'}).click();
  await page.locator('[name=bossReward]').fill('$1 START ON THE GRAIL!');
  const box=await frame.locator('#mana-sign').boundingBox();assert.ok(box.width<240 && box.height<80,'sign stays small in camera preview');
+ // One tap hides the sign on stream (and again shows it).
+ await page.getByRole('button',{name:/SIGN ON\/OFF/}).click();await page.getByText('Sign off',{exact:true}).waitFor();
+ await frame.locator('#mana-sign.mana-hidden').waitFor({state:'attached'});assert.equal(saved.visible,false);
+ await page.getByRole('button',{name:/SIGN ON\/OFF/}).click();await page.getByText('Sign on',{exact:true}).waitFor();
+ await frame.locator('#mana-sign:not(.mana-hidden)').waitFor();
  await page.getByRole('button',{name:'Create / replace OBS link'}).click();await page.waitForFunction(()=>document.querySelector('#mana-url').value.length>0);assert.match(await page.locator('#mana-url').inputValue(),/arcade-overlay.html#worker=/);
  await page.evaluate(()=>{storeId='22222222-2222-4222-8222-222222222222';});await page.getByRole('button',{name:'SOLD',exact:true}).click();await page.getByText('Store changed. Connect again before controlling the sign.').waitFor();
  await page.locator('[name=message]').fill('THE MANA POCKET • INSERT COIN');await page.locator('[name=message]').dispatchEvent('input');

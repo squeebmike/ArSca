@@ -121,5 +121,7 @@ console.log('ByteRider_97: look, state machine, queue, sleep, live triggers and 
   assert.match(ov, /mascot\.say\(lines\[marqueeLine\+\+%lines\.length\]\)/, 'lines in turn');
   const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
   assert.ok(ctl.includes("box('marqueeOn',") && ctl.includes("box('mascotSaysMarquee',") && ctl.includes("num('mascotSayEvery',"));
+  assert.ok(ctl.includes('data-toggle="visible" data-key="H"') && ctl.includes('data-toggle="marqueeOn" data-key="Q"'), 'one-tap sign and marquee switches, with keys');
+  assert.match(ctl, /#mana-quick \[data-key=/);
   console.log('ByteRider says the marquee; the marquee switches off');
 }
