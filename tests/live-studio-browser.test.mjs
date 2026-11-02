@@ -24,7 +24,12 @@ try{
  await page.getByRole('button',{name:'BIG HIT',exact:true}).click();await frame.locator('#mana-effect-word',{hasText:'BIG HIT!'}).waitFor();
  // ByteRider_97 reacts to it too.
  await frame.locator('.br-bubble',{hasText:'BIG HIT!'}).waitFor();assert.ok(await frame.locator('#byterider.br-jackpot').count(),'ByteRider in his jackpot state');
- assert.equal(await frame.locator('#mana-coins i').count(),24);
+ // Coins: 3D when WebGL is there (polished-N64), else the flat CSS coins.
+ const gl3d=await frame.locator('body.mana-3d').count();
+ if(gl3d){await page.waitForTimeout(400);const st=await frame.locator('body').evaluate(()=>window.manaStudio3d());assert.ok(st.coins>0,'3D coins falling');assert.equal(st.boss,'scalper');
+   const lit=st.bossPixels;
+   assert.ok(lit>2000,'the 3D boss is drawn ('+lit+' px)');console.log('3D overlay on: boss drawn, coins falling');}
+ else {assert.equal(await frame.locator('#mana-coins i').count(),24);console.log('3D overlay off (no WebGL here): flat coins and sprite');}
  // A pretend sale in the preview: score board, boss damage, comic burst.
  await page.getByRole('button',{name:'DEMO A SALE (preview only)'}).click();await frame.locator('#mana-effect.k-sold').waitFor();
  assert.equal(await frame.locator('#mana-gross').textContent(),'$12');assert.equal(await frame.locator('#mana-effect-word').textContent(),'BAM!');
