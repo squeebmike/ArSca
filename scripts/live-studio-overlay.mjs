@@ -82,14 +82,23 @@ function react(e){
   if(!mascot)return;
   const amt=e.amount?' '+usd(e.amount):'';
   switch(e.kind){
-    case 'sold': mascot.play('happy',{text:e.record?'NEW HI-SCORE!'+amt:e.combo>=3?e.combo+'× COMBO!'+amt:SOLD_LINES[soldLine++%SOLD_LINES.length]+amt});break;
+    // A sale: a new hi-score floors him; a combo makes him dizzy; while the
+    // boss stands, every other sale he taunts it; otherwise a happy line.
+    case 'sold': {
+      const bossUp=settings.showBoss&&stats.boss&&!stats.boss.defeated;
+      if(e.record)mascot.play('surprised',{text:'NEW HI-SCORE!'+amt});
+      else if(e.combo>=3)mascot.play('dizzy',{text:e.combo+'× COMBO!'+amt});
+      else if(bossUp&&soldLine%2)mascot.play('smug',{text:'TAKE THAT, '+String(stats.boss.name||settings.bossName).replace(/^THE /,'')+'!'+(e.amount?' -'+usd(e.amount):''),}),soldLine++;
+      else mascot.play('happy',{text:SOLD_LINES[soldLine++%SOLD_LINES.length]+amt});
+      break;
+    }
     case 'jackpot': mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
     case 'boss': mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
     case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
     case 'ready': mascot.play('disappearing',{boot:true});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
-    case 'gameover': mascot.play('talking',{text:'GG! SAME TIME NEXT SHOW?'});setTimeout(()=>mascot.play('sleeping'),4500);break;
+    case 'gameover': mascot.play('sad',{text:"SHOW'S OVER?! ...SAME TIME NEXT SHOW?"});setTimeout(()=>mascot.play('sleeping'),5000);break;
     case 'giveaway': mascot.play('alert',{text:'FREE GIVEAWAY! ENTER IN THE WHATNOT APP!'});break;
-    case 'winner': mascot.play('celebrating',{text:e.buyer?'WINNER: @'+e.buyer+'!':'WE HAVE A WINNER!'});break;
+    case 'winner': mascot.play('love',{text:e.buyer?'WINNER: @'+e.buyer+'!':'WE HAVE A WINNER!'});break;
     case 'coin': mascot.play('talking',{text:'INSERT COIN!'});break;
   }
 }

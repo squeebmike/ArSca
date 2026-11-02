@@ -2,6 +2,9 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   host.className='mana-controls';
+  // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
+  const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
+    ['jackpot','JACKPOT','J'],['celebrating','CELEBRATE','C'],['alert','ALERT','A'],['glitch','GLITCH','G'],['countdown','COUNTDOWN','D'],['sleeping','SLEEP','Z'],['disappearing','REBOOT','R'],['idle','IDLE','I'],['talking','TALK','T','HEY CHAT! WHAT ARE WE PULLING NEXT?'],['happy','NEW FOLLOWER','N','NEW FOLLOWER! WELCOME TO THE POCKET!']];
   // The original villains (scripts/live-studio-bosses.mjs).
   const BOSS_NAMES={scalper:'THE SCALPER',flipper:'THE FLIPPER',dinged:'THE DINGED CORNER',grader:'THE HARSH GRADER',shipping:'THE SHIPPING DELAY'};
   const num=(name,label,min,max,step)=>`<label>${label}<input name="${name}" type="number" min="${min}" max="${max}"${step?` step="${step}"`:''} required></label>`;
@@ -35,7 +38,9 @@
   <h3>ByteRider_97</h3>
   <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${box('mascotBorder','His bezel round the screen')}${box('mascotIdleFace','Keep a faint face up between reactions')}${num('mascotScale','Face size (%)',40,150)}${num('mascotFaceY','Face height on screen',250,1650)}</div>
   <small>The phone screen is his monitor: his face pops onto it when he reacts, then clears so the cameras show. He reacts on his own to sales, big hits, the boss K.O., countdowns, giveaways and winners, the show starting and ending, and each new item up. Whatnot doesn't send follows or auction starts, so those are buttons here. He naps after 5 quiet minutes.</small>
-  <div id="mana-mascot">${[['happy','HAPPY'],['talking','TALK'],['surprised','SURPRISED'],['jackpot','JACKPOT'],['glitch','GLITCH'],['sleeping','SLEEP'],['alert','ALERT'],['countdown','COUNTDOWN'],['celebrating','CELEBRATE'],['disappearing','REBOOT'],['idle','IDLE']].map(([k,l])=>`<button type="button" data-mascot="${k}">${l}</button>`).join('')}<button type="button" data-mascot="happy" data-say="NEW FOLLOWER! WELCOME TO THE POCKET!">NEW FOLLOWER</button></div>
+  <div id="mana-mascot">${MASCOT_KEYS.map(([k,l,key,say])=>`<button type="button" data-mascot="${k}"${say?` data-say="${say}"`:''} data-key="${key}">${l} <kbd>${key}</kbd></button>`).join('')}</div>
+  <label class="mana-check"><span><input type="checkbox" id="mana-dash-br"> Show ByteRider in the dashboard corner (this device)</span></label>
+  <label class="mana-check"><span><input type="checkbox" id="mana-keys"> Keyboard shortcuts (the letters/numbers on the buttons; not while typing in a box)</span></label>
   <div class="mana-row"><input id="mana-say" maxlength="120" placeholder="Make him say something (a promo, a shout-out)…"><button type="button" id="mana-say-go">SAY IT</button></div>
   <h3>Sign &amp; layout</h3>
   <label>Marquee message<textarea name="message" maxlength="300"></textarea></label>
@@ -77,6 +82,21 @@
   const mascotSend=(state,text)=>run(async()=>{const d=await api('effect',{kind:'mascot',state,text});preview(d.effect);status.textContent='ByteRider: '+(text||state);});
   host.querySelector('#mana-mascot').onclick=e=>{const b=e.target.closest('[data-mascot]');if(b)mascotSend(b.dataset.mascot,b.dataset.say||'');};
   host.querySelector('#mana-say-go').onclick=()=>{const t=host.querySelector('#mana-say').value.trim();if(t)mascotSend('talking',t);};
+  // Keyboard shortcuts (this device only): a key fires the button that shows it;
+  // S jumps to the SAY box. Never while typing in a box.
+  const dashBr=host.querySelector('#mana-dash-br');
+  try{dashBr.checked=localStorage.getItem('byterider-dash-hidden')!=='1';}catch{}
+  dashBr.onchange=()=>{if(typeof showDashByteRider==='function')showDashByteRider(dashBr.checked);};
+  const keys=host.querySelector('#mana-keys');
+  try{keys.checked=localStorage.getItem('mana-keys')==='1';}catch{}
+  keys.onchange=()=>{try{localStorage.setItem('mana-keys',keys.checked?'1':'0');}catch{}};
+  document.addEventListener('keydown',e=>{
+    if(!keys.checked||e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')||e.target?.isContentEditable)return;
+    const k=e.key.length===1?e.key.toUpperCase():'';
+    if(k==='S'){e.preventDefault();host.querySelector('#mana-say').focus();return;}
+    const b=host.querySelector(`#mana-mascot [data-key="${k}"]`);
+    if(b){e.preventDefault();b.click();}
+  });
   host.querySelector('#mana-show').onclick=()=>run(async()=>{const d=await api('current-show');if(!d.show)throw Error('No live or scheduled Whatnot show found');form.elements.namedItem('showId').value=d.show.id;host.querySelector('#mana-show-name').textContent=(d.show.live?'LIVE: ':'NEXT: ')+(d.show.title||d.show.id);preview();status.textContent='Show picked -- tap Save live settings.';});
   host.querySelector('#mana-sync').onclick=()=>run(async()=>{const d=await api('stats-sync',{});took(d);status.textContent='Totals synced from Whatnot.';});
   host.querySelector('#mana-reset').onclick=()=>run(async()=>{if(!confirm('Reset the score board and boss to zero?'))return;const d=await api('stats-reset',{});took(d);status.textContent='Totals reset.';});
