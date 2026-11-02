@@ -104,3 +104,24 @@ assert.ok(fs.readFileSync('dashboard.html', 'utf8').includes('assets/byterider.c
 assert.match(fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8'), /scripts\/byterider\.mjs/);
 assert.match(fs.readFileSync('scripts/live-studio-api.mjs', 'utf8'), /room\.trigger\(body\.kind, body\.kind==='mascot'/);
 console.log('ByteRider_97: look, state machine, queue, sleep, live triggers and wiring checks passed');
+
+// The marquee (store: "I need ByteRider to say all the stuff from the marquee.
+// Toggle to turn off the marquee"): a switch for the scrolling text, and
+// ByteRider saying its lines one at a time.
+{
+  const { marqueeLines } = await import('../scripts/live-studio-model.mjs');
+  assert.deepEqual(marqueeLines('THE MANA POCKET • INSERT COIN | NEW KEYS EVERY SHOW'), ['THE MANA POCKET', 'INSERT COIN', 'NEW KEYS EVERY SHOW']);
+  assert.deepEqual(marqueeLines('  •  '), []);
+  assert.equal(DEFAULT_STUDIO.marqueeOn, true);assert.equal(DEFAULT_STUDIO.mascotSaysMarquee, false);assert.equal(DEFAULT_STUDIO.mascotSayEvery, 45);
+  assert.equal(validateSettings({ marqueeOn: false, mascotSaysMarquee: true, mascotSayEvery: 20 }).mascotSayEvery, 20);
+  assert.throws(() => validateSettings({ mascotSayEvery: 5 }), /mascotSayEvery/);
+  const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8');
+  assert.match(ov, /sign\.querySelector\('\.mana-track'\)\.classList\.toggle\('mana-hidden',settings\.marqueeOn===false\)/, 'the scrolling text can be switched off');
+  assert.match(ov, /if\(mascot\.machine\.current\.state!=='idle'\)return;/, 'he never talks over a reaction');
+  assert.match(ov, /mascot\.say\(lines\[marqueeLine\+\+%lines\.length\]\)/, 'lines in turn');
+  const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
+  assert.ok(ctl.includes("box('marqueeOn',") && ctl.includes("box('mascotSaysMarquee',") && ctl.includes("num('mascotSayEvery',"));
+  assert.ok(ctl.includes('data-toggle="visible" data-key="H"') && ctl.includes('data-toggle="marqueeOn" data-key="Q"'), 'one-tap sign and marquee switches, with keys');
+  assert.match(ctl, /#mana-quick \[data-key=/);
+  console.log('ByteRider says the marquee; the marquee switches off');
+}

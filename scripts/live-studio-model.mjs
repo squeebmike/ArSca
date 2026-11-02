@@ -36,6 +36,11 @@ export const DEFAULT_STUDIO = Object.freeze({
   // mascotBorder: his bezel round the frame; mascotIdleFace: a faint face
   // stays up between reactions (off: the cameras are clear).
   mascotOn: true, mascotFaceY: 900, mascotScale: 100, mascotBorder: true, mascotIdleFace: false,
+  // The marquee (store: "I need ByteRider to say all the stuff from the
+  // marquee. Toggle to turn off the marquee"): marqueeOn shows the scrolling
+  // text on the sign; mascotSaysMarquee has ByteRider say its lines (split at
+  // • or |), one every mascotSayEvery seconds when he isn't busy.
+  marqueeOn: true, mascotSaysMarquee: false, mascotSayEvery: 45,
   showCombo: true, showBuyerNames: false, attract: true,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
@@ -48,6 +53,10 @@ const CHANCE_WORDS = /\b(raffles?|lotter(?:y|ies)|lotto|sweepstakes?|spin(?:s|ni
 export const COMBO_WINDOW_MS = 90 * 1000;
 const STRINGS = { message: 300, bossReward: 120, bossName: 40 };
 
+// The marquee's lines, as ByteRider says them.
+export function marqueeLines(message) {
+  return String(message || '').split(/\s*[•|]\s*/).map(l => l.trim()).filter(Boolean).slice(0, 30);
+}
 export function chanceWordIn(text) {
   const m = String(text || '').match(CHANCE_WORDS);
   return m ? m[0] : '';
@@ -56,7 +65,7 @@ export function validateSettings(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Settings required');
   const out = {};
   const limits = { x:[0,1080], y:[0,1920], width:[240,1080], height:[70,300], speed:[4,60], volume:[0,100], countdownSeconds:[3,15], jackpotAmount:[1,1000000],
-    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotFaceY:[250,1650], mascotScale:[40,150] };
+    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotFaceY:[250,1650], mascotScale:[40,150], mascotSayEvery:[10,600] };
   for (const [key,value] of Object.entries(input)) {
     if (!(key in DEFAULT_STUDIO)) throw new Error('Unknown setting: ' + key);
     if (limits[key]) {

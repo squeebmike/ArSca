@@ -1,4 +1,4 @@
-import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats} from './live-studio-model.mjs';
+import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats, marqueeLines} from './live-studio-model.mjs';
 import {bossById, drawBoss} from './live-studio-bosses.mjs';
 import {createByteRider} from './byterider.mjs';
 const $=id=>document.getElementById(id);
@@ -23,6 +23,8 @@ function apply(s) {
   Object.assign(sign.style,{left:settings.x+'px',top:settings.y+'px',width:settings.width+'px',height:settings.height+'px'});
   sign.classList.toggle('mana-hidden',!settings.visible);
   sign.style.setProperty('--mana-speed',settings.speed+'s'); text.textContent=settings.message;
+  // The scrolling text can be switched off (the sign and its bubbling mana stay).
+  sign.querySelector('.mana-track').classList.toggle('mana-hidden',settings.marqueeOn===false);
   place(hud,40,settings.hudY,settings.showHud);
   boss.classList.toggle('mana-hidden',!settings.showBoss);
   // The boss's sprite and catchphrase, redrawn when the boss changes.
@@ -189,6 +191,17 @@ function connect() {
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};
   socket.onclose=ev=>{if(ev.code===1008)return;setTimeout(connect,Math.min(30000,1000*2**Math.min(retry++,5)));};
 }
+// ByteRider says the marquee: its lines one at a time, every N seconds, in
+// turn, when he isn't in the middle of a reaction (and not while he naps
+// after the show).
+let marqueeLine=0,lastMarquee=Date.now();
+setInterval(()=>{
+  if(!mascot||!settings.mascotSaysMarquee||settings.mascotOn===false)return;
+  if(Date.now()-lastMarquee<(Number(settings.mascotSayEvery)||45)*1000)return;
+  if(mascot.machine.current.state!=='idle')return;
+  const lines=marqueeLines(settings.message);if(!lines.length)return;
+  lastMarquee=Date.now();mascot.say(lines[marqueeLine++%lines.length]);
+},1000);
 apply(settings);draw();connect();
 // Local editor preview only; same-origin parent can show settings without network access.
 if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.origin!==location.origin)return;
