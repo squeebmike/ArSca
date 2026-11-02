@@ -86,16 +86,17 @@ function react(e){
     // boss stands, every other sale he taunts it; otherwise a happy line.
     case 'sold': {
       const bossUp=settings.showBoss&&stats.boss&&!stats.boss.defeated;
-      if(e.record)mascot.play('surprised',{text:'NEW HI-SCORE!'+amt});
-      else if(e.combo>=3)mascot.play('dizzy',{text:e.combo+'× COMBO!'+amt});
+      if(e.record)mascot.play('cool',{text:'NEW HI-SCORE. NATURALLY.'+amt});
+      else if(e.combo>=5)mascot.play('dizzy',{text:e.combo+'× COMBO?! TOO FAST!'+amt});
+      else if(e.combo>=3)mascot.play('excited',{text:e.combo+'× COMBO!'+amt});
       else if(bossUp&&soldLine%2)mascot.play('smug',{text:'TAKE THAT, '+String(stats.boss.name||settings.bossName).replace(/^THE /,'')+'!'+(e.amount?' -'+usd(e.amount):''),}),soldLine++;
       else mascot.play('happy',{text:SOLD_LINES[soldLine++%SOLD_LINES.length]+amt});
       break;
     }
     case 'jackpot': mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
-    case 'boss': mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
+    case 'boss': mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
     case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
-    case 'ready': mascot.play('disappearing',{boot:true});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
+    case 'ready': mascot.play('disappearing',{boot:true});mascot.play('loading',{ms:1500});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
     case 'gameover': mascot.play('sad',{text:"SHOW'S OVER?! ...SAME TIME NEXT SHOW?"});setTimeout(()=>mascot.play('sleeping'),5000);break;
     case 'giveaway': mascot.play('alert',{text:'FREE GIVEAWAY! ENTER IN THE WHATNOT APP!'});break;
     case 'winner': mascot.play('love',{text:e.buyer?'WINNER: @'+e.buyer+'!':'WE HAVE A WINNER!'});break;

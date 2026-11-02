@@ -57,10 +57,10 @@
 .br-smug .br-motion {animation:br-smug 2s ease-in-out forwards}
 .br-wink .br-motion {animation:br-nod .7s ease-in-out 2}
 .br-love .br-motion {animation:br-pulse .5s ease-in-out infinite}
-.br-love .br-bezel {stroke:#ff3fd2;animation:none}
+.br-love .br-bezel {stroke:#b026ff;animation:none}
 .br-dizzy .br-motion {animation:br-wobble .6s ease-in-out infinite}
 .br-angry .br-motion {animation:br-shake .1s linear infinite}
-.br-angry .br-bezel {stroke:#ff2a4f;animation:none}
+.br-angry .br-bezel {stroke:#b026ff;animation:none}
 .br-sad .br-motion {animation:br-droop 2.2s ease-in-out forwards}
 .br-sad .br-bezel {stroke-opacity:.45;animation:none}
 .br-laughing .br-motion {animation:br-bounce .28s ease-in-out infinite}
@@ -75,8 +75,8 @@
 @keyframes br-think {0% {transform:none} 30%,100% {transform:rotate(5deg) translate(10px,-16px)}}
 @keyframes br-glitch-in {0% {opacity:0;transform:translateX(-30px) skewX(20deg)} 25% {opacity:1;transform:translateX(24px) skewX(-14deg)} 50% {opacity:.3} 75% {opacity:1;transform:translateX(-8px)} 100% {transform:none}}
 @keyframes br-bezel-glow {50% {stroke-opacity:.95}}
-@keyframes br-bezel-party {0% {stroke:#b6ff3a} 50% {stroke:#7b3fe4}}
-@keyframes br-bezel-alert {0% {stroke:#ff2a4f} 50% {stroke:#2bd4c6}}
+@keyframes br-bezel-party {0% {stroke:#5cff1f} 50% {stroke:#b026ff}}
+@keyframes br-bezel-alert {0% {stroke:#b026ff} 50% {stroke:#5cff1f}}
 @keyframes br-rgb-bezel {0% {stroke:#ff00d4} 50% {stroke:#22e6ff}}
 @keyframes br-led {0%,92% {opacity:1} 94% {opacity:.2} 96% {opacity:1}}
 @keyframes br-blink {0%,94%,100% {transform:scaleY(1)} 96% {transform:scaleY(.1)}}
@@ -106,3 +106,22 @@
 .byterider.br-badge .br-fx i {width:10px;height:10px;border-width:2px}
 .byterider.br-badge .br-screen-text {top:40%;font-size:10px}
 @media(prefers-reduced-motion:reduce) {.byterider *,.byterider .br-motion {animation:none!important}}
+/* Face Pack look (2026-11-02): neon cyan or magenta border, glowing. */
+.byterider.br-badge .br-bezel {stroke:#5cff1f}
+.byterider.br-magenta .br-bezel {stroke:#b026ff}
+.byterider.br-badge .br-svg {filter:drop-shadow(0 0 8px rgba(92,255,31,.7)) drop-shadow(3px 3px 0 #0b0612)}
+.byterider.br-badge.br-magenta .br-svg {filter:drop-shadow(0 0 8px rgba(176,38,255,.75)) drop-shadow(3px 3px 0 #0b0612)}
+.byterider .br-spinner {transform-box:fill-box;transform-origin:50% 50%;animation:br-spin 1s steps(8) infinite}
+.byterider .br-bar {animation:br-bar 1.6s steps(1) infinite}
+.byterider .br-bar:nth-child(3) {animation-delay:.2s}.byterider .br-bar:nth-child(4) {animation-delay:.4s}.byterider .br-bar:nth-child(5) {animation-delay:.6s}.byterider .br-bar:nth-child(6) {animation-delay:.8s}
+.br-loading .br-motion,.br-processing .br-motion {animation:none}
+.br-excited .br-motion {animation:br-bounce .35s ease-in-out infinite}
+.br-cool .br-motion {animation:br-smug 2s ease-in-out forwards}
+.br-shocked .br-motion {animation:br-tilt-back .4s cubic-bezier(.2,2,.4,1) forwards}
+.br-suspicious .br-motion {animation:br-look 2.2s ease-in-out infinite}
+.br-error .br-motion {animation:br-jitter .25s steps(2) infinite}
+.br-remind .br-face {animation:br-rgb .25s steps(2) infinite}
+.br-countdown .br-count {animation:br-cursor .5s steps(1) infinite}
+@keyframes br-spin {to {transform:rotate(360deg)}}
+@keyframes br-bar {0%,100% {opacity:.15} 10%,90% {opacity:1}}
+@keyframes br-look {0%,100% {transform:translateX(0)} 30%,45% {transform:translateX(-24px)} 65%,80% {transform:translateX(24px)}}

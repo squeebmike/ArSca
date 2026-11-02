@@ -1,31 +1,37 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { MASCOT_STATES, createMascotMachine, BYTERIDER_SVG, BYTERIDER_BADGE_SVG, FACE_FOR, EASTER_EGGS, BOOT_LINES } from '../scripts/byterider.mjs';
+import { MASCOT_STATES, createMascotMachine, BYTERIDER_SVG, BYTERIDER_BADGE_SVG, FACE_FOR, MAGENTA, EASTER_EGGS, BOOT_LINES } from '../scripts/byterider.mjs';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, EFFECTS } from '../scripts/live-studio-model.mjs';
 
 // ByteRider_97 (store, 2026-11-02, character spec): a living 1997 CRT
 // monitor, the overlay's mascot, with a state machine that plays a reaction
 // once, queues the rest, returns to idle and naps when the show is quiet.
 assert.deepEqual(MASCOT_STATES, ['idle', 'happy', 'talking', 'surprised', 'jackpot', 'glitch', 'sleeping', 'alert', 'countdown', 'celebrating', 'disappearing',
-  'smug', 'wink', 'love', 'dizzy', 'angry', 'sad', 'laughing', 'thinking'], 'store: "Add more reactions?"');
+  'smug', 'wink', 'love', 'dizzy', 'angry', 'sad', 'laughing', 'thinking',
+  'excited', 'cool', 'shocked', 'suspicious', 'error', 'loading', 'processing', 'remind'], 'more reactions, then the store\'s Overlay Face Pack');
 // Every reaction wears a face made of parts that exist.
 for (const st of MASCOT_STATES) { const [eyes, mouth] = FACE_FOR[st]; assert.ok(BYTERIDER_SVG.includes(`data-eyes="${eyes}"`), st + ' eyes'); assert.ok(BYTERIDER_SVG.includes(`data-mouth="${mouth}"`), st + ' mouth'); }
-// His own face (store: "Better more recognizable less generic face"): built
-// from pixels, a lopsided smirk with a fang, his _97 tag and cursor, one eye
-// half-lidded, the other under a raised brow -- not a generic smiley.
-assert.deepEqual(FACE_FOR.idle, ['sig', 'smirk']);
-assert.ok(BYTERIDER_SVG.includes('>_97</text>') && BYTERIDER_SVG.includes('class="br-cursor"'));
-assert.ok((BYTERIDER_SVG.match(/width="32" height="32"/g) || []).length > 300, 'chunky pixels');
-// Anywhere smaller: a little screen of his own, same bezel, same face.
-assert.match(BYTERIDER_BADGE_SVG, /class="br-bezel"/);assert.ok(BYTERIDER_BADGE_SVG.includes('>_97</text>'));assert.doesNotMatch(BYTERIDER_BADGE_SVG, /antenna/i);
+// His faces follow the store's ByteRider_97 Overlay Face Pack: block eyes under
+// short brows and a wide smile at rest; ^ ^ happy; > < laughing; pixel shades;
+// a spinner; a progress bar; RE:MIND in brackets; neon cyan or magenta border.
+const PACK = { idle: ['neutral', 'smile'], happy: ['happy', 'grin'], excited: ['excited', 'grin'], laughing: ['laugh', 'laughOpen'], wink: ['wink', 'small'], cool: ['cool', 'small'],
+  talking: ['neutral', 'talk'], surprised: ['surprised', 'o'], shocked: ['shocked', 'shock'], thinking: ['thinking', 'think'], suspicious: ['suspicious', 'slant'], smug: ['smirk', 'smirk'],
+  alert: ['alert', 'none'], angry: ['angry', 'zigzag'], glitch: ['glitch', 'flat'], error: ['x', 'zigzag'], loading: ['loading', 'none'], processing: ['processing', 'none'],
+  jackpot: ['dollar', 'grin'], countdown: ['countdown', 'none'], celebrating: ['star', 'grin'], love: ['hearts', 'small'], sleeping: ['closed', 'sleep'], remind: ['remind', 'small'] };
+for (const [st, face] of Object.entries(PACK)) assert.deepEqual(FACE_FOR[st], face, st);
+assert.ok(BYTERIDER_SVG.includes('>RE:MIND</text>') && BYTERIDER_SVG.includes('>3...2...1...</text>') && BYTERIDER_SVG.includes('class="br-spinner"'));
+assert.ok(MAGENTA.has('happy') && MAGENTA.has('laughing') && !MAGENTA.has('idle'), 'the purple screens');
+assert.match(BYTERIDER_SVG, /class="br-bezel"[^>]*stroke="#5cff1f"/, 'logo-green border round the phone screen');assert.match(BYTERIDER_SVG, /class="br-bezel-inner"[^>]*stroke="#b026ff"/, 'with logo purple');
+// Anywhere smaller: one of the pack's screens, same faces.
+assert.match(BYTERIDER_BADGE_SVG, /viewBox="-470 -360 940 720"/);assert.match(BYTERIDER_BADGE_SVG, /class="br-bezel"/);assert.ok(BYTERIDER_BADGE_SVG.includes('>RE:MIND</text>'));assert.doesNotMatch(BYTERIDER_BADGE_SVG, /antenna/i);
 
 // The look (store: "The border of the phone is his border. No square around
 // him. No antenna."): the whole 1080 x 1920 frame is his monitor -- teal
 // bezel at the screen's edge, charcoal trim, purple accent, neon-green
 // buttons, scanlines and corner fuzz -- and his big lime face in it.
 assert.match(BYTERIDER_SVG, /viewBox="0 0 1080 1920"/);
-assert.match(BYTERIDER_SVG, /class="br-bezel" x="12" y="12" width="1056" height="1896"/, 'the bezel runs round the screen edge');
-assert.match(BYTERIDER_SVG, /#2bd4c6/);assert.match(BYTERIDER_SVG, /#7b3fe4/);assert.match(BYTERIDER_SVG, /#b6ff3a/);
+assert.match(BYTERIDER_SVG, /class="br-bezel" x="14" y="14" width="1052" height="1892"/, 'the border runs round the screen edge');
+assert.match(BYTERIDER_SVG, /#b6ff3a/);assert.match(BYTERIDER_SVG, /#ff3fd2/);
 assert.match(BYTERIDER_SVG, /id="br-scan"/);assert.match(BYTERIDER_SVG, /id="br-fuzz"/);
 assert.doesNotMatch(BYTERIDER_SVG, /antenna/i, 'no antenna');
 for (const part of ['br-static', 'br-place', 'br-talk-a', 'br-talk-b', 'br-talk-c']) assert.ok(BYTERIDER_SVG.includes(part), part);
