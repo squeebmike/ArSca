@@ -33,8 +33,6 @@ assert.match(html, /@bob<\/div><div class="m">1 item</);
 assert.match(html, /Friday comics/);
 assert.match(dashboard, /onclick="printWhatnotBagLabels\(\)">BAG LABELS<\/button>/);
 
-const live = fn('async function recordWhatnotLiveSale(sale){');
-assert.match(live, /isRandom \? \(typeof W\.whatnotRandomPoolItem === 'function'/, 'a random live sale only ever uses the random pool');
 // Scanning price stickers into a show entry: the same scan screen in 'show'
 // mode adds each scanned item to ENTER A SHOW, any sellable item, not only in-stock.
 const scan = fn('async function handleCartScanValue(rawValue){');

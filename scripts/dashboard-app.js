@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.02.5-whatnot-tidy';
+const APP_VERSION = '2026.11.02.6-whatnot-link';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -26338,96 +26338,16 @@ function buildStoredZip(files){
   return new Blob([...chunks, ...central, end], { type:'application/zip' });
 }
 // ── Whatnot Live Stickers -> dashboard ──
-// Store ask: "I don't want to type anything." The sticker extension posts
-// each sale it saw (buyer, title, price) to this page through its
-// dashboard-relay content script. Each one lands in the live show with the
-// buyer filled in (Whale Dashboard / repeat-buyer stats), and an inventory
-// item whose name matches the title exactly is marked sold through the same
-// idempotent record-external-sale path as everything else. Only sales this
-// page actually saved are acknowledged; the rest stay queued in the
-// extension and are offered again.
-const WLS_RECORDED_KEY = 'wls_recorded_sale_ids';
-function wlsRecordedIds(){ return new Set(safeLocalJson(WLS_RECORDED_KEY, [])); }
-function wlsMarkRecorded(id){ const ids = [...wlsRecordedIds(), id].slice(-3000); try { localStorage.setItem(WLS_RECORDED_KEY, JSON.stringify(ids)); } catch(e) {} }
-function wlsNormalize(v){ return String(v || '').toLowerCase().replace(/[^a-z0-9#]+/g, ' ').trim(); }
-function wlsMatchInventoryItem(title){
-  const want = wlsNormalize(title);
-  if(!want) return null;
-  const hits = (all || []).filter(i => wlsNormalize(i.name) === want && inventoryItemIsSellable(i));
-  return hits.length === 1 ? hits[0] : null;
-}
-async function wlsEnsureLiveShow(){
-  if(!whatnotActiveShow) await loadActiveWhatnotShow();
-  if(whatnotActiveShow) return whatnotActiveShow;
-  const sb = getSupabaseClient(), storeId = getActiveStoreId();
-  if(!sb || !storeId) return null;
-  const now = new Date();
-  const { data, error } = await sb.from('whatnot_shows').insert({ store_id:storeId, platform:'whatnot', title:'Whatnot live ' + now.toLocaleDateString(), category:'Mixed', status:'live', started_at:now.toISOString() }).select('*').limit(1);
-  if(error) throw error;
-  whatnotActiveShow = data[0];
-  whatnotShowItems = [];
-  renderWhatnotShowPanel();
-  return whatnotActiveShow;
-}
-async function recordWhatnotLiveSale(sale){
-  if(wlsRecordedIds().has(sale.id)) return true;
-  const sb = getSupabaseClient(), storeId = getActiveStoreId();
-  if(!sb || !storeId) return false;
-  const giveaway = sale.type === 'giveaway';
-  const price = Math.max(0, Number(sale.price || 0));
-  const title = giveaway ? 'Giveaway' : (sale.title || 'Whatnot item');
-  // A random/mystery listing never takes a specific book: it comes out of
-  // the random pool bin when one is set (Whatnot tab -> RANDOM BOOKS), or
-  // is only logged on the show for the report import to record.
-  const W = typeof window !== 'undefined' ? window : {};
-  const isRandom = !giveaway && typeof W.whatnotIsRandomTitle === 'function' && W.whatnotIsRandomTitle(sale.title);
-  const item = giveaway ? null : isRandom ? (typeof W.whatnotRandomPoolItem === 'function' ? await W.whatnotRandomPoolItem(sale.title).catch(() => null) : null) : wlsMatchInventoryItem(sale.title);
-  if(item && price > 0){
-    const fee = whatnotFeeSettings();
-    const res = await storeWorkerFetch('/inventory/record-external-sale', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ itemId:item.id, channel:'Whatnot', salePrice:price, feeAmount:Math.round((price * (fee.pct / 100) + fee.flat) * 100) / 100, soldAt:sale.at || undefined, externalRef:'whatnot-live:' + sale.id }) });
-    const d = await res.json().catch(() => ({}));
-    if(!(res.ok && d.ok) && res.status !== 409) throw new Error(d.error || 'Could not record the inventory sale');
-    if(res.ok && d.ok && !d.duplicate){ whatnotSession.count++; whatnotSession.gross += price; whatnotSession.profit += Number(d.profit || 0); renderWhatnotSessionTally(); }
-  }
-  const show = await wlsEnsureLiveShow();
-  if(!show) return false;
-  const soldAt = sale.at || new Date().toISOString();
-  const fields = { status:giveaway ? 'giveaway' : 'sold', sold_price_cents:giveaway ? 0 : Math.round(price * 100), sold_at:soldAt, buyer_name:sale.buyer || null };
-  const queued = whatnotShowItems.find(r => r.status === 'queued' && ((item && r.inventory_item_id === item.id) || wlsNormalize(r.name) === wlsNormalize(title)));
-  let rowId;
-  if(queued){
-    const { error } = await sb.from('whatnot_show_items').update(fields).eq('id', queued.id);
-    if(error) throw error;
-    Object.assign(queued, fields); rowId = queued.id;
-  } else {
-    const position = whatnotShowItems.length ? Math.max(...whatnotShowItems.map(r => Number(r.position || 0))) + 1 : 1;
-    const row = { show_id:show.id, store_id:storeId, inventory_item_id:item?.id || null, name:title, category:item?.category || null, image_url:item ? (item.thumbnail || item.imageUrl || '') : '', cost_cents:item ? Math.round(Number(item.cost || 0) * 100) : 0, market_price_cents:item ? Math.round(inventoryListPrice(item) * 100) : 0, role:giveaway ? 'giveaway' : 'engagement', position, ...fields };
-    const { data, error } = await sb.from('whatnot_show_items').insert(row).select('*').limit(1);
-    if(error) throw error;
-    whatnotShowItems.push(data[0]); rowId = data[0].id;
-  }
-  wlsMarkRecorded(sale.id);
-  if(sale.buyer) upsertCustomer(sale.buyer, '', 'Whatnot show purchase: ' + title, 'whatnot-show').then(c => { if(c?.id) sb.from('whatnot_show_items').update({ buyer_customer_id:c.id }).eq('id', rowId).then(() => {}, () => {}); }).catch(() => {});
-  renderWhatnotShowPanel();
-  return true;
-}
-let _wlsQueue = Promise.resolve();
+// The sticker extension still prints a sticker for each sale on its own.
+// Store, 2026-11-02: it no longer records anything here. The Whatnot API
+// sync records every sale (stock, show, buyer) itself, and this path
+// matched by title and could take a second unit off a multi-quantity item
+// or start a second "live" show. The page only acknowledges what the
+// extension hands over, so it stops offering the same sales again.
 window.addEventListener('message', e => {
   if(e.source !== window || !e.data || e.data.source !== 'wls-extension' || e.data.type !== 'wls-sales') return;
-  const sales = (Array.isArray(e.data.sales) ? e.data.sales : []).filter(x => x && x.id && x.buyer);
-  _wlsQueue = _wlsQueue.then(async () => {
-    if(!getSupabaseClient() || !getActiveStoreId()) return;
-    const acked = [];
-    for(const sale of sales){
-      try { if(await recordWhatnotLiveSale(sale)) acked.push(sale.id); }
-      catch(err){ console.warn('[WLS] could not record sale', sale.id, err?.message || err); }
-    }
-    if(acked.length){
-      window.postMessage({ source:'wls-dashboard', type:'wls-ack', ids:acked }, location.origin);
-      toast_dash(acked.length + ' Whatnot sale' + (acked.length === 1 ? '' : 's') + ' recorded from live stickers');
-      if(acked.length) loadInventory().catch(() => {});
-    }
-  });
+  const ids = (Array.isArray(e.data.sales) ? e.data.sales : []).map(x => x && x.id).filter(Boolean);
+  if(ids.length) window.postMessage({ source:'wls-dashboard', type:'wls-ack', ids }, location.origin);
 });
 // Ask the extension for anything queued once this page is signed in.
 setTimeout(() => window.postMessage({ source:'wls-dashboard', type:'wls-ready' }, location.origin), 4000);
@@ -49309,6 +49229,75 @@ async function saveWhatnotUnsoldSetting(on){
     toast_dash(on ? 'Unsold items go back to the shop after each show' : 'Unsold items stay out of the shop until you put them back');
   } catch(e) { toast_dash(e.message || String(e)); }
 }
+
+// ── LINK OLD LISTINGS ──
+// Store, 2026-11-02: listings put on Whatnot by CSV before the sync don't
+// take stock off when they sell. This lists every Whatnot listing that isn't
+// tied to an item, with the item it most likely is; ticked ones are linked
+// (same listing, its title and photos kept) and from then on follow the
+// dashboard's price and quantity 1:1.
+let _wnLink = null;
+async function openWhatnotLinkListings(){
+  const body = whatnotPrepModal('whatnot-link-modal', '🔗 LINK OLD WHATNOT LISTINGS');
+  body.textContent = 'Reading your Whatnot shop…';
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/link-candidates?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not read Whatnot listings');
+    _wnLink = d;
+    renderWhatnotLinkListings();
+  } catch(e) { body.innerHTML = '<span style="color:var(--red)">' + escHtml(e.message || String(e)) + '</span>'; }
+}
+function renderWhatnotLinkListings(){
+  const body = document.querySelector('#whatnot-link-modal .wn-body'), d = _wnLink;
+  if(!body || !d) return;
+  const rows = d.rows || [];
+  if(!rows.length){ body.innerHTML = `All ${d.listings} Whatnot listing${d.listings === 1 ? ' is' : 's are'} already linked. Nothing to do.`; return; }
+  const money = v => v == null ? '' : fd$(v);
+  const line = (row, n) => {
+    const opts = row.matches.map(m => `<option value="${escHtml(m.itemId)}"${m.itemId === row.suggest ? ' selected' : ''}${m.alreadyListed ? ' disabled' : ''}>${escHtml(m.name)}${m.price != null ? ' · ' + money(m.price) : ''}${m.qty != null ? ' · qty ' + m.qty : ''} · ${m.bySku ? 'SKU match' : Math.round(m.score * 100) + '%'}${m.alreadyListed ? ' (already listed by the sync: end this old listing)' : ''}</option>`).join('');
+    return `<div style="border-top:1px solid var(--border);padding:8px 0;display:grid;gap:4px">
+      <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer"><input type="checkbox" class="wn-link-tick" data-n="${n}"${row.suggest ? ' checked' : ''}${row.matches.some(m => !m.alreadyListed) ? '' : ' disabled'}>
+        <span><b style="color:var(--text)">${escHtml(row.title || '(untitled)')}</b>${row.price != null ? ' · ' + money(row.price) : ''}${row.qty != null ? ' · qty ' + row.qty : ''}${row.url ? ` <a href="${escHtml(row.url)}" target="_blank" rel="noopener" style="color:var(--purple)">open</a>` : ''}</span></label>
+      ${row.matches.length ? `<select class="tsi wn-link-pick" data-n="${n}" style="margin:0" onchange="const t=document.querySelector('.wn-link-tick[data-n=&quot;${n}&quot;]');if(t&&this.value)t.checked=true">${row.suggest ? '' : '<option value="">-- pick the item --</option>'}${opts}</select>` : '<div style="color:var(--gold)">No item here looks like it. Add it to inventory first, or end it on Whatnot.</div>'}
+    </div>`;
+  };
+  const sure = rows.filter(r => r.suggest).length;
+  body.innerHTML = `<div>${rows.length} Whatnot listing${rows.length === 1 ? '' : 's'} not tied to an item here${d.more ? ' (first 1,000 shown)' : ''}. ${sure} clear match${sure === 1 ? '' : 'es'} ticked; check the rest.</div>
+    <div style="color:var(--gold);margin:6px 0">Linking keeps the same Whatnot listing and its title and photos. Its <b>price and quantity are then set to the dashboard's</b>, so do your count first.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"><button class="hbtn" style="color:var(--g)" onclick="linkWhatnotListingsNow()">LINK TICKED</button><button class="hbtn" onclick="document.querySelectorAll('.wn-link-tick').forEach(t=>t.checked=false)">UNTICK ALL</button></div>
+    <div id="wn-link-result"></div>
+    ${rows.map(line).join('')}`;
+}
+async function linkWhatnotListingsNow(){
+  const rows = _wnLink?.rows || [], out = document.getElementById('wn-link-result');
+  const links = [...document.querySelectorAll('.wn-link-tick:checked')].map(t => {
+    const n = Number(t.dataset.n), pick = document.querySelector(`.wn-link-pick[data-n="${n}"]`);
+    return { productId:rows[n]?.productId, itemId:pick?.value || '' };
+  }).filter(l => l.productId && l.itemId);
+  if(!links.length){ toast_dash('Tick at least one listing with an item picked'); return; }
+  const twice = links.map(l => l.itemId).filter((id, i, a) => a.indexOf(id) !== i);
+  if(twice.length){ toast_dash('The same item is picked for two listings: keep one'); return; }
+  if(!confirm('Link ' + links.length + ' Whatnot listing(s)? Their price and quantity will follow the dashboard from now on.')) return;
+  let linked = 0; const errors = [];
+  for(let i = 0; i < links.length; i += 25){
+    if(out) out.textContent = 'Linking ' + Math.min(links.length, i + 25) + ' of ' + links.length + '…';
+    try {
+      const r = await storeWorkerFetch(WORKER + '/whatnot/link-existing?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ links:links.slice(i, i + 25) }) });
+      const d = await r.json().catch(() => ({}));
+      if(!r.ok || !d.ok) throw new Error(d.error || 'Could not link');
+      linked += d.linked;
+      for(const x of d.results || []) if(x.error) errors.push((rows.find(r => r.productId === x.productId)?.title || x.productId) + ': ' + x.error);
+    } catch(e) { errors.push(e.message || String(e)); break; }
+  }
+  toast_dash(linked + ' Whatnot listing' + (linked === 1 ? '' : 's') + ' linked');
+  loadInventory().catch(() => {});
+  await openWhatnotLinkListings();
+  const res = document.getElementById('wn-link-result');
+  if(res) res.innerHTML = `<div style="color:var(--g)">${linked} linked. Price and quantity go out to Whatnot in a minute.</div>${errors.map(e => '<div style="color:var(--red)">' + escHtml(e) + '</div>').join('')}`;
+}
+window.openWhatnotLinkListings = openWhatnotLinkListings;
+window.linkWhatnotListingsNow = linkWhatnotListingsNow;
 
 // ── ByteRider_97 on the dashboard (scripts/byterider.mjs) ──────────────────
 // Store, 2026-11-02: "do 5" -- the mascot beyond the stream. He sits on a

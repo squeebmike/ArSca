@@ -86,65 +86,27 @@ assert.equal(parseSales(['bigbob1', 'won!', 'AC Raw #34', '$8', 'Sold']).auction
 }
 console.log('Whatnot live stickers checks passed');
 
-// ── #3: sales recorded in the dashboard ──
+// ── Sales from the extension: acknowledged, never recorded ──
+// The Whatnot API sync records every sale; the sticker helper only prints.
 {
   const dashboard = fs.readFileSync('dashboard.html', 'utf8');
   const fn = (name, prefix = 'function ') => { const s = dashboard.indexOf(prefix + name + '('); assert.ok(s >= 0, name); return dashboard.slice(s, dashboard.indexOf('\n}', s) + 2); };
-  const inserted = [], updated = [], posted = [];
-  const sb = { from:table => ({
-    insert:row => ({ select:() => ({ limit:async () => { const r = { ...row, id:table + '-' + (inserted.length + 1) }; inserted.push({ table, row:r }); return { data:[r], error:null }; } }) }),
-    update:fields => ({ eq:(col, id) => { updated.push({ table, id, fields }); const p = Promise.resolve({ error:null }); return p; } }),
-  }) };
-  const env = {
-    all:[{ id:'inv1', name:'Amazing Spider-Man #300', cost:100, category:'Comic' }, { id:'inv2', name:'AC Raw #1', cost:1 }, { id:'inv3', name:'AC Raw #1', cost:1 }],
-    store:{},
-  };
-  const src = [
-    'let whatnotActiveShow = null, whatnotShowItems = [], whatnotSession = { count:0, gross:0, profit:0 };',
-    fn('wlsRecordedIds'), fn('wlsMarkRecorded'), fn('wlsNormalize'), fn('wlsMatchInventoryItem'),
-    fn('wlsEnsureLiveShow', 'async function '), fn('recordWhatnotLiveSale', 'async function '), fn('whatnotPackListGroups'),
-    dashboard.match(/const WLS_RECORDED_KEY = [^\n]+\n/)[0],
-    'return { record:recordWhatnotLiveSale, groups:whatnotPackListGroups, state:() => ({ whatnotActiveShow, whatnotShowItems, whatnotSession }) };',
-  ].join('\n');
-  const localStorage = { getItem:k => env.store[k] ?? null, setItem:(k, v) => { env.store[k] = v; } };
-  const api = new Function('all', 'getSupabaseClient', 'getActiveStoreId', 'storeWorkerFetch', 'whatnotFeeSettings', 'renderWhatnotSessionTally', 'renderWhatnotShowPanel', 'loadActiveWhatnotShow', 'upsertCustomer', 'inventoryItemIsSellable', 'inventoryListPrice', 'safeLocalJson', 'localStorage', src)(
-    env.all, () => sb, () => 'store-1',
-    async (path, init) => { posted.push({ path, body:JSON.parse(init.body) }); return { ok:true, status:200, json:async () => ({ ok:true, profit:12 }) }; },
-    () => ({ pct:10, flat:0.3 }), () => {}, () => {}, async () => {}, async () => ({ id:'cust-1' }),
-    i => i.status !== 'sold', i => Number(i.price || 50), (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch(e) { return d; } }, localStorage,
-  );
-  // blind-bag sale with no inventory match: show is started, buyer recorded
-  assert.equal(await api.record({ id:'s1', type:'auction', buyer:'bigbob1', title:'AC Raw #34', price:'8', at:'2026-10-01T18:00:00Z' }), true);
-  assert.equal(inserted[0].table, 'whatnot_shows', 'a live show is started when none is live');
-  const row1 = inserted[1].row;
-  assert.equal(row1.buyer_name, 'bigbob1');
-  assert.equal(row1.sold_price_cents, 800);
-  assert.equal(row1.status, 'sold');
-  assert.equal(row1.inventory_item_id, null);
-  assert.equal(posted.length, 0, 'no inventory sale without an exact title match');
-  // exact title match marks the inventory item sold, idempotently
-  await api.record({ id:'s2', type:'auction', buyer:'prince27', title:'amazing spider-man #300', price:'125' });
-  assert.equal(posted.length, 1);
-  assert.equal(posted[0].path, '/inventory/record-external-sale');
-  assert.equal(posted[0].body.itemId, 'inv1');
-  assert.equal(posted[0].body.externalRef, 'whatnot-live:s2');
-  assert.equal(posted[0].body.feeAmount, 12.8);
-  // ambiguous title (two items named the same) never guesses
-  await api.record({ id:'s3', type:'auction', buyer:'x_y', title:'AC Raw #1', price:'5' });
-  assert.equal(posted.length, 1);
-  // a giveaway
-  await api.record({ id:'s4', type:'giveaway', buyer:'themanapocket', title:'Giveaway', price:'' });
-  assert.equal(inserted.at(-1).row.status, 'giveaway');
-  // the same sale twice records once
-  const before = inserted.length;
-  assert.equal(await api.record({ id:'s1', type:'auction', buyer:'bigbob1', title:'AC Raw #34', price:'8' }), true);
-  assert.equal(inserted.length, before, 'a sale already recorded is acknowledged without a second row');
+  const start = dashboard.indexOf("// ── Whatnot Live Stickers -> dashboard ──");
+  const block = dashboard.slice(start, dashboard.indexOf("// Ask the extension for anything queued", start));
+  assert.ok(start >= 0 && block.length > 0, 'relay block present');
+  assert.doesNotMatch(block, /record-external-sale|whatnot_shows|whatnot_show_items|upsertCustomer/, 'the relay records nothing');
+  let listener = null; const posted = [];
+  const win = { addEventListener:(t, f) => { if(t === 'message') listener = f; }, postMessage:(m, o) => posted.push({ m, o }) };
+  new Function('window', 'location', block)(win, { origin:'https://dash.example' });
+  listener({ source:win, data:{ source:'wls-extension', type:'wls-sales', sales:[{ id:'s1', buyer:'bob' }, { id:'s2' }, null] } });
+  assert.deepEqual(posted, [{ m:{ source:'wls-dashboard', type:'wls-ack', ids:['s1', 's2'] }, o:'https://dash.example' }], 'every sale is acknowledged so the extension stops resending');
+  listener({ source:{}, data:{ source:'wls-extension', type:'wls-sales', sales:[{ id:'x' }] } });
+  assert.equal(posted.length, 1, 'only messages from this page are taken');
   // pack list groups by buyer
-  const groups = api.groups([{ name:'A', status:'sold', sold_price_cents:800, buyer_name:'bigbob1' }, { name:'B', status:'sold', sold_price_cents:200, buyer_name:'BigBob1' }, { name:'G', status:'giveaway', sold_price_cents:0, buyer_name:'zed' }, { name:'C', status:'sold', sold_price_cents:100, buyer_name:'' }]);
+  const groups = new Function(fn('whatnotPackListGroups') + '\nreturn whatnotPackListGroups;')()([{ name:'A', status:'sold', sold_price_cents:800, buyer_name:'bigbob1' }, { name:'B', status:'sold', sold_price_cents:200, buyer_name:'BigBob1' }, { name:'G', status:'giveaway', sold_price_cents:0, buyer_name:'zed' }, { name:'C', status:'sold', sold_price_cents:100, buyer_name:'' }]);
   assert.deepEqual(groups.map(g => [g.buyer, g.items.length, g.totalCents]), [['(no buyer name)', 1, 100], ['bigbob1', 2, 1000], ['zed', 1, 0]]);
   assert.match(dashboard, /onclick="openWhatnotPackList\(\)">PACK LIST<\/button>/);
   const relay = fs.readFileSync('extensions/whatnot-live-stickers/dashboard-relay.js', 'utf8');
   assert.match(relay, /location\.origin/, 'messages stay on the dashboard origin');
-  assert.match(dashboard, /e\.source !== window \|\| !e\.data \|\| e\.data\.source !== 'wls-extension'/, 'the page only takes sales from the extension relay');
 }
 console.log('Whatnot live sales -> dashboard checks passed');

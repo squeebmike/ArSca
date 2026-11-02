@@ -48,7 +48,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13640,7 +13640,7 @@ async function routeRequest(request, env, ctx) {
       return json({ ok: true, added: results.filter(r => r.added).length, results });
     }
     // Whatnot tools for the dashboard (owner/admin/manager of the Whatnot store).
-    if (['/whatnot/buy-it-now', '/whatnot/label', '/whatnot/tracking', '/whatnot/report', '/whatnot/insights', '/whatnot/show-wrap'].includes(url.pathname)) {
+    if (['/whatnot/buy-it-now', '/whatnot/label', '/whatnot/tracking', '/whatnot/report', '/whatnot/insights', '/whatnot/show-wrap', '/whatnot/link-candidates', '/whatnot/link-existing'].includes(url.pathname)) {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
       if (auth.error) return auth.error;
@@ -13719,6 +13719,36 @@ async function routeRequest(request, env, ctx) {
         const settings = await whatnotListingSettings(env, storeId);
         return json({ ok: true, shows: list.map(({ summary, ...x }) => x), unsoldBackToShop: settings.unsoldBackToShop !== false,
           wrap: showWrapUp({ show: chosen, summary: chosen.summary, notes, lines, unsold, returned }) });
+      }
+      // LINK OLD LISTINGS: Whatnot listings that aren't tied to an item here
+      // (old CSV uploads), each with the items it most likely is.
+      if (url.pathname === '/whatnot/link-candidates' && request.method === 'GET') {
+        const { products, more } = await whatnotAllProducts(deps.api);
+        const s = encodeURIComponent(storeId), items = [];
+        // Only the few fields matching needs (no photos), a page at a time.
+        for (let page = 0; page < 15; page++) {
+          const { data } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&status=not.in.(sold,archived,returned,deleted,lost_damaged,bundled,presale)&select=id,name:data->>name,title:data->>title,qty:data->>quantity,price:data->>priceOverride,market:data->>marketPrice&order=id&limit=1000&offset=${page * 1000}`);
+          for (const r of data || []) items.push({ id: r.id, name: r.name || r.title || '', qty: r.qty == null ? null : Number(r.qty), price: Number(r.price) || Number(r.market) || null });
+          if (!data || data.length < 1000) break;
+        }
+        const linked = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
+        const rows = matchWhatnotListings(products, items.filter(i => i.name), new Set(Object.keys(linked)));
+        return json({ ok: true, listings: products.length, more, rows });
+      }
+      // { links: [{ productId, itemId }] } -- up to 25 a request.
+      if (url.pathname === '/whatnot/link-existing' && request.method === 'POST') {
+        const seenItems = new Set();
+        const pairs = (Array.isArray(body.links) ? body.links : []).map(l => ({ productId: String(l?.productId || ''), itemId: String(l?.itemId || '') }))
+          .filter(l => /^[A-Za-z0-9_-]{4,80}$/.test(l.productId) && /^[0-9a-f-]{36}$/i.test(l.itemId) && !seenItems.has(l.itemId) && seenItems.add(l.itemId)).slice(0, 25);
+        if (!pairs.length) return json({ ok: false, error: 'links required' }, 400);
+        const results = await linkWhatnotListings(pairs, { ...deps, listingSettings: await whatnotListingSettings(env, storeId),
+          setSellOnWhatnot: async (itemId, row) => {
+            await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(itemId)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...(row.data || {}), sellOnWhatnot: true }, updated_at: new Date().toISOString() }) });
+          } });
+        const done = results.filter(r => r.linked).length;
+        // Price and quantity go out now rather than at the next 10-minute run.
+        if (done) ctx?.waitUntil?.(runWhatnotSyncForStore(env, ctx, storeId, { orders: false }).catch(() => null));
+        return json({ ok: true, linked: done, results });
       }
       // SHOW TRENDS + TOP BUYERS.
       if (url.pathname === '/whatnot/insights' && request.method === 'GET') {

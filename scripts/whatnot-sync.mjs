@@ -883,3 +883,118 @@ export function whatnotInsights({ shows = [], notes = {}, amounts = {} }) {
     repeatBuyers: top.filter(b => b.shows > 1 || b.orders > 1).length,
   };
 }
+
+// --- Listings made before the sync (old CSV uploads) ------------------------
+// Store, 2026-11-02: listings put on Whatnot by CSV aren't tied to an item
+// here, so their sales don't take stock off. LINK OLD LISTINGS finds each
+// Whatnot listing that isn't one of ours, suggests the inventory item it is
+// (the CSV's SKU when Whatnot kept it, else the closest title), and links
+// the ones the store ticks: the same listing is kept (no ending and
+// relisting), its title and photos are left as they are, and the next sync
+// sets its price and quantity to the dashboard's.
+const LINK_STOP = new Set(['the', 'a', 'an', 'of', 'and', 'with', 'card', 'cards', 'nm', 'near', 'mint', 'new', 'sealed', 'raw', 'tcg', '-', '']);
+export function linkTokens(s) {
+  return String(s || '').toLowerCase().replace(/&/g, ' and ').replace(/[''`]/g, '').replace(/[^a-z0-9#/]+/g, ' ')
+    .split(' ').map(t => t.replace(/^#+/, '#')).filter(t => !LINK_STOP.has(t));
+}
+const hasDigit = t => /\d/.test(t);
+// 0..1: shared words (Dice), and issue/card numbers have to agree.
+export function linkTitleScore(a, b) {
+  const A = new Set(linkTokens(a)), B = new Set(linkTokens(b));
+  if (!A.size || !B.size) return 0;
+  let both = 0;
+  for (const t of A) if (B.has(t)) both++;
+  let score = 2 * both / (A.size + B.size);
+  const na = [...A].filter(hasDigit).map(t => t.replace('#', '')), nb = new Set([...B].filter(hasDigit).map(t => t.replace('#', '')));
+  if (na.length || nb.size) {
+    const same = na.length === nb.size && na.every(t => nb.has(t));
+    if (!same) score *= 0.6;
+  }
+  return Math.round(score * 100) / 100;
+}
+const listingPrice = p => Number(p?.pricing?.buy_it_now?.price?.amount ?? p?.price?.amount ?? p?.buy_it_now_price?.amount) || null;
+const listingQty = p => { const q = p?.inventory?.quantity ?? p?.quantity ?? p?.total_quantity; return q == null ? null : Number(q) || 0; };
+const listingSku = p => String(p?.sku || p?.variants?.[0]?.sku || p?.variants?.[0]?.external_id || '').trim();
+
+// products: Whatnot products; items: [{id, name, price, qty}]; linkedIds:
+// items the sync already lists. Returns one row per listing not ours yet.
+export function matchWhatnotListings(products, items, linkedIds = new Set()) {
+  const byId = new Map(items.map(i => [i.id, i]));
+  const index = new Map();
+  items.forEach((it, n) => { for (const t of new Set(linkTokens(it.name))) { if (!index.has(t)) index.set(t, []); index.get(t).push(n); } });
+  const rows = [];
+  for (const p of products) {
+    const ext = String(p.external_id || '');
+    // Made by the sync (its external id is the linked item): already 1:1.
+    if (isUuid(ext) && linkedIds.has(ext)) continue;
+    const title = String(p.title || p.name || '');
+    const counts = new Map();
+    for (const t of new Set(linkTokens(title))) {
+      const hits = index.get(t);
+      if (!hits || hits.length > 400) continue; // too common to tell items apart
+      for (const n of hits) counts.set(n, (counts.get(n) || 0) + 1);
+    }
+    const scored = [...counts.keys()].map(n => ({ it: items[n], score: linkTitleScore(title, items[n].name) }))
+      .filter(x => x.score >= 0.4).sort((a, b) => b.score - a.score).slice(0, 4);
+    // The CSV's SKU was the item id: a sure match when Whatnot kept it.
+    const sku = [ext, listingSku(p)].find(v => isUuid(v) && byId.has(v));
+    if (sku) { const it = byId.get(sku); scored.unshift({ it, score: 1, sku: true }); }
+    const seen = new Set();
+    const matches = scored.filter(x => !seen.has(x.it.id) && seen.add(x.it.id)).slice(0, 4)
+      .map(x => ({ itemId: x.it.id, name: x.it.name, price: x.it.price ?? null, qty: x.it.qty ?? null, score: x.score, bySku: !!x.sku, alreadyListed: linkedIds.has(x.it.id) }));
+    rows.push({ productId: String(p.id), title, url: p.url || '', price: listingPrice(p), qty: listingQty(p), matches,
+      // Ticked to start with only when it's clear-cut.
+      suggest: matches[0] && !matches[0].alreadyListed && (matches[0].bySku || (matches[0].score >= 0.85 && !(matches[1] && matches[1].score >= matches[0].score - 0.05))) ? matches[0].itemId : '' });
+  }
+  return rows.sort((a, b) => (b.suggest ? 1 : 0) - (a.suggest ? 1 : 0) || (b.matches[0]?.score || 0) - (a.matches[0]?.score || 0));
+}
+
+// Every listing in the Whatnot shop, a page of 50 at a time.
+export async function whatnotAllProducts(api, { pages = 20 } = {}) {
+  const out = [];
+  let cursor = '';
+  for (let page = 0; page < pages; page++) {
+    const r = await api('GET', `/products?limit=50${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`);
+    if (!r.ok) throw new Error('Whatnot listings: ' + whatnotErrorText(r));
+    for (const p of r.data?.data || []) if (!['archived', 'deleted'].includes(String(p.status || '').toLowerCase())) out.push(p);
+    cursor = r.data?.next_cursor || '';
+    if (!cursor) return { products: out, more: false };
+  }
+  return { products: out, more: !!cursor };
+}
+
+// pairs: [{productId, itemId}]. deps as runWhatnotListingSync, plus
+// setSellOnWhatnot(itemId) to tick the item's SELL ON WHATNOT.
+export async function linkWhatnotListings(pairs, deps) {
+  const storeId = deps.storeId;
+  const linked = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
+  const seenKey = 'whatnot-sync-seen:' + storeId;
+  const seen = (await deps.kvGet(seenKey)) || {};
+  const rows = new Map((await deps.rows(pairs.map(p => p.itemId))).map(r => [r.id, r]));
+  const results = [];
+  for (const { productId, itemId } of pairs) {
+    const row = rows.get(itemId);
+    if (!row) { results.push({ productId, itemId, error: 'Item not found' }); continue; }
+    if (linked[itemId]) { results.push({ productId, itemId, error: 'Already on Whatnot through the sync -- end the old listing instead' }); continue; }
+    const variants = await deps.api('GET', `/products/${encodeURIComponent(productId)}/variants?limit=5`);
+    const variant = variants.data?.data?.[0];
+    if (!variants.ok || !variant?.id) { results.push({ productId, itemId, error: variants.ok ? 'Listing has no variant' : whatnotErrorText(variants) }); continue; }
+    // Tagged with our id so its orders find the item even before the sync runs.
+    const tagged = await deps.api('PATCH', `/products/${encodeURIComponent(productId)}/variants`, { variants: [{ id: variant.id, external_id: itemId }] });
+    if (!tagged.ok) { results.push({ productId, itemId, error: whatnotErrorText(tagged) }); continue; }
+    await deps.api('PATCH', `/products/${encodeURIComponent(productId)}`, { external_id: itemId }).catch(() => null);
+    const want = whatnotDesired({ ...row, data: { ...(row.data || {}), sellOnWhatnot: true } }, deps.shape(row), { autoTitles: deps.listingSettings?.autoTitles !== false });
+    await deps.kvPut(`whatnot-link:${storeId}:${itemId}`, {
+      productId, variantId: String(variant.id), name: want.title, url: deps.urls?.[productId] || '',
+      // Their title, description and photos stay; price and quantity follow ours.
+      ...whatnotContentKeys(want), price: null, qty: null, published: true, linkedExisting: true, linkedAt: new Date().toISOString(),
+    });
+    await deps.setSellOnWhatnot(itemId, row);
+    linked[itemId] = 'ok';
+    delete seen[itemId];
+    results.push({ productId, itemId, linked: true });
+  }
+  await deps.kvPut('whatnot-linked:' + storeId, linked);
+  await deps.kvPut(seenKey, seen);
+  return results;
+}
