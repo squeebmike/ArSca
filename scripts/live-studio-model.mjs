@@ -1,4 +1,5 @@
 import { BOSS_IDS } from './live-studio-bosses.mjs';
+import { MASCOT_STATES } from './byterider.mjs';
 // Live Studio: the OBS overlay for Whatnot shows. 90s comic + arcade look
 // (store, 2026-11-01: "I want 90s comic. Arcade style").
 //
@@ -30,10 +31,13 @@ export const DEFAULT_STUDIO = Object.freeze({
   bigArt: false, bigArtY: 1000,
   // When an auction sells, NOW PLAYING moves to the next item lined up.
   autoAdvance: true,
+  // ByteRider_97, the mascot (scripts/byterider.mjs): where he sits and how big.
+  mascotOn: true, mascotX: 840, mascotY: 640, mascotSize: 220,
   showCombo: true, showBuyerNames: false, attract: true,
 });
-export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner'];
-export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!' };
+// mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
+export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot'];
+export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97' };
 // Comic sound effects for a sale (a cycle, not chance -- the next one in line).
 export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', 'KA-CHING!', 'THWIP!', 'SNIKT!', 'BOOM!'];
 // Words for games of chance / raffles: not allowed on the sign or the boss reward.
@@ -49,7 +53,7 @@ export function validateSettings(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Settings required');
   const out = {};
   const limits = { x:[0,1080], y:[0,1920], width:[240,1080], height:[70,300], speed:[4,60], volume:[0,100], countdownSeconds:[3,15], jackpotAmount:[1,1000000],
-    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400] };
+    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotX:[0,1000], mascotY:[0,1800], mascotSize:[100,420] };
   for (const [key,value] of Object.entries(input)) {
     if (!(key in DEFAULT_STUDIO)) throw new Error('Unknown setting: ' + key);
     if (limits[key]) {
@@ -174,7 +178,7 @@ export function whatnotEffect(event, settings, now = Date.now()) {
   const big = amount?.currency === settings.currency && Number.isFinite(Number(amount.amount)) && Number(amount.amount) >= settings.jackpotAmount;
   return { kind: big ? 'jackpot' : 'sold', at };
 }
-const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000 };
+const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000 };
 export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (!EFFECTS.includes(kind)) throw new Error('Unknown effect');
   const length = kind === 'countdown' ? settings.countdownSeconds * 1000 + 1200 : DURATION[kind] ?? 5000;
@@ -185,6 +189,14 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (typeof extra.buyer === 'string' && extra.buyer) safe.buyer = extra.buyer.slice(0, 30);
   if (extra.record) safe.record = true;
   if (kind === 'boss') { safe.reward = settings.bossReward; safe.bossName = settings.bossName; safe.bossCharacter = settings.bossCharacter; }
+  if (kind === 'mascot') {
+    if (!MASCOT_STATES.includes(extra.mascotState)) throw new Error('Unknown ByteRider reaction');
+    safe.mascotState = extra.mascotState;
+    const say = String(extra.say || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 120);
+    const word = chanceWordIn(say);
+    if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those.`);
+    if (say) safe.say = say;
+  }
   return { id:crypto.randomUUID(), kind, startsAt:now, endsAt:now + length, ...safe };
 }
 export async function digestToken(token) {

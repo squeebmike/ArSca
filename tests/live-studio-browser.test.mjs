@@ -21,7 +21,9 @@ try{
  await page.getByRole('button',{name:'Connect / reload'}).click();await page.getByText('Connected. Controls are live.').waitFor();
  await page.locator('[name=message]').fill('<b>Safe literal mana</b>');await page.getByRole('button',{name:'Save live settings'}).click();await page.getByText('Live settings saved.').waitFor();
  const frame=page.frameLocator('iframe');assert.equal(await frame.locator('#mana-message').textContent(),'<b>Safe literal mana</b>');assert.equal(await frame.locator('#mana-message b').count(),0);
- await page.getByRole('button',{name:'BIG HIT',exact:true}).click();await frame.getByText('BIG HIT!',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'BIG HIT',exact:true}).click();await frame.locator('#mana-effect-word',{hasText:'BIG HIT!'}).waitFor();
+ // ByteRider_97 reacts to it too.
+ await frame.locator('.br-bubble',{hasText:'BIG HIT!'}).waitFor();assert.ok(await frame.locator('#byterider.br-jackpot').count(),'ByteRider in his jackpot state');
  assert.equal(await frame.locator('#mana-coins i').count(),24);
  // A pretend sale in the preview: score board, boss damage, comic burst.
  await page.getByRole('button',{name:'DEMO A SALE (preview only)'}).click();await frame.locator('#mana-effect.k-sold').waitFor();

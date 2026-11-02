@@ -32,6 +32,11 @@
   <h3>Effects</h3>
   <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
+  <h3>ByteRider_97</h3>
+  <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${num('mascotSize','Size (px)',100,420)}${num('mascotX','Left',0,1000)}${num('mascotY','Top',0,1800)}</div>
+  <small>He reacts on his own to sales, big hits, the boss K.O., countdowns, giveaways and winners, the show starting and ending, and each new item up. Whatnot doesn't send follows or auction starts, so those are buttons here. He naps after 5 quiet minutes.</small>
+  <div id="mana-mascot">${[['happy','HAPPY'],['talking','TALK'],['surprised','SURPRISED'],['jackpot','JACKPOT'],['glitch','GLITCH'],['sleeping','SLEEP'],['alert','ALERT'],['countdown','COUNTDOWN'],['celebrating','CELEBRATE'],['disappearing','REBOOT'],['idle','IDLE']].map(([k,l])=>`<button type="button" data-mascot="${k}">${l}</button>`).join('')}<button type="button" data-mascot="happy" data-say="NEW FOLLOWER! WELCOME TO THE POCKET!">NEW FOLLOWER</button></div>
+  <div class="mana-row"><input id="mana-say" maxlength="120" placeholder="Make him say something (a promo, a shout-out)…"><button type="button" id="mana-say-go">SAY IT</button></div>
   <h3>Sign &amp; layout</h3>
   <label>Marquee message<textarea name="message" maxlength="300"></textarea></label>
   <div class="mana-grid">
@@ -68,6 +73,10 @@
     if(e.target.name==='bossCharacter'){const nm=form.elements.namedItem('bossName');if(!nm.value||Object.values(BOSS_NAMES).includes(nm.value))nm.value=BOSS_NAMES[e.target.value]||nm.value;}
     preview();};
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
+  // ByteRider_97: a reaction or a line, on stream (and in the preview).
+  const mascotSend=(state,text)=>run(async()=>{const d=await api('effect',{kind:'mascot',state,text});preview(d.effect);status.textContent='ByteRider: '+(text||state);});
+  host.querySelector('#mana-mascot').onclick=e=>{const b=e.target.closest('[data-mascot]');if(b)mascotSend(b.dataset.mascot,b.dataset.say||'');};
+  host.querySelector('#mana-say-go').onclick=()=>{const t=host.querySelector('#mana-say').value.trim();if(t)mascotSend('talking',t);};
   host.querySelector('#mana-show').onclick=()=>run(async()=>{const d=await api('current-show');if(!d.show)throw Error('No live or scheduled Whatnot show found');form.elements.namedItem('showId').value=d.show.id;host.querySelector('#mana-show-name').textContent=(d.show.live?'LIVE: ':'NEXT: ')+(d.show.title||d.show.id);preview();status.textContent='Show picked -- tap Save live settings.';});
   host.querySelector('#mana-sync').onclick=()=>run(async()=>{const d=await api('stats-sync',{});took(d);status.textContent='Totals synced from Whatnot.';});
   host.querySelector('#mana-reset').onclick=()=>run(async()=>{if(!confirm('Reset the score board and boss to zero?'))return;const d=await api('stats-reset',{});took(d);status.textContent='Totals reset.';});
