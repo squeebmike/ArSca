@@ -1,4 +1,4 @@
-import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats, marqueeLines} from './live-studio-model.mjs';
+import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats, marqueeLines, hypeNow, hypeAfterSale, HYPE_MOOD, HYPE_MAX} from './live-studio-model.mjs';
 import {bossById, drawBoss} from './live-studio-bosses.mjs';
 import {createByteRider} from './byterider.mjs';
 const $=id=>document.getElementById(id);
@@ -14,7 +14,9 @@ const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{mi
 // The sign's rising mana bubbles.
 for(let i=0;i<12;i++){const b=document.createElement('i');b.style.left=(i*8)+'%';b.style.animationDelay=-(i%5)+'s';document.querySelector('.mana-bubbles')?.append(b);}
 // ByteRider_97 lives in the overlay and reacts to the show (reactions below).
-const mascotHost=$('byterider'), mascot=mascotHost?createByteRider(mascotHost):null;
+const mascotHost=$('byterider'), mascot=mascotHost?createByteRider(mascotHost,{onChange:e=>mascotSound(e)}):null;
+// The hype meter (see HYPE_* in live-studio-model.mjs).
+let hype={level:0,at:Date.now()};
 let lastNowTitle=null, soldLine=0;
 const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'px';el.classList.toggle('mana-hidden',!show);};
 
@@ -40,7 +42,7 @@ function apply(s) {
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
   if(mascot){mascot.place({y:settings.mascotFaceY,scale:settings.mascotScale,border:settings.mascotBorder,idleFace:settings.mascotIdleFace});mascot.show(settings.mascotOn!==false);}
-  paintStage();paintStats(stats,false);
+  paintStage();paintStats(stats,false);paintHype();
 }
 function paintStats(next,fromSale) {
   const before=shownGross;stats=next||stats;
@@ -87,16 +89,19 @@ function react(e){
     // A sale: a new hi-score floors him; a combo makes him dizzy; while the
     // boss stands, every other sale he taunts it; otherwise a happy line.
     case 'sold': {
-      const bossUp=settings.showBoss&&stats.boss&&!stats.boss.defeated;
+      // Each sale fills the hype meter; his mood climbs with it.
+      hype=hypeAfterSale(hype,{},Date.now());paintHype();
+      const bossUp=settings.showBoss&&stats.boss&&!stats.boss.defeated, mood=HYPE_MOOD[hype.level];
       if(e.record)mascot.play('cool',{text:'NEW HI-SCORE. NATURALLY.'+amt});
-      else if(e.combo>=5)mascot.play('dizzy',{text:e.combo+'× COMBO?! TOO FAST!'+amt});
-      else if(e.combo>=3)mascot.play('excited',{text:e.combo+'× COMBO!'+amt});
+      else if(hype.level>=HYPE_MAX)mascot.play('glitch',{text:'OVERDRIVE!!'+amt,ms:2200});
+      else if(mood==='dizzy'||e.combo>=5)mascot.play('dizzy',{text:(e.combo>=3?e.combo+'× COMBO?! ':'')+'TOO FAST!'+amt});
+      else if(mood==='excited'||e.combo>=3)mascot.play('excited',{text:(e.combo>=3?e.combo+'× COMBO!':'HYPE!')+amt});
       else if(bossUp&&soldLine%2)mascot.play('smug',{text:'TAKE THAT, '+String(stats.boss.name||settings.bossName).replace(/^THE /,'')+'!'+(e.amount?' -'+usd(e.amount):''),}),soldLine++;
       else mascot.play('happy',{text:SOLD_LINES[soldLine++%SOLD_LINES.length]+amt});
       break;
     }
-    case 'jackpot': mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
-    case 'boss': mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
+    case 'jackpot': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
+    case 'boss': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
     case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
     case 'ready': mascot.play('disappearing',{boot:true});mascot.play('loading',{ms:1500});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
     case 'gameover': mascot.play('sad',{text:"SHOW'S OVER?! ...SAME TIME NEXT SHOW?"});setTimeout(()=>mascot.play('sleeping'),5000);break;
@@ -118,6 +123,35 @@ function tone(freq,duration=.12,when=0,type='square',vol=1) {
   } catch {}
 }
 const tune=(notes,step=.11)=>notes.forEach((f,i)=>f&&tone(f,step*1.4,i*step));
+// ByteRider's sounds: quieter than the show's, a beat after them, and only
+// with "ByteRider sounds" on (the overlay's volume and mute still rule).
+function noise(dur=.15,when=0,vol=.5){
+  if(settings.muted||preview)return;
+  try{audio||=new AudioContext();if(audio.state==='suspended')return;
+    const n=Math.floor(audio.sampleRate*dur),buf=audio.createBuffer(1,n,audio.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<n;i++)d[i]=((i*7919)%1000/500-1)*(1-i/n);
+    const src=audio.createBufferSource(),g=audio.createGain();src.buffer=buf;g.gain.value=settings.volume/100*.08*vol;
+    src.connect(g).connect(audio.destination);src.start(audio.currentTime+when);}catch{}
+}
+const bt=(notes,step=.07,type='square',vol=.45,at=.3)=>notes.forEach((f,i)=>f&&tone(f,step*1.3,at+i*step,type,vol));
+const BR_SOUNDS={
+  happy:()=>bt([660,880]), excited:()=>bt([660,880,1047,1319],.05), laughing:()=>bt([880,660,880,660],.09),
+  smug:()=>bt([392,523],.12,'triangle'), wink:()=>bt([1319],.08), cool:()=>{bt([98],.3,'sawtooth',.5);bt([392,494,587],.06,'square',.35,.45);},
+  surprised:()=>bt([440,660,990],.04), shocked:()=>bt([330,660,1320],.05,'sawtooth'), sad:()=>bt([523,440,349],.16,'triangle'),
+  angry:()=>bt([110,104],.18,'sawtooth',.6), love:()=>bt([784,1047],.16,'triangle'), alert:()=>bt([880,0,880],.1),
+  thinking:()=>bt([523,0,587,0,659],.08,'triangle',.35), dizzy:()=>bt([600,500,700,450,750],.06,'triangle'),
+  jackpot:()=>bt([988,1319,988,1319],.06), celebrating:()=>bt([523,659,784,1047],.08),
+  glitch:()=>{noise(.18,.3);bt([1500,200],.03,'sawtooth',.3,.32);}, error:()=>{noise(.2,.3);bt([220,110],.12,'square');},
+  disappearing:()=>noise(.35,.2,.7), remind:()=>{noise(.12,.3);bt([1319,1568,1319],.1,'triangle',.4,.45);},
+  loading:()=>bt([880,0,880,0,880],.12,'square',.25), processing:()=>bt([660,660,660,880],.11,'square',.25),
+  sleeping:()=>bt([196,175],.4,'triangle',.3),
+};
+function mascotSound({state,text,newState,newText}){
+  if(settings.mascotSounds===false)return;
+  // A line: a bloop per syllable-ish, pitched from his words.
+  if(newText){const t=String(text).replace(/[^A-Za-z0-9]/g,'').slice(0,8);bt([...t].map(c=>260+(c.charCodeAt(0)*37)%420),.06,'square',.3,.25);}
+  if(newState&&BR_SOUNDS[state])BR_SOUNDS[state]();
+}
 const SOUNDS={
   sold:()=>{tone(110,.18,0,'sawtooth',.8);tune([523,659,784,1047],.08);},
   jackpot:()=>tune([523,659,784,1047,0,784,1047,1319,1568],.1),
@@ -194,6 +228,14 @@ function connect() {
 // ByteRider says the marquee: its lines one at a time, every N seconds, in
 // turn, when he isn't in the middle of a reaction (and not while he naps
 // after the show).
+// The hype meter: drains a notch every 20 quiet seconds.
+function paintHype(){
+  const el=$('mana-hype');if(!el)return;
+  el.classList.toggle('mana-hidden',settings.showHype===false||settings.mascotOn===false);
+  const lv=hypeNow(hype).level;el.querySelectorAll('i').forEach((seg,i)=>seg.classList.toggle('on',i<lv));
+  el.classList.toggle('max',lv>=HYPE_MAX);
+}
+setInterval(()=>{const before=hype.level;hype=hypeNow(hype);if(hype.level!==before)paintHype();},1000);
 let marqueeLine=0,lastMarquee=Date.now();
 setInterval(()=>{
   if(!mascot||!settings.mascotSaysMarquee||settings.mascotOn===false)return;

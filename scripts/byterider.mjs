@@ -176,12 +176,14 @@ export function createMascotMachine({ now = () => Date.now(), sleepAfterMs = 5 *
 // host: an element to fill. Returns { play, say, wake, show, destroy }.
 // mode: 'screen' (the stream: the whole frame is his monitor) or 'badge'
 // (a little screen of his own, for the dashboard and website).
-export function createByteRider(host, { mode = 'screen', sleepAfterMs = 5 * 60000, eggEveryMs = 60000, eggChance = 1 / 45, random = Math.random } = {}) {
+// onChange({ state, text, newState, newText }): told whenever his mood or his
+// line changes -- the overlay plays his sounds from it (he makes none himself).
+export function createByteRider(host, { mode = 'screen', sleepAfterMs = 5 * 60000, eggEveryMs = 60000, eggChance = 1 / 45, random = Math.random, onChange = null } = {}) {
   host.classList.add('byterider', mode === 'badge' ? 'br-badge' : 'br-screen');
   host.innerHTML = `${mode === 'badge' ? BYTERIDER_BADGE_SVG : BYTERIDER_SVG}<div class="br-bubble" hidden></div><div class="br-screen-text" aria-hidden="true"></div><div class="br-zzz" aria-hidden="true"><i>Z</i><i>Z</i><i>z</i></div><div class="br-fx" aria-hidden="true"></div>`;
   const bubble = host.querySelector('.br-bubble'), fx = host.querySelector('.br-fx'), screenText = host.querySelector('.br-screen-text'), placeG = host.querySelector('.br-place');
   const machine = createMascotMachine({ sleepAfterMs });
-  let shown = '', shownWear = '', screenTimer = null;
+  let shown = '', shownWear = '', shownText = '', screenTimer = null;
   const burst = (colors, n = 14) => {
     fx.replaceChildren();
     for (let i = 0; i < n; i++) { const p = document.createElement('i'); const a = (i / n) * Math.PI * 2, k = mode === 'badge' ? 0.3 : 1; p.style.setProperty('--dx', Math.round(Math.cos(a) * (260 + (i % 3) * 90) * k) + 'px'); p.style.setProperty('--dy', Math.round(Math.sin(a) * (240 + (i % 4) * 70) * k) + 'px'); p.style.background = colors[i % colors.length]; fx.append(p); }
@@ -202,6 +204,9 @@ export function createByteRider(host, { mode = 'screen', sleepAfterMs = 5 * 6000
     for (const g of parts) g.style.display = (g.dataset.eyes ? g.dataset.eyes === eyes : g.dataset.mouth === mouth) ? '' : 'none';
   };
   const render = cur => {
+    const newState = cur.state !== shown, newText = !!cur.text && cur.text !== shownText;
+    shownText = cur.text || '';
+    if ((newState || newText) && onChange) { try { onChange({ state: cur.state, text: cur.text || '', newState, newText }); } catch (_) {} }
     const key = cur.state + '|' + (cur.text ? 1 : 0);
     if (key !== shownWear) { wear(cur.state, !!cur.text); shownWear = key; }
     if (cur.state !== shown) {
