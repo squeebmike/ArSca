@@ -44,6 +44,7 @@
   <label class="mana-check"><span><input type="checkbox" id="mana-dash-br"> Show ByteRider in the dashboard corner (this device)</span></label>
   <label class="mana-check"><span><input type="checkbox" id="mana-keys"> Keyboard shortcuts (the letters/numbers on the buttons; only on the Whatnot tab, never while typing in a box)</span></label>
   <div class="mana-row"><input id="mana-say" maxlength="120" placeholder="Make him say something (a promo, a shout-out)…"><button type="button" id="mana-say-go">SAY IT</button></div>
+  <div class="mana-row"><button type="button" id="mana-pin">📌 PIN PREVIEW</button><small id="mana-br-status" role="status">Tap a reaction: he plays it in the preview (and on stream once connected).</small></div>
   <h3>Sign &amp; layout</h3>
   <label>Marquee message (separate lines with • or | -- ByteRider says them one at a time)<textarea name="message" maxlength="300"></textarea></label>
   <div class="mana-grid">
@@ -86,7 +87,19 @@
     preview();};
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
   // ByteRider_97: a reaction or a line, on stream (and in the preview).
-  const mascotSend=(state,text)=>run(async()=>{const d=await api('effect',{kind:'mascot',state,text});preview(d.effect);status.textContent='ByteRider: '+(text||state);});
+  // Store, 2026-11-02 (on a phone): "I didn't see it animate in the preview."
+  // Before Connect he still plays in the preview, and says so here, right
+  // under the buttons (the main status line is far up the page).
+  const brStatus=host.querySelector('#mana-br-status');
+  const mascotSend=(state,text)=>{
+    if(!connectedStore){const now=Date.now();preview({id:'local-'+now+'-'+Math.random().toString(36).slice(2),kind:'mascot',mascotState:state,...(text?{say:text.slice(0,120)}:{}),startsAt:now,endsAt:now+4000});
+      brStatus.textContent='Preview only ('+(text||state)+'). Tap Connect / reload at the top to send him to the stream.';return;}
+    return run(async()=>{try{const d=await api('effect',{kind:'mascot',state,text});preview(d.effect);status.textContent=brStatus.textContent='ByteRider: '+(text||state)+' (live)';}catch(e){brStatus.textContent=e.message;throw e;}});
+  };
+  // PIN PREVIEW: docks the preview in the corner so you can tap and watch
+  // at the same time on a phone.
+  const pin=host.querySelector('#mana-pin'),previewBox=host.querySelector('.mana-preview');
+  pin.onclick=()=>{const on=previewBox.classList.toggle('pinned');pin.textContent=on?'📌 UNPIN PREVIEW':'📌 PIN PREVIEW';};
   host.querySelector('#mana-mascot').onclick=e=>{const b=e.target.closest('[data-mascot]');if(b)mascotSend(b.dataset.mascot,b.dataset.say||'');};
   host.querySelector('#mana-say-go').onclick=()=>{const t=host.querySelector('#mana-say').value.trim();if(t)mascotSend('talking',t);};
   // Keyboard shortcuts (this device only): a key fires the button that shows it;

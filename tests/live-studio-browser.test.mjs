@@ -18,13 +18,28 @@ try{
  browser=await chromium.launch({headless:true,channel:process.env.STUDIO_BROWSER_CHANNEL || undefined});const page=await browser.newPage({viewport:{width:1000,height:1700}});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:'+server.address().port);await page.locator('[name=width]').waitFor();
  await page.waitForFunction(()=>document.querySelector('[name=width]').value==='700');
+ // Before Connect, a ByteRider button still plays him in the preview (phone: "I didn't see it animate").
+ await page.getByRole('button',{name:/^HAPPY/}).click();
+ await page.frameLocator('iframe').locator('#byterider.br-happy').waitFor();
+ await page.getByText(/Preview only \(happy\)\. Tap Connect/).waitFor();
+ assert.equal((await page.evaluate(()=>calls)).filter(c=>c.body?.kind==='mascot').length,0,'nothing sent before Connect');
+ // PIN PREVIEW docks the preview in the corner (tap and watch on a phone).
+ await page.getByRole('button',{name:'📌 PIN PREVIEW'}).click();
+ assert.equal(await page.locator('.mana-preview').evaluate(e=>getComputedStyle(e).position),'fixed');
+ await page.getByRole('button',{name:'📌 UNPIN PREVIEW'}).click();
+ assert.equal(await page.locator('.mana-preview').evaluate(e=>getComputedStyle(e).position),'relative');
  await page.getByRole('button',{name:'Connect / reload'}).click();await page.getByText('Connected. Controls are live.').waitFor();
  await page.locator('[name=message]').fill('<b>Safe literal mana</b>');await page.getByRole('button',{name:'Save live settings'}).click();await page.getByText('Live settings saved.').waitFor();
  const frame=page.frameLocator('iframe');assert.equal(await frame.locator('#mana-message').textContent(),'<b>Safe literal mana</b>');assert.equal(await frame.locator('#mana-message b').count(),0);
  await page.getByRole('button',{name:'BIG HIT',exact:true}).click();await frame.locator('#mana-effect-word',{hasText:'BIG HIT!'}).waitFor();
  // ByteRider_97 reacts to it too.
  await frame.locator('.br-bubble',{hasText:'BIG HIT!'}).waitFor();assert.ok(await frame.locator('#byterider.br-jackpot').count(),'ByteRider in his jackpot state');
- assert.equal(await frame.locator('#mana-coins i').count(),24);
+ // Coins: 3D when WebGL is there (polished-N64), else the flat CSS coins.
+ const gl3d=await frame.locator('body.mana-3d').count();
+ if(gl3d){await page.waitForTimeout(400);const st=await frame.locator('body').evaluate(()=>window.manaStudio3d());assert.ok(st.coins>0,'3D coins falling');assert.equal(st.boss,'scalper');
+   const lit=st.bossPixels;
+   assert.ok(lit>2000,'the 3D boss is drawn ('+lit+' px)');console.log('3D overlay on: boss drawn, coins falling');}
+ else {assert.equal(await frame.locator('#mana-coins i').count(),24);console.log('3D overlay off (no WebGL here): flat coins and sprite');}
  // A pretend sale in the preview: score board, boss damage, comic burst.
  await page.getByRole('button',{name:'DEMO A SALE (preview only)'}).click();await frame.locator('#mana-effect.k-sold').waitFor();
  assert.equal(await frame.locator('#mana-gross').textContent(),'$12');assert.equal(await frame.locator('#mana-effect-word').textContent(),'BAM!');

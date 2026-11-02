@@ -18,6 +18,19 @@ const mascotHost=$('byterider'), mascot=mascotHost?createByteRider(mascotHost,{o
 // The hype meter (see HYPE_* in live-studio-model.mjs).
 let hype={level:0,at:Date.now()};
 let lastNowTitle=null, soldLine=0;
+// Polished-N64 3D (scripts/live-studio-3d.mjs): the boss and the coins. If
+// WebGL or the module isn't there, the flat sprites and CSS coins stay.
+let gl=null, bossView=null, effectBoss=null, coinLayer=null;
+import('./live-studio-3d.mjs').then(m=>{
+  try{
+    bossView=m.createBossView($('mana-boss-3d'),{size:280});
+    effectBoss=m.createBossView($('mana-effect-boss'),{size:420,fov:28});
+    coinLayer=m.createCoinLayer($('mana-coins-3d'));
+    gl=m;document.body.classList.add('mana-3d');drawnBoss='';apply(settings);bossView.start();
+    // Read-only peek for tests: is 3D on, which boss, how many coins in the air.
+    window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels()});
+  }catch(e){console.warn('[studio] 3D off:',e?.message||e);bossView=effectBoss=coinLayer=gl=null;document.body.classList.remove('mana-3d');}
+}).catch(e=>console.warn('[studio] 3D off:',e?.message||e));
 const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'px';el.classList.toggle('mana-hidden',!show);};
 
 function apply(s) {
@@ -30,7 +43,7 @@ function apply(s) {
   place(hud,40,settings.hudY,settings.showHud);
   boss.classList.toggle('mana-hidden',!settings.showBoss);
   // The boss's sprite and catchphrase, redrawn when the boss changes.
-  if(drawnBoss!==settings.bossCharacter){drawnBoss=settings.bossCharacter;void drawBoss($('mana-boss-sprite'),drawnBoss);}
+  if(drawnBoss!==settings.bossCharacter){drawnBoss=settings.bossCharacter;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // Big photo: over the bottom camera, full width.
   card.classList.toggle('big',!!settings.bigArt);
   if(settings.bigArt){place(card,40,settings.bigArtY);card.style.height=Math.max(420,Math.min(900,1900-settings.bigArtY))+'px';}
@@ -51,12 +64,14 @@ function paintStats(next,fromSale) {
   $('mana-boss-name').textContent=b.name||settings.bossName;
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
   const fill=$('mana-boss-fill');fill.style.width=Math.max(0,Math.min(100,b.pct??100))+'%';fill.classList.toggle('low',(b.pct??100)<=25);
-  boss.classList.toggle('defeated',!!b.defeated);
+  boss.classList.toggle('defeated',!!b.defeated);bossView?.defeat(!!b.defeated);
   $('mana-boss-taunt').textContent=b.defeated?'"I\'LL BE BACK NEXT SHOW..."':'"'+bossById(b.character||settings.bossCharacter).taunt+'"';
   if(fromSale && before!=null && stats.gross>before){
     for(const el of [$('mana-gross'),$('mana-sold')]){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
+    // Coins pop out of the score, more for a bigger sale.
+    if(coinLayer&&settings.showHud){const r=$('mana-gross').getBoundingClientRect();coinLayer.burst(r.left+r.width/2,r.top+r.height/2,Math.min(16,6+Math.round((stats.gross-before)/25)));}
     if(settings.showBoss){
-      boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');
+      boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');bossView?.hit();
       const dmg=document.createElement('b');dmg.textContent='-'+usd(stats.gross-before);$('mana-boss-hits').append(dmg);setTimeout(()=>dmg.remove(),1500);
     }
   }
@@ -165,9 +180,9 @@ const SOUNDS={
 document.addEventListener('click',()=>{audio ||= new AudioContext();void audio.resume();});
 
 // Coins scattered (a fixed spread -- the same every time).
-function rain(n=24){coins.replaceChildren();for(let i=0;i<n;i++){const c=document.createElement('i');c.textContent='●';c.style.left=((i*37)%97)+'%';c.style.animationDelay=-((i*53)%23)/10+'s';c.style.animationDuration=(1.8+((i*29)%9)/10)+'s';coins.append(c);}}
+function rain(n=24){if(coinLayer){coinLayer.rain(n>=36?40:26,n>=36?4200:3200);return;}coins.replaceChildren();for(let i=0;i<n;i++){const c=document.createElement('i');c.textContent='●';c.style.left=((i*37)%97)+'%';c.style.animationDelay=-((i*53)%23)/10+'s';c.style.animationDuration=(1.8+((i*29)%9)/10)+'s';coins.append(c);}}
 function receiveEffect(e,initial=false) {
-  if(!e || e.kind==='clear' || e.endsAt <= Date.now()+offset) {effect=null;coins.replaceChildren();return;}
+  if(!e || e.kind==='clear' || e.endsAt <= Date.now()+offset) {effect=null;coins.replaceChildren();if(e?.kind==='clear')coinLayer?.clear();return;}
   // Reconnect restores a running countdown without replaying a sale sound/celebration.
   if(initial && e.kind!=='countdown') return;
   if(played.has(e.id)) return;
@@ -200,13 +215,16 @@ function draw() {
   const now=Date.now()+offset;
   if(effect && effect.endsAt>now) {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind;lastKind=effect.id;
-      if(effect.kind==='boss'||(effect.kind==='ready'&&settings.showBoss)){try{$('mana-effect-art').src=$('mana-boss-sprite').toDataURL();}catch{}}
+      if(effect.kind==='boss'||(effect.kind==='ready'&&settings.showBoss)){
+        if(effectBoss){effectBoss.set(settings.bossCharacter);effectBoss.defeat(effect.kind==='boss');effectBoss.start();}
+        else{try{$('mana-effect-art').src=$('mana-boss-sprite').toDataURL();}catch{}}
+      } else effectBoss?.stop();
       if(effect.kind!=='countdown'){const [w,m,s]=words(effect);$('mana-effect-word').textContent=w;$('mana-effect-main').textContent=m;$('mana-effect-sub').textContent=s;}}
     if(effect.kind==='countdown') {
       const n=Math.max(0,Math.ceil((effect.endsAt-1200-now)/1000));$('mana-effect-word').textContent=n||'GO!';$('mana-effect-main').textContent=n?'LAST CALL!':'';$('mana-effect-sub').textContent='';
       if(n!==lastBeep){lastBeep=n;tone(n?440:880,n?.1:.3);}
     }
-  } else if(effect||lastKind){effectEl.className='';effect=null;lastKind='';coins.replaceChildren();}
+  } else if(effect||lastKind){effectEl.className='';effect=null;lastKind='';coins.replaceChildren();effectBoss?.stop();}
   const combo=$('mana-combo'),on=settings.showCombo&&stats.combo>=2&&now-stats.lastSaleAt<COMBO_WINDOW_MS;
   if(on&&combo.textContent!==stats.combo+'× COMBO!')combo.textContent=stats.combo+'× COMBO!';
   combo.classList.toggle('on',on);
