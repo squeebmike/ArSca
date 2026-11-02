@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.02.1-byterider';
+const APP_VERSION = '2026.11.02.2-byterider-face';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -44232,6 +44232,8 @@ async function completeLockedCheckout(){
 
 async function finalizeCompletedCheckout(bundle, queued, inventoryCommittedAtomically=false){
   const paidAt = bundle.sale.completed_at;
+  // ByteRider_97 cheers the sale (the dashboard's corner mascot).
+  try { window.byteRiderDash?.sale(bundle.sale.total); } catch(_) {}
   const method = bundle.payments.map(p => p.method).join('+');
   await markCartItemsSoldFromPayment((lockedCheckoutSnapshot?.lines || []).map(l => ({ name:l.title, price:l.adjusted_price, cost:l.cost_basis, category:l.category, condition:l.condition, quantity:l.quantity, shopId:l.item_id })), method, paidAt, { skipRemote:inventoryCommittedAtomically });
   await cascadeMarkBundleMembersSold(lockedCheckoutSnapshot?.lines || [], paidAt, bundle.sale.id);
@@ -49297,3 +49299,45 @@ async function saveWhatnotUnsoldSetting(on){
     toast_dash(on ? 'Unsold items go back to the shop after each show' : 'Unsold items stay out of the shop until you put them back');
   } catch(e) { toast_dash(e.message || String(e)); }
 }
+
+// ── ByteRider_97 on the dashboard (scripts/byterider.mjs) ──────────────────
+// Store, 2026-11-02: "do 5" -- the mascot beyond the stream. He sits on a
+// little screen of his own in the corner: boots up and says hi once a day,
+// cheers each register sale (a big one gets the jackpot), naps after five
+// quiet minutes, and a tap gets a line. The X hides him on this device.
+const BYTE_DASH_LINES = ['SCAN SOMETHING. I\'M BORED.', 'PRICE SYNC HAS CHANGES WAITING? JUST SAYING.', 'GO LIVE ON WHATNOT. I\'LL HANDLE THE HYPE.', 'I\'M NOT RUNNING EVERYTHING. (I AM.)', 'COUNT TWICE, SHIP ONCE.', 'THE SCALPER FEARS YOU.'];
+window.byteRiderDash = null;
+async function mountDashByteRider(){
+  try { if(localStorage.getItem('byterider-dash-hidden') === '1' || document.getElementById('byterider-dash')) return; } catch(_) {}
+  let m;
+  try { m = await import('./byterider.mjs?v=' + encodeURIComponent(APP_VERSION)); } catch(_) { return; }
+  const wrap = document.createElement('div');
+  wrap.id = 'byterider-dash';
+  wrap.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:3500;cursor:pointer';
+  const host = document.createElement('div');
+  host.style.setProperty('--br-size', '72px');
+  const close = document.createElement('button');
+  close.type = 'button'; close.textContent = '×'; close.title = 'Hide ByteRider on this device';
+  close.style.cssText = 'position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:2px solid #0b0612;background:#fff6d8;color:#0b0612;font:700 13px/14px sans-serif;padding:0;cursor:pointer;z-index:2';
+  wrap.append(host, close);
+  document.body.append(wrap);
+  const br = m.createByteRider(host, { mode:'badge' });
+  let line = 0;
+  close.onclick = e => { e.stopPropagation(); try { localStorage.setItem('byterider-dash-hidden', '1'); } catch(_) {} br.destroy(); wrap.remove(); window.byteRiderDash = null; };
+  host.onclick = () => { br.wake(); br.play('smug', { text:BYTE_DASH_LINES[line++ % BYTE_DASH_LINES.length] }); };
+  const today = new Date().toDateString();
+  let greeted = ''; try { greeted = localStorage.getItem('byterider-dash-hello') || ''; } catch(_) {}
+  if(greeted !== today){
+    try { localStorage.setItem('byterider-dash-hello', today); } catch(_) {}
+    br.play('disappearing', { boot:true });
+    br.play('talking', { text:'GOOD MORNING, PRIMARY USER.' });
+  }
+  window.byteRiderDash = {
+    play: (state, opts) => br.play(state, opts || {}),
+    // A register sale: $100 or more is a jackpot.
+    sale: total => { const t = Number(total) || 0; br.play(t >= 100 ? 'jackpot' : 'happy', { text:(t >= 100 ? 'BIG HIT! ' : 'KA-CHING! ') + '$' + t.toFixed(2) }); },
+  };
+}
+// Bring him back after hiding him: localStorage.removeItem('byterider-dash-hidden') or the Live Studio checkbox.
+function showDashByteRider(on){ try { localStorage.setItem('byterider-dash-hidden', on ? '0' : '1'); } catch(_) {} if(on) mountDashByteRider(); else document.querySelector('#byterider-dash button')?.click(); }
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(mountDashByteRider, 1500)); else setTimeout(mountDashByteRider, 1500);
