@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.02.6-whatnot-link';
+const APP_VERSION = '2026.11.02.7-whatnot-link';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -26310,128 +26310,6 @@ function closeFieldBarcodeScanner(){
 
 function renderInventoryComicInfo(item){const host=document.getElementById('edit-comic-info');if(host)host.innerHTML=inventoryComicInfoHtml(item);}
 
-// Packs extensions/whatnot-live-stickers (served next to this page) into a
-// ZIP right in the browser, so installing the sticker helper needs no
-// GitHub steps. Plain "stored" ZIP entries -- the files are tiny text.
-const WHATNOT_STICKER_EXTENSION_FILES = ['manifest.json','detector.js','content.js','background.js','dashboard-relay.js','label.html','label.css','label.js','popup.html','popup.css','popup.js','README.md'];
-function zipCrc32(bytes){
-  let crc = -1;
-  for(let i = 0; i < bytes.length; i++){
-    crc ^= bytes[i];
-    for(let k = 0; k < 8; k++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
-  }
-  return (crc ^ -1) >>> 0;
-}
-function buildStoredZip(files){
-  const enc = new TextEncoder(), chunks = [], central = [];
-  let offset = 0;
-  const u16 = n => [n & 255, (n >>> 8) & 255], u32 = n => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255];
-  files.forEach(f => {
-    const name = enc.encode(f.name), data = f.data, crc = zipCrc32(data);
-    const header = [...u32(0x04034b50), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0)];
-    chunks.push(new Uint8Array(header), name, data);
-    central.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0x0800), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(offset)]), name);
-    offset += header.length + name.length + data.length;
-  });
-  const centralSize = central.reduce((n, c) => n + c.length, 0);
-  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(files.length), ...u16(files.length), ...u32(centralSize), ...u32(offset), ...u16(0)]);
-  return new Blob([...chunks, ...central, end], { type:'application/zip' });
-}
-// ── Whatnot Live Stickers -> dashboard ──
-// The sticker extension still prints a sticker for each sale on its own.
-// Store, 2026-11-02: it no longer records anything here. The Whatnot API
-// sync records every sale (stock, show, buyer) itself, and this path
-// matched by title and could take a second unit off a multi-quantity item
-// or start a second "live" show. The page only acknowledges what the
-// extension hands over, so it stops offering the same sales again.
-window.addEventListener('message', e => {
-  if(e.source !== window || !e.data || e.data.source !== 'wls-extension' || e.data.type !== 'wls-sales') return;
-  const ids = (Array.isArray(e.data.sales) ? e.data.sales : []).map(x => x && x.id).filter(Boolean);
-  if(ids.length) window.postMessage({ source:'wls-dashboard', type:'wls-ack', ids }, location.origin);
-});
-// Ask the extension for anything queued once this page is signed in.
-setTimeout(() => window.postMessage({ source:'wls-dashboard', type:'wls-ready' }, location.origin), 4000);
-
-// PACK LIST: the current (or most recent) show's sales grouped by buyer --
-// what to pull together for each person, printable.
-// The show a pack list / bag labels are for: the given one, else the live
-// one, else the most recent.
-async function whatnotPackListShow(showId){
-  const sb = getSupabaseClient(), storeId = getActiveStoreId();
-  if(showId){ const { data } = await sb.from('whatnot_shows').select('*').eq('id', showId).eq('store_id', storeId).limit(1); return data?.[0] || null; }
-  if(whatnotActiveShow) return whatnotActiveShow;
-  const { data } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).order('started_at', { ascending:false, nullsFirst:false }).limit(1);
-  return data?.[0] || null;
-}
-async function openWhatnotPackList(showId){
-  const sb = getSupabaseClient(), storeId = getActiveStoreId();
-  if(!sb || !storeId){ toast_dash('Sign in to see the pack list'); return; }
-  let show = typeof showId === 'string' && showId ? await whatnotPackListShow(showId) : whatnotActiveShow;
-  if(!show){
-    const { data } = await sb.from('whatnot_shows').select('*').eq('store_id', storeId).order('started_at', { ascending:false, nullsFirst:false }).limit(1);
-    show = data?.[0];
-  }
-  if(!show){ toast_dash('No Whatnot show yet'); return; }
-  const { data:rows, error } = await sb.from('whatnot_show_items').select('name,status,sold_price_cents,sold_at,buyer_name').eq('show_id', show.id).in('status', ['sold','giveaway']).order('sold_at', { ascending:true });
-  if(error){ toast_dash('Could not load the pack list: ' + error.message); return; }
-  const groups = whatnotPackListGroups(rows || []);
-  const body = groups.length ? groups.map(g => `<section style="break-inside:avoid;border-bottom:1px solid #ccc;padding:8px 0"><h2 style="margin:0 0 4px;font:900 16px Arial">@${escHtml(g.buyer)} <span style="font:400 12px Arial;color:#555">${g.items.length} item${g.items.length === 1 ? '' : 's'} · $${(g.totalCents / 100).toFixed(2)}</span></h2>${g.items.map(r => `<div style="font:13px/1.5 Arial">☐ ${escHtml(r.name || 'Item')}${r.status === 'giveaway' ? ' <b>(giveaway)</b>' : ' — $' + (Number(r.sold_price_cents || 0) / 100).toFixed(2)}</div>`).join('')}</section>`).join('') : '<p style="font:13px Arial">No sales recorded for this show yet.</p>';
-  const w = window.open('', '_blank', 'width=720,height=900');
-  if(!w){ toast_dash('Allow pop-ups to open the pack list'); return; }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Pack list</title></head><body style="margin:24px;color:#000"><h1 style="font:900 20px Arial;margin:0 0 4px">PACK LIST · ${escHtml(show.title || 'Whatnot show')}</h1><div style="font:12px Arial;color:#555;margin-bottom:12px">${groups.length} buyer${groups.length === 1 ? '' : 's'} · ${(rows || []).length} item${(rows || []).length === 1 ? '' : 's'} · <button onclick="print()">PRINT</button> <button onclick="opener && opener.printWhatnotBagLabels(${escHtml(JSON.stringify(String(show.id)))})">BAG LABELS (2x1)</button></div>${body}</body></html>`);
-  w.document.close();
-}
-function whatnotPackListGroups(rows = []){
-  const byBuyer = new Map();
-  rows.forEach(r => {
-    const buyer = String(r.buyer_name || '').trim() || '(no buyer name)';
-    const key = buyer.toLowerCase();
-    if(!byBuyer.has(key)) byBuyer.set(key, { buyer, items:[], totalCents:0 });
-    const g = byBuyer.get(key);
-    g.items.push(r);
-    g.totalCents += r.status === 'giveaway' ? 0 : Number(r.sold_price_cents || 0);
-  });
-  return [...byBuyer.values()].sort((a, b) => a.buyer.localeCompare(b.buyer));
-}
-
-// One 2x1 label per buyer for their bag: @name, how many items, the show.
-function whatnotBagLabelsHtml(groups, show){
-  const day = show?.started_at ? new Date(show.started_at).toLocaleDateString() : '';
-  const labels = groups.map(g => `<div class="l"><div class="b">@${escHtml(g.buyer)}</div><div class="m">${g.items.length} item${g.items.length === 1 ? '' : 's'}${g.items.some(r => r.status === 'giveaway') ? ' · incl. giveaway' : ''}</div><div class="s">${escHtml(show?.title || 'Whatnot')}${day ? ' · ' + escHtml(day) : ''}</div></div>`).join('');
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Bag labels</title><style>@page{size:2in 1in;margin:0}html,body{margin:0;padding:0}.l{width:2in;height:1in;box-sizing:border-box;padding:.06in .1in;page-break-after:always;break-after:page;display:flex;flex-direction:column;justify-content:center;overflow:hidden;font-family:Arial,sans-serif;color:#000}.b{font-weight:900;font-size:15pt;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m{font-size:9pt;margin-top:2px}.s{font-size:7pt;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media screen{body{background:#eee;padding:10px}.l{background:#fff;margin:0 0 8px;border:1px solid #999}}</style></head><body>${labels || '<p>No buyers recorded for this show.</p>'}<script>setTimeout(()=>print(),300)<\/script></body></html>`;
-}
-async function printWhatnotBagLabels(showId){
-  const sb = getSupabaseClient(), storeId = getActiveStoreId();
-  if(!sb || !storeId){ toast_dash('Sign in to print bag labels'); return; }
-  const show = await whatnotPackListShow(showId);
-  if(!show){ toast_dash('No Whatnot show yet'); return; }
-  const { data:rows, error } = await sb.from('whatnot_show_items').select('name,status,sold_price_cents,buyer_name').eq('show_id', show.id).in('status', ['sold','giveaway']);
-  if(error){ toast_dash('Could not load buyers: ' + error.message); return; }
-  const groups = whatnotPackListGroups(rows || []).filter(g => g.buyer !== '(no buyer name)');
-  const w = window.open('', '_blank', 'width=420,height=600');
-  if(!w){ toast_dash('Allow pop-ups to print bag labels'); return; }
-  w.document.write(whatnotBagLabelsHtml(groups, show));
-  w.document.close();
-}
-
-async function downloadWhatnotStickerExtension(){
-  try {
-    const files = await Promise.all(WHATNOT_STICKER_EXTENSION_FILES.map(async name => {
-      const res = await fetch('extensions/whatnot-live-stickers/' + name + '?v=' + encodeURIComponent(APP_VERSION), { cache:'no-store' });
-      if(!res.ok) throw new Error(name + ' (' + res.status + ')');
-      return { name:'whatnot-live-stickers/' + name, data:new Uint8Array(await res.arrayBuffer()) };
-    }));
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(buildStoredZip(files));
-    a.download = 'whatnot-live-stickers.zip';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    toast_dash('Extension downloaded -- unzip it, then Load unpacked in chrome://extensions');
-  } catch(e) {
-    toast_dash('Could not package the extension: ' + (e.message || e));
-  }
-}
-
 function openEditModal(id) {
   const item = all.find(i => i.id === id);
   if(!item) return;
@@ -29333,7 +29211,7 @@ async function endWhatnotShow(){
       w.document.write('<div class="row"><span>' + k + '</span><b>' + v + '</b></div>');
     });
     const showArg = JSON.stringify(String(endedShow.id)).replace(/"/g, '&quot;');
-    w.document.write('<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px"><button onclick="window.print()">PRINT</button><button onclick="opener && opener.openWhatnotPackList(' + showArg + ')">PACK LIST</button><button onclick="opener && opener.printWhatnotBagLabels(' + showArg + ')">BAG LABELS (2x1)</button><button onclick="opener && (opener.switchTab(\'whatnot\'), opener.focus())">IMPORT WHATNOT REPORT</button></div>');
+    w.document.write('<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:14px"><button onclick="window.print()">PRINT</button><button onclick="opener && (opener.switchTab(\'whatnot\'), opener.focus())">IMPORT WHATNOT REPORT</button></div>');
     w.document.write('<div style="color:#666;margin-top:8px">Fees here are estimated. Import the Whatnot show report (Whatnot tab -> IMPORT SHOW RESULTS) for the real fees.</div></body></html>');
   }
   whatnotActiveShow = null;

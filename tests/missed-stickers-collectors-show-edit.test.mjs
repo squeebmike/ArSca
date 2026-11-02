@@ -2,29 +2,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-// ── 1. Whatnot missed-sticker queue ──
+// ── 1. Whatnot sticker helper: removed 2026-11-02 (never used; the Whatnot
+// sync records sales and the orders board has the pack list) ──
 {
-  const dir = 'extensions/whatnot-live-stickers/';
-  const bg = fs.readFileSync(dir + 'background.js', 'utf8');
-  const manifest = JSON.parse(fs.readFileSync(dir + 'manifest.json', 'utf8'));
-  assert.ok(manifest.permissions.includes('alarms'), 'the missed check survives the service worker sleeping');
-  assert.match(fs.readFileSync(dir + 'label.js', 'utf8'), /chrome\.runtime\.sendMessage\(\{ type:'wls-printed', id:id \}\)/, 'the label reports back after printing');
-  // isMissed: not printed a minute after it was sent (or never sent); tests never count.
-  const ctx = { Date };
-  vm.createContext(ctx);
-  vm.runInContext(bg.match(/var MISSED_AFTER_MS = [^\n]*\n/)[0] + bg.match(/function isMissed\(sale, now\)\{[^\n]*\}/)[0] + ';this.m=isMissed;', ctx);
-  const now = Date.parse('2026-10-10T20:00:00Z'), ago = s => new Date(now - s * 1000).toISOString();
-  assert.equal(ctx.m({ printRequestedAt:ago(90) }, now), true);
-  assert.equal(ctx.m({ printRequestedAt:ago(20) }, now), false, 'still within the grace minute');
-  assert.equal(ctx.m({ printRequestedAt:ago(90), printedAt:ago(80) }, now), false);
-  assert.equal(ctx.m({}, now), true, 'never sent to the printer');
-  assert.equal(ctx.m({ test:true }, now), false);
-  assert.match(bg, /if\(msg\.type === 'wls-print-missed'\)/);
-  assert.match(bg, /chrome\.action\.setBadgeText\(\{ text:n \? String\(n\) : '' \}\)/);
-  assert.match(fs.readFileSync(dir + 'popup.html', 'utf8'), /id="print-missed">PRINT MISSED</);
+  assert.equal(fs.existsSync('extensions/whatnot-live-stickers'), false);
   const dashboard = fs.readFileSync('dashboard.html', 'utf8');
-  const list = JSON.parse(dashboard.match(/const WHATNOT_STICKER_EXTENSION_FILES = (\[[^\]]+\]);/)[1].replace(/'/g, '"'));
-  assert.deepEqual([...list].sort(), fs.readdirSync(dir).sort(), 'the dashboard download still packs every extension file');
+  assert.doesNotMatch(dashboard, /WHATNOT_STICKER_EXTENSION_FILES|downloadWhatnotStickerExtension|LIVE BUYER STICKERS|printWhatnotBagLabels|wls-extension/);
+  assert.equal((dashboard.match(/function openWhatnotPackList\(/g) || []).length, 1, 'one pack list: the orders board one');
 }
 
 // ── 2. Collectors missing a connecting part ──
