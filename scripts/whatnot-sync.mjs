@@ -99,7 +99,10 @@ export function whatnotDesired(row, item, { autoTitles = true } = {}) {
   const wanted = d.sellOnWhatnot === true;
   const sellable = wanted && !['sold', 'archived', 'deleted', 'presale'].includes(status) && !item.awaitingReceipt && !item.dropship;
   const qty = sellable ? Math.max(0, Math.min(9999, Math.floor(Number(d.quantity ?? d.qty ?? 1) || 0))) : 0;
-  const price = Math.round((Number(item.price) || 0) * 100) / 100;
+  // Whatnot takes whole dollars only ("amount must be a whole number of
+  // USD", 2026-11-03): rounded UP so nothing sells under the dashboard price
+  // ($4.99 -> $5). The dashboard keeps its own price.
+  const price = Math.ceil(Math.round((Number(item.price) || 0) * 100) / 100 - 1e-9);
   const details = [item.set, item.year, item.cardNumber ? '#' + item.cardNumber : '', item.variant, item.condition].filter(Boolean).join(' · ');
   return {
     wanted,
@@ -228,7 +231,8 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 40, force =
   const { data: index } = await deps.db(`inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&select=id,updated_at&limit=5000`);
   // -v2 (2026-11-03): one fresh pass, so the comics refused for the size
   // profile are listed (unchanged items cost no Whatnot calls).
-  const seenKey = 'whatnot-sync-seen-v2:' + storeId;
+  // -v3: one more fresh pass so items refused for a cents price are listed.
+  const seenKey = 'whatnot-sync-seen-v3:' + storeId;
   const seen = (!force && await deps.kvGet(seenKey)) || {};
   const linkedState = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
   const linkedIds = new Set(Object.keys(linkedState));
@@ -1000,7 +1004,7 @@ export async function whatnotAllProducts(api, { pages = 20 } = {}) {
 export async function linkWhatnotListings(pairs, deps) {
   const storeId = deps.storeId;
   const linked = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
-  const seenKey = 'whatnot-sync-seen-v2:' + storeId;
+  const seenKey = 'whatnot-sync-seen-v3:' + storeId;
   const seen = (await deps.kvGet(seenKey)) || {};
   const rows = new Map((await deps.rows(pairs.map(p => p.itemId))).map(r => [r.id, r]));
   const results = [];
