@@ -35,6 +35,13 @@ assert.match(BYTERIDER_SVG, /#b6ff3a/);assert.match(BYTERIDER_SVG, /#ff3fd2/);
 assert.match(BYTERIDER_SVG, /id="br-scan"/);assert.match(BYTERIDER_SVG, /id="br-fuzz"/);
 assert.doesNotMatch(BYTERIDER_SVG, /antenna/i, 'no antenna');
 for (const part of ['br-static', 'br-place', 'br-talk-a', 'br-talk-b', 'br-talk-c']) assert.ok(BYTERIDER_SVG.includes(part), part);
+// Talking (store, 2026-11-02: "Keep one mouth and have it squiggly"): each
+// frame is a single voice-wave line, and only one frame shows at a time.
+for (const f of ['a', 'b', 'c']) {
+  const g = BYTERIDER_SVG.match(new RegExp('<g class="br-talk-' + f + '">(.*?)</g>'))[1];
+  assert.equal((g.match(/<path/g) || []).length, 1, 'one mouth line in frame ' + f);
+}
+assert.match(fs.readFileSync('assets/byterider.css', 'utf8'), /@keyframes br-talk \{0% \{opacity:1\} 33\.3% \{opacity:0\} 100% \{opacity:0\}\}/);
 assert.doesNotMatch(BYTERIDER_SVG, /\b(arm|hand|leg|foot|feet)\b/i, 'no limbs');
 assert.deepEqual(EASTER_EGGS, ['RE:MIND', 'PRIMARY USER', 'SYSTEM REWIND', '1997']);
 assert.ok(BOOT_LINES.some(l => /PRIMARY USER/.test(l)));

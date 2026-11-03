@@ -74,18 +74,25 @@ const EYES = {
   sad: box(-300, -215, 150, 22) + box(150, -215, 150, 22) + ln('M-300 -150 L-150 -190', 22) + ln('M300 -150 L150 -190', 22) + box(-290, -140, 130, 80) + box(160, -140, 130, 80),
   remind: `<text x="0" y="-60" text-anchor="middle" font-family="'Press Start 2P',monospace" font-size="92">RE:MIND</text>` + ln('M-370 -170 L-370 -230 L-310 -230 M370 -170 L370 -230 L310 -230 M-370 50 L-370 110 L-310 110 M370 50 L370 110 L310 110', 18),
 };
+// One squiggly voice-wave across the mouth: amp is its height at the centre.
+function voiceWave(amp, phase = 0, w = 240, y = 120) {
+  const pts = [];
+  for (let x = -w; x <= w; x += 10) {
+    const env = Math.cos((Math.PI / 2) * (x / w));
+    pts.push(`${x} ${Math.round(y + amp * env * env * Math.sin(x / 21 + phase))}`);
+  }
+  return 'M' + pts.join(' L');
+}
 const MOUTHS = {
   smile: ln('M-220 60 Q0 175 220 60'),
   grin: `<path d="M-180 40 Q0 270 180 40 Z"/>`,
   laughOpen: `<path d="M-180 40 Q0 270 180 40 Z" fill="none" stroke="${C.lime}" stroke-width="26" stroke-linejoin="round"/>` + `<path d="M-90 175 Q0 120 90 175 Q0 215 -90 175 Z"/>`,
   small: ln('M-130 80 Q0 165 130 80'),
-  // Talking (store: "When he talks it should move his mouth like Bender's
-  // mouth on Futurama. Don't surround the mouth. Do two horizontal lines"):
-  // two lines with bars between them that open and close while a squiggle
-  // wiggles through the middle -- three frames, swapped as he speaks.
-  talk: `<g class="br-talk-a">${ln('M-170 105 L170 105 M-170 145 L170 145', 20) + ln('M-110 105 L-110 145 M-40 105 L-40 145 M40 105 L40 145 M110 105 L110 145', 12) + ln('M-170 125 Q-140 108 -110 125 T-50 125 T10 125 T70 125 T130 125 L170 125', 14)}</g>` +
-    `<g class="br-talk-b">${ln('M-170 70 L170 70 M-170 185 L170 185', 20) + ln('M-110 70 L-110 185 M-40 70 L-40 185 M40 70 L40 185 M110 70 L110 185', 12) + ln('M-170 128 Q-145 165 -120 128 T-70 128 T-20 128 T30 128 T80 128 T130 128 L170 128', 14)}</g>` +
-    `<g class="br-talk-c">${ln('M-170 88 L170 88 M-170 165 L170 165', 20) + ln('M-110 88 L-110 165 M-40 88 L-40 165 M40 88 L40 165 M110 88 L110 165', 12) + ln('M-170 126 Q-130 98 -90 126 T-10 126 T70 126 T150 126 L170 126', 14)}</g>`,
+  // Talking (store, 2026-11-02: "I don't like how many lines for his mouth
+  // while he talks. Keep one mouth and have it squiggly like Knight Rider"):
+  // one voice-wave line, tallest in the middle and fading to flat at the
+  // ends, that pulses between three heights as he speaks.
+  talk: ['a', 'b', 'c'].map((f, i) => `<g class="br-talk-${f}">${ln(voiceWave([48, 92, 68][i], i * 1.3), 22)}</g>`).join(''),
   o: `<ellipse cx="0" cy="130" rx="42" ry="56" fill="none" stroke="${C.lime}" stroke-width="22"/>`,
   shock: `<path d="M-95 170 L-95 110 Q-95 50 0 50 Q95 50 95 110 L95 170 Z" fill="none" stroke="${C.lime}" stroke-width="24"/>`,
   think: ln('M-150 120 Q-80 70 -10 105', 24) + box(40, 100, 24, 24) + box(90, 100, 24, 24) + box(140, 100, 24, 24),
