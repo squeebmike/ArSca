@@ -65,6 +65,7 @@ import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from 
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
+import { runWebOrderNotify } from './scripts/web-order-notify.mjs';
 import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
@@ -19374,7 +19375,7 @@ export default {
     if (event?.cron === WHATNOT_SYNC_CRON) {
       const at = new Date(event.scheduledTime || Date.now());
       const sixHourRun = at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0;
-      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx)]);
+      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx), runScheduledWebOrderNotify(env)]);
       return;
     }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env), runScheduledFocEbayCheck(env, ctx)]);
@@ -19469,6 +19470,20 @@ async function focInternalPost(env, ctx, storeId, path, body) {
   FOC_INTERNAL_REQUESTS.add(req);
   const res = await routeRequest(req, env, ctx);
   return { res, data: await res.json().catch(() => ({})) };
+}
+// New paid website orders emailed to the store (scripts/web-order-notify.mjs),
+// checked every 10 minutes, each order once.
+async function runScheduledWebOrderNotify(env) {
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return null;
+  const out = await runWebOrderNotify({
+    db: async path => (await supabaseAdminFetch(env, path)).data || [],
+    kvGet: k => env.LBA_KV.get(k).catch(() => null),
+    kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 60 * 86400 }),
+    send: (to, subject, body) => sendEmail(env, to, subject, body),
+  });
+  const failed = out.filter(r => r.error);
+  if (out.length) await noteJobHealth(env, 'web-order-email', failed.length ? failed.length + ' order email(s) failed: ' + failed[0].error : '', { checked: out.length });
+  return out;
 }
 // Nightly eBay check (store, 2026-11-03: "a nightly eBay check" after the
 // 11/2 Lunar upload left multi-cover listings wrong): once a day, every open

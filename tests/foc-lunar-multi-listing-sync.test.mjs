@@ -86,7 +86,7 @@ assert.match(worker, /e\.code = \(txt\.match\(\/<ErrorCode>/);
   // The one-time run for the 11/2 Lunar cycle, on the 10-minute schedule, once.
   assert.match(worker, /\{ id: '2026-11-03-lunar-1102', storeId: '0f9dd4bc-42a7-487e-a972-2905d24513e9', cycleId: 'ac2bdebc-feb4-4248-a47a-6705784c7deb' \}/);
   assert.match(worker, /if \(prev\?\.done \|\| \(prev\?\.tries \|\| 0\) >= 3\) continue;/);
-  assert.match(worker, /runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\)\]\);/);
+  assert.match(worker, /runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\)/);
 }
 // eBay refusing a cover: "variation not found" means it's already off the
 // listing (marked 0); anything else is kept on the row to read.
