@@ -24,7 +24,7 @@ assert.equal(whatnotCategoryId({ categorySlug: 'other' }), null);
 const row = (over = {}) => ({ id: '11111111-1111-4111-8111-111111111111', status: 'in_stock', updated_at: 't1', data: { name: 'Charizard', sellOnWhatnot: true, quantity: 3, ...over } });
 const shape = r => ({ name: r.data.name, price: r.data.price ?? 12.5, categorySlug: r.data.slug || 'pokemon', photos: ['https://img.example/a.jpg', 'data:image/png;base64,xx'], set: 'Base Set', condition: 'NM', category: 'Pokemon' });
 let w = whatnotDesired(row(), shape(row()));
-assert.equal(w.qty, 3); assert.equal(w.price, 12.5); assert.equal(w.categoryId, '2');
+assert.equal(w.qty, 3); assert.equal(w.price, 13, 'whole dollars on Whatnot, rounded up'); assert.equal(whatnotDesired(row({ price: 5 }), shape(row({ price: 5 }))).price, 5); assert.equal(w.categoryId, '2');
 assert.deepEqual(w.media, [{ url: 'https://img.example/a.jpg' }], 'only real https photos');
 assert.equal(whatnotDesired(row({ sellOnWhatnot: false }), shape(row())).qty, 0, 'unchecked: 0 on Whatnot');
 assert.equal(whatnotDesired(row({ status: 'sold' }), shape(row())).qty, 0, 'sold: 0');
@@ -68,10 +68,10 @@ assert.deepEqual(create.category, { id: '2' });
 assert.deepEqual(create.dimension_profile, WHATNOT_PROFILES.card, 'a simple card profile is made the first time');
 assert.equal(profiles.card, '9001', 'and reused after');
 assert.deepEqual(wn.calls.find(c => c.path.startsWith('/merchandising')).body, { transaction_type: 'buy_it_now', reserve_for_live: false });
-assert.deepEqual(wn.calls.find(c => c.method === 'PATCH').body.variants[0].pricing, { buy_it_now: { price: { amount: '12.50', currency: 'USD' } } });
+assert.deepEqual(wn.calls.find(c => c.method === 'PATCH').body.variants[0].pricing, { buy_it_now: { price: { amount: '13.00', currency: 'USD' } } });
 assert.equal(wn.products.get('p1').qty, 3);
 let link = r.link;
-assert.equal(link.productId, 'p1'); assert.equal(link.qty, 3); assert.equal(link.price, 12.5);
+assert.equal(link.productId, 'p1'); assert.equal(link.qty, 3); assert.equal(link.price, 13);
 
 // Published only after the price and quantity are set (Whatnot publishes a
 // product once it has both); a draft is published on a later run.
@@ -387,7 +387,7 @@ assert.equal(r.link.error, 'title: String too long');
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /const WHATNOT_SYNC_CRON = '\*\/10 \* \* \* \*';/);
-assert.match(worker, /if \(event\?\.cron === WHATNOT_SYNC_CRON\) \{[\s\S]{0,300}await Promise\.allSettled\(\[runScheduledWhatnotSync\(env, ctx\), sixHourRun \? null : runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\), runScheduledWebOrderNotify\(env\)\]\);/);
+assert.match(worker, /if \(event\?\.cron === WHATNOT_SYNC_CRON\) \{[\s\S]{0,300}await Promise\.allSettled\(\[runScheduledWhatnotSync\(env, ctx\), sixHourRun \? null : runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\), runScheduledWebOrderNotify\(env\), runWhatnotDuplicateCleanup\(env, ctx\)\]\);/);
 assert.match(fs.readFileSync('wrangler.deploy.jsonc', 'utf8'), /"\*\/10 \* \* \* \*"/, 'the 10-minute trigger is deployed');
 assert.match(worker, /handleWhatnotWebhook\(request, env, \{ json, onEvent: record => ctx\?\.waitUntil\?\.\(handleWhatnotEventRecord\(env, ctx, record\)\), background: /);
 assert.match(worker, /focInternalPost\(env, ctx, storeId, '\/inventory\/record-external-sale', body\)/);

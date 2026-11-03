@@ -48,7 +48,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13592,7 +13592,9 @@ async function routeRequest(request, env, ctx) {
       if (storeId !== whatnotStoreId(env)) return json({ ok: false, error: 'Whatnot is connected to a different store' }, 403);
       if (!env.WHATNOT_API_KEY) return json({ ok: false, error: 'WHATNOT_API_KEY is not set' }, 503);
       const body = await request.json().catch(() => ({}));
-      const result = await runWhatnotSyncForStore(env, ctx, storeId, { force: body.force === true, orders: body.orders === true });
+      // A dashboard save pushes price/quantity now; new listings wait for the
+      // scheduled run (two runs at once listed comics twice, 2026-11-03).
+      const result = await runWhatnotSyncForStore(env, ctx, storeId, { force: body.force === true, orders: body.orders === true, allowCreate: false });
       return json({ ok: true, ...result });
     }
     // POST /whatnot/apply-costs -- past Whatnot-only sales still at $0 cost
@@ -19375,7 +19377,7 @@ export default {
     if (event?.cron === WHATNOT_SYNC_CRON) {
       const at = new Date(event.scheduledTime || Date.now());
       const sixHourRun = at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0;
-      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx), runScheduledWebOrderNotify(env)]);
+      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx), runScheduledWebOrderNotify(env), runWhatnotDuplicateCleanup(env, ctx)]);
       return;
     }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env), runScheduledFocEbayCheck(env, ctx)]);
@@ -19470,6 +19472,26 @@ async function focInternalPost(env, ctx, storeId, path, body) {
   FOC_INTERNAL_REQUESTS.add(req);
   const res = await routeRequest(req, env, ctx);
   return { res, data: await res.json().catch(() => ({})) };
+}
+// Whatnot duplicates (store, 2026-11-03: "Why's it adding 2 of each?!"):
+// after the fix, the 10-minute run removes extra copies of any item until a
+// run finds none, then stops (up to 6 runs). Result kept in KV
+// (whatnot-dup-cleanup:<store>) and in server_job_runs.
+async function runWhatnotDuplicateCleanup(env, ctx) {
+  if (!env.LBA_KV || !env.WHATNOT_API_KEY) return null;
+  const storeId = whatnotStoreId(env);
+  if (!storeId) return null;
+  const key = 'whatnot-dup-cleanup:' + storeId;
+  const state = (await env.LBA_KV.get(key, 'json').catch(() => null)) || { runs: [] };
+  if (state.done || state.runs.length >= 6) return null;
+  let r;
+  try { r = await removeDuplicateWhatnotListings(storeId, whatnotDeps(env, ctx, storeId)); }
+  catch (e) { r = { error: e.message }; }
+  state.runs.push({ at: new Date().toISOString(), ...r, failed: (r.failed || []).slice(0, 20) });
+  if (!r.error && r.duplicates === 0) state.done = true;
+  await env.LBA_KV.put(key, JSON.stringify(state), { expirationTtl: 30 * 86400 });
+  await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-dup-cleanup', store_id: storeId, started_at: new Date().toISOString(), finished_at: new Date().toISOString(), result: r }) }).catch(() => null);
+  return r;
 }
 // New paid website orders emailed to the store (scripts/web-order-notify.mjs),
 // checked every 10 minutes, each order once.
@@ -20001,10 +20023,10 @@ async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
   return data?.[0]?.receipt_settings || {};
 }
-async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 40 } = {}) {
+async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 40, allowCreate = true } = {}) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   const out = { at: new Date().toISOString() };
-  try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit }); }
+  try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit, allowCreate }); }
   catch (e) { out.listingsError = e.message; }
   if (orders) {
     const feeSettings = await whatnotFeeSettings(env, storeId);

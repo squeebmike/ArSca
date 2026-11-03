@@ -99,7 +99,10 @@ export function whatnotDesired(row, item, { autoTitles = true } = {}) {
   const wanted = d.sellOnWhatnot === true;
   const sellable = wanted && !['sold', 'archived', 'deleted', 'presale'].includes(status) && !item.awaitingReceipt && !item.dropship;
   const qty = sellable ? Math.max(0, Math.min(9999, Math.floor(Number(d.quantity ?? d.qty ?? 1) || 0))) : 0;
-  const price = Math.round((Number(item.price) || 0) * 100) / 100;
+  // Whatnot takes whole dollars only ("amount must be a whole number of
+  // USD", 2026-11-03): rounded UP so nothing sells under the dashboard price
+  // ($4.99 -> $5). The dashboard keeps its own price.
+  const price = Math.ceil(Math.round((Number(item.price) || 0) * 100) / 100 - 1e-9);
   const details = [item.set, item.year, item.cardNumber ? '#' + item.cardNumber : '', item.variant, item.condition].filter(Boolean).join(' · ');
   return {
     wanted,
@@ -127,7 +130,7 @@ export function whatnotContentKeys(want) {
 // link: what we last did on Whatnot for it ({productId, variantId, price,
 // qty, error, url}) or null. Returns the new link (null = nothing to keep)
 // and whether to try again on the next run.
-export async function syncWhatnotItem(api, row, item, link, { profileId, saveProfileId, newKey = () => crypto.randomUUID(), autoTitles = true } = {}) {
+export async function syncWhatnotItem(api, row, item, link, { profileId, saveProfileId, newKey = () => crypto.randomUUID(), autoTitles = true, allowCreate = true, claim = null } = {}) {
   const want = whatnotDesired(row, item, { autoTitles: autoTitles !== false });
   const base = { ...(link || {}), name: want.title };
   const fail = (r, why) => ({ link: { ...base, error: why || whatnotErrorText(r), errorAt: new Date().toISOString() }, retry: retryable(r), action: 'error' });
@@ -135,6 +138,12 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
 
   if (!productId) {
     if (want.qty <= 0) return { link: link?.error ? null : link, retry: false, action: 'none' };
+    // Store, 2026-11-03: two syncs at once (the 10-minute run and one a
+    // dashboard save started) each created the same comics -- two of each on
+    // Whatnot. New listings are made only by the scheduled run, and each one
+    // is claimed first so a second run can't make it again.
+    if (!allowCreate) return { link, retry: true, action: 'none' };
+    if (claim && !(await claim())) return { link, retry: true, action: 'none' };
     if (!want.categoryId) return { link: { ...base, error: 'No Whatnot category for "' + (item.category || 'this category') + '"', errorAt: new Date().toISOString() }, retry: false, action: 'error' };
     if (!(want.price > 0)) return { link: { ...base, error: 'No price', errorAt: new Date().toISOString() }, retry: false, action: 'error' };
     // Store, 2026-11-03: 261 comics put on Whatnot, 1 listed -- the size
@@ -217,12 +226,13 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
 // deps: db(path, opts), kvGet(key), kvPut(key, value), api, shape(row).
 // Only items whose updated_at moved since the last run are looked at, so a
 // quiet run is one small query.
-export async function runWhatnotListingSync(storeId, deps, { limit = 40, force = false } = {}) {
+export async function runWhatnotListingSync(storeId, deps, { limit = 40, force = false, allowCreate = true } = {}) {
   const s = encodeURIComponent(storeId);
   const { data: index } = await deps.db(`inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&select=id,updated_at&limit=5000`);
   // -v2 (2026-11-03): one fresh pass, so the comics refused for the size
   // profile are listed (unchanged items cost no Whatnot calls).
-  const seenKey = 'whatnot-sync-seen-v2:' + storeId;
+  // -v3: one more fresh pass so items refused for a cents price are listed.
+  const seenKey = 'whatnot-sync-seen-v3:' + storeId;
   const seen = (!force && await deps.kvGet(seenKey)) || {};
   const linkedState = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
   const linkedIds = new Set(Object.keys(linkedState));
@@ -252,6 +262,16 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 40, force =
     try {
       const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, {
         autoTitles: deps.listingSettings?.autoTitles !== false,
+        allowCreate,
+        // "Creating" mark: a run that finds one younger than 10 minutes
+        // leaves the item alone.
+        claim: async () => {
+          const ck = `whatnot-creating:${storeId}:${id}`;
+          const c = await deps.kvGet(ck);
+          if (c && Date.now() - Date.parse(c.at) < 10 * 60 * 1000) return false;
+          await deps.kvPut(ck, { at: new Date().toISOString() });
+          return true;
+        },
         profileId: kind => profileIds[kind] || '',
         saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); },
       });
@@ -984,7 +1004,7 @@ export async function whatnotAllProducts(api, { pages = 20 } = {}) {
 export async function linkWhatnotListings(pairs, deps) {
   const storeId = deps.storeId;
   const linked = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
-  const seenKey = 'whatnot-sync-seen-v2:' + storeId;
+  const seenKey = 'whatnot-sync-seen-v3:' + storeId;
   const seen = (await deps.kvGet(seenKey)) || {};
   const rows = new Map((await deps.rows(pairs.map(p => p.itemId))).map(r => [r.id, r]));
   const results = [];
@@ -1081,6 +1101,46 @@ export async function pullWhatnotEdits(storeId, deps, { limit = PULL_PER_RUN, no
         if (link.pendingDrop?.qty !== plan.pendingDrop.qty) { link.pendingDrop = plan.pendingDrop; await deps.kvPut(linkKey, link); }
       } else if (link.pendingDrop) { delete link.pendingDrop; await deps.kvPut(linkKey, link); } // KV written only on a change
     } catch (e) { out.errors.push({ id, error: e.message }); }
+  }
+  return out;
+}
+
+// --- Duplicate listings (one dashboard item, two Whatnot products) ----------
+// Store, 2026-11-03: "Why's it adding 2 of each?!" -- two syncs created the
+// same comics at once. Every listing the sync makes carries the item's id
+// (external_id), so copies are found by it: the one the dashboard tracks
+// (its link) stays; each extra is deleted, or set to 0 if Whatnot won't
+// delete it, so it can't be bought.
+export function findDuplicateListings(products = [], links = {}) {
+  const byItem = new Map();
+  for (const p of products) {
+    const ext = String(p.external_id || '');
+    if (!isUuid(ext)) continue;
+    if (!byItem.has(ext)) byItem.set(ext, []);
+    byItem.get(ext).push(p);
+  }
+  const extras = [];
+  for (const [itemId, list] of byItem) {
+    if (list.length < 2) continue;
+    const keepId = links[itemId]?.productId && list.some(p => String(p.id) === String(links[itemId].productId)) ? String(links[itemId].productId) : String(list[0].id);
+    for (const p of list) if (String(p.id) !== keepId) extras.push({ itemId, productId: String(p.id), keep: keepId, title: p.title || '' });
+  }
+  return extras;
+}
+export async function removeDuplicateWhatnotListings(storeId, deps, { max = 300 } = {}) {
+  const { products } = await whatnotAllProducts(deps.api, { pages: 20 });
+  const ids = [...new Set(products.map(p => String(p.external_id || '')).filter(isUuid))];
+  const links = {};
+  for (const id of ids) { const l = await deps.kvGet(`whatnot-link:${storeId}:${id}`); if (l) links[id] = l; }
+  const extras = findDuplicateListings(products, links).slice(0, max);
+  const out = { listings: products.length, duplicates: extras.length, removed: 0, zeroed: 0, failed: [] };
+  for (const x of extras) {
+    const del = await deps.api('DELETE', `/products/${encodeURIComponent(x.productId)}`);
+    if (del.ok || del.status === 404) { out.removed++; continue; }
+    const vs = await deps.api('GET', `/products/${encodeURIComponent(x.productId)}/variants?limit=5`);
+    const items = (vs.data?.data || []).map(v => ({ variant_id: v.id, quantity: 0, idempotency_key: crypto.randomUUID() }));
+    const set = items.length ? await deps.api('POST', '/inventory/set', { items }) : { ok: false };
+    if (set.ok) out.zeroed++; else out.failed.push({ ...x, error: whatnotErrorText(del) + ' / ' + whatnotErrorText(set) });
   }
   return out;
 }
