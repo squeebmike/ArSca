@@ -133,18 +133,28 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
     if (want.qty <= 0) return { link: link?.error ? null : link, retry: false, action: 'none' };
     if (!want.categoryId) return { link: { ...base, error: 'No Whatnot category for "' + (item.category || 'this category') + '"', errorAt: new Date().toISOString() }, retry: false, action: 'error' };
     if (!(want.price > 0)) return { link: { ...base, error: 'No price', errorAt: new Date().toISOString() }, retry: false, action: 'error' };
-    const knownProfile = await profileId?.(want.profileKind);
+    // Store, 2026-11-03: 261 comics put on Whatnot, 1 listed -- the size
+    // profile id Whatnot returned for the first one was then refused for the
+    // rest ("Dimension profile not found"). A refused saved profile is
+    // dropped for good ('inline'): every listing sends its size spelled out.
+    const savedProfile = await profileId?.(want.profileKind);
+    const knownProfile = savedProfile && savedProfile !== 'inline' ? savedProfile : '';
     const product = {
       title: want.title, description: want.description, external_id: row.id,
       category: { id: want.categoryId }, media: want.media, attributes: want.attributes,
       dimension_profile: knownProfile ? { id: knownProfile } : WHATNOT_PROFILES[want.profileKind],
     };
     let created = await api('POST', '/products', product);
+    if (!created.ok && knownProfile && /dimension profile/i.test(whatnotErrorText(created))) {
+      await saveProfileId?.(want.profileKind, 'inline');
+      product.dimension_profile = WHATNOT_PROFILES[want.profileKind];
+      created = await api('POST', '/products', product);
+    }
     // Item details are extra: if Whatnot turns one down, list it without them.
     if (!created.ok && created.status === 422 && want.attributes.length) { created = await api('POST', '/products', { ...product, attributes: [] }); base.detailsNote = 'Item details not accepted by Whatnot'; }
     if (!created.ok || !created.data?.id) return fail(created);
     productId = created.data.id;
-    if (!knownProfile && created.data.dimension_profile?.id) await saveProfileId?.(want.profileKind, String(created.data.dimension_profile.id));
+    if (!savedProfile && created.data.dimension_profile?.id) await saveProfileId?.(want.profileKind, String(created.data.dimension_profile.id));
     const variants = await api('GET', `/products/${encodeURIComponent(productId)}/variants?limit=5`);
     variantId = variants.data?.data?.[0]?.id || '';
     if (!variantId) return fail(variants, 'Whatnot made the product but no variant came back');
@@ -203,10 +213,12 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
 // deps: db(path, opts), kvGet(key), kvPut(key, value), api, shape(row).
 // Only items whose updated_at moved since the last run are looked at, so a
 // quiet run is one small query.
-export async function runWhatnotListingSync(storeId, deps, { limit = 25, force = false } = {}) {
+export async function runWhatnotListingSync(storeId, deps, { limit = 40, force = false } = {}) {
   const s = encodeURIComponent(storeId);
   const { data: index } = await deps.db(`inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&select=id,updated_at&limit=5000`);
-  const seenKey = 'whatnot-sync-seen:' + storeId;
+  // -v2 (2026-11-03): one fresh pass, so the comics refused for the size
+  // profile are listed (unchanged items cost no Whatnot calls).
+  const seenKey = 'whatnot-sync-seen-v2:' + storeId;
   const seen = (!force && await deps.kvGet(seenKey)) || {};
   const linkedState = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
   const linkedIds = new Set(Object.keys(linkedState));
@@ -968,7 +980,7 @@ export async function whatnotAllProducts(api, { pages = 20 } = {}) {
 export async function linkWhatnotListings(pairs, deps) {
   const storeId = deps.storeId;
   const linked = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
-  const seenKey = 'whatnot-sync-seen:' + storeId;
+  const seenKey = 'whatnot-sync-seen-v2:' + storeId;
   const seen = (await deps.kvGet(seenKey)) || {};
   const rows = new Map((await deps.rows(pairs.map(p => p.itemId))).map(r => [r.id, r]));
   const results = [];
