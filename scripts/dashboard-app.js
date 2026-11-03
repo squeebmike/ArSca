@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.03.2-sync-three';
+const APP_VERSION = '2026.11.03.3-whatnot-filter';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17688,6 +17688,12 @@ function inventoryMatchesCategory(i, category){
 function inventoryMatchesListing(i, listing){
   if(listing === 'all') return true;
   if(i.status !== 'in_stock') return false; // listing state was always in-stock-only, same as before
+  // Store, 2026-11-03: "how to select the comics in the dashboard that aren't
+  // on Whatnot?" ON WHATNOT = kept 1:1 by the sync (WN SYNC). NOT ON WHATNOT
+  // leaves out items already up from an old CSV (the 📺 WHATNOT mark) -- those
+  // are linked with LINK OLD WHATNOT LISTINGS, never listed a second time.
+  if(listing === 'on_whatnot') return i.sellOnWhatnot === true;
+  if(listing === 'not_on_whatnot') return i.sellOnWhatnot !== true && !i.whatnotListedAt;
   return listing === 'listed_online' ? inventoryIsListed(i) : !inventoryIsListed(i);
 }
 function inventoryMatchesGrading(i, grading){
