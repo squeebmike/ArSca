@@ -19373,7 +19373,7 @@ export default {
     if (event?.cron === WHATNOT_SYNC_CRON) {
       const at = new Date(event.scheduledTime || Date.now());
       const sixHourRun = at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0;
-      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env)]);
+      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx)]);
       return;
     }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]);
@@ -19468,6 +19468,30 @@ async function focInternalPost(env, ctx, storeId, path, body) {
   FOC_INTERNAL_REQUESTS.add(req);
   const res = await routeRequest(req, env, ctx);
   return { res, data: await res.json().catch(() => ({})) };
+}
+// One-time MATCH EBAY TO ORDER runs (store, 2026-11-03, away from the PC:
+// "can you fix it for me?"). The 11/2 Lunar upload hit the multi-cover
+// listing bugs fixed in #707; this runs that cycle's eBay step again from
+// the saved order, once, on the 10-minute schedule after the deploy. Each
+// result is kept in KV so it never runs twice (up to 3 tries on errors).
+const FOC_EBAY_MATCH_ONCE = [
+  { id: '2026-11-03-lunar-1102', storeId: '0f9dd4bc-42a7-487e-a972-2905d24513e9', cycleId: 'ac2bdebc-feb4-4248-a47a-6705784c7deb' },
+];
+async function runFocEbayMatchOnce(env, ctx, { jobs = FOC_EBAY_MATCH_ONCE, post = focInternalPost } = {}) {
+  const out = [];
+  for (const job of jobs) {
+    const key = 'foc-ebay-match-once:' + job.id;
+    const prev = await env.LBA_KV.get(key, 'json').catch(() => null);
+    if (prev?.done || (prev?.tries || 0) >= 3) continue;
+    let result;
+    try {
+      const { res, data } = await post(env, ctx, job.storeId, '/foc/admin/ebay-match-order', { cycleId: job.cycleId });
+      result = res.ok && data?.ok ? { done: true, at: new Date().toISOString(), ...data } : { tries: (prev?.tries || 0) + 1, error: data?.error || String(res.status) };
+    } catch (e) { result = { tries: (prev?.tries || 0) + 1, error: e.message }; }
+    await env.LBA_KV.put(key, JSON.stringify(result), { expirationTtl: 60 * 60 * 24 * 60 });
+    out.push({ id: job.id, ...result });
+  }
+  return out;
 }
 // Store ask: "have no cover art auto update somehow?" -- every 6 hours,
 // covers listed with the coming-soon picture whose real art has come in
