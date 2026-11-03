@@ -54,7 +54,7 @@ assert.ok(rows.indexOf(by['p-asm']) < rows.indexOf(by['p-none']), 'ticked matche
 
 // Linking.
 {
-  const kv = { 'whatnot-linked:s1': { [ID(9)]: 'ok' }, 'whatnot-sync-seen:s1': { [ID(1)]: 'old', [ID(9)]: 't' } };
+  const kv = { 'whatnot-linked:s1': { [ID(9)]: 'ok' }, 'whatnot-sync-seen-v2:s1': { [ID(1)]: 'old', [ID(9)]: 't' } };
   const calls = [], ticked = [];
   const api = async (method, path, body) => {
     calls.push([method, path, body]);
@@ -83,8 +83,8 @@ assert.ok(rows.indexOf(by['p-asm']) < rows.indexOf(by['p-none']), 'ticked matche
   assert.ok(link.contentKey && 'mediaKey' in link, 'their title and photos are kept (no content push)');
   assert.deepEqual(ticked, [ID(1)], 'SELL ON WHATNOT is ticked on the linked item');
   assert.equal(kv['whatnot-linked:s1'][ID(1)], 'ok');
-  assert.ok(!(ID(1) in kv['whatnot-sync-seen:s1']), 'the next sync run picks it up');
-  assert.equal(kv['whatnot-sync-seen:s1'][ID(9)], 't');
+  assert.ok(!(ID(1) in kv['whatnot-sync-seen-v2:s1']), 'the next sync run picks it up');
+  assert.equal(kv['whatnot-sync-seen-v2:s1'][ID(9)], 't');
   assert.ok(!calls.some(c => c[0] === 'POST' && c[1] === '/products'), 'never makes a new listing');
 }
 
