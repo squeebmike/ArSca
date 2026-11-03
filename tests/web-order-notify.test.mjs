@@ -38,6 +38,6 @@ out = await runWebOrderNotify(fail, { now: now + 1800000 });
 assert.match(out[0].error, /not configured/); assert.equal(kv['web-order-notified:o-3'], undefined);
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /runFocEbayMatchOnce\(env, ctx\), runScheduledWebOrderNotify\(env\)\]\);/, 'every 10 minutes');
+assert.match(worker, /runFocEbayMatchOnce\(env, ctx\), runScheduledWebOrderNotify\(env\), runWhatnotDuplicateCleanup\(env, ctx\)\]\);/, 'every 10 minutes');
 assert.match(fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8'), /scripts\/web-order-notify\.mjs/);
 console.log('Website order email to hintline: paid only, once each, contents, retry on failure, wiring passed');
