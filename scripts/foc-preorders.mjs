@@ -2850,6 +2850,24 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
 // covers left out of the real order get their eBay listings ended, and
 // covers that were ordered get their live listing's buyable quantity
 // adjusted to match reality, in this one upload.
+// MATCH EBAY TO ORDER (store, 2026-11-03, away from the PC: "can you fix
+// it for me?"): the same eBay step an order upload runs, from the order
+// already saved on the cycle (each cover's secured_quantity) -- no file. A
+// cycle with nothing ordered yet is refused, so it can never end every
+// listing before the order is in.
+async function adminMatchEbayToOrder(request,env,deps){
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
+  const limited=await deps.readJsonWithLimit(request,8*1024);if(limited.error)return limited.error;const body=limited.data||{};
+  const storeId=text(body.storeId,80);const cycleId=text(body.cycleId,80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager']);if(auth.error)return auth.error;
+  if(!cycleId)return deps.json({ok:false,error:'cycleId is required'},400);
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,secured_quantity`);
+  const finalQtyBySku=new Map((skus||[]).filter(k=>Number(k.secured_quantity)>0).map(k=>[k.id,Number(k.secured_quantity)]));
+  if(!finalQtyBySku.size)return deps.json({ok:false,error:'No order is saved for this cycle yet -- upload the Lunar/PRH order first.'},400);
+  const {ebayWithdrawnSkuIds,ebayQuantityUpdatedSkuIds}=await syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBySku);
+  return deps.json({ok:true,orderedCovers:finalQtyBySku.size,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length});
+}
+
 async function adminImportPrhCart(request,env,deps){
   const db=(path,options)=>deps.supabaseAdminFetch(env,path,options);
   if(request.method!=='POST')return deps.json({ok:false,error:'POST only'},405);
@@ -4721,6 +4739,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/end-ebay-listings'&&request.method==='POST')return adminEndFocEbayListings(request,env,deps);
   if(path==='/foc/admin/end-sold-out-ebay-presales'&&request.method==='POST')return endSoldOutFocPresales(request,env,deps);
   if(path==='/foc/admin/prh-cart-import'&&request.method==='POST')return adminImportPrhCart(request,env,deps);
+  if(path==='/foc/admin/ebay-match-order'&&request.method==='POST')return adminMatchEbayToOrder(request,env,deps);
   if(path==='/foc/admin/orphaned-ebay-listings'&&request.method==='GET')return adminScanOrphanedEbayListings(request,env,deps,url);
   if(path==='/foc/admin/orphaned-ebay-listings/end'&&request.method==='POST')return adminEndOrphanedEbayListings(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);

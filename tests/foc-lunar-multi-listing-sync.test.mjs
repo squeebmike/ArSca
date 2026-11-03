@@ -62,4 +62,30 @@ assert.doesNotMatch(rv, /ReviseFixedPriceItem/);
 const end = worker.slice(worker.indexOf('async function endEbayListingTrading('), worker.indexOf('async function endEbayListingTrading(') + 700);
 assert.match(end, /e\.code === '1047'/);
 assert.match(worker, /e\.code = \(txt\.match\(\/<ErrorCode>/);
+
+// MATCH EBAY TO ORDER: the same eBay step from the order already saved (no
+// file) -- and refused for a cycle with nothing ordered yet.
+{
+  for (const r of rows) { const q = r.id.endsWith('j') || r.id.endsWith('c') ? 1 : 10; r.data = { ...r.data, qty: q, quantity: q, focPresaleOriginalQty: q }; delete r.data.ebayWithdrawnAt; }
+  calls.length = 0; ended.clear();
+  const saved = { 'rh-b': 3, 'rh-j': 1 };
+  const db0 = deps.supabaseAdminFetch;
+  const run = (secured) => handleFocRequest({ method: 'POST', headers: { get: () => null }, json: async () => ({ storeId: STORE, cycleId: CYCLE }) }, {}, new URL('https://x/foc/admin/ebay-match-order'),
+    { ...deps, supabaseAdminFetch: async (env, path, o) => path.startsWith('comic_skus?cycle_id=eq.' + CYCLE) ? { data: skus.map(k => ({ id: k.id, secured_quantity: secured[k.id] || 0 })) } : db0(env, path, o) });
+  const none = await run({});
+  assert.equal(none.status, 400, 'nothing ordered yet: refused');
+  assert.equal(calls.length, 0, 'and nothing touched on eBay');
+  const r = await run(saved);
+  assert.equal(r.data.ok, true, JSON.stringify(r.data));
+  assert.deepEqual(calls.filter(c => c[1] === 'RH'), [['revise', 'RH', 'v-0', 0], ['revise', 'RH', 'v-1', 3]]);
+  assert.deepEqual(calls.filter(c => c[1] === 'TC'), [['end', 'TC']]);
+  assert.equal(r.data.ebayWithdrawnCount, 4); assert.equal(r.data.ebayQuantityUpdatedCount, 1); assert.equal(r.data.orderedCovers, 2);
+  const ui = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
+  assert.match(ui, /onclick="matchFocEbayToOrder\(\)"[^>]*>MATCH EBAY TO ORDER<\/button>/);
+  assert.match(ui, /api\('\/foc\/admin\/ebay-match-order'/);
+  // The one-time run for the 11/2 Lunar cycle, on the 10-minute schedule, once.
+  assert.match(worker, /\{ id: '2026-11-03-lunar-1102', storeId: '0f9dd4bc-42a7-487e-a972-2905d24513e9', cycleId: 'ac2bdebc-feb4-4248-a47a-6705784c7deb' \}/);
+  assert.match(worker, /if \(prev\?\.done \|\| \(prev\?\.tries \|\| 0\) >= 3\) continue;/);
+  assert.match(worker, /runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\)\]\);/);
+}
 console.log('Lunar/PRH order -> eBay multi-cover listings: per-cover zero/quantity, end once, already-ended passed');

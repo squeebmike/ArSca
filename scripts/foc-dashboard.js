@@ -1644,6 +1644,7 @@ function renderFocReview(){
     '<div style="font:900 20px/1.1 \'Orbitron\',monospace;color:var(--text);margin-top:10px">Final FOC Review · '+esc(displayDate(c.foc_date))+'</div>'+
     '<div class="foc-stats" style="margin-top:12px"><div class="foc-stat"><b>'+regular.length+'</b><span>SKUs</span></div><div class="foc-stat"><b>'+totalUnits+'</b><span>Total Units</span></div><div class="foc-stat"><b>$'+(estCents/100).toFixed(2)+'</b><span>Est. Wholesale</span></div><div class="foc-stat"><b>'+totalWebsite+'</b><span>Website Presold</span></div><div class="foc-stat"><b>'+totalEbay+'</b><span>eBay Presold</span></div><div class="foc-stat"><b>'+totalStore+'</b><span>Whatnot/Store</span></div><div class="foc-stat"><b>'+qualifiedCount+' / '+incentivesAll.length+'</b><span>Incentives Qualified</span></div></div>'+
     '<label style="display:block;margin:12px 0;font:12px var(--font-mono)"><input type="checkbox" id="foc-import-website-only"> Website-only order import — keep every eBay listing unchanged</label>'+
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px"><button class="hbtn" style="color:var(--g)" onclick="matchFocEbayToOrder()" title="Sets every eBay presale listing in this cycle to the order already saved here -- no file needed">MATCH EBAY TO ORDER</button><span style="font:10px var(--font-mono);color:var(--dim)">Uses the order already uploaded: ordered covers set to what\'s left to sell, the rest ended.</span></div>'+
     '<div id="foc-review-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px">Checking submission status…</div>'+
     '<div id="foc-prh-cart-result"></div>'+
     '<div id="foc-pull-needs"></div>'+
@@ -2684,6 +2685,18 @@ async function handleFocPrhCartImportFile(event){
     if(resultHostAfterRefresh)resultHostAfterRefresh.innerHTML=focPrhCartResultHtml(d);
   }catch(e){if(status)status.textContent='';toast_dash('Could not import the order: '+e.message);}
 }
+// MATCH EBAY TO ORDER: the order upload's eBay step again, from the order
+// already saved on this cycle (works from a phone -- no file).
+async function matchFocEbayToOrder(){
+  if(!state.cycle)return;
+  if(!confirm('Set every eBay presale listing in this cycle to match the order saved here? Covers you didn\'t order are taken off eBay.'))return;
+  try{
+    var d=await api('/foc/admin/ebay-match-order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),cycleId:state.cycle.id})});
+    toast_dash('eBay matched to the order: '+d.ebayQuantityUpdatedCount+' cover'+(d.ebayQuantityUpdatedCount===1?'':'s')+' updated, '+d.ebayWithdrawnCount+' taken off');
+    await openCycle(state.cycle.id);renderFocReview();
+  }catch(e){toast_dash('Could not match eBay: '+e.message);}
+}
+window.matchFocEbayToOrder=matchFocEbayToOrder;
 function focPrhCartResultHtml(d){
   var parts=['<div class="panel" style="margin-top:10px;padding:12px 16px">'+
     '<div style="font:900 11px \'Orbitron\',monospace;color:var(--g);letter-spacing:1px;margin-bottom:6px">'+esc(((state.cycle&&state.cycle.distributor)||'PRH').toUpperCase())+' ORDER IMPORTED</div>'+
