@@ -1,0 +1,65 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { handleFocRequest } from '../scripts/foc-preorders.mjs';
+
+// Store, 2026-11-03: "Lunar didn't put quantity of Robin Hood books we didn't
+// order to 0. With the multi listing. We ordered some." The Lunar upload set
+// the ordered counts, but on eBay multi-cover (Trading API) listings:
+//  - a listing with some covers ordered kept every cover at 10 (the per-cover
+//    revise failed), and
+//  - a listing with no covers ordered was ended for the first cover, then
+//    every other cover tried to end it again, failed, and stayed at 10.
+const CYCLE = 'cyc-1', STORE = 'st';
+const sku = (id, upc) => ({ id, upc, distributor_sku: 'D-' + id, title: id, variant_label: id });
+const skus = [sku('rh-a', '111'), sku('rh-b', '112'), sku('rh-j', '113'), sku('tc-a', '211'), sku('tc-b', '212'), sku('tc-c', '213')];
+const row = (id, skuId, listing, qty, n) => ({ id, status: 'presale', data: { source: 'foc_presale', focCycleId: CYCLE, focSkuId: skuId, ebayApiSystem: 'trading', ebayListingId: listing, ebaySku: 'v-' + n, ebayInventoryItemGroupKey: listing, qty, quantity: qty, focPresaleOriginalQty: qty } });
+const rows = [
+  row('i-rh-a', 'rh-a', 'RH', 10, 0), row('i-rh-b', 'rh-b', 'RH', 10, 1), row('i-rh-j', 'rh-j', 'RH', 1, 2),
+  row('i-tc-a', 'tc-a', 'TC', 10, 0), row('i-tc-b', 'tc-b', 'TC', 10, 1), row('i-tc-c', 'tc-c', 'TC', 1, 2),
+];
+const calls = [];
+const ended = new Set();
+const deps = {
+  json: (data, status = 200) => ({ status, data }),
+  readJsonWithLimit: async r => ({ data: await r.json() }),
+  requireStoreUser: async () => ({ user: { id: 'u1' } }),
+  getEbayUserAccessToken: async () => 'tok',
+  withdrawEbayOffer: async () => { throw new Error('no offer ids on Trading listings'); },
+  withdrawEbayOfferGroup: async () => {},
+  ebayReviseOfferQuantity: async () => {},
+  ebayReviseVariationQuantityTrading: async (tok, listing, vsku, q) => { calls.push(['revise', listing, vsku, q]); },
+  // eBay refuses to end a listing twice.
+  endEbayListingTrading: async (tok, listing) => { calls.push(['end', listing]); if (ended.has(listing)) throw new Error('EndFixedPriceItem failed: already closed'); ended.add(listing); },
+  supabaseAdminFetch: async (env, path, options = {}) => {
+    if (path.startsWith('comic_skus?cycle_id=eq.' + CYCLE)) return { data: skus };
+    if (options.method === 'PATCH' && path.startsWith('comic_skus?')) return { data: [] };
+    if (options.method === 'PATCH' && path.startsWith('inventory_items?id=eq.')) {
+      const id = path.match(/id=eq\.([^&]+)/)[1]; const r = rows.find(x => x.id === id); Object.assign(r, JSON.parse(options.body)); return { data: [] };
+    }
+    if (path.startsWith('inventory_items?')) return { data: /offset=0\b/.test(path) || !/offset=/.test(path) ? rows.filter(r => /status=in\.\(presale/.test(path) ? r.status === 'presale' : true) : [] };
+    return { data: [] };
+  },
+};
+// Lunar order: Robin Hood B x3 and J x1 ordered, A not; no Thundercats at all.
+const order = [{ code: 'D-rh-b', upc: '112', title: 'RH B', quantity: 3 }, { code: 'D-rh-j', upc: '113', title: 'RH J', quantity: 1 }];
+const res = await handleFocRequest({ method: 'POST', headers: { get: () => null }, json: async () => ({ storeId: STORE, cycleId: CYCLE, rows: order }) }, {}, new URL('https://x/foc/admin/prh-cart-import'), deps);
+assert.equal(res.data.ok, true, JSON.stringify(res.data));
+const qty = id => rows.find(r => r.id === id).data.qty;
+// Robin Hood: the unordered cover goes to 0 on its own variation, ordered B to 3.
+assert.deepEqual(calls.filter(c => c[1] === 'RH'), [['revise', 'RH', 'v-0', 0], ['revise', 'RH', 'v-1', 3]], 'per-cover revises on the multi-listing; J already right');
+assert.equal(qty('i-rh-a'), 0); assert.equal(qty('i-rh-b'), 3); assert.equal(qty('i-rh-j'), 1);
+// Thundercats: none ordered -- the listing is ended once and every cover marked 0.
+assert.deepEqual(calls.filter(c => c[1] === 'TC'), [['end', 'TC']], 'ended once, not once per cover');
+for (const id of ['i-tc-a', 'i-tc-b', 'i-tc-c']) { assert.equal(qty(id), 0, id); assert.ok(rows.find(r => r.id === id).data.ebayWithdrawnAt, id + ' marked withdrawn'); }
+assert.equal(res.data.ebayWithdrawnCount, 4);
+
+// Worker: one variation's stock goes through ReviseInventoryStatus, and an
+// already-ended listing (eBay 1047) counts as ended.
+const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+const rv = worker.slice(worker.indexOf('async function ebayReviseVariationQuantityTrading('), worker.indexOf('async function reviseLiveEbayListing('));
+assert.match(rv, /reviseLiveEbayListing\(null, ebayToken, \{ itemId: listingId, variationSku: sku, quantity: Math\.max\(0, parseInt\(newQuantity, 10\) \|\| 0\), trading: true \}\)/);
+assert.doesNotMatch(rv, /ReviseFixedPriceItem/);
+const end = worker.slice(worker.indexOf('async function endEbayListingTrading('), worker.indexOf('async function endEbayListingTrading(') + 700);
+assert.match(end, /e\.code === '1047'/);
+assert.match(worker, /e\.code = \(txt\.match\(\/<ErrorCode>/);
+console.log('Lunar/PRH order -> eBay multi-cover listings: per-cover zero/quantity, end once, already-ended passed');

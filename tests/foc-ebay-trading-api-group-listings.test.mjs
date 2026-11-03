@@ -164,9 +164,17 @@ console.log('createAndPublishEbayVariationListingTrading checks passed');
   const body = worker.slice(start, end);
   assert.match(body, /async function ebayReviseVariationQuantityTrading\(ebayToken, listingId, sku, newQuantity\)/,
     'must be keyed by ItemID + SKU, not an offerId -- the Trading API has no separate "offer" resource');
-  assert.match(body, /<Item><ItemID>\$\{xmlEscape\(listingId\)\}<\/ItemID><Variations><Variation><SKU>\$\{xmlEscape\(sku\)\}<\/SKU><Quantity>/,
-    'must revise exactly ONE variation\'s quantity by SKU -- touching only that cover, same "reduce availability without affecting the rest of the listing" contract ebayReviseOfferQuantity has on the REST side');
-  assert.match(body, /await ebayTradingApiCall\(ebayToken, 'ReviseFixedPriceItem', body\)/, 'must use ReviseFixedPriceItem, the Trading API\'s revise call');
+  // Store, 2026-11-03: ReviseFixedPriceItem with one <Variation> failed on the
+  // live Robin Hood #1 listing (every cover stayed at 10 after the Lunar
+  // order). One variation's stock now goes through ReviseInventoryStatus
+  // (ItemID + SKU) -- reviseLiveEbayListing's Trading path, which touches
+  // only that cover.
+  assert.match(body, /reviseLiveEbayListing\(null, ebayToken, \{ itemId: listingId, variationSku: sku, quantity: /,
+    'must revise exactly ONE variation\'s quantity by SKU -- touching only that cover');
+  assert.match(body, /trading: true \}\)/, 'the Trading path (no offer lookup)');
+  const rl = worker.slice(worker.indexOf('async function reviseLiveEbayListing('), worker.indexOf('async function reviseLiveEbayListing(') + 2600);
+  assert.match(rl, /<SKU>\$\{xmlEscape\(variationSku\)\}<\/SKU>/);
+  assert.match(rl, /ebayTradingApiCall\(ebayToken, 'ReviseInventoryStatus', status\(quantity\)\)/);
 }
 {
   const start = worker.indexOf('async function endEbayListingTrading');
@@ -252,11 +260,14 @@ console.log('Trading-API-aware repair route checks passed');
     'must branch on the row\'s own ebayApiSystem flag -- an existing/live REST-created row (no flag at all) must never be routed to the Trading-API functions');
   assert.match(body, /await deps\.ebayReviseVariationQuantityTrading\(ebayToken,row\.data\.ebayListingId,row\.data\.ebaySku,0\);/,
     'a Trading-API row with a still-live sibling must zero its OWN quantity via the ItemID+SKU-keyed Trading function');
-  assert.match(body, /else await deps\.endEbayListingTrading\(ebayToken,groupKey\);/,
+  assert.match(body, /else \{await deps\.endEbayListingTrading\(ebayToken,groupKey\);endedGroups\.add\(groupKey\);\}/,
     'a Trading-API row that is the last live cover in its group must end the whole ItemID via the Trading-API end function');
   // The original REST-path lines must survive completely unchanged below
   // the new branch, for every row that isn't flagged.
-  assert.match(body, /if\(siblingStillLive\)await deps\.ebayReviseOfferQuantity\(env,ebayToken,row\.data\.ebayOfferId,0\);\s*\n\s*else await deps\.withdrawEbayOfferGroup\(env,ebayToken,groupKey\);/,
+  // (Store, 2026-11-03: a group ended once is remembered in endedGroups, so
+  // its other covers are marked without ending it again.)
+  assert.match(body, /if\(groupKey&&endedGroups\.has\(groupKey\)\)return;/);
+  assert.match(body, /if\(siblingStillLive\)await deps\.ebayReviseOfferQuantity\(env,ebayToken,row\.data\.ebayOfferId,0\);\s*\n\s*else \{await deps\.withdrawEbayOfferGroup\(env,ebayToken,groupKey\);endedGroups\.add\(groupKey\);\}/,
     'a row with no ebayApiSystem flag (every listing already live before this change) must still fall through to the exact same offerId-keyed REST functions it always has -- this is the "existing listings stay untouched" guarantee');
 }
 console.log('withdrawFocPresaleRow Trading-API branch + REST-path regression checks passed');
