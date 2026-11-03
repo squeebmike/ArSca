@@ -75,7 +75,11 @@ export function whatnotCategoryId(item) {
 export const WHATNOT_PROFILES = {
   card: { name: 'Card', weight: { value: 1, unit: 'ounce' }, dimensions: { length: 6, width: 4, height: 0.5, unit: 'inch' } },
   slab: { name: 'Graded card', weight: { value: 4, unit: 'ounce' }, dimensions: { length: 8, width: 5, height: 1, unit: 'inch' } },
-  comic: { name: 'Comic', weight: { value: 8, unit: 'ounce' }, dimensions: { length: 12, width: 8, height: 1, unit: 'inch' } },
+  // A single issue, bagged and boarded in a Gemini Comic Flash Mailer: the
+  // same outside size and 8 oz packed weight the eBay comic listings use
+  // (COMIC_GEMINI_MAILER in the Worker; store, 2026-11-03: "make sure
+  // shipping makes sense with the Gemini boxes").
+  comic: { name: 'Comic (Gemini mailer)', weight: { value: 8, unit: 'ounce' }, dimensions: { length: 12.75, width: 7.75, height: 1.25, unit: 'inch' } },
   box: { name: 'Box', weight: { value: 1, unit: 'pound' }, dimensions: { length: 10, width: 8, height: 4, unit: 'inch' } },
 };
 export function whatnotProfileKind(item) {

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { syncWhatnotItem, WHATNOT_PROFILES } from '../scripts/whatnot-sync.mjs';
 
 // Store, 2026-11-03: 261 comics put on Whatnot, 1 listed. The size profile
@@ -26,4 +27,14 @@ assert.equal(saved.comic, 'inline', 'the refused id is dropped for good, and the
 posts.length = 0;
 await syncWhatnotItem(api, { ...row, id: '00000000-0000-4000-8000-000000000002' }, item, null, opts);
 assert.deepEqual(posts, [WHATNOT_PROFILES.comic], 'next comics go straight to the spelled-out size');
+// Comics ship in a Gemini mailer: same size and weight as the eBay listings.
+{
+  const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  const g = w.match(/const COMIC_GEMINI_MAILER = \{ dimLength: ([\d.]+), dimWidth: ([\d.]+), dimHeight: ([\d.]+)/);
+  const packedLb = Number(w.match(/const COMIC_SINGLE_PACKED_LB = ([\d.]+);/)[1]);
+  const c = WHATNOT_PROFILES.comic;
+  assert.deepEqual([c.dimensions.length, c.dimensions.width, c.dimensions.height], [Number(g[1]), Number(g[2]), Number(g[3])], 'Gemini mailer size');
+  assert.equal(c.dimensions.unit, 'inch');
+  assert.equal(c.weight.value / 16, packedLb, '8 oz packed, same as eBay'); assert.equal(c.weight.unit, 'ounce');
+}
 console.log('Whatnot refused size profile: retried inline, never reused again passed');
