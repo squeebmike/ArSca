@@ -61,6 +61,22 @@ export function buildMorningHealth(data) {
     if (!poke.ok) { lines.push('  Problem: ' + poke.error); problems.push('Pokemon price updates: ' + poke.error); }
   }
 
+  // Magic prices (TCGplayer market, scripts/mtg-daily-sync.mjs).
+  const mtg = data.health?.mtg;
+  if (mtg) {
+    const d = mtg.detail || {};
+    lines.push('', 'MAGIC PRICES (TCGplayer market)');
+    lines.push(`  Last ran ${ago(mtg.at, now)}${d.checked != null ? ` · ${d.checked} checked in that batch` : ''}${d.note ? ' · ' + d.note : ''}`);
+    if (!mtg.ok) { lines.push('  Problem: ' + mtg.error); problems.push('Magic price updates: ' + mtg.error); }
+  }
+  // eBay presales vs the distributor orders (nightly check).
+  const fe = data.health?.focEbay;
+  if (fe) {
+    lines.push('', 'EBAY PRESALES VS ORDERS');
+    lines.push(`  Checked ${ago(fe.at, now)}${fe.detail?.note ? ' · ' + fe.detail.note : ''}`);
+    if (!fe.ok) { lines.push('  Problem: ' + fe.error); problems.push('eBay presale check: ' + fe.error); }
+  }
+
   // Whatnot.
   lines.push('', 'WHATNOT');
   const wl = data.whatnotLast;
@@ -73,6 +89,8 @@ export function buildMorningHealth(data) {
     const errs = [wl.listingsError, wl.ordersError, wl.showsError, wl.shipmentsError].filter(Boolean);
     if (errs.length) { lines.push('  Problem: ' + errs[0]); problems.push('Whatnot sync: ' + errs[0]); }
     const recorded = (data.whatnotRuns || []).reduce((n, r) => n + ((r.result?.orders || []).length), 0);
+    const pulled = (data.whatnotRuns || []).reduce((n, r) => n + (Number(r.result?.fromWhatnot?.prices) || 0) + (Number(r.result?.fromWhatnot?.counts) || 0), 0);
+    if (pulled) lines.push(`  ${pulled} price/count edit${pulled === 1 ? '' : 's'} made in the Whatnot app brought into the dashboard`);
     if (recorded) lines.push(`  ${recorded} order${recorded === 1 ? '' : 's'} recorded by the sync in the last 24 hours`);
   }
 

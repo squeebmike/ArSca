@@ -58,6 +58,8 @@ on:
       - scripts/public-pokemon-sets.mjs
       - scripts/ppt-usage.mjs
       - scripts/pokemon-daily-sync.mjs
+      - scripts/mtg-daily-sync.mjs
+      - scripts/web-order-notify.mjs
       - scripts/store-features.mjs
       - scripts/shared-service-usage.mjs
       - scripts/lookup-auth.mjs

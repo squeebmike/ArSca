@@ -86,6 +86,36 @@ assert.match(worker, /e\.code = \(txt\.match\(\/<ErrorCode>/);
   // The one-time run for the 11/2 Lunar cycle, on the 10-minute schedule, once.
   assert.match(worker, /\{ id: '2026-11-03-lunar-1102', storeId: '0f9dd4bc-42a7-487e-a972-2905d24513e9', cycleId: 'ac2bdebc-feb4-4248-a47a-6705784c7deb' \}/);
   assert.match(worker, /if \(prev\?\.done \|\| \(prev\?\.tries \|\| 0\) >= 3\) continue;/);
-  assert.match(worker, /runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\)\]\);/);
+  assert.match(worker, /runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\)/);
+}
+// eBay refusing a cover: "variation not found" means it's already off the
+// listing (marked 0); anything else is kept on the row to read.
+{
+  const rows2 = [row('x-a', 'rh-a', 'RH2', 10, 0), row('x-g', 'tc-a', 'RH2', 10, 6), row('x-h', 'tc-b', 'RH2', 10, 7), row('x-b', 'rh-b', 'RH2', 10, 1)];
+  const deps2 = { ...deps,
+    ebayReviseVariationQuantityTrading: async (tok, l, vsku, q) => { if (vsku === 'v-6') throw new Error('ReviseInventoryStatus failed: Variation SKU lbagrp-6 not found.'); if (vsku === 'v-7') throw new Error('ReviseInventoryStatus failed: Internal error.'); },
+    supabaseAdminFetch: async (env, path, o = {}) => {
+      if (path.startsWith('comic_skus?cycle_id=eq.' + CYCLE)) return { data: skus.map(k => ({ id: k.id, secured_quantity: k.id === 'rh-b' ? 3 : 0 })) };
+      if (o.method === 'PATCH' && path.startsWith('inventory_items?id=eq.')) { const id = path.match(/id=eq\.([^&]+)/)[1]; Object.assign(rows2.find(x => x.id === id), JSON.parse(o.body)); return { data: [] }; }
+      if (path.startsWith('inventory_items?')) return { data: /offset=0\b/.test(path) || !/offset=/.test(path) ? rows2.filter(r => r.status === 'presale') : [] };
+      return { data: [] };
+    } };
+  await handleFocRequest({ method: 'POST', headers: { get: () => null }, json: async () => ({ storeId: STORE, cycleId: CYCLE }) }, {}, new URL('https://x/foc/admin/ebay-match-order'), deps2);
+  const g = rows2.find(r => r.id === 'x-g').data, h = rows2.find(r => r.id === 'x-h').data;
+  assert.equal(g.qty, 0); assert.equal(g.ebayWithdrawnReason, 'not_on_ebay_listing', 'not on the listing: nothing to sell, marked 0');
+  assert.equal(h.qty, 10, 'any other refusal leaves the count'); assert.match(h.ebaySyncError.message, /Internal error/); assert.equal(h.ebaySyncError.step, 'withdraw');
+  assert.equal(rows2.find(r => r.id === 'x-a').data.ebaySyncError, null);
+}
+
+// Nightly eBay check: once a day, only cycles with an order saved.
+{
+  const fn = worker.slice(worker.indexOf('async function runScheduledFocEbayCheck('), worker.indexOf('// One-time MATCH EBAY TO ORDER runs'));
+  assert.match(fn, /const doneKey = 'foc-ebay-check:' \+ day;/, 'once per Pacific day');
+  assert.match(fn, /foc_cycles\?status=eq\.open&foc_date=gte\.\$\{since\}/, 'open cycles from the last 60 days');
+  assert.match(fn, /secured_quantity=gt\.0&select=id&limit=1/);
+  assert.match(fn, /if \(!any\?\.length\) continue; \/\/ no order saved yet/, 'a cycle with no order is never touched');
+  assert.match(fn, /'\/foc\/admin\/ebay-match-order'/);
+  assert.match(fn, /noteJobHealth\(env, 'foc-ebay-check'/, 'shows in the morning summary');
+  assert.match(worker, /runScheduledFocAutoList\(env\), runScheduledFocEbayCheck\(env, ctx\)\]\);/);
 }
 console.log('Lunar/PRH order -> eBay multi-cover listings: per-cover zero/quantity, end once, already-ended passed');

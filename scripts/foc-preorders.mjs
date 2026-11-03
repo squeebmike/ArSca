@@ -2786,9 +2786,24 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
             // withdrawn/unsold listing silently reappears as a full-quantity
             // "order" in every later export and submission.
             const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
-            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order'}})});
+            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_included_in_prh_order',ebaySyncError:null}})});
             ebayWithdrawnSkuIds.push(row.data.focSkuId);
-          }catch(e){console.error('FOC eBay sync: could not withdraw unordered eBay presale listing',row.id,e);}
+          }catch(e){
+            console.error('FOC eBay sync: could not withdraw unordered eBay presale listing',row.id,e);
+            // Store, 2026-11-03: two Robin Hood covers stayed at 10 with the
+            // reason only in the Worker log. eBay saying the cover isn't on
+            // the listing any more means it can't be bought -- the goal --
+            // so it's marked 0; any other refusal is kept on the row.
+            const msg=String(e?.message||e).slice(0,300);
+            const gone=/(variation|sku)[^.]*(not (be )?found|does ?n[o']t exist|no longer|invalid)|item (has|was) ended|already (been )?(closed|ended)/i.test(msg);
+            try{
+              if(gone){
+                const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
+                await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'not_on_ebay_listing',ebaySyncError:null}})});
+                ebayWithdrawnSkuIds.push(row.data.focSkuId);
+              } else await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,ebaySyncError:{at:new Date().toISOString(),step:'withdraw',message:msg}}})});
+            }catch(_){}
+          }
         }
       }
     }
@@ -2822,9 +2837,12 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
           try{
             if(d.ebayApiSystem==='trading')await deps.ebayReviseVariationQuantityTrading(ebayToken,d.ebayListingId,d.ebaySku,newAvailable);
             else await deps.ebayReviseOfferQuantity(env,ebayToken,d.ebayOfferId,newAvailable);
-            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:alreadySold+newAvailable}})});
+            await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:alreadySold+newAvailable,ebaySyncError:null}})});
             ebayQuantityUpdatedSkuIds.push(d.focSkuId);
-          }catch(e){console.error('FOC eBay sync: could not update eBay presale listing quantity',row.id,e);}
+          }catch(e){
+            console.error('FOC eBay sync: could not update eBay presale listing quantity',row.id,e);
+            try{await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...d,ebaySyncError:{at:new Date().toISOString(),step:'quantity',message:String(e?.message||e).slice(0,300)}}})});}catch(_){}
+          }
         }
       }
     }
