@@ -59,7 +59,7 @@ assert.equal(nextJobHealth(bad.value, '', 1000 + 180000).write, true, 'recovery 
 // Wiring: after the hourly price runs, once a day at 7 AM Pacific, to the FOC email.
 assert.equal(MORNING_HOUR, 7);
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledMorningHealth\(env\)\]\); return; \}/);
+assert.match(worker, /await Promise\.allSettled\(\[runScheduledPokemonServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledMtgServerSync\(env\)\]\); await Promise\.allSettled\(\[runScheduledMorningHealth\(env\)\]\); return; \}/);
 assert.match(worker, /morning-health-sent:\$\{storeId\}:\$\{pacificToday\(new Date\(now\)\)\}/);
 assert.match(worker, /finally \{ await noteJobHealth\(env, 'ebay:' \+ storeId, problem\); \}/);
 assert.match(worker, /noteJobHealth\(env, 'pokemon:' \+ storeId/);

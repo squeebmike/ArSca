@@ -48,7 +48,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -64,6 +64,7 @@ import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './sc
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
+import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
 import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
@@ -19365,7 +19366,7 @@ export default {
     // 6-hour trigger.
     // One after the other, not together: each reads a lot of inventory, and
     // running both at once doubles what the Worker holds in memory.
-    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); await Promise.allSettled([runScheduledMorningHealth(env)]); return; }
+    if (event?.cron === POKEMON_SYNC_CRON) { await Promise.allSettled([runScheduledPriceChartingServerSync(env)]); await Promise.allSettled([runScheduledPokemonServerSync(env)]); await Promise.allSettled([runScheduledMtgServerSync(env)]); await Promise.allSettled([runScheduledMorningHealth(env)]); return; }
     // Every 10 minutes: Whatnot, and new eBay sales (so a one-of-a-kind item
     // sold on eBay comes off everywhere else within minutes, not hours, even
     // with no dashboard open). Skipped at the 6-hour run's own minute, which
@@ -19376,7 +19377,7 @@ export default {
       await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx)]);
       return;
     }
-    await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env)]);
+    await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env), runScheduledFocEbayCheck(env, ctx)]);
   },
 };
 
@@ -19468,6 +19469,34 @@ async function focInternalPost(env, ctx, storeId, path, body) {
   FOC_INTERNAL_REQUESTS.add(req);
   const res = await routeRequest(req, env, ctx);
   return { res, data: await res.json().catch(() => ({})) };
+}
+// Nightly eBay check (store, 2026-11-03: "a nightly eBay check" after the
+// 11/2 Lunar upload left multi-cover listings wrong): once a day, every open
+// FOC cycle from the last 60 days that has an order saved runs MATCH EBAY TO
+// ORDER -- covers not ordered come off, ordered covers show what's left to
+// sell. It only changes listings that are wrong, so a good night does
+// nothing; a cycle with no order yet is never touched. What it fixed shows
+// in the morning health summary.
+async function runScheduledFocEbayCheck(env, ctx, { post = focInternalPost, now = Date.now() } = {}) {
+  if (!env.LBA_KV) return null;
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date(now));
+  const doneKey = 'foc-ebay-check:' + day;
+  if (await env.LBA_KV.get(doneKey).catch(() => null)) return null;
+  const since = new Date(now - 60 * 86400000).toISOString().slice(0, 10);
+  const { data: cycles } = await supabaseAdminFetch(env, `foc_cycles?status=eq.open&foc_date=gte.${since}&select=id,store_id,distributor,foc_date&order=foc_date.desc&limit=40`).catch(() => ({ data: [] }));
+  const results = [];
+  for (const c of cycles || []) {
+    const { data: any } = await supabaseAdminFetch(env, `comic_skus?cycle_id=eq.${encodeURIComponent(c.id)}&store_id=eq.${encodeURIComponent(c.store_id)}&secured_quantity=gt.0&select=id&limit=1`).catch(() => ({ data: [] }));
+    if (!any?.length) continue; // no order saved yet
+    try {
+      const { res, data } = await post(env, ctx, c.store_id, '/foc/admin/ebay-match-order', { cycleId: c.id });
+      results.push({ cycle: c.id, distributor: c.distributor, focDate: c.foc_date, ok: !!(res.ok && data?.ok), withdrawn: data?.ebayWithdrawnCount || 0, updated: data?.ebayQuantityUpdatedCount || 0, error: res.ok ? '' : (data?.error || String(res.status)) });
+    } catch (e) { results.push({ cycle: c.id, ok: false, error: e.message }); }
+  }
+  await env.LBA_KV.put(doneKey, JSON.stringify({ at: new Date(now).toISOString(), results }), { expirationTtl: 30 * 86400 });
+  const fixed = results.reduce((n, r) => n + r.withdrawn + r.updated, 0), failed = results.filter(r => !r.ok);
+  await noteJobHealth(env, 'foc-ebay-check', failed.length ? failed.length + ' cycle(s) could not be checked: ' + failed.map(r => r.error).join('; ').slice(0, 200) : '', { checked: results.length, note: fixed ? fixed + ' eBay listing(s) fixed to match the order' : 'all eBay presale listings match the orders' });
+  return results;
 }
 // One-time MATCH EBAY TO ORDER runs (store, 2026-11-03, away from the PC:
 // "can you fix it for me?"). The 11/2 Lunar upload hit the multi-cover
@@ -19832,6 +19861,32 @@ async function runScheduledStaleWebOrderReminders(env, now = Date.now()) {
 // are checked for the day. Small changes are saved; big ones wait in KV for
 // PRICE SYNC (GET /price-sync/review).
 const POKEMON_SYNC_CRON = '17 * * * *';
+// Daily Magic prices (scripts/mtg-daily-sync.mjs): TCGplayer's own Near
+// Mint market price for each in-stock Magic card or sealed product, hourly
+// batches from 3 AM Pacific -- free, so every store runs it.
+async function runScheduledMtgServerSync(env) {
+  if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
+  const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
+  const storeIds = [...new Set((members || []).map(m => String(m.store_id || '')).filter(Boolean))];
+  const deps = {
+    db: (path, opts) => supabaseAdminFetch(env, path, opts),
+    kvGet: k => env.LBA_KV.get(k, 'json').catch(() => null),
+    kvPut: (k, v) => env.LBA_KV.put(k, JSON.stringify(v), { expirationTtl: 14 * 86400 }),
+    pricepoints: async productId => {
+      const res = await fetch(`https://mpapi.tcgplayer.com/v2/product/${encodeURIComponent(productId)}/pricepoints`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined });
+      if (!res.ok) return null;
+      const rows = await res.json().catch(() => null);
+      return Array.isArray(rows) ? rows : null;
+    },
+  };
+  for (const storeId of storeIds) {
+    try {
+      const result = await runMtgServerSync(storeId, deps);
+      if (result.checked) console.log('MTG server sync', storeId, JSON.stringify(result));
+      await noteJobHealth(env, 'mtg:' + storeId, result.checked && result.noPrice === result.checked ? 'no TCGplayer prices came back' : '', { checked: result.checked || 0, ...(result.skipped ? { note: String(result.skipped) } : {}) });
+    } catch (e) { await noteJobHealth(env, 'mtg:' + storeId, e.message); console.error('MTG server sync failed for store', storeId, e.message); }
+  }
+}
 async function runScheduledPokemonServerSync(env) {
   if (!env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   const { data: members } = await supabaseAdminFetch(env, `store_members?active=eq.true&select=store_id`).catch(() => ({ data: [] }));
@@ -19941,6 +19996,17 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
     const listingSettings = await whatnotListingSettings(env, storeId);
     try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings, listingSettings })).filter(r => !r.skipped); }
     catch (e) { out.ordersError = e.message; }
+    // Price/count edits made in the Whatnot app, back to the dashboard --
+    // after the orders, so a sale is always recorded before a drop is read.
+    try {
+      const p = await pullWhatnotEdits(storeId, { ...deps, listingSettings,
+        updateItem: async (id, row, patch) => {
+          const data = { ...(row.data || {}), ...patch, whatnotEditedAt: new Date().toISOString() };
+          if (patch.quantity != null) data.qty = patch.quantity;
+          await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data, updated_at: new Date().toISOString() }) });
+        } });
+      if (p.prices || p.counts || p.errors.length) out.fromWhatnot = p;
+    } catch (e) { out.fromWhatnotError = e.message; }
     // Shipments for the orders board (who's packed, labelled, on the way).
     try { out.shipments = await syncWhatnotShipments(deps); }
     catch (e) { out.shipmentsError = e.message; }
@@ -19961,7 +20027,7 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   // A run that did something (or hit a problem) is also kept where it can be
   // checked from outside the Worker (server_job_runs).
   const l = out.listings || {};
-  if (l.checked || l.errors?.length || out.orders?.length || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
+  if (l.checked || l.errors?.length || out.fromWhatnot || out.orders?.length || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
     await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
   }
   return out;
@@ -20010,7 +20076,7 @@ async function morningHealthFor(env, storeId, now = Date.now()) {
   const s = encodeURIComponent(storeId), since = new Date(now - 86400000).toISOString();
   const db = async path => (await supabaseAdminFetch(env, path).catch(() => ({ data: [] }))).data || [];
   const kv = async key => env.LBA_KV ? await env.LBA_KV.get(key, 'json').catch(() => null) : null;
-  const [priceRuns, whatnotRuns, payments, webOrders, review, whatnotLast, ebay, pokemon] = await Promise.all([
+  const [priceRuns, whatnotRuns, payments, webOrders, review, whatnotLast, ebay, pokemon, mtg, focEbay] = await Promise.all([
     db(`server_job_runs?job=eq.pricecharting-sync&store_id=eq.${s}&started_at=gte.${encodeURIComponent(since)}&select=started_at,result&order=started_at.desc&limit=48`),
     db(`server_job_runs?job=eq.whatnot-sync&store_id=eq.${s}&started_at=gte.${encodeURIComponent(since)}&select=started_at,result&limit=200`),
     db(`pos_payments?store_id=eq.${s}&created_at=gte.${encodeURIComponent(since)}&status=not.in.(refunded,failed,pending,canceled,cancelled,voided)&select=provider,method,amount&limit=2000`),
@@ -20019,6 +20085,8 @@ async function morningHealthFor(env, storeId, now = Date.now()) {
     kv('whatnot-sync-last:' + storeId),
     kv('job-health:ebay:' + storeId),
     kv('job-health:pokemon:' + storeId),
+    kv('job-health:mtg:' + storeId),
+    kv('job-health:foc-ebay-check'),
   ]);
   // Only paid website orders count as waiting.
   const saleIds = [...new Set(webOrders.map(o => o.sale_id).filter(Boolean))];
@@ -20026,7 +20094,7 @@ async function morningHealthFor(env, storeId, now = Date.now()) {
   const open = webOrders.filter(o => paid.has(o.sale_id));
   return buildMorningHealth({
     now, storeName: storeId === whatnotStoreId(env) ? 'The Mana Pocket' : '', priceRuns, whatnotRuns, whatnotLast,
-    whatnotConnected: !!env.WHATNOT_API_KEY && storeId === whatnotStoreId(env), health: { ebay, pokemon }, payments, day: 'last 24 hours',
+    whatnotConnected: !!env.WHATNOT_API_KEY && storeId === whatnotStoreId(env), health: { ebay, pokemon, mtg, focEbay }, payments, day: 'last 24 hours',
     openWebOrders: open.length, oldWebOrders: open.filter(o => now - Date.parse(o.created_at) > 2 * 86400000).length,
     reviewWaiting: Array.isArray(review) ? review.length : 0,
   });

@@ -97,8 +97,8 @@ export function serverSyncPrice(card = {}, d = {}) {
   const printing = variants[d.selectedPrinting] ? d.selectedPrinting : variants[prices.primaryPrinting] ? prices.primaryPrinting : Object.keys(variants)[0];
   return variantPrice(variants[printing], code) || variantPrice(prices.conditions, code);
 }
-function marketOf(d = {}) { return firstMoney(d.marketPrice, d.rawMarketPrice, d.market, d.price, d.displayPrice); }
-function ruled(market, rule) {
+export function marketOf(d = {}) { return firstMoney(d.marketPrice, d.rawMarketPrice, d.market, d.price, d.displayPrice); }
+export function ruled(market, rule) {
   const bump = Math.max(market * (Number(rule?.pct) || 0) / 100, Number(rule?.flat) || 0, 0);
   return market > 0 ? Math.ceil(market + bump - 1e-9) : 0;
 }

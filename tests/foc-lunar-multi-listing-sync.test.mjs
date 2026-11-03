@@ -88,4 +88,15 @@ assert.match(worker, /e\.code = \(txt\.match\(\/<ErrorCode>/);
   assert.match(worker, /if \(prev\?\.done \|\| \(prev\?\.tries \|\| 0\) >= 3\) continue;/);
   assert.match(worker, /runScheduledEbayNewSales\(env\), runFocEbayMatchOnce\(env, ctx\)\]\);/);
 }
+// Nightly eBay check: once a day, only cycles with an order saved.
+{
+  const fn = worker.slice(worker.indexOf('async function runScheduledFocEbayCheck('), worker.indexOf('// One-time MATCH EBAY TO ORDER runs'));
+  assert.match(fn, /const doneKey = 'foc-ebay-check:' \+ day;/, 'once per Pacific day');
+  assert.match(fn, /foc_cycles\?status=eq\.open&foc_date=gte\.\$\{since\}/, 'open cycles from the last 60 days');
+  assert.match(fn, /secured_quantity=gt\.0&select=id&limit=1/);
+  assert.match(fn, /if \(!any\?\.length\) continue; \/\/ no order saved yet/, 'a cycle with no order is never touched');
+  assert.match(fn, /'\/foc\/admin\/ebay-match-order'/);
+  assert.match(fn, /noteJobHealth\(env, 'foc-ebay-check'/, 'shows in the morning summary');
+  assert.match(worker, /runScheduledFocAutoList\(env\), runScheduledFocEbayCheck\(env, ctx\)\]\);/);
+}
 console.log('Lunar/PRH order -> eBay multi-cover listings: per-cover zero/quantity, end once, already-ended passed');

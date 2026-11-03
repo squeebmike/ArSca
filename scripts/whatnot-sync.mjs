@@ -998,3 +998,73 @@ export async function linkWhatnotListings(pairs, deps) {
   await deps.kvPut(seenKey, seen);
   return results;
 }
+
+// --- Edits made on Whatnot, back to the dashboard ---------------------------
+// Store, 2026-11-03: "I'd need Whatnot to update the prices to our dash and
+// the counts as well." A linked listing's price or quantity changed in the
+// Whatnot app (not by our sync -- link.price/link.qty are what we last sent)
+// comes back to the item here, unless the item was also changed on the
+// dashboard since (then the dashboard wins, as before). A price edit is
+// saved as the item's locked price (priceOverride, same as a dashboard edit,
+// so daily price updates don't move it back). A count that went UP comes
+// back at once; one that went DOWN waits for a second look 20+ minutes later
+// -- a drop can be a sale whose order isn't recorded yet, and the order
+// (which takes the copy off the dashboard itself) must win, or the copy
+// would come off twice. A slice of linked items is looked at each run.
+export const PULL_PER_RUN = 25;
+export const PULL_DROP_CONFIRM_MS = 20 * 60 * 1000;
+const variantPrice = v => { const n = Number(v?.pricing?.buy_it_now?.price?.amount ?? v?.price?.amount ?? v?.buy_it_now_price?.amount); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
+const variantQty = v => { const q = v?.inventory?.quantity ?? v?.inventory?.available ?? v?.quantity ?? v?.available_quantity; const n = Number(q); return q == null || !Number.isFinite(n) ? null : Math.max(0, Math.floor(n)); };
+export function whatnotEditPlan({ link, want, wnPrice, wnQty, now = Date.now() }) {
+  const plan = { price: null, qty: null, pendingDrop: null };
+  if (!link || link.price == null || link.qty == null) return plan;
+  // The dashboard changed since our last push: it wins (the sync sends it).
+  if (Math.abs(Number(want.price) - Number(link.price)) >= 0.01 || Number(want.qty) !== Number(link.qty)) return plan;
+  if (wnPrice != null && Math.abs(wnPrice - Number(link.price)) >= 0.01) plan.price = wnPrice;
+  if (wnQty != null && wnQty !== Number(link.qty)) {
+    if (wnQty > Number(link.qty)) plan.qty = wnQty;
+    else if (link.pendingDrop && link.pendingDrop.qty === wnQty && now - Date.parse(link.pendingDrop.at) >= PULL_DROP_CONFIRM_MS) plan.qty = wnQty;
+    else plan.pendingDrop = link.pendingDrop?.qty === wnQty ? link.pendingDrop : { qty: wnQty, at: new Date(now).toISOString() };
+  }
+  return plan;
+}
+// deps: api, kvGet, kvPut, rows(ids), shape(row), storeId, updateItem(id, row, patch), listingSettings
+export async function pullWhatnotEdits(storeId, deps, { limit = PULL_PER_RUN, now = Date.now() } = {}) {
+  const linked = Object.keys((await deps.kvGet('whatnot-linked:' + storeId)) || {}).sort();
+  const out = { looked: 0, prices: 0, counts: 0, waiting: 0, errors: [] };
+  if (!linked.length) return out;
+  const cursorKey = 'whatnot-pull-cursor:' + storeId;
+  const start = Number(await deps.kvGet(cursorKey)) || 0;
+  const ids = Array.from({ length: Math.min(limit, linked.length) }, (_, i) => linked[(start + i) % linked.length]);
+  await deps.kvPut(cursorKey, (start + ids.length) % linked.length);
+  const rows = new Map((await deps.rows(ids)).map(r => [r.id, r]));
+  for (const id of ids) {
+    const row = rows.get(id); const linkKey = `whatnot-link:${storeId}:${id}`;
+    const link = row && await deps.kvGet(linkKey);
+    if (!row || !link?.productId || link.error) continue;
+    const want = whatnotDesired(row, deps.shape(row), { autoTitles: deps.listingSettings?.autoTitles !== false });
+    if (!want.wanted || want.qty <= 0 && Number(link.qty) <= 0) continue;
+    out.looked++;
+    try {
+      const r = await deps.api('GET', `/products/${encodeURIComponent(link.productId)}/variants?limit=5`);
+      if (!r.ok) { if (r.status !== 404) out.errors.push({ id, error: whatnotErrorText(r) }); continue; }
+      const vs = r.data?.data || []; const v = vs.find(x => String(x.id) === String(link.variantId)) || vs[0];
+      const plan = whatnotEditPlan({ link, want, wnPrice: variantPrice(v), wnQty: variantQty(v), now });
+      const patch = {};
+      if (plan.price != null) patch.priceOverride = plan.price;
+      if (plan.qty != null) patch.quantity = plan.qty;
+      if (Object.keys(patch).length) {
+        await deps.updateItem(id, row, patch);
+        if (plan.price != null) { link.price = plan.price; out.prices++; }
+        if (plan.qty != null) { link.qty = plan.qty; out.counts++; }
+        delete link.pendingDrop;
+        link.pulledFromWhatnotAt = new Date(now).toISOString();
+        await deps.kvPut(linkKey, link);
+      } else if (plan.pendingDrop) {
+        out.waiting++;
+        if (link.pendingDrop?.qty !== plan.pendingDrop.qty) { link.pendingDrop = plan.pendingDrop; await deps.kvPut(linkKey, link); }
+      } else if (link.pendingDrop) { delete link.pendingDrop; await deps.kvPut(linkKey, link); } // KV written only on a change
+    } catch (e) { out.errors.push({ id, error: e.message }); }
+  }
+  return out;
+}
