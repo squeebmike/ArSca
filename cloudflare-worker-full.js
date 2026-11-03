@@ -11488,7 +11488,8 @@ async function routeRequest(request, env, ctx) {
       if (ack !== 'Success' && ack !== 'Warning') {
         const longMsg = (txt.match(/<LongMessage>([^<]+)<\/LongMessage>/) || [])[1] || '';
         const shortMsg = (txt.match(/<ShortMessage>([^<]+)<\/ShortMessage>/) || [])[1] || '';
-        const e = new Error(`${callName} failed: ${longMsg || shortMsg || ('Ack=' + (ack || 'none'))}`); e.status = 502; e.raw = txt.substring(0, 500); throw e;
+        const e = new Error(`${callName} failed: ${longMsg || shortMsg || ('Ack=' + (ack || 'none'))}`); e.status = 502; e.raw = txt.substring(0, 500);
+        e.code = (txt.match(/<ErrorCode>([^<]+)<\/ErrorCode>/) || [])[1] || ''; throw e;
       }
       return { ack, raw: txt };
     }
@@ -11891,9 +11892,13 @@ async function routeRequest(request, env, ctx) {
     // ebayApiSystem:'trading' (see withdrawFocPresaleRow in
     // foc-preorders.mjs) -- existing REST-created listings keep using the
     // offerId-keyed functions above, completely untouched.
+    // Store, 2026-11-03: after the Lunar order, the Robin Hood #1 multi-cover
+    // listing kept every cover at 10 -- ReviseFixedPriceItem with a single
+    // <Variation> failed for each cover. One variation's stock is what
+    // ReviseInventoryStatus (ItemID + SKU) is for, the same call the
+    // dashboard's own quantity edits use (reviseLiveEbayListing).
     async function ebayReviseVariationQuantityTrading(ebayToken, listingId, sku, newQuantity) {
-      const body = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations><Variation><SKU>${xmlEscape(sku)}</SKU><Quantity>${xmlEscape(String(Math.max(0, parseInt(newQuantity, 10) || 0)))}</Quantity></Variation></Variations></Item>`;
-      return await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', body);
+      return await reviseLiveEbayListing(null, ebayToken, { itemId: listingId, variationSku: sku, quantity: Math.max(0, parseInt(newQuantity, 10) || 0), trading: true });
     }
 
     // Price/quantity on any live listing. Listings made through the
@@ -12001,7 +12006,13 @@ async function routeRequest(request, env, ctx) {
 
     async function endEbayListingTrading(ebayToken, listingId) {
       const body = `<ItemID>${xmlEscape(listingId)}</ItemID><EndingReason>NotAvailable</EndingReason>`;
-      return await ebayTradingApiCall(ebayToken, 'EndFixedPriceItem', body);
+      try { return await ebayTradingApiCall(ebayToken, 'EndFixedPriceItem', body); }
+      catch (e) {
+        // Already ended (eBay error 1047): that's the goal, not a failure --
+        // so a re-run can finish marking its covers.
+        if (e.code === '1047' || /already been closed|already ended|has ended/i.test(e.message)) return { ack: 'AlreadyEnded' };
+        throw e;
+      }
     }
 
     // Repairs group-listing photo-to-cover binding for an

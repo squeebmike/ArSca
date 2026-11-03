@@ -2769,10 +2769,10 @@ async function syncFocEbayListingsToOrder(env,deps,db,storeId,cycleId,finalQtyBy
       let ebayToken='';
       try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(_){}
       if(ebayToken){
-        const withdrawingIds=new Set(toWithdraw.map(r=>r.id));
+        const withdrawingIds=new Set(toWithdraw.map(r=>r.id));const endedGroups=new Set();
         for(const row of toWithdraw){
           try{
-            await withdrawFocPresaleRow(env,deps,ebayToken,row,presaleRows,withdrawingIds);
+            await withdrawFocPresaleRow(env,deps,ebayToken,row,presaleRows,withdrawingIds,endedGroups);
             // A volume-discount promotion tied to this listing must not
             // outlive the listing itself -- best-effort, never blocks the
             // withdrawal it's paired with.
@@ -2952,8 +2952,14 @@ async function adminImportPrhCart(request,env,deps){
 // being ended in THIS batch, so two siblings withdrawn together correctly
 // fall through to a single group withdraw instead of each thinking the
 // other is still live.
-async function withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withdrawingIds){
+// endedGroups: group listings already ended in this sweep -- the rest of
+// their covers are just marked here. Store, 2026-11-03: ending the
+// Thundercats/Mega Man/... listings for the first unordered cover worked,
+// then every other cover tried to end the same (already ended) listing,
+// failed, and was left showing 10 in the dashboard.
+async function withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withdrawingIds,endedGroups=new Set()){
   const groupKey=row.data.ebayInventoryItemGroupKey;
+  if(groupKey&&endedGroups.has(groupKey))return;
   if(!groupKey||!deps.ebayReviseOfferQuantity||!deps.withdrawEbayOfferGroup){
     await deps.withdrawEbayOffer(env,ebayToken,row.data.ebayOfferId);
     return;
@@ -2969,11 +2975,11 @@ async function withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withd
   // the whole group at once, same semantics as withdrawEbayOfferGroup.
   if(row.data.ebayApiSystem==='trading'){
     if(siblingStillLive)await deps.ebayReviseVariationQuantityTrading(ebayToken,row.data.ebayListingId,row.data.ebaySku,0);
-    else await deps.endEbayListingTrading(ebayToken,groupKey);
+    else {await deps.endEbayListingTrading(ebayToken,groupKey);endedGroups.add(groupKey);}
     return;
   }
   if(siblingStillLive)await deps.ebayReviseOfferQuantity(env,ebayToken,row.data.ebayOfferId,0);
-  else await deps.withdrawEbayOfferGroup(env,ebayToken,groupKey);
+  else {await deps.withdrawEbayOfferGroup(env,ebayToken,groupKey);endedGroups.add(groupKey);}
 }
 
 async function adminEndFocEbayListings(request,env,deps){
@@ -3006,10 +3012,10 @@ async function adminEndFocEbayListings(request,env,deps){
   try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,error:'Could not get an eBay access token: '+e.message},502);}
   if(!ebayToken)return deps.json({ok:false,error:'eBay is not connected for this store'},503);
   let endedCount=0;const errors=[];
-  const withdrawingIds=new Set(toWithdraw.map(r=>r.id));
+  const withdrawingIds=new Set(toWithdraw.map(r=>r.id));const endedGroups=new Set();
   for(const row of toWithdraw){
     try{
-      await withdrawFocPresaleRow(env,deps,ebayToken,row,presaleRows,withdrawingIds);
+      await withdrawFocPresaleRow(env,deps,ebayToken,row,presaleRows,withdrawingIds,endedGroups);
       if(row.data.ebayVolumeDiscountPromotionId&&deps.endEbayVolumeDiscount){
         try{await deps.endEbayVolumeDiscount(env,ebayToken,row.data.ebayVolumeDiscountPromotionId);}catch(_){}
       }
@@ -3166,10 +3172,10 @@ async function adminEndOrphanedEbayListings(request,env,deps){
   try{ebayToken=await deps.getEbayUserAccessToken(env);}catch(e){return deps.json({ok:false,error:'Could not get an eBay access token: '+e.message},502);}
   if(!ebayToken)return deps.json({ok:false,error:'eBay is not connected for this store'},503);
   let endedCount=0;const errors=[];
-  const withdrawingIds=new Set(toWithdraw.map(r=>r.id));
+  const withdrawingIds=new Set(toWithdraw.map(r=>r.id));const endedGroups=new Set();
   for(const row of toWithdraw){
     try{
-      await withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withdrawingIds);
+      await withdrawFocPresaleRow(env,deps,ebayToken,row,allPresaleRows,withdrawingIds,endedGroups);
       const alreadySoldBeforeWithdraw=Math.max(0,Number(row.data.focPresaleOriginalQty||0)-Number(row.data.qty??row.data.quantity??0));
       await db(`inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({data:{...row.data,qty:0,quantity:0,focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:new Date().toISOString(),ebayWithdrawnReason:'orphaned_cycle_cleanup'}})});
       endedCount++;
