@@ -18,6 +18,17 @@
   <small>Whatnot doesn't share live bids. Each order comes through as it's made (auction, Buy It Now and giveaway), so the score board keeps the money total, items sold and biggest sale.</small>
   <div class="mana-row"><button type="button" id="mana-sync">SYNC TOTALS FROM WHATNOT</button><button type="button" id="mana-reset">RESET TOTALS</button></div>
   <p id="mana-score" class="mana-score">$0 · 0 sold</p>
+  <h3>The Shed Dungeon</h3>
+  <p id="mana-dungeon-status" class="mana-score">Floor 1</p>
+  <div class="mana-row" id="mana-taps"><button type="button" data-tap="follow" data-key="F">+ FOLLOW <kbd>F</kbd></button><button type="button" data-tap="share" data-key="Y">+ SHARE <kbd>Y</kbd></button><button type="button" data-tap="bookmark" data-key="B">+ BOOKMARK <kbd>B</kbd></button></div>
+  <small>Whatnot doesn't send follows, shares or bookmarks -- tap them in as they pop up in the app. Sales fill the flask on their own.</small>
+  <div class="mana-row"><input id="mana-add-mana" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="mana-add-mana-go">+ MANA</button><input id="mana-set-floor" type="number" min="1" max="99" placeholder="Floor"><button type="button" id="mana-set-floor-go">SET FLOOR</button><button type="button" id="mana-reset-week">RESET WEEK</button></div>
+  ${box('dungeonOn','Dungeon on: the sign is the mana flask (sales, follows, shares and bookmarks fill it)')}
+  ${box('finale','FINALE tonight (the last show before Wednesday): bigger goals for every star this week')}
+  <div class="mana-grid">${num('floorBase','Floor 1 goal ($)',1,1000000)}${num('floorGrowth','Each floor needs (+%)',0,500)}${num('bossShare','Floor boss HP (% of the floor goal)',1,500)}${num('manaFollow','Follow = mana',0,1000)}${num('manaShare','Share = mana',0,1000)}${num('manaBookmark','Bookmark = mana',0,1000)}${num('starsPerFloor','Stars per floor cleared',0,10)}${num('finaleBoost','Finale: +% goal per star',0,500)}</div>
+  <label>Floor rewards (one per line, "3: Free giveaway in the Whatnot tool")<textarea name="floorRewards" maxlength="1200"></textarea></label>
+  <label>This show's unlocks (one per line, by the show's sales, "100: Shoutout to everyone in chat")<textarea name="showUnlocks" maxlength="1200"></textarea></label>
+  <small class="mana-rules">Every unlock is a goal reached -- nothing is drawn or random. Fill the flask and the floor's boss comes out; sales and taps knock its HP down; beat it to unlock the next floor and its reward. Progress carries over all week and starts fresh every Wednesday (new comic book day). Rewards are for everyone watching, never a buyers-only prize.</small>
   <h3>Boss battle</h3>
   <div class="mana-grid"><label>Boss<select name="bossCharacter">${Object.entries(BOSS_NAMES).map(([id,name])=>`<option value="${id}">${name}</option>`).join('')}</select></label><label>Boss name<input name="bossName" maxlength="40"></label>${num('bossGoal','Boss HP (show sales goal, $)',1,10000000)}</div>
   <label>Reward when the boss goes down<input name="bossReward" maxlength="120"></label>
@@ -33,7 +44,7 @@
   <div class="mana-grid">${num('bigArtY','Big photo top',0,1400)}</div>
   <small class="mana-rules">Whatnot can't start auctions from outside its app -- run each auction there; the overlay follows along. With BIG PHOTO, still hold the real book up before the timer starts: the stream is the record if a buyer says it wasn't as shown. Use your own photo of the actual copy, not a catalog cover, for anything where condition matters.</small>
   <h3>Quick</h3>
-  <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button></div>
+  <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button><button type="button" data-toggle="finale" data-key="V">FINALE ON/OFF <kbd>V</kbd></button></div>
   <h3>Effects</h3>
   <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
@@ -70,7 +81,12 @@
   }
   const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
   function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}preview();}
-  function took(d){if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');}if(d.stage){stage=d.stage;paintStage();}preview();}
+  function took(d){if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}preview();}
+  // The dungeon's status line: floor, mana, stars, the week's reset.
+  function paintDungeon(){
+    const d=stats?.dungeon,el=host.querySelector('#mana-dungeon-status');if(!d){el.textContent='Connect to see the floor.';return;}
+    el.textContent=(d.on?'':'(off) ')+'Floor '+d.floor+' · '+d.shed+' · '+(d.phase==='boss'?d.boss.name+' HP '+usd(d.boss.hp)+' / '+usd(d.boss.max):usd(d.mana)+' / '+usd(d.goal)+' mana')+' · ★ '+d.stars+(d.finale?' · FINALE':'')+' · resets Wed '+d.resets+(d.lastWeek?' · last week: floor '+d.lastWeek.floor+', ★ '+d.lastWeek.stars:'');
+  }
   function values(){const out={};for(const el of form.elements){if(!el.name)continue;out[el.name]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;}return out;}
   function preview(effect,demoStats){frame.contentWindow?.postMessage({type:'mana-preview',settings:values(),stage,stats:demoStats||stats||undefined,effect},location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
@@ -79,12 +95,19 @@
   // sometimes"): flip the setting and save it live in one tap.
   host.querySelector('#mana-quick').onclick=e=>{const b=e.target.closest('[data-toggle]');if(!b)return;
     const box=form.elements.namedItem(b.dataset.toggle);box.checked=!box.checked;
-    void run(async()=>{try{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=(b.dataset.toggle==='visible'?'Sign ':'Marquee text ')+(box.checked?'on':'off');}catch(err){box.checked=!box.checked;throw err;}});};
+    void run(async()=>{try{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=({visible:'Sign ',marqueeOn:'Marquee text ',finale:'Finale '}[b.dataset.toggle]||'')+(box.checked?'on':'off');}catch(err){box.checked=!box.checked;throw err;}});};
   form.onsubmit=e=>{e.preventDefault();void run(async()=>{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Live settings saved.';});};
   form.oninput=e=>{
     // Picking a boss gives it its name, unless the store typed its own.
     if(e.target.name==='bossCharacter'){const nm=form.elements.namedItem('bossName');if(!nm.value||Object.values(BOSS_NAMES).includes(nm.value))nm.value=BOSS_NAMES[e.target.value]||nm.value;}
     preview();};
+  // Dungeon taps and fixes.
+  host.querySelector('#mana-taps').onclick=e=>{const b=e.target.closest('[data-tap]');if(!b)return;const kind=b.dataset.tap;
+    if(!connectedStore){const now=Date.now(),v=values();preview({id:'local-'+now,kind:'tap',tapKind:kind,mana:v[{follow:'manaFollow',share:'manaShare',bookmark:'manaBookmark'}[kind]]||0,startsAt:now,endsAt:now+2500});status.textContent='Preview only. Tap Connect / reload to fill the real flask.';return;}
+    void run(async()=>{const d=await api('dungeon-tap',{kind});took(d);preview(d.effect);status.textContent='+ '+kind;});};
+  host.querySelector('#mana-add-mana-go').onclick=()=>run(async()=>{const v=Number(host.querySelector('#mana-add-mana').value);if(!(v>0))throw Error('Type the $ amount first');const d=await api('dungeon-adjust',{mana:v});took(d);if(d.effect)preview(d.effect);host.querySelector('#mana-add-mana').value='';status.textContent='Added '+usd(v)+' mana.';});
+  host.querySelector('#mana-set-floor-go').onclick=()=>run(async()=>{const f=Number(host.querySelector('#mana-set-floor').value);if(!Number.isInteger(f)||f<1)throw Error('Type a floor number');if(!confirm('Jump to floor '+f+'? Its mana starts at 0.'))return;const d=await api('dungeon-adjust',{floor:f});took(d);status.textContent='Now on floor '+f+'.';});
+  host.querySelector('#mana-reset-week').onclick=()=>run(async()=>{if(!confirm('Start the week over at floor 1 with no stars?'))return;const d=await api('dungeon-adjust',{resetWeek:true});took(d);status.textContent='Week reset: floor 1.';});
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
   // ByteRider_97: a reaction or a line, on stream (and in the preview).
   // Store, 2026-11-02 (on a phone): "I didn't see it animate in the preview."
@@ -116,7 +139,7 @@
     if(!keys.checked||e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName||'')||e.target?.isContentEditable)return;
     const k=e.key.length===1?e.key.toUpperCase():'';
     if(k==='S'){e.preventDefault();host.querySelector('#mana-say').focus();return;}
-    const b=host.querySelector(`#mana-mascot [data-key="${k}"],#mana-quick [data-key="${k}"]`);
+    const b=host.querySelector(`#mana-mascot [data-key="${k}"],#mana-quick [data-key="${k}"],#mana-taps [data-key="${k}"]`);
     if(b){e.preventDefault();b.click();}
   });
   host.querySelector('#mana-show').onclick=()=>run(async()=>{const d=await api('current-show');if(!d.show)throw Error('No live or scheduled Whatnot show found');form.elements.namedItem('showId').value=d.show.id;host.querySelector('#mana-show-name').textContent=(d.show.live?'LIVE: ':'NEXT: ')+(d.show.title||d.show.id);preview();status.textContent='Show picked -- tap Save live settings.';});
@@ -153,13 +176,21 @@
   host.querySelector('#mana-stage-clear').onclick=()=>run(()=>saveStage({now:null,next:stage.next||[]}));
 
   // A pretend sale in the preview only -- nothing is sent.
-  let demo=0,demoGross=0,demoBig=0;
+  let demo=0,demoGross=0,demoBig=0,demoDungeon=null,dungeonLib=null;
+  import('./live-studio-dungeon.mjs').then(m=>{dungeonLib=m;}).catch(()=>{});
   host.querySelector('#mana-demo').onclick=()=>{const v=values(),amount=[12,45,8,150,25][demo%5];demo++;
     if(demo===1){demoGross=stats?.gross||0;demoBig=stats?.biggest||0;}
     const wasAlive=demoGross<v.bossGoal;demoGross+=amount;demoBig=Math.max(demoBig,amount);const hp=Math.max(0,v.bossGoal-demoGross);
     const fake={gross:demoGross,sold:(stats?.sold||0)+demo,biggest:demoBig,combo:demo,lastSaleAt:Date.now(),giveaways:0,boss:{name:v.bossName,goal:v.bossGoal,hp,pct:hp/v.bossGoal*100,defeated:hp<=0,reward:v.bossReward}};
-    const kind=wasAlive&&hp<=0&&v.showBoss?'boss':amount>=v.jackpotAmount?'jackpot':'sold';
-    preview({id:'demo-'+Date.now(),kind,startsAt:Date.now(),endsAt:Date.now()+5000,amount,word:['POW!','BAM!','KRAK!','ZAP!','KA-CHING!'][demo%5],combo:demo,reward:v.bossReward,bossName:v.bossName,buyer:v.showBuyerNames?'collector42':''},fake);};
+    let kind=!v.dungeonOn&&wasAlive&&hp<=0&&v.showBoss?'boss':amount>=v.jackpotAmount?'jackpot':'sold',extra={};
+    // The dungeon moves too (preview only).
+    if(dungeonLib){
+      if(demo===1){const p=stats?.dungeon;demoDungeon=p?{week:p.week,floor:p.floor,phase:p.phase,mana:p.mana,bossHp:p.phase==='boss'?p.boss.hp:0,stars:p.stars,cleared:[],taps:{}}:null;}
+      const r=dungeonLib.addMana(demoDungeon,amount,v);demoDungeon=r.dungeon;fake.dungeon=dungeonLib.publicDungeon(demoDungeon,v,demoGross);
+      const boss=r.events.filter(x=>x.kind==='boss').pop(),fl=r.events.filter(x=>x.kind==='floor').pop(),un=v.dungeonOn?dungeonLib.showUnlocksCrossed(demoGross-amount,demoGross,v).pop():null;
+      if(boss){kind='boss';extra={dungeon:true,...boss};}else if(fl){kind='floor';extra=fl;}else if(un){kind='unlock';extra={unlockText:un.text,unlockAt:un.n};}
+    }
+    preview({id:'demo-'+Date.now(),kind,startsAt:Date.now(),endsAt:Date.now()+5000,amount,word:['POW!','BAM!','KRAK!','ZAP!','KA-CHING!'][demo%5],combo:demo,reward:v.bossReward,bossName:v.bossName,buyer:v.showBuyerNames?'collector42':'',...extra},fake);};
 
   host.querySelector('#mana-link').onclick=()=>run(async()=>{const d=await api('overlay-link',{});const u=new URL('arcade-overlay.html',location.href);u.hash=new URLSearchParams({worker:WORKER,store:connectedStore,token:d.token}).toString();host.querySelector('#mana-url').value=u.href;status.textContent='OBS link ready; expires '+new Date(d.expiresAt).toLocaleTimeString();});
   host.querySelector('#mana-revoke').onclick=()=>run(async()=>{await api('revoke',{});host.querySelector('#mana-url').value='';status.textContent='OBS links revoked.';});

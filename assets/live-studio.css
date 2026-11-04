@@ -39,7 +39,7 @@
 #mana-boss-taunt {margin-top:8px;font-size:12px;color:var(--yel);text-shadow:2px 2px 0 var(--ink);min-height:14px}
 #mana-boss.defeated #mana-boss-taunt {color:#9b8fb0}
 #mana-effect-art {display:none;width:150px;height:150px;image-rendering:pixelated;filter:grayscale(1) drop-shadow(5px 5px 0 var(--ink));transform:rotate(-12deg);margin-bottom:-6px}
-#mana-effect.k-boss #mana-effect-art {display:block}
+#mana-effect.k-boss #mana-effect-art,#mana-effect.k-floor #mana-effect-art {display:block}
 .mana-3d #mana-effect-art {display:none!important}
 .mana-3d #mana-effect.k-boss #mana-effect-boss,.mana-3d #mana-effect.k-ready #mana-effect-boss {display:block;width:260px;height:260px;margin:-30px 0 -24px;filter:drop-shadow(0 10px 12px #0008)}
 /* Show start: BOSS FIGHT! VS -- the boss, full colour, glowing. */
@@ -199,3 +199,27 @@
 #mana-hype i.on:nth-of-type(4),#mana-hype i.on:nth-of-type(5) {background:#b026ff;border-color:#b026ff;box-shadow:0 0 12px #b026ff}
 #mana-hype.max {animation:mana-hype-max .3s steps(2) infinite}
 @keyframes mana-hype-max {50% {border-color:#5cff1f;box-shadow:0 0 26px #5cff1f}}
+
+/* The Shed Dungeon: the sign is the mana flask. Its liquid rises with the
+   floor's mana (--fill, 0-100); in a boss fight it turns purple and drains
+   with the boss's HP. */
+#mana-sign.dungeon .mana-liquid {inset:auto -10% -45%;top:calc(100% - var(--fill,0) * 1%);transition:top .9s cubic-bezier(.3,1.3,.5,1)}
+#mana-sign.dungeon.boss .mana-liquid {background:linear-gradient(0deg,#4a0f7a,#d14bff)}
+#mana-sign.dungeon.boss .mana-bubbles i {border-color:#e7a6ff}
+#mana-sign.dungeon.full {box-shadow:0 0 0 4px #b4ff3a inset,inset 0 0 30px #b4ff3a,8px 8px 0 var(--ink),0 0 28px #b4ff3a}
+#mana-sign.dungeon .mana-title {letter-spacing:2px}
+#mana-flask-meter {display:none;margin-left:14px;font:400 16px 'Press Start 2P',monospace;letter-spacing:0;color:#fff;-webkit-text-stroke:0;text-shadow:2px 2px 0 var(--ink);vertical-align:middle}
+#mana-sign.dungeon #mana-flask-meter {display:inline}
+#mana-sign-hits {position:absolute;right:30px;bottom:10px;width:0;height:0;z-index:2}
+#mana-sign-hits b {position:absolute;right:0;bottom:0;font-family:'Luckiest Guy',Bangers,sans-serif;font-weight:400;font-size:40px;color:#b4ff3a;-webkit-text-stroke:2px var(--ink);white-space:nowrap;animation:mana-float 1.5s ease-out forwards}
+@keyframes mana-float {from {transform:translateY(20px);opacity:1} to {transform:translateY(-70px);opacity:0}}
+#mana-dungeon {display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-top:12px;font-size:14px;color:#e0fbff;text-shadow:0 2px 0 var(--ink)}
+#mana-dungeon.mana-hidden {display:none}
+#mana-dungeon-floor {font-family:'Luckiest Guy',Bangers,sans-serif;font-weight:400;font-size:40px;letter-spacing:1px;background:var(--gold);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:2px #3a1200;text-shadow:none}
+#mana-dungeon-shed {font-family:Bangers,sans-serif;font-size:30px;letter-spacing:2px;color:var(--lime)}
+#mana-dungeon-stars {color:var(--yel);font-size:16px}
+#mana-dungeon-next {flex-basis:100%;font-size:12px;color:#cfc3e8}
+#mana-effect.k-floor .mana-burst {background:linear-gradient(160deg,#2a0b4f,#6b2bd9 50%,#b4ff3a);animation:mana-pop .45s cubic-bezier(.2,2,.4,1)}
+#mana-effect.k-unlock .mana-burst {background:linear-gradient(160deg,#0b3b4a,#22e6ff 55%,#ffe23d);animation:mana-pop .45s cubic-bezier(.2,2,.4,1)}
+.mana-3d #mana-effect.k-floor #mana-effect-boss {display:block;width:260px;height:260px;margin:-30px 0 -24px;filter:drop-shadow(0 10px 12px #0008)}
+#mana-effect.k-floor #mana-effect-sub,#mana-effect.k-unlock #mana-effect-sub {background:var(--ink);color:var(--yel);padding:8px 14px;font-size:20px;margin-bottom:90px}

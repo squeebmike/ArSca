@@ -31,6 +31,15 @@ import('./live-studio-3d.mjs').then(m=>{
     window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels()});
   }catch(e){console.warn('[studio] 3D off:',e?.message||e);bossView=effectBoss=coinLayer=gl=null;document.body.classList.remove('mana-3d');}
 }).catch(e=>console.warn('[studio] 3D off:',e?.message||e));
+// The Shed Dungeon (scripts/live-studio-dungeon.mjs), when it's on.
+const dg=()=>settings.dungeonOn&&stats.dungeon?.on?stats.dungeon:null;
+// The boss on screen: the dungeon floor's, or the show's boss bar.
+function curBoss(){
+  const d=dg();
+  if(d)return {character:d.boss.character,name:d.boss.name,hp:d.boss.hp,pct:d.pct,defeated:false,show:settings.showBoss&&d.boss.active};
+  const b=stats.boss||{};
+  return {character:b.character||settings.bossCharacter,name:b.name||settings.bossName,hp:b.hp,pct:b.pct??100,defeated:!!b.defeated,show:settings.showBoss};
+}
 const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'px';el.classList.toggle('mana-hidden',!show);};
 
 function apply(s) {
@@ -41,9 +50,6 @@ function apply(s) {
   // The scrolling text can be switched off (the sign and its bubbling mana stay).
   sign.querySelector('.mana-track').classList.toggle('mana-hidden',settings.marqueeOn===false);
   place(hud,40,settings.hudY,settings.showHud);
-  boss.classList.toggle('mana-hidden',!settings.showBoss);
-  // The boss's sprite and catchphrase, redrawn when the boss changes.
-  if(drawnBoss!==settings.bossCharacter){drawnBoss=settings.bossCharacter;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // Big photo: over the bottom camera, full width.
   card.classList.toggle('big',!!settings.bigArt);
   if(settings.bigArt){place(card,40,settings.bigArtY);card.style.height=Math.max(420,Math.min(900,1900-settings.bigArtY))+'px';}
@@ -60,22 +66,41 @@ function apply(s) {
 function paintStats(next,fromSale) {
   const before=shownGross;stats=next||stats;
   $('mana-gross').textContent=usd(stats.gross);$('mana-sold').textContent=String(stats.sold);$('mana-biggest').textContent=usd(stats.biggest);
-  const b=stats.boss||{};
-  $('mana-boss-name').textContent=b.name||settings.bossName;
+  const b=curBoss(),d=dg();
+  boss.classList.toggle('mana-hidden',!b.show);
+  // The boss's sprite and catchphrase, redrawn when the boss changes.
+  if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
+  paintDungeon(d);
+  $('mana-boss-name').textContent=b.name;
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
   const fill=$('mana-boss-fill');fill.style.width=Math.max(0,Math.min(100,b.pct??100))+'%';fill.classList.toggle('low',(b.pct??100)<=25);
   boss.classList.toggle('defeated',!!b.defeated);bossView?.defeat(!!b.defeated);
-  $('mana-boss-taunt').textContent=b.defeated?'"I\'LL BE BACK NEXT SHOW..."':'"'+bossById(b.character||settings.bossCharacter).taunt+'"';
+  $('mana-boss-taunt').textContent=b.defeated?'"I\'LL BE BACK NEXT SHOW..."':'"'+bossById(b.character).taunt+'"';
   if(fromSale && before!=null && stats.gross>before){
     for(const el of [$('mana-gross'),$('mana-sold')]){el.classList.remove('bump');void el.offsetWidth;el.classList.add('bump');}
     // Coins pop out of the score, more for a bigger sale.
     if(coinLayer&&settings.showHud){const r=$('mana-gross').getBoundingClientRect();coinLayer.burst(r.left+r.width/2,r.top+r.height/2,Math.min(16,6+Math.round((stats.gross-before)/25)));}
-    if(settings.showBoss){
+    // In the dungeon, a sale before the boss shows up fills the flask.
+    if(d&&!b.show){const m=document.createElement('b');m.textContent='+'+usd(stats.gross-before);$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);}
+    if(b.show){
       boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');bossView?.hit();
       const dmg=document.createElement('b');dmg.textContent='-'+usd(stats.gross-before);$('mana-boss-hits').append(dmg);setTimeout(()=>dmg.remove(),1500);
     }
   }
   shownGross=stats.gross;
+}
+// The flask sign + the floor badge on the score board.
+function paintDungeon(d){
+  sign.classList.toggle('dungeon',!!d);sign.classList.toggle('boss',!!d&&d.phase==='boss');sign.classList.toggle('full',!!d&&d.phase==='floor'&&d.pct>=90);
+  $('mana-dungeon').classList.toggle('mana-hidden',!d);
+  if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
+  sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
+  $('mana-title-text').textContent='FLOOR '+d.floor+' · '+d.shed;
+  $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
+  $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.finale?' · FINALE':'');
+  $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
+  const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
+  $('mana-dungeon-next').textContent=next;
 }
 function paintStage() {
   const now=stage.now;
@@ -96,6 +121,8 @@ function paintStage() {
   lastNowTitle=title;
 }
 // What ByteRider_97 does for each show event. Lines take turns (no chance involved).
+const TAP_LINES={follow:'NEW FOLLOWER! WELCOME TO THE POCKET!',share:'THANKS FOR THE SHARE!',bookmark:'BOOKMARKED! SEE YOU NEXT SHOW!'};
+const TAP_WORDS={follow:'FOLLOW',share:'SHARE',bookmark:'BOOKMARK'};
 const SOLD_LINES=['SOLD!','KA-CHING!','ANOTHER ONE!','NICE PULL!','STRAIGHT TO THE PILE!','GG, COLLECTOR!'];
 function react(e){
   if(!mascot)return;
@@ -116,7 +143,10 @@ function react(e){
       break;
     }
     case 'jackpot': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
-    case 'boss': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:'BOSS DOWN! GG!'});break;
+    case 'boss': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:e.nextFloor?'FLOOR '+e.nextFloor+' UNLOCKED!':'BOSS DOWN! GG!'});break;
+    case 'floor': mascot.play('alert',{text:'FLASK FULL! '+(e.bossName||'THE BOSS')+' INCOMING!',ms:1800});mascot.play('angry',{text:'GET HIM, CHAT!'});break;
+    case 'unlock': mascot.play('celebrating',{text:'UNLOCKED: '+(e.unlockText||'')});break;
+    case 'tap': mascot.play(e.tapKind==='follow'?'love':'happy',{text:TAP_LINES[e.tapKind]||'MANA!'});break;
     case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
     case 'ready': mascot.play('disappearing',{boot:true});mascot.play('loading',{ms:1500});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
     case 'gameover': mascot.play('sad',{text:"SHOW'S OVER?! ...SAME TIME NEXT SHOW?"});setTimeout(()=>mascot.play('sleeping'),5000);break;
@@ -176,6 +206,9 @@ const SOUNDS={
   gameover:()=>tune([784,659,523,392,330,262],.16),
   giveaway:()=>tune([659,784,988,1319,988,1319],.1),
   winner:()=>tune([784,988,1175,1568,0,1568],.11),
+  floor:()=>{tone(70,.6,0,'sawtooth',1);tune([262,0,247,0,233,0,220,330,440],.12);},
+  unlock:()=>tune([659,880,1175,1319],.09),
+  tap:()=>tune([1047,1568],.06),
 };
 document.addEventListener('click',()=>{audio ||= new AudioContext();void audio.resume();});
 
@@ -189,9 +222,11 @@ function receiveEffect(e,initial=false) {
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
   // A ByteRider reaction or line from the dashboard: just him, no burst.
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
+  // A follow / share / bookmark: a float on the flask and a line, no burst.
+  if(e.kind==='tap'){react(e);const m=document.createElement('b');m.textContent='+'+(e.mana||0)+' '+(TAP_WORDS[e.tapKind]||'MANA');$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);if(!initial)SOUNDS.tap();return;}
   react(e);
   effect=e;lastBeep=-1;coins.replaceChildren();
-  if(['jackpot','boss'].includes(e.kind)) rain(e.kind==='boss'?36:24);
+  if(['jackpot','boss','unlock'].includes(e.kind)) rain(e.kind==='boss'?36:24);
   if(!initial && e.kind!=='countdown') (SOUNDS[e.kind]||SOUNDS.coin)();
 }
 function words(e) {
@@ -200,12 +235,16 @@ function words(e) {
   switch(e.kind){
     case 'sold': return [e.word||'POW!',e.amount?usd(e.amount):'SOLD!',e.amount?['SOLD!',extras].filter(Boolean).join(' • '):extras];
     case 'jackpot': return ['BIG HIT!',e.amount?usd(e.amount):'',['SOLD!',extras].filter(Boolean).join(' • ')];
-    case 'boss': return [(e.bossName||settings.bossName)+' DEFEATED!','K.O.!',e.reward||settings.bossReward];
+    case 'boss': if(e.dungeon)return [(e.bossName||'BOSS')+' DEFEATED!','FLOOR '+(e.nextFloor||'')+' UNLOCKED!',e.reward?'REWARD: '+e.reward:(e.shed||'')];
+      return [(e.bossName||settings.bossName)+' DEFEATED!','K.O.!',e.reward||settings.bossReward];
+    case 'floor': return ['FLOOR '+(e.floor||'')+' CLEARED!','BOSS APPEARS!','VS '+(e.bossName||'THE BOSS')];
+    case 'unlock': return ['UNLOCKED!',e.unlockAt?usd(e.unlockAt):'',e.unlockText||''];
     case 'giveaway': return ['FREE GIVEAWAY!','','FREE TO ENTER IN THE WHATNOT APP'];
     case 'winner': return ['WINNER!',e.buyer?'@'+e.buyer:'','GIVEAWAY WINNER — PICKED BY WHATNOT'];
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
     // Show start: a boss-fight intro card.
-    case 'ready': if(!settings.showBoss)return ['PLAYER 1 READY','',''];
+    case 'ready': {const d=dg();if(d)return ['FLOOR '+d.floor,d.shed,d.phase==='boss'?'BOSS FIGHT: '+d.boss.name:'FILL THE MANA FLASK!'];}
+      if(!settings.showBoss)return ['PLAYER 1 READY','',''];
       return ['BOSS FIGHT!','VS',(settings.bossName||'')+' — "'+bossById(settings.bossCharacter).taunt+'"'];
     default: return [EFFECT_LABELS[e.kind]||'','',''];
   }
@@ -215,8 +254,9 @@ function draw() {
   const now=Date.now()+offset;
   if(effect && effect.endsAt>now) {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind;lastKind=effect.id;
-      if(effect.kind==='boss'||(effect.kind==='ready'&&settings.showBoss)){
-        if(effectBoss){effectBoss.set(settings.bossCharacter);effectBoss.defeat(effect.kind==='boss');effectBoss.start();}
+      if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg())){
+        const who=effect.bossCharacter||settings.bossCharacter;
+        if(effectBoss){effectBoss.set(who);effectBoss.defeat(effect.kind==='boss');effectBoss.start();}
         else{try{$('mana-effect-art').src=$('mana-boss-sprite').toDataURL();}catch{}}
       } else effectBoss?.stop();
       if(effect.kind!=='countdown'){const [w,m,s]=words(effect);$('mana-effect-word').textContent=w;$('mana-effect-main').textContent=m;$('mana-effect-sub').textContent=s;}}
@@ -249,7 +289,8 @@ function connect() {
 // The hype meter: drains a notch every 20 quiet seconds.
 function paintHype(){
   const el=$('mana-hype');if(!el)return;
-  el.classList.toggle('mana-hidden',settings.showHype===false||settings.mascotOn===false);
+  // With the dungeon on, the flask sign is the hype bar.
+  el.classList.toggle('mana-hidden',settings.showHype===false||settings.mascotOn===false||!!settings.dungeonOn);
   const lv=hypeNow(hype).level;el.querySelectorAll('i').forEach((seg,i)=>seg.classList.toggle('on',i<lv));
   el.classList.toggle('max',lv>=HYPE_MAX);
 }
