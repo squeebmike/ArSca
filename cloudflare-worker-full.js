@@ -20023,7 +20023,7 @@ async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
   return data?.[0]?.receipt_settings || {};
 }
-async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 40, allowCreate = true } = {}) {
+async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 150, allowCreate = true } = {}) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   const out = { at: new Date().toISOString() };
   try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit, allowCreate }); }
