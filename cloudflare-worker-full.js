@@ -4414,14 +4414,15 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
           // Sales count the item only; the shipping the buyer paid (and the
           // label it pays for) lives in the payment's breakdown and profit.
           const orderTotal = salePrice;
-          const profit = ebayLineProfit(m, cost);
+          // cost is per copy; the line can be several copies.
+          const profit = ebayLineProfit(m, cost * quantitySold);
           const itemName = d.name || li.title || 'eBay Item';
 
           const saleId = crypto.randomUUID();
           await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: orderTotal, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
           await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || guessSaleCategoryFromTitle(itemName), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
+            body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow ? invRow.id : null, title: itemName, category: d.category || guessSaleCategoryFromTitle(itemName), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice, adjusted_price: salePrice, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: 'ebay:' + order.orderId, image_url: d.thumbnail || d.image || '' }]) });
           await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: 'eBay', amount: orderTotal, reference: order.orderId, provider_metadata: ebaySaleMetadata(order, m), status: 'confirmed', provider: 'ebay', currency: 'USD', confirmed_by: confirmedBy, confirmed_at: soldAt, created_at: soldAt }) });
 
@@ -4905,12 +4906,13 @@ async function processShopifyOrder(env, order) {
       const feePct = Number(receiptSettings?.[channel.toLowerCase() + 'FeePct'] || 0);
       const feeFlat = Number(receiptSettings?.[channel.toLowerCase() + 'FeeFlat'] || 0);
       const feeAmount = Math.round((salePrice * (feePct / 100) + feeFlat) * 100) / 100;
-      const profit = salePrice - cost - feeAmount;
+      // cost is per copy; salePrice is every copy on the line.
+      const profit = Math.round((salePrice - cost * quantitySold - feeAmount) * 100) / 100;
       const saleId = crypto.randomUUID();
       await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({ id: saleId, store_id: invRow.store_id, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
       await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: invRow.store_id, item_id: invRow.id, title: d.name || li.title || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: `${channel.toLowerCase()}:${orderKey}`, image_url: d.thumbnail || d.image || '' }]) });
+        body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: invRow.store_id, item_id: invRow.id, title: d.name || li.title || 'Item', category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice, adjusted_price: salePrice, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', source_id: `${channel.toLowerCase()}:${orderKey}`, image_url: d.thumbnail || d.image || '' }]) });
       await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: invRow.store_id, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: null, confirmed_at: soldAt, created_at: soldAt }) });
 
@@ -13930,7 +13932,7 @@ async function routeRequest(request, env, ctx) {
           await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
           await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-            body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: null, title: (giveaway ? 'Giveaway: ' : '') + unlinkedTitle, category: String(body.category || '').slice(0, 60) || guessSaleCategoryFromTitle(unlinkedTitle), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: '', image_url: '' }]) });
+            body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: null, title: (giveaway ? 'Giveaway: ' : '') + unlinkedTitle, category: String(body.category || '').slice(0, 60) || guessSaleCategoryFromTitle(unlinkedTitle), quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice, adjusted_price: salePrice, discount_amount: 0, cost_basis: cost, profit, condition: '', image_url: '' }]) });
           await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id || null, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
           return json({ ok: true, itemId: null, saleId, salePrice, feeAmount, profit, depleted: false, channel, unlinked: true });
@@ -13943,14 +13945,17 @@ async function routeRequest(request, env, ctx) {
 
         const d = invRow.data || {};
         const cost = Number(d.cost || 0);
-        const profit = salePrice - feeAmount - cost;
+        // salePrice is the whole line (every copy), cost is per copy: a buyer
+        // taking 4 of a comic costs 4 copies (store, 2026-11-04: 4 Nauck
+        // connecting covers showed +$15.03, one copy's cost taken off).
+        const profit = Math.round((salePrice - feeAmount - cost * quantitySold) * 100) / 100;
         const soldAt = body.soldAt || new Date().toISOString();
         const saleId = crypto.randomUUID();
 
         await supabaseAdminFetch(env, 'pos_sales', { method: 'POST', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ id: saleId, store_id: storeId, subtotal: salePrice, discount_total: 0, tax_total: 0, total: salePrice, status: 'completed', payment_status: 'paid', completed_at: soldAt, created_at: soldAt }) });
         await supabaseAdminFetch(env, 'pos_sale_lines', { method: 'POST', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: (giveaway ? 'Giveaway: ' : '') + (d.name || 'Item'), category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice / quantitySold, adjusted_price: salePrice / quantitySold, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
+          body: JSON.stringify([{ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, item_id: invRow.id, title: (giveaway ? 'Giveaway: ' : '') + (d.name || 'Item'), category: d.category || '', quantity: quantitySold, unit_price: salePrice / quantitySold, original_price: salePrice, adjusted_price: salePrice, discount_amount: 0, cost_basis: cost, profit, condition: d.condition || '', image_url: d.thumbnail || d.image || '' }]) });
         await supabaseAdminFetch(env, 'pos_payments', { method: 'POST', headers: { Prefer: 'return=minimal' },
           body: JSON.stringify({ id: crypto.randomUUID(), sale_id: saleId, store_id: storeId, method: channel, amount: salePrice, status: 'confirmed', provider: channel.toLowerCase(), currency: 'USD', confirmed_by: auth.user.id || null, confirmed_at: soldAt, created_at: soldAt, ...(externalRef ? { reference: externalRef } : {}) }) });
 
