@@ -190,7 +190,7 @@ console.log('Fix 5 (storefront publish toggle + onlineListed default) checks pas
   // estimate on the whole order total using the store's configured rate,
   // never the item price alone (scripts/ebay-order-money.mjs).
   assert.match(syncFn, /const money = ebayOrderMoney\(order, \{ feePct: receiptSettings\?\.ebayFeePct \?\? EBAY_DEFAULT_FEE_PCT, feeFlat: receiptSettings\?\.ebayFeeFlat \}\);/, 'must use a configured fee rate when present, falling back to the shared default');
-  assert.match(syncFn, /const profit = ebayLineProfit\(m, cost\);/, 'the fee (and shipping) must actually be in recorded profit');
+  assert.match(syncFn, /const profit = ebayLineProfit\(m, cost \* quantitySold\);/, 'the fee (and shipping) must actually be in recorded profit, with every copy\'s cost (2026-11-04)');
   assert.doesNotMatch(syncFn, /const profit = salePrice - cost;\n/, 'the old fee-less profit calculation must be gone');
 }
 console.log('Fix 6 (eBay auto-sync fee deduction) checks passed');
