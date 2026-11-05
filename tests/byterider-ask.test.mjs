@@ -37,7 +37,10 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /url\.pathname === '\/public\/byterider\/ask' && request\.method === 'POST'/);
 assert.match(worker, /if \(ipCount >= BYTERIDER_LIMITS\.perIpHour\)/, 'per-visitor limit');
 assert.match(worker, /if \(dayCount >= BYTERIDER_LIMITS\.perDay\)/, 'daily cap');
-assert.match(worker, /model: 'claude-haiku-5-5', max_tokens: opts\.long \? 500 : 300/, 'small model, short answers');
+assert.match(worker, /model, max_tokens: opts\.long \? 500 : 300/, 'short answers');
+assert.match(worker, /let res = await ask\('claude-haiku-5-5'\);/, 'small model');
+assert.match(worker, /res = await ask\('claude-haiku-4-5-20251001'\)/, 'falls back when the model is refused');
+assert.match(fs.readFileSync('scripts/byterider-site.mjs', 'utf8'), /const WORKER = 'https:\/\/still-resonance-4f87\.swarnerauto\.workers\.dev';/, 'always asks the worker, never Webflow');
 assert.match(worker, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\);\n\s+if \(auth\.error\) return auth\.error;\n\s+if \(storeId !== ITEM_DETAIL_STORE_ID\)/, 'facts: owner/admin of The Mana Pocket only');
 const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
 assert.match(site, /export const ASK_URL = WORKER \+ '\/public\/byterider\/ask'/);
@@ -98,3 +101,10 @@ const siteSrc = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
 assert.match(siteSrc, /localStorage\.getItem\('mp-foc-session-v1'\)/); assert.match(siteSrc, /name: signedInFirstName\(\)/);
 assert.doesNotMatch(siteSrc, /access_token/, 'the sign-in token is never read or sent');
 console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
+// Hidden with ×, he waits as a small tab that brings him back.
+{
+  const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
+  assert.match(site, /if \(safe\(\(\) => localStorage\.getItem\('byterider-hidden'\) === '1'\)\) return showReturnTab\(opts\);/, 'hidden shows the return tab');
+  assert.match(site, /tab\.onclick = \(\) => \{ safe\(\(\) => localStorage\.removeItem\('byterider-hidden'\)\); tab\.remove\(\); mountSiteByteRider\(opts\); \};/, 'tab brings him back');
+  assert.match(site, /chat\.box\.remove\(\); showReturnTab\(opts\); \};/, '× leaves the tab');
+}

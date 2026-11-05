@@ -16804,7 +16804,8 @@ async function routeRequest(request, env, ctx) {
       await Promise.all([env.LBA_KV.put(ipKey, String(ipCount + 1), { expirationTtl: 3700 }), env.LBA_KV.put(dayKey, String(dayCount + 1), { expirationTtl: 2 * 86400 })]);
       try {
         const out = await askByteRider(parsed.data || {}, {
-          items: async () => (await fetchAllListableStorefrontItemsCached(env, ctx)).filter(i => isStorefrontItemAvailable(i))
+          // A shop-list hiccup never stops him answering.
+          items: async () => (await fetchAllListableStorefrontItemsCached(env, ctx).catch(e => { console.warn('ByteRider items:', e.message); return []; })).filter(i => isStorefrontItemAvailable(i))
             .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
           facts: async () => (await env.LBA_KV.get('byterider-facts:' + ITEM_DETAIL_STORE_ID)) || BYTERIDER_DEFAULT_FACTS,
           // Comics open for preorder (main covers), kept an hour so a busy
@@ -16825,18 +16826,21 @@ async function routeRequest(request, env, ctx) {
           // A named Magic card: its current Oracle text and official rulings.
           card: async n => mtgFuzzyCard(n),
           claude: async (system, messages, opts = {}) => {
-            const res = await fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-              // A rules explanation gets room for its steps.
-              body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: opts.long ? 500 : 300, temperature: opts.long ? 0.2 : 0.6, system, messages }) });
+            // A rules explanation gets room for its steps. If the newer model
+            // is refused on this key, the one Card Lens uses answers instead.
+            const ask = model => fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model, max_tokens: opts.long ? 500 : 300, temperature: opts.long ? 0.2 : 0.6, system, messages }) });
+            let res = await ask('claude-haiku-5-5');
+            if (!res.ok && [400, 403, 404].includes(res.status)) { console.warn('ByteRider model', res.status, (await res.text().catch(() => '')).slice(0, 200)); res = await ask('claude-haiku-4-5-20251001'); }
             const d = await res.json().catch(() => null);
-            if (!res.ok) throw new Error('model ' + res.status);
+            if (!res.ok) throw new Error('model ' + res.status + ' ' + String(d?.error?.message || '').slice(0, 120));
             return (d?.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ');
           },
         });
         return json(out, out.ok ? 200 : 400, { 'Cache-Control': 'no-store' });
       } catch (e) {
         console.warn('ByteRider ask failed:', e.message);
-        return json({ ok: false, error: 'My circuits glitched. Try again, or email hintline@themanapocket.com!' }, 502);
+        return json({ ok: false, error: 'My circuits glitched. Try again, or email hintline@themanapocket.com!', code: (String(e.message).match(/^model \d+/) || ['other'])[0] }, 502);
       }
     }
     // What ByteRider knows (the store facts above), from the dashboard.
