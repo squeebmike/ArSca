@@ -16,6 +16,7 @@
 // Any page can make him react on purpose (what Codex's website code can use):
 //   window.dispatchEvent(new CustomEvent('byterider', { detail: { state: 'jackpot', text: 'ORDER PLACED!' } }))
 import { createByteRider, MASCOT_STATES } from './byterider.mjs';
+import { shouldAsk, matchTheme, choiceLabel, readCatalog, applyChoice, ASK_KEY, IDLE_MS } from './byterider-theme.mjs';
 
 const BASE = new URL('..', import.meta.url).href;
 const LINES = ['PSST. NEW STUFF DROPS EVERY WEEK.', 'I LIVE IN THE ARCADE SYSTEM. DON\'T TELL ANYONE.', 'THAT ONE\'S A GOOD PULL.', 'CATCH US LIVE ON WHATNOT!', 'BUILT IN 1997. STILL RUNNING.', 'NEAR MINT? I\'LL ALLOW IT.'];
@@ -34,9 +35,11 @@ export function signedInFirstName() {
   const w = String(meta.full_name || meta.name || meta.first_name || '').trim().split(/\s+/)[0] || '';
   return /^[A-Za-zÀ-ÿ'-]{1,20}$/.test(w) ? w[0].toUpperCase() + w.slice(1) : '';
 }
-const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What comics come out next week?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'Magic: can I respond to [[Lightning Bolt]]?'];
+const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What preorders are coming up?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'Magic: can I respond to [[Lightning Bolt]]?'];
 // The chat: built from DOM nodes and textContent only (nothing a visitor or
 // the answer types is ever read as HTML).
+// Phones and tablets: never pop the keyboard by itself (it covers his answer).
+const touchScreen = () => safe(() => matchMedia('(pointer: coarse)').matches) || false;
 function buildChat(corner, onAsk) {
   const box = document.createElement('div');
   box.id = 'byterider-chat';
@@ -60,6 +63,10 @@ function buildChat(corner, onAsk) {
   Object.assign(send.style, { padding: '8px 12px', borderRadius: '8px', border: 0, background: '#b4ff3a', color: '#0b0612', fontWeight: '800', cursor: 'pointer' });
   form.append(input, send);
   box.append(head, log, form);
+  const ask = q => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
+  const chipButton = q => { const c = document.createElement('button'); c.type = 'button'; c.textContent = q;
+    Object.assign(c.style, { padding: '5px 8px', borderRadius: '999px', border: '1px solid #b4ff3a88', background: 'transparent', color: '#eaffd6', font: '12px system-ui, sans-serif', cursor: 'pointer' });
+    c.onclick = () => ask(q); return c; };
   const bubble = (text, who, items = []) => {
     const b = document.createElement('div');
     Object.assign(b.style, { alignSelf: who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '8px 10px', borderRadius: '10px',
@@ -76,27 +83,28 @@ function buildChat(corner, onAsk) {
   };
   const chips = document.createElement('div');
   Object.assign(chips.style, { display: 'flex', flexWrap: 'wrap', gap: '6px' });
-  for (const q of SUGGESTIONS) {
-    const c = document.createElement('button'); c.type = 'button'; c.textContent = q;
-    Object.assign(c.style, { padding: '5px 8px', borderRadius: '999px', border: '1px solid #b4ff3a88', background: 'transparent', color: '#eaffd6', font: '12px system-ui, sans-serif', cursor: 'pointer' });
-    c.onclick = () => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
-    chips.append(c);
-  }
+  for (const q of SUGGESTIONS) chips.append(chipButton(q));
   const who = signedInFirstName();
   bubble((who ? 'Hey ' + who + "! " : "Hi! I'm ByteRider_97. ") + "I can find stuff in stock, suggest gifts, tell you what comics are coming (and what to read), help with your account and theme -- and I'm your Magic rules helper. Name a card like [[Lightning Bolt]].", 'br');
   log.append(chips);
+  // Questions to tap under his last message.
+  const showFollowUps = (list = []) => { if (!list.length) return; const f = document.createElement('div'); f.className = 'br-followups'; Object.assign(f.style, { display: 'flex', flexWrap: 'wrap', gap: '6px' });
+    for (const q2 of list.slice(0, 4)) f.append(chipButton(String(q2).slice(0, 60))); log.append(f); log.scrollTop = log.scrollHeight; };
+  // He speaks first (the theme question): his line and taps to answer.
+  const say = (text, list = []) => { chips.remove(); log.querySelectorAll('.br-followups').forEach(n => n.remove()); bubble(text, 'br'); showFollowUps(list); };
   let busy = false;
   form.onsubmit = async e => {
     e.preventDefault();
     const q = input.value.trim();
     if (!q || busy) return;
-    busy = true; chips.remove(); input.value = ''; bubble(q, 'you');
+    busy = true; chips.remove(); log.querySelectorAll('.br-followups').forEach(n => n.remove()); input.value = ''; if (touchScreen()) input.blur(); bubble(q, 'you');
     const wait = bubble('…', 'br');
-    try { const r = await onAsk(q); wait.remove(); bubble(r.text, 'br', r.items); }
+    try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items);
+      showFollowUps(r.followUps); b.scrollIntoView?.({ block: 'start' }); }
     catch { wait.remove(); bubble('My circuits glitched. Try again!', 'br'); }
-    busy = false; input.focus();
+    busy = false; if (!touchScreen()) input.focus();
   };
-  return { box, open: () => { box.style.display = 'flex'; document.getElementById('byterider-site')?.classList.add('br-chat-open'); setTimeout(() => input.focus(), 50); }, close: () => { box.style.display = 'none'; document.getElementById('byterider-site')?.classList.remove('br-chat-open'); }, get isOpen() { return box.style.display !== 'none'; }, x };
+  return { box, open: () => { box.style.display = 'flex'; document.getElementById('byterider-site')?.classList.add('br-chat-open'); if (!touchScreen()) setTimeout(() => input.focus(), 50); }, close: () => { box.style.display = 'none'; document.getElementById('byterider-site')?.classList.remove('br-chat-open'); }, get isOpen() { return box.style.display !== 'none'; }, x, say };
 }
 
 // After his × he waits as a small tab in the corner; a tap brings him back.
@@ -137,18 +145,37 @@ export function mountSiteByteRider(opts = {}) {
   let line = 0;
   // Ask ByteRider: the chat, and his face says the answer too.
   const history = [];
+  // The theme: "Seahawks", "Pikachu", "Izzet" -- set right here, no server.
+  let themeAsking = false;
+  const store = { get: k => safe(() => localStorage.getItem(k)), set: (k, v) => safe(() => localStorage.setItem(k, v)) };
+  const themeReply = q => {
+    const asked = /\b(theme|colou?rs?)\b/i.test(q);
+    if (!themeAsking && !asked) return null;
+    if (themeAsking && /^(no|nope|nah|no thanks?|not now|maybe later|skip)\b/i.test(q.trim())) { themeAsking = false; store.set(ASK_KEY, 'no'); return { text: 'No problem! You can pick one anytime from My Pocket (top right).' }; }
+    const catalog = readCatalog();
+    if (!catalog.length) return null;
+    const { match, choices } = matchTheme(q, catalog);
+    if (match && applyChoice(match)) { themeAsking = false; store.set(ASK_KEY, 'no'); br.play('jackpot', { text: match.n.toUpperCase() + ' MODE: ON!' }); return { text: 'Done! The site is in ' + match.n + ' colors now. Change it anytime from My Pocket (top right).' }; }
+    if (choices.length) { themeAsking = true; return { text: 'Which one did you mean?', followUps: choices.map(choiceLabel) }; }
+    // Not a name he knows: a real question goes to his normal answers.
+    if (!themeAsking || /\?|\b(how|what|where|when|why|do you|can you)\b/i.test(q)) return null;
+    return { text: "Hmm, I don't have that one. Try a team (Seahawks), a Pokémon (Pikachu) or a Magic color (Blue, Izzet) -- or tap My Pocket to see them all.", followUps: ['Seahawks', 'Pikachu', 'No thanks'] };
+  };
   const chat = buildChat(corner, async q => {
-    br.wake(); br.play('thinking', { ms: 1200 });
+    br.wake();
+    const local = themeReply(q);
+    if (local) { history.push({ role: 'user', content: q }, { role: 'assistant', content: local.text }); return { text: local.text, items: [], followUps: local.followUps || [] }; }
+    br.play('thinking', { ms: 1200 });
     const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname, name: signedInFirstName() }) });
     const d = await res.json().catch(() => ({}));
     const text = d.ok ? String(d.answer || '') : String(d.error || 'Hmm, try that again?');
     history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
     br.play(d.ok ? 'talking' : 'sad', { text: text.length > 90 ? text.slice(0, 88) + '…' : text });
-    return { text, items: d.ok ? d.items || [] : [] };
+    return { text, items: d.ok ? d.items || [] : [], followUps: d.ok ? d.followUps || [] : [] };
   });
   document.body.append(chat.box);
   chat.x.onclick = () => chat.close();
-  close.onclick = e => { e.stopPropagation(); safe(() => localStorage.setItem('byterider-hidden', '1')); br.destroy(); wrap.remove(); chat.box.remove(); showReturnTab(opts); };
+  close.onclick = e => { e.stopPropagation(); stopIdle(); safe(() => localStorage.setItem('byterider-hidden', '1')); br.destroy(); wrap.remove(); chat.box.remove(); showReturnTab(opts); };
   // On the frame round him (it takes the taps, not the face inside).
   wrap.onclick = e => { if (close.contains(e.target)) return; br.wake(); if (chat.isOpen) { chat.close(); br.play('wink', { text: LINES[line++ % LINES.length] }); } else { chat.open(); br.play('happy', { text: 'ASK ME ANYTHING!' }); } };
   // Hello, once a visit.
@@ -158,6 +185,21 @@ export function mountSiteByteRider(opts = {}) {
     const who = signedInFirstName();
     br.play('talking', { text: who ? 'WELCOME BACK, ' + who.toUpperCase() + '!' : 'WELCOME TO THE POCKET, PRIMARY USER.' });
   }
+  // No theme yet: after a quiet half minute he says hi and asks (twice a
+  // device at most; "No thanks" ends it).
+  let idle = null;
+  const askTheme = () => {
+    if (!wrap.isConnected || !shouldAsk({ store, path: location.pathname, chatOpen: chat.isOpen, modalOpen: !!document.querySelector('[aria-modal="true"]:not([inert]), #mp-theme-nudge') })) return;
+    store.set(ASK_KEY, String((Number(store.get(ASK_KEY)) || 0) + 1));
+    themeAsking = true; chat.open(); br.wake(); br.play('happy', { text: 'HEY! WHO\'S YOUR TEAM?' });
+    const who = signedInFirstName();
+    chat.say((who ? 'Hey ' + who + '! ' : 'Hi there! ') + "Want the site in your colors? Tell me your favorite team, Pokémon or Magic color -- like Seahawks, Pikachu or Blue -- and I'll set it.", ['Seahawks', 'Pikachu', 'Izzet (Magic)', 'No thanks']);
+    stopIdle();
+  };
+  const resetIdle = () => { clearTimeout(idle); idle = setTimeout(askTheme, IDLE_MS); };
+  const IDLE_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+  const stopIdle = () => { clearTimeout(idle); for (const ev of IDLE_EVENTS) window.removeEventListener(ev, resetIdle, true); };
+  if (shouldAsk({ store, path: location.pathname })) { for (const ev of IDLE_EVENTS) window.addEventListener(ev, resetIdle, { capture: true, passive: true }); resetIdle(); }
   // Buttons that put something in the cart, or check out.
   document.addEventListener('click', e => {
     const b = e.target?.closest?.('button,a,input[type=submit]');

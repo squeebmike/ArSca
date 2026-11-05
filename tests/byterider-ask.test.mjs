@@ -10,7 +10,7 @@ const items = [
 ];
 assert.deepEqual(keywords('Do you have any Charizard?'), ['charizard']);
 const m = matchItems(items, 'got any charizard in stock?');
-assert.deepEqual(m, [{ name: 'Charizard ex', set: 'Obsidian Flames', price: 38.05, url: '/item/1/charizard-ex' }], 'public fields only (no cost)');
+assert.deepEqual(m, [{ name: 'Charizard ex', set: 'Obsidian Flames', price: 38.05, url: '/item/1/charizard-ex', details: '', about: '', added: '' }], 'public fields only (no cost)');
 assert.deepEqual(matchItems(items, 'do you ship?'), [], 'no product words, no matches');
 assert.equal(matchItems(items, 'pikachu')[0].price, null, 'no made-up price');
 
@@ -56,7 +56,11 @@ const shop = [
 ];
 assert.equal(budgetOf('a gift under $20 please'), 20);
 assert.deepEqual(matchItems(shop, 'suggest a pokemon gift under $20').map(i => i.name), ['Pikachu V'], 'within budget, right game');
-assert.deepEqual(matchItems(shop, 'any pokemon cards?').map(i => i.name).sort(), [], 'no suggestion asked, no name: nothing forced');
+assert.deepEqual(matchItems(shop, 'any pokemon cards?').map(i => i.name).sort(), ['Pikachu V', 'Scarlet ETB'], 'a department asked: some from it');
+assert.deepEqual(matchItems(shop, 'how do I set the theme?'), [], 'site help: no items');
+assert.deepEqual(matchItems([{ id: 'x', name: 'Caterpie', set: 'Base Set', category: 'Pokemon', price: 27, url: '/i' }], 'what set is this'), [], 'whole words only, set is not a search word');
+assert.deepEqual(matchItems(shop, 'any good gift ideas?').map(i => i.name).sort(), ['Pikachu V', 'Scarlet ETB', 'Sol Ring'], 'no department: a spread from each');
+assert.deepEqual(matchItems(shop, 'pikachus?').map(i => i.name), ['Pikachu V'], 'plural');
 assert.equal(matchItems(shop, 'recommend some pokemon').length, 2);
 // Upcoming comics and what to read.
 const comics = [
@@ -107,4 +111,73 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.match(site, /if \(safe\(\(\) => localStorage\.getItem\('byterider-hidden'\) === '1'\)\) return showReturnTab\(opts\);/, 'hidden shows the return tab');
   assert.match(site, /tab\.onclick = \(\) => \{ safe\(\(\) => localStorage\.removeItem\('byterider-hidden'\)\); tab\.remove\(\); mountSiteByteRider\(opts\); \};/, 'tab brings him back');
   assert.match(site, /chat\.box\.remove\(\); showReturnTab\(opts\); \};/, '× leaves the tab');
+}
+
+// Follow-ups to tap, and all preorders.
+{
+  const { followUps, matchComics: mc } = await import('../scripts/byterider-ask.mjs');
+  assert.ok(followUps('suggest a pokemon gift under $40', { items: [{}] }).includes('Anything under $20?'));
+  assert.ok(followUps('hi').length === 3);
+  const list = [['Batman #1', 'DC'], ['Batman #2', 'DC'], ['Saga #70', 'Image'], ['Spawn #360', 'Image'], ['X-Men #5', 'Marvel']].map(([title, publisher], i) => ({ title, publisher, onSale: '2026-12-0' + (i + 1) }));
+  assert.deepEqual(mc(list, 'what preorders are coming up?').map(c => c.title), ['Batman #1', 'Saga #70', 'Spawn #360', 'X-Men #5'], 'one per series');
+  const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
+  assert.match(site, /if \(!touchScreen\(\)\) setTimeout\(\(\) => input\.focus\(\), 50\);/, 'no keyboard pop on open (phones)');
+  assert.match(site, /busy = false; if \(!touchScreen\(\)\) input\.focus\(\);/, 'no keyboard pop after an answer (phones)');
+  const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  assert.match(w, /byterider-upcoming-v4', JSON\.stringify\(list\), \{ expirationTtl: 6 \* 3600 \}/, 'preorders read at most every 6 hours');
+  assert.match(w, /on_sale_date=gte\.\$\{today\}&select=title,on_sale_date,publisher,writer,cover_artist,interior_artist,customer_price_cents,msrp_cents&order=on_sale_date\.asc&limit=6000/, 'all preorders');
+}
+// He sets the theme: only when none is picked, from the site's own list.
+{
+  const t = await import('../scripts/byterider-theme.mjs');
+  const cat = [{ league: 'nfl', k: 'sea', n: 'Seahawks' }, { league: 'nfl', k: 'nyg', n: 'Giants' }, { league: 'mlb', k: 'sf', n: 'Giants' }, { league: 'mlb', k: 'bos', n: 'Red Sox' }, { league: 'mlb', k: 'cws', n: 'White Sox' }, { league: 'pokemon', k: '25', n: 'Pikachu' }, { league: 'mtg', k: 'U', n: 'Blue' }, { league: 'mtg', k: 'UR', n: 'Izzet' }];
+  assert.equal(t.matchTheme('Go Seahawks!', cat).match?.k, 'sea');
+  assert.equal(t.matchTheme('my favorite is pikachu', cat).match?.k, '25');
+  assert.deepEqual(t.matchTheme('giants', cat).choices.map(t.choiceLabel), ['Giants (NFL)', 'Giants (MLB)'], 'two teams: he asks which');
+  assert.equal(t.matchTheme('Giants (MLB)', cat).match?.k, 'sf');
+  assert.equal(t.matchTheme('Izzet (Magic)', cat).match?.k, 'UR');
+  assert.equal(t.matchTheme('blue magic', cat).match?.k, 'U');
+  assert.deepEqual(t.matchTheme('sox', cat).choices.map(c => c.n), ['Red Sox', 'White Sox']);
+  assert.equal(t.matchTheme('what time do you open', cat).match, null);
+  const mem = o => ({ get: k => o[k] ?? null });
+  assert.equal(t.shouldAsk({ store: mem({}), path: '/' }), true);
+  assert.equal(t.shouldAsk({ store: mem({ [t.THEME_KEY]: '{"k":"sea"}' }), path: '/' }), false, 'already has a theme');
+  assert.equal(t.shouldAsk({ store: mem({ [t.ASK_KEY]: 'no' }), path: '/' }), false, 'said no thanks');
+  assert.equal(t.shouldAsk({ store: mem({ [t.ASK_KEY]: '2' }), path: '/' }), false, 'twice at most');
+  assert.equal(t.shouldAsk({ store: mem({ 'wo-theme-nudge-dismissed': '1' }), path: '/' }), false, 'dismissed the site nudge');
+  assert.equal(t.shouldAsk({ store: mem({}), path: '/checkout' }), false, 'never at checkout');
+  assert.equal(t.shouldAsk({ store: mem({}), path: '/', chatOpen: true }), false);
+  const src = fs.readFileSync('scripts/byterider-theme.mjs', 'utf8');
+  assert.match(src, /const TAB = 'button\[data-lg\]:not\(\.wo-tile\)';/, 'league tabs only, never every tile');
+  assert.match(src, /Object\.defineProperty\(proto, 'src', \{ configurable: true, get: src\.get, set\(\) \{\} \}\)/, 'no tile pictures downloaded while he looks');
+  assert.match(src, /finally \{\n\s+if \(src\) Object\.defineProperty\(proto, 'src', src\);/, 'pictures restored');
+  assert.equal(t.IDLE_MS, 30000);
+}
+
+// Listing details, new arrivals, comics already out, and the store's own name.
+{
+  const b = await import('../scripts/byterider-ask.mjs');
+  const it = [{ id: 'g', name: 'Charizard', category: 'Pokemon', set: 'Base Set', cardNumber: '4', year: '1999', gradingCompany: 'PSA', grade: '9', quantity: 1, price: 900, url: '/i/g', cost: 100, addedAt: '2026-11-04T10:00:00Z' }, { id: 'h', name: 'Sol Ring', category: 'Magic', price: 3, url: '/i/h', addedAt: '2026-10-01' }];
+  const [g] = b.matchItems(it, 'any charizard?');
+  assert.equal(g.details, '#4, 1999, PSA 9, only 1 left'); assert.ok(!('cost' in g));
+  assert.deepEqual(b.matchItems(it, "what's new?").map(i => i.name), ['Charizard', 'Sol Ring'], 'newest first');
+  assert.equal(b.wantsRules('Whats the phone number to the mana pocket?'), false, 'the store name is not a Magic question');
+  const cs = [{ title: 'Teen Titans #3 Cvr C Francis Manapul', onSale: '2026-11-11' }, { title: 'Batman #160', onSale: '2026-11-04' }, { title: 'Saga #70', onSale: '2026-10-28' }, { title: 'X-Men #9', onSale: '2026-11-11' }];
+  assert.deepEqual(b.matchComics(cs, 'Whats the phone number to the mana pocket?', 8, '2026-11-05'), [], 'mana is not Manapul');
+  assert.deepEqual(b.matchComics(cs, 'What comics released yesterday', 8, '2026-11-05').map(c => c.title), ['Batman #160', 'Saga #70'], 'already out, newest first');
+  assert.deepEqual(b.matchComics(cs, 'what comics come out next week', 8, '2026-11-05').map(c => c.title), ['Teen Titans #3 Cvr C Francis Manapul', 'X-Men #9']);
+  assert.match(b.systemPrompt('', [], { today: '2026-11-05' }), /TODAY is 2026-11-05/);
+}
+
+// Writers and artists: comics coming/out, and in-stock comics' credits.
+{
+  const b = await import('../scripts/byterider-ask.mjs');
+  const cs = [{ title: 'Batman #161', onSale: '2026-11-18', writer: 'Jeph Loeb', artist: 'Jim Lee', interior: 'Jim Lee', covers: ['Jim Lee', 'Artgerm'] }, { title: 'Saga #71', onSale: '2026-11-18', writer: 'Brian K Vaughan', interior: 'Fiona Staples' }];
+  assert.deepEqual(b.matchComics(cs, 'any upcoming comics with Artgerm covers?', 8, '2026-11-05').map(c => c.title), ['Batman #161'], 'variant cover artist');
+  assert.deepEqual(b.matchComics(cs, 'what is Fiona Staples drawing next?', 8, '2026-11-05').map(c => c.title), ['Saga #71'], 'interior artist');
+  assert.match(b.systemPrompt('', [], { comics: b.matchComics(cs, 'artgerm comics', 8, '2026-11-05') }), /written by Jeph Loeb, art by Jim Lee, cover Jim Lee, variant covers by Artgerm/);
+  const stock = [{ id: 'k', name: 'Absolute Batman #1', category: 'Comic', price: 12, url: '/i/k', comic: { writers: ['Scott Snyder'], artists: ['Nick Dragotta'], coverArtists: ['Nick Dragotta'] } }];
+  const [k] = b.matchItems(stock, 'anything by scott snyder in stock?');
+  assert.equal(k?.name, 'Absolute Batman #1', 'in-stock by writer');
+  assert.match(k.details, /written by Scott Snyder, art by Nick Dragotta, cover by Nick Dragotta/);
 }
