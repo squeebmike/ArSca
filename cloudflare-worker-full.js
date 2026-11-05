@@ -1154,14 +1154,16 @@ function publicEventFromWebflow(item, optionLabels = {}) {
   };
 }
 
-async function handlePublicEvents(env) {
-  if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
+// The store's shows and live streams (Webflow CMS "Events"), soonest first;
+// null when Webflow can't be read. Shared by the homepage and ByteRider.
+async function loadPublicEvents(env) {
+  if (!env.WEBFLOW_TOKEN) return null;
   const headers = { Authorization:`Bearer ${env.WEBFLOW_TOKEN}`, accept:'application/json' };
   const [collectionResponse, itemsResponse] = await Promise.all([
     fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}`, { headers }),
     fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}/items/live?limit=100`, { headers }),
   ]);
-  if (!itemsResponse.ok) return json({ ok:false, error:'Event schedule unavailable' }, 502);
+  if (!itemsResponse.ok) return null;
   const collection = collectionResponse.ok ? await collectionResponse.json().catch(() => null) : null;
   const payload = await itemsResponse.json().catch(() => null);
   const labels = webflowEventOptionLabels(collection);
@@ -1170,6 +1172,12 @@ async function handlePublicEvents(env) {
     .map(item => publicEventFromWebflow(item, labels))
     .filter(Boolean)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  return events;
+}
+async function handlePublicEvents(env) {
+  if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
+  const events = await loadPublicEvents(env);
+  if (!events) return json({ ok:false, error:'Event schedule unavailable' }, 502);
   return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
 }
 
@@ -16825,6 +16833,15 @@ async function routeRequest(request, env, ctx) {
               price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100, url: '/comics/search?q=' + encodeURIComponent(String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').slice(0, 80)) }));
             await env.LBA_KV.put('byterider-upcoming-v4', JSON.stringify(list), { expirationTtl: 6 * 3600 }).catch(() => {});
             return list;
+          },
+          // Card shows and live streams from the Webflow Events list (the
+          // homepage schedule), still to come; read at most once an hour.
+          events: async () => {
+            const cached = await env.LBA_KV.get('byterider-events-v1', 'json').catch(() => null);
+            const list = cached || await loadPublicEvents(env).catch(() => null) || [];
+            if (!cached) await env.LBA_KV.put('byterider-events-v1', JSON.stringify(list), { expirationTtl: 3600 }).catch(() => {});
+            const now = Date.now() - 6 * 3600000;
+            return list.filter(e => Date.parse(e.end || e.start) >= now);
           },
           // Magic rules: the official Comprehensive Rules, the same excerpts
           // the MTG Judge (/mtg-judge) works from.
