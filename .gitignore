@@ -17,3 +17,4 @@ data/mtg/build/
 data/pokemon/build/
 data/pokemon-prices/build/
 data/mtg-images/build/
+.deck-lab-build/

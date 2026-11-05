@@ -1,6 +1,7 @@
 import {handleDeltaReignChecklist} from './scripts/delta-reign-page.mjs';
 import { packageFor } from './scripts/shipping-package.mjs';
 import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules, fuzzyCardLookup as mtgFuzzyCard} from './scripts/mtg-judge.mjs';
+import {handleDeckLab} from './scripts/mtg/deck-lab-page.mjs';
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {coordinatedPriceFetch} from './scripts/reference-price-refresh.mjs';
@@ -2996,7 +2997,7 @@ function renderMtgSetIndexPage(sets) {
     description: `Browse every Magic: The Gathering set and card, with current prices. ${sets.length.toLocaleString()} sets.`,
     canonicalPath: '/mtg',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'MTG Sets', description: 'Every Magic: The Gathering set, with cards and prices.' },
-    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first. Catalog prices are market references; store listings have their own price and available quantity.</p><p><a href="/mtg-rules">Rules Academy</a> · <a href="/mtg-judge">Ask the MTG Judge</a> · <a href="/mtg-new-releases">Interactive card viewer</a> · <a href="/category/mtg">Shop MTG inventory</a> · <a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek release guide</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">${rows}</div>`,
+    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first. Catalog prices are market references; store listings have their own price and available quantity.</p><p><a href="/deck-lab">Deck Lab</a> · <a href="/mtg-rules">Rules Academy</a> · <a href="/mtg-judge">Ask the MTG Judge</a> · <a href="/mtg-new-releases">Interactive card viewer</a> · <a href="/category/mtg">Shop MTG inventory</a> · <a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek release guide</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">${rows}</div>`,
   });
 }
 
@@ -6304,6 +6305,8 @@ async function routeRequest(request, env, ctx) {
     try {
     const url = new URL(request.url);
 
+    const deckLab = handleDeckLab(request,{shell:mtgPageShell});
+    if(deckLab)return deckLab;
     const learning = await handleMtgLearning(request, env, {shell:mtgPageShell, auth:requireAuthenticatedUser, limit:enforceUsageLimit});
     if (learning) return learning;
 
@@ -9180,7 +9183,7 @@ async function routeRequest(request, env, ctx) {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = [...pocketGuidePaths, '/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/mtg-rules', '/mtg-judge', '/pokemon/checklists/delta-reign', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = [...pocketGuidePaths, '/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/mtg-rules', '/mtg-judge', '/deck-lab', '/pokemon/checklists/delta-reign', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });

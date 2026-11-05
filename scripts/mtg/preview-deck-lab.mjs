@@ -1,0 +1,4 @@
+// Local UI verification: node scripts/mtg/preview-deck-lab.mjs
+import http from 'node:http';
+import {handleDeckLab} from './deck-lab-page.mjs';
+http.createServer(async(req,res)=>{try{const response=handleDeckLab(new Request('http://localhost:8796'+req.url,{method:req.method}),{shell:o=>'<!doctype html><html lang="en"><meta name="viewport" content="width=device-width, initial-scale=1"><title>'+o.title+'</title><body style="background:#0e1a23;margin:0;padding:20px;font-family:system-ui">'+o.bodyHtml+'</body></html>'})||new Response('Not found',{status:404});res.writeHead(response.status,Object.fromEntries(response.headers));res.end(await response.text());}catch(e){res.writeHead(500);res.end(e.message);}}).listen(8796,'127.0.0.1',()=>console.log('Deck Lab preview http://127.0.0.1:8796/deck-lab'));

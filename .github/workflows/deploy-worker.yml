@@ -9,6 +9,8 @@ on:
       - scripts/pokemon-delta-reign-checklist.mjs
       - scripts/topps/new-releases-2026-11.mjs
       - scripts/mtg-full-game.mjs
+      - scripts/mtg/deck-lab-match.mjs
+      - scripts/mtg/deck-lab-page.mjs
       - scripts/mtg-play-lessons.mjs
       - scripts/mtg-practice.mjs
       - scripts/mtg-academy.mjs
@@ -356,6 +358,8 @@ jobs:
           // repository's own sandboxed dev environment) is real proof they
           // actually render, not just that the code parses.
           await request('MTG Academy page', '/mtg-rules', {}, res => res.ok);
+          await request('Deck Lab playtest page', '/deck-lab', {}, res => res.ok);
+          await request('Deck Lab client', '/deck-lab/app.js', {}, res => res.ok && /javascript/.test(res.headers.get('content-type') || ''));
           await request('MTG Rules Boss page', '/mtg-judge', {}, res => res.ok);
           await request('anonymous MTG AI question rejected', '/mtg-judge/ask', {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'}, res => res.status === 401);
           await request('FAQ page', '/faq', {}, res => res.ok);
