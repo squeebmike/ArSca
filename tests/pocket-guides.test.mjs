@@ -28,6 +28,13 @@ body=await(await get('/pocket-guides?q=%3Cscript%3Ebad%3C%2Fscript%3E')).text();
 body=await(await get('/pocket-guides/secret-lair?q=Garfield')).text();assert.equal(parseHTML(body).document.querySelectorAll('.pg-guide').length,3);
 assert.equal((await get('/pocket-guides/')).status,301);
 assert.equal(await(await get('/pocket-guides','HEAD')).text(),'');assert.equal(await get('/shop'),null);
+for(const path of ['/pocket-guides','/pocket-guides/mtg']){
+ const d=parseHTML(await(await get(path)).text()).document;
+ assert.equal(d.querySelector('.pg-learning a[href="/mtg-rules#play-table"]').textContent.includes('Learn to Play Magic'),true);
+ assert.ok(d.querySelector('.pg-learning a[href="/mtg-judge"]'));
+}
+assert.equal(parseHTML(await(await get('/pocket-guides/baseball')).text()).document.querySelector('.pg-learning'),null);
+for(const [q,href] of [['learn','/mtg-rules#play-table'],['judge','/mtg-judge']])assert.ok([...parseHTML(await(await get('/pocket-guides/mtg?q='+q)).text()).document.querySelectorAll('.pg-guide')].some(a=>a.getAttribute('href')===href));
 deps.loadArticles=async()=>{throw Error('CMS down');};assert.equal((await get('/pocket-guides')).status,503);assert.equal((await get('/pocket-guides')).headers.get('Retry-After'),'60');
 console.log('Pocket Guides: complete HTML discovery, topic pagination, search safety, schema, theme, canonical URLs and honest outages passed');
 

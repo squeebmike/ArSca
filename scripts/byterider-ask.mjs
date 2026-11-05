@@ -22,7 +22,7 @@ export const SITE_HELP = [
   'The "My Pocket" button (top right): signed out it opens the theme picker (with a sign-in link); signed in it goes to Account Settings (/account-profile).',
   'Themes: in the theme picker choose a sports team, a Pokemon or a Magic theme; the site remembers it on that device. Signed-in visitors find the picker in Account Settings.',
   'Rewards and store credit: in Account Settings use "Link my phone" (a text code) so points, store credit and in-store purchases show in your account.',
-  'Comic preorders: /preorders (sign in to preorder exact covers). Search all comics: /comics/search. Magic rules lessons: /mtg-rules. Detailed Magic rules answers (sign in): the Rules Boss at /mtg-judge.',
+  'Comic preorders: /preorders (sign in to preorder exact covers). Search all comics: /comics/search. Magic rules lessons: /mtg-rules. Detailed Magic rules answers (sign in): the MTG Judge at /mtg-judge.',
 ].join('\n');
 export const LIMITS = { question: 300, turns: 6, perIpHour: 20, perDay: 800, items: 6, comics: 8, rules: 8 };
 const CATEGORY_WORDS = [
@@ -103,7 +103,7 @@ export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], r
     'Answer in 1 to 4 short sentences (80 words at most), plain text, no markdown -- except a Magic rules explanation, which may take up to 6 short numbered steps (150 words).',
     'Store facts -- prices, stock, release dates, policies, hours -- come ONLY from STORE FACTS, SITE HELP, IN-STOCK MATCHES and UPCOMING COMICS below. Never make them up. If those do not answer it, say you are not sure and point to /faq or hintline@themanapocket.com.',
     'You may use general fan knowledge to suggest what to read or collect (characters, series, creators), but only suggest items that are in the lists below when you name something to buy.',
-    'For Magic rules you are the store\'s rules helper: explain step by step using the OFFICIAL RULES excerpts and the CARDS (current Oracle text and official rulings) below; cite rule numbers (like 117.3b) only from those excerpts. Never invent card text or rulings -- if a card is not listed, say you need its exact name (they can type it like [[Lightning Bolt]]). For a tournament ruling or a very tricky stack, suggest the Rules Boss at /mtg-judge. You are not an official judge.',
+    'For Magic rules you are the store\'s rules helper: explain step by step using the OFFICIAL RULES excerpts and the CARDS (current Oracle text and official rulings) below; cite rule numbers (like 117.3b) only from those excerpts. Never invent card text or rulings -- if a card is not listed, say you need its exact name (they can type it like [[Lightning Bolt]]). For a tournament ruling or a very tricky stack, suggest the MTG Judge at /mtg-judge. You are not an official judge.',
     ...(name ? [`The visitor is signed in as ${name}. Greet or use their first name now and then, naturally (not every message).`] : []),
     'You cannot look up orders, accounts or payments -- send those to hintline@themanapocket.com.',
     'Never talk about chance, gambling, odds or "pulls" as prizes; never promise a card will go up in value; no grading guarantees.',
@@ -143,9 +143,9 @@ export async function askByteRider(input = {}, deps) {
   if (messages.length && messages[messages.length - 1].role === 'user') messages.pop();
   messages.push({ role: 'user', content: question });
   const answer = cleanText(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules, cards, name }), messages, { long: rules.length > 0 }), 900);
-  // Links under the answer: items, then comics, then the Rules Boss.
+  // Links under the answer: items, then comics, then the MTG Judge.
   const links = [...items.filter(i => i.url), ...comics.filter(c => c.url).map(c => ({ name: c.title + ' (' + c.onSale + ')', price: c.price, url: c.url }))].slice(0, 4);
   for (const c of cards) if (/^https:\/\/scryfall\.com\//.test(c.url)) links.push({ name: c.name + ' (card text)', price: null, url: c.url });
-  if (rules.length) links.push({ name: 'Ask the Rules Boss', price: null, url: '/mtg-judge' });
+  if (rules.length) links.push({ name: 'Ask the MTG Judge', price: null, url: '/mtg-judge' });
   return { ok: true, answer: answer || "Hmm, my circuits blanked. Try /faq or hintline@themanapocket.com!", items: links };
 }

@@ -77,7 +77,7 @@ export async function handleMtgLearning(request,env,deps){
  if(p==='/mtg-judge/status')return request.method==='GET'?response({aiConfigured:!!env.ANTHROPIC_API_KEY&&!!env.LBA_KV}):response({error:'Use GET'},405);
  if(['/mtg-rules','/mtg-judge'].includes(p)){
   if(!['GET','HEAD'].includes(request.method))return response({error:'Use GET'},405);
-  return new Response(request.method==='HEAD'?'':deps.shell({title:(p==='/mtg-rules'?'MTG Rules Academy':'MTG Rules Boss')+' | The Mana Pocket',description:'Learn Magic with 31 lessons, current card text and rules-supported interaction explanations.',canonicalPath:p,bodyHtml:academyBody(p==='/mtg-judge')}),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}});
+  return new Response(request.method==='HEAD'?'':deps.shell({title:(p==='/mtg-rules'?'MTG Rules Academy':'MTG Judge')+' | The Mana Pocket',description:'Learn Magic with 31 lessons, current card text and rules-supported interaction explanations.',canonicalPath:p,bodyHtml:academyBody(p==='/mtg-judge')}),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}});
  }
  if(p==='/mtg-rules/app.js')return ['GET','HEAD'].includes(request.method)?new Response(request.method==='HEAD'?'':academyScript+'\n'+practiceScript+'\n'+playScript,{headers:{'Content-Type':'application/javascript; charset=utf-8','Cache-Control':'public, max-age=300'}}):response({error:'Use GET'},405);
  if(p==='/mtg-judge/card'){

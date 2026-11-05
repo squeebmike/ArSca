@@ -2761,7 +2761,7 @@ function mtgPriceLines(card) {
 // same [data-wo-theme] "My Pocket" button/localStorage key, so a visitor's
 // team/Pokemon/MTG theme choice carries over here exactly as it does on every
 // Webflow page, with zero separate theme logic to maintain in this Worker.
-const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@b19809a/wo-ui.js';
+const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@77a76cd/wo-ui.js';
 // Site logo -- the same asset wo-ui.js's own MANA_LOGO/BRAND_LOGO constants
 // and every JS-built fallback nav (account.js, preorders.js) already use
 // sitewide, served from Webflow's actual CDN host (not the raw S3 bucket
@@ -2925,7 +2925,7 @@ function mtgPageShell({ title, description, canonicalPath, ogImage, ogType, json
     (ogImage ? `<meta name="twitter:image" content="${mtgEscapeHtml(ogImage)}">` : '');
   const robotsTag = robotsNoindex ? `<meta name="robots" content="noindex,follow">` : '';
   const originalChrome = currentSiteChrome();
-  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@3a32ee9/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@b19809a/wo-ui.js')}:null;
+  const chrome=originalChrome?{...originalChrome,head:originalChrome.head.replace(/wo-scripts@[^/]+\/site-polish\.css/g,'wo-scripts@3a32ee9/site-polish.css'),bodyEnd:originalChrome.bodyEnd.replace(/wo-scripts@[^/]+\/wo-ui\.js/g,'wo-scripts@77a76cd/wo-ui.js')}:null;
   const product = jsonLdList.find(block=>block['@type']==='Product');
   const itemRoute = canonicalPath.match(/^\/(item|preorder|book)\/([^/]+)/);
   const productView = product && itemRoute ? productViewAnalytics({id:decodeURIComponent(itemRoute[2]),name:product.name,price:product.offers?.price,category:itemRoute[1]==='preorder'?'Comic preorder':itemRoute[1]==='book'?'Comic backorder':product.additionalProperty?.find(f=>f.name==='Category')?.value||''}) : '';
@@ -2987,7 +2987,7 @@ function renderMtgSetIndexPage(sets) {
     description: `Browse every Magic: The Gathering set and card, with current prices. ${sets.length.toLocaleString()} sets.`,
     canonicalPath: '/mtg',
     jsonLd: { '@context': 'https://schema.org', '@type': 'CollectionPage', name: 'MTG Sets', description: 'Every Magic: The Gathering set, with cards and prices.' },
-    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first. Catalog prices are market references; store listings have their own price and available quantity.</p><p><a href="/mtg-rules">Rules Academy</a> · <a href="/mtg-judge">Ask the Rules Boss</a> · <a href="/mtg-new-releases">Interactive card viewer</a> · <a href="/category/mtg">Shop MTG inventory</a> · <a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek release guide</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">${rows}</div>`,
+    bodyHtml: `<h1>Every MTG set</h1><p class="mp-sub">${sets.length.toLocaleString()} sets, from the newest release back to the very first. Catalog prices are market references; store listings have their own price and available quantity.</p><p><a href="/mtg-rules">Rules Academy</a> · <a href="/mtg-judge">Ask the MTG Judge</a> · <a href="/mtg-new-releases">Interactive card viewer</a> · <a href="/category/mtg">Shop MTG inventory</a> · <a href="/articles/mtg-star-trek-release-dates-set-codes-card-guide">Star Trek release guide</a> · <a href="/articles">Collector articles</a></p><div class="mp-set-list">${rows}</div>`,
   });
 }
 
@@ -16820,7 +16820,7 @@ async function routeRequest(request, env, ctx) {
             return list;
           },
           // Magic rules: the official Comprehensive Rules, the same excerpts
-          // the Rules Boss (/mtg-judge) works from.
+          // the MTG Judge (/mtg-judge) works from.
           rules: async (q, cards = []) => retrieveMtgRules(await loadMtgRules(), q, cards),
           // A named Magic card: its current Oracle text and official rulings.
           card: async n => mtgFuzzyCard(n),
