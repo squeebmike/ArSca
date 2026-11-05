@@ -233,7 +233,7 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.match(w, /if \(\(spend\?\.usd \|\| 0\) >= monthCap\) return json\(/, 'stops at the cap');
   assert.match(w, /byteriderAddSpend\(latest \|\| spend, d\?\.model/, 'counts each answer');
   const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
-  assert.match(site, /\} finally \{ clearInterval\(thinker\); \}/, 'thinking stops even when the network fails');
+  assert.match(site, /\} finally \{ clearInterval\(thinker\); br\.play\('idle'\); \}/, 'thinking stops even when the network fails');
   assert.match(site, /wait\.className = 'br-typing'/, 'typing dots');
   assert.match(site, /Date\.now\(\) - seenAt > 4 \* 60000/, 'idle moves stop so he can nap');
 }
