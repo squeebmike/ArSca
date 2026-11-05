@@ -40,7 +40,7 @@ const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What preorders are co
 // the answer types is ever read as HTML).
 // Phones and tablets: never pop the keyboard by itself (it covers his answer).
 const touchScreen = () => safe(() => matchMedia('(pointer: coarse)').matches) || false;
-function buildChat(corner, onAsk) {
+function buildChat(corner, onAsk, onTyping) {
   const box = document.createElement('div');
   box.id = 'byterider-chat';
   box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Ask ByteRider');
@@ -92,13 +92,19 @@ function buildChat(corner, onAsk) {
     for (const q2 of list.slice(0, 4)) f.append(chipButton(String(q2).slice(0, 60))); log.append(f); log.scrollTop = log.scrollHeight; };
   // He speaks first (the theme question): his line and taps to answer.
   const say = (text, list = []) => { chips.remove(); log.querySelectorAll('.br-followups').forEach(n => n.remove()); bubble(text, 'br'); showFollowUps(list); };
+  // He watches while the visitor types (told to the mascot by onTyping).
+  let typedAt = 0;
+  input.addEventListener('input', () => { const t = Date.now(); if (t - typedAt > 2500) { typedAt = t; onTyping?.(); } });
   let busy = false;
   form.onsubmit = async e => {
     e.preventDefault();
     const q = input.value.trim();
     if (!q || busy) return;
     busy = true; chips.remove(); log.querySelectorAll('.br-followups').forEach(n => n.remove()); input.value = ''; if (touchScreen()) input.blur(); bubble(q, 'you');
-    const wait = bubble('…', 'br');
+    // His "typing…" dots while he thinks.
+    const wait = document.createElement('div'); wait.className = 'br-typing'; wait.setAttribute('aria-label', 'ByteRider is typing');
+    for (let i = 0; i < 3; i++) wait.append(document.createElement('i'));
+    log.append(wait); log.scrollTop = log.scrollHeight;
     try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items);
       showFollowUps(r.followUps); b.scrollIntoView?.({ block: 'start' }); }
     catch { wait.remove(); bubble('My circuits glitched. Try again!', 'br'); }
@@ -165,17 +171,23 @@ export function mountSiteByteRider(opts = {}) {
     br.wake();
     const local = themeReply(q);
     if (local) { history.push({ role: 'user', content: q }, { role: 'assistant', content: local.text }); return { text: local.text, items: [], followUps: local.followUps || [] }; }
-    br.play('thinking', { ms: 1200 });
-    const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname, name: signedInFirstName() }) });
-    const d = await res.json().catch(() => ({}));
+    // Thinking faces in turn until the answer comes back.
+    const THINK = ['thinking', 'processing', 'loading', 'suspicious'];
+    let step = 0; br.play('thinking', { ms: 1300 });
+    const thinker = setInterval(() => br.play(THINK[++step % THINK.length], { ms: 1300 }), 1300);
+    let d = {};
+    try {
+      const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname, name: signedInFirstName() }) });
+      d = await res.json().catch(() => ({}));
+    } finally { clearInterval(thinker); br.play('idle'); } // drop the thinking faces still waiting
     const text = d.ok ? String(d.answer || '') : String(d.error || 'Hmm, try that again?');
     history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
     br.play(d.ok ? 'talking' : 'sad', { text: text.length > 90 ? text.slice(0, 88) + '…' : text });
     return { text, items: d.ok ? d.items || [] : [], followUps: d.ok ? d.followUps || [] : [] };
-  });
+  }, () => { if (['idle', 'sleeping'].includes(br.machine.current.state)) { br.wake(); br.play('suspicious', { ms: 1600 }); } });
   document.body.append(chat.box);
   chat.x.onclick = () => chat.close();
-  close.onclick = e => { e.stopPropagation(); stopIdle(); safe(() => localStorage.setItem('byterider-hidden', '1')); br.destroy(); wrap.remove(); chat.box.remove(); showReturnTab(opts); };
+  close.onclick = e => { e.stopPropagation(); stopIdle(); clearTimeout(idleTimer); safe(() => localStorage.setItem('byterider-hidden', '1')); br.destroy(); wrap.remove(); chat.box.remove(); showReturnTab(opts); };
   // On the frame round him (it takes the taps, not the face inside).
   wrap.onclick = e => { if (close.contains(e.target)) return; br.wake(); if (chat.isOpen) { chat.close(); br.play('wink', { text: LINES[line++ % LINES.length] }); } else { chat.open(); br.play('happy', { text: 'ASK ME ANYTHING!' }); } };
   // Hello, once a visit.
@@ -185,6 +197,19 @@ export function mountSiteByteRider(opts = {}) {
     const who = signedInFirstName();
     br.play('talking', { text: who ? 'WELCOME BACK, ' + who.toUpperCase() + '!' : 'WELCOME TO THE POCKET, PRIMARY USER.' });
   }
+  // Little things he does on his own while the page is open; after four
+  // quiet minutes (no taps, scrolls or keys) he stops and naps as before.
+  let seenAt = Date.now();
+  for (const ev of ['pointerdown', 'keydown', 'scroll', 'touchstart']) window.addEventListener(ev, () => { seenAt = Date.now(); }, { capture: true, passive: true });
+  const IDLE_MOVES = [['wink'], ['smug'], ['cool'], ['suspicious'], ['excited', 900], ['laughing', 900], ['love', 1200], ['loading', 1500], ['happy']];
+  let idleTimer = null;
+  const idleMove = () => {
+    idleTimer = setTimeout(idleMove, 12000 + Math.random() * 14000);
+    if (!wrap.isConnected || document.hidden || Date.now() - seenAt > 4 * 60000 || br.machine.current.state !== 'idle') return;
+    const [state, ms] = IDLE_MOVES[Math.floor(Math.random() * IDLE_MOVES.length)];
+    br.play(state, { ms: ms || 1600, text: !chat.isOpen && Math.random() < 0.25 ? LINES[line++ % LINES.length] : '' });
+  };
+  idleTimer = setTimeout(idleMove, 9000);
   // No theme yet: after a quiet half minute he says hi and asks (twice a
   // device at most; "No thanks" ends it).
   let idle = null;

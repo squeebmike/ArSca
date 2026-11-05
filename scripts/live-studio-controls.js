@@ -106,7 +106,7 @@
   // What ByteRider knows on the website (Worker: /byterider/facts).
   const factsBox=host.querySelector('#mana-br-facts'),factsStatus=host.querySelector('#mana-br-facts-status');
   async function factsCall(body){const res=await storeWorkerFetch('/byterider/facts?store_id='+encodeURIComponent(store()),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Could not reach ByteRider');return d;}
-  async function loadFacts(){try{const d=await factsCall();factsBox.value=d.facts||'';factsStatus.textContent='';}catch(e){factsStatus.textContent=e.message;}}
+  async function loadFacts(){try{const d=await factsCall();factsBox.value=d.facts||'';const sp=d.spend;factsStatus.textContent=sp?('This month: $'+Number(sp.usd||0).toFixed(2)+' of $'+Number(sp.capUsd||0).toFixed(2)+' cap, '+(sp.answers||0)+' answers'+(Object.keys(sp.models||{}).length?' ('+Object.entries(sp.models).map(([m,n])=>m.replace(/^claude-/,'').replace(/-\d{8}$/,'')+': '+n).join(', ')+')':'')):'';}catch(e){factsStatus.textContent=e.message;}}
   host.querySelector('#mana-br-facts-save').onclick=()=>run(async()=>{const d=await factsCall({facts:factsBox.value});factsBox.value=d.facts;factsStatus.textContent='Saved -- he knows it now.';});
   host.querySelector('#mana-br-facts-reset').onclick=()=>run(async()=>{if(!confirm('Put back the default facts?'))return;const d=await factsCall({facts:''});factsBox.value=d.facts;factsStatus.textContent='Back to the defaults.';});
   // Quick switches (store: "I might not want the marquee sign to show

@@ -218,3 +218,22 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.equal(b.wantsRules('if my creature has flying can their card block it?'), true);
   assert.match(b.systemPrompt(), /"Mystery Boxes TP" is a comic, not a mystery box/);
 }
+// The month's spend: priced per model, capped (store: never ~$96 a month).
+{
+  const b = await import('../scripts/byterider-ask.mjs');
+  assert.equal(Math.round(b.answerCost('claude-haiku-5-5', { input_tokens: 3000, output_tokens: 200 }) * 1e6), 400, '$0.0004 an answer');
+  assert.equal(Math.round(b.answerCost('claude-haiku-4-5-20251001', { input_tokens: 3000, output_tokens: 200 }) * 1e6), 4000);
+  assert.equal(Math.round(b.answerCost('claude-haiku-4-5', { input_tokens: 3000, output_tokens: 200 }) * 1e6), 4000, 'family match');
+  assert.equal(Math.round(b.answerCost('some-new-model', { input_tokens: 3000, output_tokens: 200 }) * 1e6), 4000, 'unknown counts at the dearer rate');
+  let sp = b.addSpend(null, 'claude-haiku-5-5', { input_tokens: 3000, output_tokens: 200 });
+  sp = b.addSpend(sp, 'claude-haiku-4-5-20251001', { input_tokens: 3000, output_tokens: 200 });
+  assert.deepEqual(sp, { usd: 0.0044, answers: 2, models: { 'claude-haiku-5-5': 1, 'claude-haiku-4-5-20251001': 1 } });
+  assert.equal(b.MONTHLY_CAP_USD, 10);
+  const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  assert.match(w, /if \(\(spend\?\.usd \|\| 0\) >= monthCap\) return json\(/, 'stops at the cap');
+  assert.match(w, /byteriderAddSpend\(latest \|\| spend, d\?\.model/, 'counts each answer');
+  const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
+  assert.match(site, /\} finally \{ clearInterval\(thinker\); \}/, 'thinking stops even when the network fails');
+  assert.match(site, /wait\.className = 'br-typing'/, 'typing dots');
+  assert.match(site, /Date\.now\(\) - seenAt > 4 \* 60000/, 'idle moves stop so he can nap');
+}

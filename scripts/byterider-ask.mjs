@@ -24,6 +24,25 @@ export const SITE_HELP = [
   'Rewards and store credit: in Account Settings use "Link my phone" (a text code) so points, store credit and in-store purchases show in your account.',
   'Comic preorders: /preorders (sign in to preorder exact covers). Search all comics: /comics/search. Magic rules lessons: /mtg-rules. Detailed Magic rules answers (sign in): the MTG Judge at /mtg-judge.',
 ].join('\n');
+// What an answer costs (USD per million tokens, input / output) and the
+// most he may spend in a month (store, 2026-11-05: "I'd never want to pay
+// 96 a month for it"). Past the cap he rests until the 1st.
+export const MODEL_PRICES = { 'claude-haiku-5-5': [0.10, 0.50], 'claude-haiku-4-5-20251001': [1, 5] };
+export const MONTHLY_CAP_USD = 10;
+export function answerCost(model, usage = {}) {
+  // A dated id ("claude-haiku-4-5-20251001") prices as its family; unknown -> the dearer rate.
+  const key = Object.keys(MODEL_PRICES).find(k => String(model || '').startsWith(k.replace(/-\d{8}$/, '')));
+  const [inP, outP] = MODEL_PRICES[key] || [1, 5];
+  const inTok = (Number(usage.input_tokens) || 0) + (Number(usage.cache_creation_input_tokens) || 0) + (Number(usage.cache_read_input_tokens) || 0);
+  return (inTok * inP + (Number(usage.output_tokens) || 0) * outP) / 1e6;
+}
+export function addSpend(spend, model, usage) {
+  const s = { usd: 0, answers: 0, models: {}, ...(spend || {}) };
+  const cost = answerCost(model, usage);
+  s.usd = Math.round((s.usd + cost) * 1e6) / 1e6; s.answers += 1;
+  s.models = { ...s.models, [model]: (s.models[model] || 0) + 1 };
+  return s;
+}
 export const LIMITS = { question: 300, turns: 6, perIpHour: 20, perDay: 800, items: 6, comics: 10, rules: 8 };
 const CATEGORY_WORDS = [
   [/pok[eé]mon|pikachu|charizard/i, /pok[eé]mon/i], [/\bmagic\b|\bmtg\b|commander/i, /magic|mtg/i],
