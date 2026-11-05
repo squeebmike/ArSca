@@ -125,6 +125,19 @@ export function planRow(row, card, now = Date.now()) {
     marketPriceSource:'PokemonPriceTracker', priceSource:'PokemonPriceTracker server sync', lastPriceUpdate:lastUpdated, priceUpdatedAt:at, stalePrice:false, livePriceStatus:'live' } };
 }
 
+// A held-back change is also kept on the item itself (store, 2026-11-05:
+// "do 2" -- PRICE SYNC's list was handed to whichever device asked first,
+// so it couldn't be seen anywhere else); a price that's settled clears it.
+export function markPriceReview(plan, now = Date.now()) {
+  if (!plan?.data) return plan;
+  if (plan.kind === 'review' && plan.proposal) {
+    const p = plan.proposal;
+    plan.data = { ...plan.data, priceReview: { oldPrice: p.oldPrice, newPrice: p.newPrice, deltaPct: p.deltaPct, direction: p.direction, source: p.source || 'PokemonPriceTracker', at: new Date(now).toISOString() } };
+  } else if ((plan.kind === 'applied' || plan.kind === 'unchanged') && plan.data.priceReview) {
+    const { priceReview, ...rest } = plan.data; plan.data = rest;
+  }
+  return plan;
+}
 // Next rows to check this hour, oldest check first.
 export function nextBatch(rows = [], now = Date.now(), size = SERVER_SYNC_BATCH) {
   return rows.filter(isServerSyncItem).filter(r => !checkedToday(r.data, now))
@@ -153,7 +166,7 @@ export async function runPokemonServerSync(storeId, deps, now = Date.now()) {
       cardCache.set(cacheKey, got);
     }
     if (!got.ok && (got.status === 429 || got.status === 403)) { out.failed++; break; } // out of credits / rate limited: try next hour
-    const plan = planRow(row, got.ok ? got.card : null, now);
+    const plan = markPriceReview(planRow(row, got.ok ? got.card : null, now), now);
     try {
       await deps.db(`inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ data:plan.data, updated_at:new Date(now).toISOString() }) });
     } catch (e) { out.failed++; continue; }

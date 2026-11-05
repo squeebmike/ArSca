@@ -16812,9 +16812,9 @@ async function routeRequest(request, env, ctx) {
       } catch (e) { return json({ ok:false, error:'Credit log unavailable: ' + e.message }, 502); }
     }
 
-    // GET /price-sync/review -- the big changes the server's daily Pokémon
-    // update held back. Handed over once: the dashboard keeps them in its
-    // own PRICE SYNC list from there.
+    // GET /price-sync/review -- the big changes the server's daily updates
+    // held back. Kept (not handed over once) so every device sees them; a
+    // dashboard merges by item, and the next daily check replaces them.
     if (url.pathname === '/price-sync/review' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -16822,7 +16822,6 @@ async function routeRequest(request, env, ctx) {
       if (!env.LBA_KV) return json({ ok:true, proposals:[] });
       const kvKey = 'price-sync-review:' + storeId;
       const proposals = await env.LBA_KV.get(kvKey, 'json').catch(() => null) || [];
-      if (proposals.length) await env.LBA_KV.delete(kvKey).catch(() => {});
       return json({ ok:true, proposals });
     }
 
