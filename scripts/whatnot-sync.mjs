@@ -109,6 +109,8 @@ export function whatnotDesired(row, item, { autoTitles = true } = {}) {
     wanted,
     qty,
     price,
+    // Show only: never in the Buy It Now shop; sold in shows as an auction.
+    showOnly: d.whatnotShowOnly === true,
     title: (autoTitles ? whatnotTitle(item, d) : String(item.name || 'Item')).slice(0, 200),
     // Whatnot won't publish without a description.
     description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
@@ -194,8 +196,12 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
       action = 'updated';
     }
   }
-  if (want.qty > 0 && want.price > 0 && base.price !== want.price) {
-    const priced = await api('PATCH', `/products/${encodeURIComponent(productId)}/variants`, { variants: [{ id: variantId, external_id: row.id, pricing: { buy_it_now: { price: money(want.price) } } }] });
+  // Whatnot's single variant `price` (2026-11-05, "Seller API: Migrate variant
+  // pricing to price"): it is whichever the product is now -- Buy It Now, or
+  // an auction's starting bid. While auctioned (link.auction) the shop price
+  // waits; BACK TO BUY IT NOW puts it back.
+  if (want.qty > 0 && want.price > 0 && base.price !== want.price && !base.auction && !want.showOnly) {
+    const priced = await api('PATCH', `/products/${encodeURIComponent(productId)}/variants`, { variants: [{ id: variantId, external_id: row.id, price: money(want.price) }] });
     if (priced.status === 404) return { link: null, retry: true, action: 'gone' }; // deleted on Whatnot: made again next run
     if (!priced.ok) return fail(priced);
     base.price = want.price;
@@ -214,7 +220,8 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
   // a description and a photo. 2026-10-31: this ran right after creating
   // the product, before the price and quantity, so Whatnot kept the first
   // listing as a draft. A draft is tried again on every run until it goes.
-  if (want.qty > 0 && base.published !== true) {
+  // Never into the shop while in a show's auction (BACK TO BUY IT NOW does that).
+  if (want.qty > 0 && base.published !== true && !want.showOnly && !base.auction) {
     const merch = await api('POST', `/merchandising/products/${encodeURIComponent(productId)}`, { transaction_type: 'buy_it_now', reserve_for_live: false });
     if (merch.ok) { base.published = true; delete base.note; if (action === 'none') action = 'updated'; }
     else base.note = 'Draft on Whatnot (not in your shop yet): ' + whatnotErrorText(merch);
@@ -548,6 +555,13 @@ export async function currentWhatnotShow(api, now = Date.now()) {
   const next = await nextWhatnotShow(api, now);
   return next ? { id: next.id, title: next.title || '', live: false, startsAt: next.scheduled_start_at || '' } : null;
 }
+// Every scheduled show still to come, soonest first (the show picker).
+export async function upcomingWhatnotShows(api, now = Date.now()) {
+  const r = await api('GET', '/shows?status=scheduled&limit=20&reverse=false');
+  if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));
+  return (r.data?.data || []).filter(sh => Date.parse(sh.scheduled_start_at || '') > now - 3600000)
+    .sort((a, b) => Date.parse(a.scheduled_start_at) - Date.parse(b.scheduled_start_at));
+}
 export async function nextWhatnotShow(api, now = Date.now()) {
   const r = await api('GET', '/shows?status=scheduled&limit=20&reverse=false');
   if (!r.ok) throw new Error('Whatnot shows: ' + whatnotErrorText(r));
@@ -581,12 +595,21 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
     let start = null;
     const own = starts && Number(starts[id]) > 0 ? { amount: Number(starts[id]) } : null;
     const rule = own || auction;
-    if (rule) {
-      start = auctionStartPrice(rule, Number(link.price) || Number(deps.shape(row).price) || 0);
-      const priced = await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, pricing: { auction: { start_price: money(start) } } }] });
-      if (!priced.ok) { results.push({ id, name: row.data?.name, error: whatnotErrorText(priced) }); continue; }
+    // Auction first, then its starting bid as the price (the single price is
+    // the auction's once it is one -- set before, it would be the shop price).
+    if (rule) start = auctionStartPrice(rule, Number(link.price) || Number(deps.shape(row).price) || 0);
+    // A show-only item isn't in the shop, so its starting bid can go on first
+    // (Whatnot may want a price before it takes it as an auction).
+    const showOnly = row.data?.whatnotShowOnly === true;
+    if (showOnly && rule) await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, price: money(start) }] });
+    const merchBody = { ...(rule ? { transaction_type: 'auction' } : {}), ...(showOnly ? { reserve_for_live: true } : {}), shows: { strategy: 'ADD', show_ids: [showId] } };
+    let m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, merchBody);
+    if (!m.ok && showOnly && m.status === 422) { const { reserve_for_live, ...plain } = merchBody; m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, plain); }
+    if (m.ok && rule) {
+      const priced = await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, price: money(start) }] });
+      // Still an auction in the show: listed for the after-show return to the shop.
+      if (!priced.ok) { auctioned.push(id); await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], auction: { startPrice: null, showId } }); results.push({ id, name: row.data?.name, error: 'In the show, but the starting bid was not set: ' + whatnotErrorText(priced) }); continue; }
     }
-    const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { ...(rule ? { transaction_type: 'auction' } : {}), shows: { strategy: 'ADD', show_ids: [showId] } });
     if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], ...(rule ? { auction: { startPrice: start, showId } } : {}) }); results.push({ id, name: row.data?.name, added: true, ...(start != null ? { startPrice: start } : {}) }); if (rule) auctioned.push(id); }
     else results.push({ id, name: row.data?.name, error: whatnotErrorText(m) });
   }
@@ -615,7 +638,8 @@ export async function returnUnsoldToShop(showId, deps, { now = Date.now() } = {}
   const ids = (await deps.kvGet(`whatnot-show-items:${deps.storeId}:${showId}`)) || [];
   if (!ids.length) { await deps.kvPut(doneKey, { at: new Date().toISOString(), returned: [] }); return { showId, returned: [] }; }
   const rows = (await deps.rows(ids)) || [];
-  const here = rows.filter(r => r.status === 'in_stock' && Number(r.data?.quantity ?? r.data?.qty ?? 1) > 0).map(r => r.id);
+  // Show-only items stay out of the shop (until changed in the dashboard).
+  const here = rows.filter(r => r.status === 'in_stock' && Number(r.data?.quantity ?? r.data?.qty ?? 1) > 0 && r.data?.whatnotShowOnly !== true).map(r => r.id);
   const results = here.length ? await backToBuyItNow(here, deps) : [];
   const returned = results.filter(r => r.done).map(r => r.id);
   await deps.kvPut(doneKey, { at: new Date().toISOString(), returned, failed: results.filter(r => r.error).length });
@@ -838,10 +862,16 @@ export function whatnotTitle(item = {}, d = {}) {
 // --- Auctions ------------------------------------------------------------------
 // Starting bid: a set amount, or a percent of the item's price; whole
 // dollars (Whatnot's auction start is in whole units), at least $1.
+// min: a floor ("50 percent of my price or 4 dollars, whatever is greater").
 export function auctionStartPrice(spec = {}, price = 0) {
-  if (spec.percent != null) return Math.max(1, Math.round((Number(price) || 0) * Number(spec.percent) / 100));
-  return Math.max(1, Math.round(Number(spec.amount) || 1));
+  const floor = Math.max(1, Math.round(Number(spec.min) || 0));
+  if (spec.percent != null) return Math.max(floor, Math.round((Number(price) || 0) * Number(spec.percent) / 100));
+  return Math.max(floor, Math.round(Number(spec.amount) || 1));
 }
+// SHOW ONLY (store, 2026-11-05: "not available for bin, only in a show with
+// pre bids ... show only if it doesn't sell until I change it in the
+// dashboard"): the starting bid FOC comics get when received into a show.
+export const SHOW_ONLY_START = { percent: 50, min: 4 };
 // Back to Buy It Now in the shop (after a show, or never auctioned after all).
 export async function backToBuyItNow(itemIds, deps) {
   const out = [];
@@ -851,6 +881,11 @@ export async function backToBuyItNow(itemIds, deps) {
     if (!link?.productId) { out.push({ id, error: 'Not on Whatnot' }); continue; }
     const m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, { transaction_type: 'buy_it_now', reserve_for_live: false });
     if (!m.ok) { out.push({ id, error: whatnotErrorText(m) }); continue; }
+    // Its shop price again (the single price was the starting bid).
+    if (link.auction && Number(link.price) > 0 && link.variantId) {
+      const priced = await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, price: money(link.price) }] });
+      if (!priced.ok) { out.push({ id, error: 'Back in the shop, but its price is still the starting bid: ' + whatnotErrorText(priced) }); continue; }
+    }
     const { auction, ...rest } = link;
     await deps.kvPut(linkKey, { ...rest, published: true });
     out.push({ id, done: true });
@@ -956,7 +991,7 @@ export function linkTitleScore(a, b) {
   }
   return Math.round(score * 100) / 100;
 }
-const listingPrice = p => Number(p?.pricing?.buy_it_now?.price?.amount ?? p?.price?.amount ?? p?.buy_it_now_price?.amount) || null;
+const listingPrice = p => Number(p?.price?.amount ?? p?.variants?.[0]?.price?.amount ?? p?.pricing?.buy_it_now?.price?.amount ?? p?.buy_it_now_price?.amount) || null;
 const listingQty = p => { const q = p?.inventory?.quantity ?? p?.quantity ?? p?.total_quantity; return q == null ? null : Number(q) || 0; };
 const listingSku = p => String(p?.sku || p?.variants?.[0]?.sku || p?.variants?.[0]?.external_id || '').trim();
 
@@ -1057,14 +1092,15 @@ export async function linkWhatnotListings(pairs, deps) {
 // would come off twice. A slice of linked items is looked at each run.
 export const PULL_PER_RUN = 25;
 export const PULL_DROP_CONFIRM_MS = 20 * 60 * 1000;
-const variantPrice = v => { const n = Number(v?.pricing?.buy_it_now?.price?.amount ?? v?.price?.amount ?? v?.buy_it_now_price?.amount); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
+const variantPrice = v => { const n = Number(v?.price?.amount ?? v?.pricing?.buy_it_now?.price?.amount ?? v?.buy_it_now_price?.amount); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) / 100 : null; };
 const variantQty = v => { const q = v?.inventory?.quantity ?? v?.inventory?.available ?? v?.quantity ?? v?.available_quantity; const n = Number(q); return q == null || !Number.isFinite(n) ? null : Math.max(0, Math.floor(n)); };
 export function whatnotEditPlan({ link, want, wnPrice, wnQty, now = Date.now() }) {
   const plan = { price: null, qty: null, pendingDrop: null };
   if (!link || link.price == null || link.qty == null) return plan;
   // The dashboard changed since our last push: it wins (the sync sends it).
   if (Math.abs(Number(want.price) - Number(link.price)) >= 0.01 || Number(want.qty) !== Number(link.qty)) return plan;
-  if (wnPrice != null && Math.abs(wnPrice - Number(link.price)) >= 0.01) plan.price = wnPrice;
+  // While auctioned, Whatnot's price is the starting bid -- never the shop price.
+  if (wnPrice != null && !link.auction && Math.abs(wnPrice - Number(link.price)) >= 0.01) plan.price = wnPrice;
   if (wnQty != null && wnQty !== Number(link.qty)) {
     if (wnQty > Number(link.qty)) plan.qty = wnQty;
     else if (link.pendingDrop && link.pendingDrop.qty === wnQty && now - Date.parse(link.pendingDrop.at) >= PULL_DROP_CONFIRM_MS) plan.qty = wnQty;

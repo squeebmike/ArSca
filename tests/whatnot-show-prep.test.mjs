@@ -64,7 +64,7 @@ assert.equal(st.now.title, lineup[0].title);assert.equal(st.next.length, 9, 'the
     rows: async ids => ids.map(id => ({ id, status: 'in_stock', data: { name: id, sellOnWhatnot: true, quantity: 1 } })), shape: () => ({ price: 40 }) };
   const res = await addItemsToWhatnotShow(['a', 'b'], 'show-9', deps, { starts: { a: 25, b: 1 } });
   assert.deepEqual(res.map(r => r.startPrice), [25, 1]);
-  assert.deepEqual(calls.filter(c => c[0] === 'PATCH').map(c => c[2].variants[0].pricing.auction.start_price.amount), ['25.00', '1.00']);
+  assert.deepEqual(calls.filter(c => c[0] === 'PATCH').map(c => c[2].variants[0].price.amount), ['25.00', '1.00']);
   assert.ok(calls.filter(c => c[1].startsWith('/merchandising/')).every(c => c[2].transaction_type === 'auction'));
   assert.deepEqual(kv.get('whatnot-show-items:S:show-9'), ['a', 'b']);
 
@@ -75,7 +75,8 @@ assert.equal(st.now.title, lineup[0].title);assert.equal(st.next.length, 9, 'the
   deps.rows = async ids => ids.map(id => id === 'a' ? { id, status: 'sold', data: { quantity: 0 } } : { id, status: 'in_stock', data: { quantity: 1 } });
   const back = await returnUnsoldToShop('show-9', deps, { now: t + UNSOLD_RETURN_WAIT_MS + 1 });
   assert.deepEqual(back.returned, ['b'], 'the sold one stays; the unsold one goes back');
-  assert.deepEqual(calls.at(-1)[2], { transaction_type: 'buy_it_now', reserve_for_live: false });
+  assert.deepEqual(calls.at(-2)[2], { transaction_type: 'buy_it_now', reserve_for_live: false });
+  assert.deepEqual(calls.at(-1)[2], { variants: [{ id: 'vb', price: { amount: '5.00', currency: 'USD' } }] }, 'and its shop price again');
   const n = calls.length;
   assert.equal((await returnUnsoldToShop('show-9', deps, { now: t + 2 * UNSOLD_RETURN_WAIT_MS })).skipped, 'already returned');
   assert.equal(calls.length, n);
