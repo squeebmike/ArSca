@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.7-shipping-chart';
+const APP_VERSION = '2026.11.05.8-show-only';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4531,6 +4531,8 @@ async function backToBuyItNowSelected(){
   const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in' && i.sellOnWhatnot === true).map(i => i.supabaseRowId || i.id);
   if(!ids.length){ toast_dash('Select items that sell on Whatnot'); return; }
   if(!confirm('Put ' + ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' back in your Whatnot shop as Buy It Now?')) return;
+  // Show-only items stop being show-only first, or the sync would keep them out of the shop.
+  for(const item of all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.whatnotShowOnly === true)){ try { await updateBuiltInInventoryItem(item, { whatnotShowOnly:false }); } catch(e) {} }
   try {
     const r = await storeWorkerFetch(WORKER + '/whatnot/buy-it-now?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids }) });
     const d = await r.json().catch(() => ({}));
@@ -15043,6 +15045,9 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // and kept 1:1 on quantity and price by the Worker (scripts/whatnot-sync.mjs).
   // The Whatnot listing ids live on the Worker, not here.
   ['sellOnWhatnot', false, 'bool'],
+  // SHOW ONLY on Whatnot (FOC comics received into a show): auctions in
+  // shows, never Buy It Now -- BACK TO BUY IT NOW turns it off.
+  ['whatnotShowOnly', false, 'bool'],
   // The eBay listing an item is on. LIST ON EBAY saved these through this
   // list's write path, but they were never on it -- every listing made from
   // the dashboard was silently forgotten on save (store report: the Goblin

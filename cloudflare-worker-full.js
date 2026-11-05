@@ -53,7 +53,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText , upcomingWhatnotShows, SHOW_ONLY_START } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13668,6 +13668,46 @@ async function routeRequest(request, env, ctx) {
       if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
       const show = await nextWhatnotShow(whatnotClient(env));
       return json({ ok: true, show: show ? { id: show.id, title: show.title, startsAt: show.scheduled_start_at, url: show.url || '' } : null });
+    }
+    // GET /whatnot/shows/upcoming -- every scheduled show still to come (the
+    // show picker after receiving FOC comics).
+    if (url.pathname === '/whatnot/shows/upcoming' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const shows = await upcomingWhatnotShows(whatnotClient(env));
+      return json({ ok: true, shows: shows.map(sh => ({ id: sh.id, title: sh.title, startsAt: sh.scheduled_start_at, url: sh.url || '' })) });
+    }
+    // POST /whatnot/show-only { itemIds, showId } -- received FOC comics go
+    // into the chosen show as auctions (50% of price or $4, whichever is
+    // more) and are SHOW ONLY: never in the Buy It Now shop, and unsold ones
+    // stay show-only until changed in the dashboard. Up to 25 a request.
+    if (url.pathname === '/whatnot/show-only' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const parsed = await readJsonWithLimit(request, 16 * 1024);
+      if (parsed.error) return parsed.error;
+      const itemIds = [...new Set((parsed.data?.itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 25);
+      const showId = String(parsed.data?.showId || '');
+      if (!itemIds.length || !/^[0-9a-f-]{36}$/i.test(showId)) return json({ ok: false, error: 'itemIds and showId are required' }, 400);
+      const s = encodeURIComponent(storeId);
+      const readRows = async ids => (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [];
+      // Ticked to sell on Whatnot, show only (the sync then never puts them in the shop).
+      const now = new Date().toISOString();
+      for (const row of await readRows(itemIds)) {
+        if (row.data?.sellOnWhatnot === true && row.data?.whatnotShowOnly === true) continue;
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ data: { ...(row.data || {}), sellOnWhatnot: true, whatnotShowOnly: true }, updated_at: now }) });
+      }
+      const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
+      const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
+      const results = await addItemsToWhatnotShow(itemIds, showId, { ...deps, rows: readRows,
+        profileId: kind => profileIds[kind] || '',
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction: SHOW_ONLY_START });
+      return json({ ok: true, added: results.filter(r => r.added).length, results });
     }
     // POST /whatnot/show-add { itemIds, showId } -- adds items to a show's
     // lineup (listing any not on Whatnot yet first). Up to 25 a request.
