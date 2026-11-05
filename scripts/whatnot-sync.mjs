@@ -134,8 +134,12 @@ export function whatnotContentKeys(want) {
 // link: what we last did on Whatnot for it ({productId, variantId, price,
 // qty, error, url}) or null. Returns the new link (null = nothing to keep)
 // and whether to try again on the next run.
-export async function syncWhatnotItem(api, row, item, link, { profileId, saveProfileId, newKey = () => crypto.randomUUID(), autoTitles = true, allowCreate = true, claim = null } = {}) {
+export async function syncWhatnotItem(api, row, item, link, { profileId, saveProfileId, newKey = () => crypto.randomUUID(), autoTitles = true, allowCreate = true, claim = null, forShow = false } = {}) {
   const want = whatnotDesired(row, item, { autoTitles: autoTitles !== false });
+  // WHATNOT MODE "Auction" (show only) and not in a show yet: nothing to buy
+  // on Whatnot (0 there) -- not in the Buy It Now shop. Going into a show
+  // (forShow) or already in one (link.auction) it carries its real count.
+  if (want.showOnly && !forShow && !link?.auction) want.qty = 0;
   const base = { ...(link || {}), name: want.title };
   const fail = (r, why) => ({ link: { ...base, error: why || whatnotErrorText(r), errorAt: new Date().toISOString() }, retry: retryable(r), action: 'error' });
   let productId = link?.productId || '', variantId = link?.variantId || '';
@@ -583,9 +587,10 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
     if (!row) { results.push({ id, error: 'Item not found' }); continue; }
     const linkKey = `whatnot-link:${deps.storeId}:${id}`;
     let link = await deps.kvGet(linkKey);
-    if (!link?.productId || link.published !== true) {
+    // A show-only item goes in with its real count (it sat at 0 outside a show).
+    if (!link?.productId || link.published !== true || row.data?.whatnotShowOnly === true) {
       if (row.data?.sellOnWhatnot !== true) { results.push({ id, name: row.data?.name, error: 'Not set to sell on Whatnot' }); continue; }
-      const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, { profileId: deps.profileId, saveProfileId: deps.saveProfileId, autoTitles: deps.listingSettings?.autoTitles !== false });
+      const r = await syncWhatnotItem(deps.api, row, deps.shape(row), link, { profileId: deps.profileId, saveProfileId: deps.saveProfileId, autoTitles: deps.listingSettings?.autoTitles !== false, forShow: true });
       if (r.link) { await deps.kvPut(linkKey, r.link); linked[id] = r.link.published === true || !(Number(r.link.qty) > 0) ? 'ok' : 'draft'; }
       link = r.link;
       if (!link?.productId) { results.push({ id, name: row.data?.name, error: link?.error || 'Could not list it on Whatnot' }); continue; }
@@ -872,6 +877,12 @@ export function auctionStartPrice(spec = {}, price = 0) {
 // pre bids ... show only if it doesn't sell until I change it in the
 // dashboard"): the starting bid FOC comics get when received into a show.
 export const SHOW_ONLY_START = { percent: 50, min: 4 };
+// The store's own rule (Settings -> Whatnot), else 50% / $4.
+export function auctionRuleFrom(settings = {}) {
+  const a = settings?.auctionStart || {};
+  const percent = Number(a.percent), min = Number(a.min);
+  return percent > 0 && percent <= 100 ? { percent, min: min >= 1 && min <= 1000 ? Math.round(min) : 1 } : { ...SHOW_ONLY_START };
+}
 // Back to Buy It Now in the shop (after a show, or never auctioned after all).
 export async function backToBuyItNow(itemIds, deps) {
   const out = [];

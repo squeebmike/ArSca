@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.8-show-only';
+const APP_VERSION = '2026.11.05.9-whatnot-mode';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4526,6 +4526,85 @@ function whatnotSyncSummaryHtml(last, items){
   if(problems.length) html += problems.slice(0, 20).map(([id, l]) => `<div style="color:var(--red)">${escHtml(byId(id)?.name || l.name || id)}: ${escHtml(l.error)}</div>`).join('');
   return html;
 }
+// WHATNOT MODE (store, 2026-11-05: one setting per item): Off, Buy It Now
+// (in the Whatnot shop, kept 1:1) or Auction (show only -- never in the
+// shop; sold in the shows it's added to, starting bid from Settings).
+function whatnotModeOf(item = {}){ return item.sellOnWhatnot !== true ? 'off' : item.whatnotShowOnly === true ? 'auction' : 'bin'; }
+function whatnotModePatch(mode){ return { sellOnWhatnot: mode === 'bin' || mode === 'auction', whatnotShowOnly: mode === 'auction' }; }
+function whatnotModeChipHtml(item = {}){
+  const mode = whatnotModeOf(item);
+  if(mode === 'bin') return ' <span style="color:var(--g);font-size:8px" title="Whatnot: Buy It Now -- in your Whatnot shop, quantity and price kept the same as here">WN BIN</span>';
+  if(mode === 'auction') return ' <span style="color:var(--purple);font-size:8px" title="Whatnot: Auction (show only) -- not in your shop; add it to a show to sell it">WN AUCTION</span>';
+  return '';
+}
+async function backToBuyItNowIds(ids){
+  const r = await storeWorkerFetch(WORKER + '/whatnot/buy-it-now?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids }) });
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok || !d.ok) throw new Error(d.error || 'Could not update Whatnot');
+  return d;
+}
+async function setWhatnotModeSelected(mode){
+  const items = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in' && whatnotModeOf(i) !== mode);
+  if(!items.length){ toast_dash('Those items are already set that way'); return; }
+  const label = { off:'Off (not on Whatnot)', bin:'Buy It Now', auction:'Auction (show only)' }[mode];
+  if(!confirm('Set ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' to Whatnot: ' + label + '?')) return;
+  let done = 0;
+  for(const item of items){ try { await updateBuiltInInventoryItem(item, whatnotModePatch(mode)); done++; } catch(e) {} }
+  toast_dash(done + ' set to Whatnot: ' + label + (mode === 'auction' ? ' -- use ADD TO SHOW to put them in a show' : ''));
+  if(typeof renderInventory === 'function') renderInventory();
+}
+// ADD TO SHOW (bulk bar, and after receiving FOC comics): pick any scheduled
+// show; the items go in as auctions (set to Auction / show only first).
+async function openWhatnotShowPicker(ids, intro){
+  ids = [...new Set((ids || []).map(String).filter(Boolean))];
+  if(!ids.length){ toast_dash('Select inventory items first'); return; }
+  let shows = [], rule = null;
+  try {
+    const r = await storeWorkerFetch(WORKER + '/whatnot/shows/upcoming?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok || !d.ok) throw new Error(d.error || 'Could not reach Whatnot');
+    shows = d.shows || [];
+    const s = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
+    rule = ((await s.json().catch(() => ({}))).settings || {}).auctionStart || null;
+  } catch(e) { toast_dash(e.message || String(e)); return; }
+  const pct = Number(rule?.percent) > 0 ? Number(rule.percent) : 50, min = Number(rule?.min) >= 1 ? Number(rule.min) : 4;
+  document.getElementById('wn-show-picker')?.remove();
+  const m = document.createElement('div'); m.id = 'wn-show-picker';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  const when = t => { try { return new Date(t).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }); } catch(e) { return t || ''; } };
+  m.innerHTML = '<div style="width:100%;max-width:460px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'
+    + '<div style="font-family:Orbitron,monospace;color:var(--purple);font-size:13px;letter-spacing:2px;margin-bottom:8px">ADD TO A WHATNOT SHOW</div>'
+    + '<div style="font:11px var(--font-mono);color:var(--text);line-height:1.6;margin-bottom:10px">' + escHtml(intro || (ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' selected.')) + ' They go in as <b>auctions</b> (starting bid ' + pct + '% of the price or $' + min + ', whichever is more) and are set to <b>Auction (show only)</b> -- not in your Buy It Now shop until you set them back.</div>'
+    + (shows.length ? '<select id="wn-show-pick" class="tsi" style="width:100%;margin:0 0 6px">' + shows.map(sh => '<option value="' + escHtml(sh.id) + '">' + escHtml(when(sh.startsAt)) + ' -- ' + escHtml(sh.title || 'Whatnot show') + '</option>').join('') + '</select>'
+      + '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Pre-bids: turn them on for the show in Whatnot when you schedule it.</div>'
+      : '<div style="font:11px var(--font-mono);color:var(--gold);margin-bottom:10px">No upcoming Whatnot show is scheduled. Schedule one in Whatnot first.</div>')
+    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="wn-show-skip">' + (shows.length ? 'SKIP' : 'CLOSE') + '</button>' + (shows.length ? '<button class="hbtn" style="color:var(--purple)" id="wn-show-go">ADD AS AUCTIONS</button>' : '') + '</div>'
+    + '<div id="wn-show-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px"></div></div>';
+  document.body.appendChild(m);
+  m.querySelector('#wn-show-skip').onclick = () => m.remove();
+  const go = m.querySelector('#wn-show-go');
+  if(go) go.onclick = async () => {
+    const showId = m.querySelector('#wn-show-pick').value, status = m.querySelector('#wn-show-status');
+    go.disabled = true; let added = 0; const problems = [];
+    for(let i = 0; i < ids.length; i += 25){
+      status.textContent = 'Adding to the show: ' + Math.min(i + 25, ids.length) + ' of ' + ids.length + '...';
+      try {
+        const r = await storeWorkerFetch(WORKER + '/whatnot/show-only?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId }) });
+        const d = await r.json().catch(() => ({}));
+        if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add to the show');
+        added += Number(d.added || 0); (d.results || []).forEach(x => { if(x.error) problems.push((x.name || x.id) + ': ' + x.error); });
+      } catch(e) { problems.push(e.message || String(e)); }
+    }
+    status.innerHTML = '<span style="color:var(--g)">' + added + ' added as auctions.</span>' + (problems.length ? '<div style="color:var(--red);margin-top:4px">' + problems.slice(0, 8).map(escHtml).join('<br>') + '</div>' : '');
+    // This screen's copy now says Auction (a later edit keeps it).
+    if(added && typeof loadInventory === 'function'){ try { await loadInventory(); } catch(e) {} }
+    go.textContent = 'DONE'; go.onclick = () => m.remove(); go.disabled = false;
+  };
+}
+window.openWhatnotShowPicker = openWhatnotShowPicker;
+function addSelectedToWhatnotShowPicker(){
+  openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id));
+}
 // BACK TO BUY IT NOW (bulk bar): auctioned items return to the shop.
 async function backToBuyItNowSelected(){
   const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in' && i.sellOnWhatnot === true).map(i => i.supabaseRowId || i.id);
@@ -4636,6 +4715,7 @@ async function renderWhatnotCostsPanel(){
   el.innerHTML = '<div style="color:var(--text)">COST OF WHATNOT-ONLY LISTINGS</div>'
     + '<div>Listings made straight on Whatnot (mystery comics, bundles) have no item here, so their cost is set by title. One rule per line: words in the title | cost each. First match wins.</div>'
     + '<textarea id="whatnot-cost-rules" class="tsi" rows="4" style="width:100%;margin-top:4px" placeholder="ManaPocket | 1.50&#10;TOOFER | 3.00&#10;Bundle | 6.00">' + escHtml(rules) + '</textarea>'
+    + '<div style="margin:6px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap">Auction starting bid: <input id="whatnot-auction-pct" class="tsi" style="width:60px;margin:0" inputmode="decimal" value="' + escHtml(settings.auctionStart?.percent ?? 50) + '">% of the price, at least $<input id="whatnot-auction-min" class="tsi" style="width:60px;margin:0" inputmode="decimal" value="' + escHtml(settings.auctionStart?.min ?? 4) + '"></div>'
     + '<label style="display:flex;gap:6px;align-items:center;margin:6px 0;cursor:pointer"><input type="checkbox" id="whatnot-auto-titles"' + (settings.autoTitles === false ? '' : ' checked') + '> Build Whatnot titles from item details (year, set, card #, parallel, RC, grade) -- the dashboard name stays as it is</label>'
     + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">Anything else: $<input id="whatnot-cost-default" class="tsi" style="width:80px;margin:0" inputmode="decimal" placeholder="none" value="' + escHtml(lc.defaultCost ?? '') + '">'
     + '<button class="hbtn" style="margin:0" onclick="saveWhatnotCosts()">SAVE</button><button class="hbtn" style="margin:0" onclick="applyWhatnotCostsToPast()">APPLY TO PAST SALES</button></div><div id="whatnot-costs-result"></div>';
@@ -4648,7 +4728,9 @@ async function saveWhatnotCosts(){
     const def = String(document.getElementById('whatnot-cost-default')?.value || '').replace(/[$\s]/g, '');
     const listingCosts = { rules:parseWhatnotCostRules(document.getElementById('whatnot-cost-rules')?.value), defaultCost:def === '' || !isFinite(Number(def)) ? null : Math.round(Number(def) * 100) / 100 };
     const autoTitles = document.getElementById('whatnot-auto-titles')?.checked !== false;
-    const res = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:{ ...current, listingCosts, autoTitles } }) });
+    const pct = Number(document.getElementById('whatnot-auction-pct')?.value), min = Number(document.getElementById('whatnot-auction-min')?.value);
+    const auctionStart = { percent: pct > 0 && pct <= 100 ? pct : 50, min: min >= 1 ? Math.round(min) : 4 };
+    const res = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ settings:{ ...current, listingCosts, autoTitles, auctionStart } }) });
     const d = await res.json().catch(() => ({}));
     if(!res.ok || !d.ok) throw new Error(d.error || 'Could not save');
     if(out) out.innerHTML = '<span style="color:var(--g)">Saved: ' + listingCosts.rules.length + ' rule(s)' + (listingCosts.defaultCost != null ? ', $' + listingCosts.defaultCost.toFixed(2) + ' for anything else' : '') + '. New Whatnot sales use them.</span>';
@@ -17753,6 +17835,8 @@ function inventoryMatchesListing(i, listing){
   // leaves out items already up from an old CSV (the 📺 WHATNOT mark) -- those
   // are linked with LINK OLD WHATNOT LISTINGS, never listed a second time.
   if(listing === 'on_whatnot') return i.sellOnWhatnot === true;
+  if(listing === 'whatnot_bin') return whatnotModeOf(i) === 'bin';
+  if(listing === 'whatnot_auction') return whatnotModeOf(i) === 'auction';
   if(listing === 'not_on_whatnot') return i.sellOnWhatnot !== true && !i.whatnotListedAt;
   return listing === 'listed_online' ? inventoryIsListed(i) : !inventoryIsListed(i);
 }
@@ -17910,7 +17994,7 @@ function renderTable(){
     const thumbCell = `<td class="td-thumb">${bulkCb}<div onclick="${editClick}" style="cursor:pointer" title="Edit item">${thumbInner}</div></td>`;
     return `<tr class="${ins?'':'sold'}" data-item-id="${i.id}">
       ${thumbCell}
-      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}${i.whatnotListedAt?` <span style="color:var(--purple);font-size:8px" title="Listed on Whatnot ${escHtml(String(i.whatnotListedAt).slice(0,10))} -- still sellable everywhere">📺 WHATNOT</span>`:''}${i.sellOnWhatnot===true?` <span style="color:var(--g);font-size:8px" title="Selling on Whatnot -- quantity and price kept the same as here">WN SYNC</span>`:''}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
+      <td><span class="dot ${ins?'in_stock':'sold'}"></span><span class="nc" title="${i.tcgCardId?'TCG ID: '+i.tcgCardId:''}" onclick="${researchClick}" style="cursor:pointer">${i.name}${i.isRookie?' <span style="color:var(--gold);font-size:8px">RC</span>':''}${i.tcgCardId?'<span style="font-family:monospace;font-size:7px;color:rgba(0,255,179,.4);margin-left:4px">●</span>':''}${i.isBundle?' <span style="color:var(--gold);font-size:8px">🎁 BUNDLE</span>':''}${inventoryLanguageBadgeHtml(i)}${i.whatnotListedAt?` <span style="color:var(--purple);font-size:8px" title="Listed on Whatnot ${escHtml(String(i.whatnotListedAt).slice(0,10))} -- still sellable everywhere">📺 WHATNOT</span>`:''}${whatnotModeChipHtml(i)}</span>${invSyncBadgeHtml(i.id)}<div class="sc2" style="margin:5px 0 0 12px">${escHtml([i.consignorName||i.inventoryOwner||'Store owned',i.inventorySku||i.sku||''].filter(Boolean).join(' · '))}</div>${i.status==='bundled'&&i.bundledIntoName?`<div class="sc2" style="margin-top:5px;color:var(--gold)">🎁 In bundle: ${escHtml(i.bundledIntoName)}</div>`:''}</td>
       <td><span class="sc2">${escHtml([i.set,i.variant].filter(Boolean).join(' · ')||'—')}</span><div class="sc2" style="margin-top:5px">${escHtml([i.year,i.condition,i.location].filter(Boolean).join(' · '))}</div>${comicPeople?`<div class="sc2" style="margin-top:5px;color:var(--purple)">${escHtml(comicPeople)}</div>`:''}</td>
       <td><span class="ct ${cat}">${i.category}</span></td>
       <td style="text-align:center;font-family:var(--font-mono);font-size:11px;color:${(i.qty||1)>1?'var(--g)':'var(--dim)'}">${inventoryIsDropship(i)?'Supplier':(i.qty||1)}</td>
@@ -25313,6 +25397,8 @@ async function updateBuiltInInventoryItem(item, updates){
     if((nextData.ebayListingId || item.ebayListingId) && (Number(nextData.qty ?? nextData.quantity ?? 0) !== beforeQty || (nextData.status || 'in_stock') !== beforeStatus)) storeWorkerFetch('/ebay/sync-item-quantities', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:[item.supabaseRowId || item.id] }) }).catch(() => {});
     // Whatnot follows too (checked now, or checked before and just unchecked).
     if(nextData.sellOnWhatnot === true || item.sellOnWhatnot === true) queueWhatnotSync();
+    // Auction -> Buy It Now: back in the Whatnot shop at its shop price.
+    if(item.whatnotShowOnly === true && nextData.whatnotShowOnly !== true && nextData.sellOnWhatnot === true) backToBuyItNowIds([item.supabaseRowId || item.id]).catch(() => {});
     return true;
   }
   // LOCAL-FIRST OFFLINE FALLBACK: save locally + queue Supabase sync for retry
@@ -26433,8 +26519,8 @@ function openEditModal(id) {
   document.getElementById('edit-signature-value').value = item.signature_value || '';
   toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
-  const sellWhatnot = document.getElementById('edit-sell-whatnot');
-  if(sellWhatnot) sellWhatnot.checked = item.sellOnWhatnot === true;
+  const whatnotMode = document.getElementById('edit-whatnot-mode');
+  if(whatnotMode) whatnotMode.value = whatnotModeOf(item);
   showWhatnotItemStatus(item);
   populateEbayExtraFieldInputs(item);
   document.getElementById('edit-sync-status').textContent = '';
@@ -26537,8 +26623,8 @@ function openAddToInventoryModal(idx){
   document.getElementById('edit-signature-value').value = item.signature_value || '';
   toggleEditSignatureRow();
   document.getElementById('edit-is-sealed').checked = item.is_sealed || false;
-  const sellWhatnot = document.getElementById('edit-sell-whatnot');
-  if(sellWhatnot) sellWhatnot.checked = item.sellOnWhatnot === true;
+  const whatnotMode = document.getElementById('edit-whatnot-mode');
+  if(whatnotMode) whatnotMode.value = whatnotModeOf(item);
   showWhatnotItemStatus(item);
   populateEbayExtraFieldInputs(item);
   document.getElementById('edit-sync-status').textContent = '';
@@ -26645,7 +26731,7 @@ async function confirmAddToInventoryFromModal(){
     signed_by: document.getElementById('edit-signed-by').value.trim(),
     signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
-    sellOnWhatnot: !!document.getElementById('edit-sell-whatnot')?.checked,
+    ...whatnotModePatch(document.getElementById('edit-whatnot-mode')?.value),
     photos: [...editPhotosWorking],
     ...tcgReferencePatch,
     ...pcReferencePatch,
@@ -26924,7 +27010,7 @@ async function confirmEditAndSync() {
     signed_by: document.getElementById('edit-signed-by').value.trim(),
     signature_value: parseFloat(document.getElementById('edit-signature-value')?.value) || 0,
     is_sealed: document.getElementById('edit-is-sealed').checked,
-    sellOnWhatnot: !!document.getElementById('edit-sell-whatnot')?.checked,
+    ...whatnotModePatch(document.getElementById('edit-whatnot-mode')?.value),
     ...tcgReferencePatch,
     ...pcReferencePatch,
     ...inventoryOwnershipPatch(),
