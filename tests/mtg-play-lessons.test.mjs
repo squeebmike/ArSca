@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import {playLessons,playEngineSource,playScript,playLessonHtml} from '../scripts/mtg-play-lessons.mjs';
 const {createPlayState,playAction:A,playView}=new Function(playEngineSource+';return {createPlayState,playAction,playView};')();
-assert.equal(playLessons.length,3);assert.throws(()=>createPlayState('unknown'));
+assert.equal(playLessons.length,4);assert.throws(()=>createPlayState('unknown'));
 new Function('document',playScript)({querySelector:()=>null});
-assert(playLessonHtml().includes('scripted opponent actions'));
+assert(playLessonHtml().includes('Scripted teaching decks and opponent decisions'));
 let s=createPlayState('first-turn'),original=JSON.stringify(s);
 let w=A(s,'cast-bears');assert.equal(w.stage,'main');assert.equal(w.mana,0);assert.equal(JSON.stringify(s),original);
 s=A(s,'play-forest');s=A(s,'cast-bears');assert.equal(s.stage,'pay-bears');assert.equal(s.hand.length,1);assert(s.yours.every(c=>!c.tapped),'planning a cast must not pay it');
