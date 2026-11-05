@@ -50,6 +50,27 @@ actor ownership, turn legality, simultaneous conflicting writes and concession.
 
 ## Automated scope
 
+The match opens in a viewport-sized battlefield with a centered fanned hand,
+separate land and permanent rows, a combat lane and a compact spell stack.
+Click a glowing playable card to play it with automatic land payment; use its
+magnifier to inspect it without casting. Damage and pump spells enter target
+selection and highlight legal creatures or players. Spell and blocker lines
+show exact physical targets. Attackers move into the combat lane; select an
+untapped blocker, then click an attacker to assign it. Confirm declarations
+before proceeding to the next response window.
+
+Phase pills and priority text identify the current decision. Space activates
+the primary action and Escape cancels target/blocker selection. Decks & room
+returns to setup; Resume battlefield restores the match view. Viewing setup
+stays respected when another online action arrives. Reduced-motion preference
+disables card flights. Local freeform offers the opponent's hand through an
+explicit button; online opponents' hidden card identities remain unavailable.
+
+`tests/deck-lab-battlefield.test.mjs` exercises actual engine-backed direct-play,
+target selection, attack toggles and blocker assignment. Casting during the
+attacker/blocker declaration choice or cleanup discard is rejected in both
+the browser and the shared server rules implementation.
+
 Basic Plains/Island/Swamp/Mountain/Forest, single-face normal-layout creatures
 with no Oracle abilities and numeric power/toughness, Lightning Bolt, Shock,
 and Giant Growth. Unsupported text, costs and layouts are rejected before an

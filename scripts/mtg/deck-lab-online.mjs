@@ -16,7 +16,7 @@ function displayRoom(data){
  $('dl-leave-room').hidden=false;$('dl-upload-room').hidden=!!data.state||!!data.ready?.[online.seat];$('deck-lab').classList.add('dl-online-connected');
  $('dl-name-0').value=data.names[0];$('dl-name-1').value=data.names[1];
  $('dl-rematch').hidden=true;$('dl-undo').hidden=true;
- if(data.state){state=data.state;$('dl-match').hidden=false;$('deck-lab').classList.add('dl-playing');render();roomStatus('Connected · '+(data.mode==='rules'?'server checks supported rules':'shared freeform table')+' · '+(data.state.result?'match ended':'your seat: '+(data.seat===0?'host':'guest'))+'.');}
+ if(data.state){const firstMatch=!state;state=data.state;$('dl-match').hidden=false;if(firstMatch)$('deck-lab').classList.add('dl-playing');render();roomStatus('Connected · '+(data.mode==='rules'?'server checks supported rules':'shared freeform table')+' · '+(data.state.result?'match ended':'your seat: '+(data.seat===0?'host':'guest'))+'.');}
  else{state=null;$('dl-match').hidden=true;$('deck-lab').classList.remove('dl-playing');roomStatus(data.joined?'Opponent joined. '+(data.ready?.[data.seat]?'Waiting for their deck.':'Load your deck in the first panel, then choose Submit my loaded deck.'):'Room created. Copy the guest invite link and send it to your opponent.');}
 }
 async function syncRoom(force=false){
@@ -32,7 +32,7 @@ const localAct=act;act=function(fn){
 };
 async function sendRoomAction(action){
  if(!online||onlineBusy)return;onlineBusy=true;
- try{const data=await roomRequest('/'+online.room+'/action',{revision:online.revision,action});bottom=[];attacks=[];blocking={};displayRoom(data);}
+ try{const data=await roomRequest('/'+online.room+'/action',{revision:online.revision,action});bottom=[];attacks=[];blocking={};intent=null;pendingBlocker=null;displayRoom(data);}
  catch(e){$('dl-feedback').textContent=e.message;roomStatus(e.message);}
  finally{onlineBusy=false;await syncRoom(true);}
 }

@@ -60,7 +60,7 @@ export function createDeckLabServerEngine(){
  }
  function legalTarget(s,card,target){if(support(card).kind==='damage'&&['player0','player1'].includes(target))return true;return s.players.some(p=>p.field.some(c=>c.id===target&&support(c).kind==='creature'));}
  function cast(s,p,id,target){
-  const x=s.players[p],c=x.hand.find(c=>c.id===id);if(!c||s.priority!==p||s.phase==='opening'||s.result)throw Error('You do not have priority.');
+  const x=s.players[p],c=x.hand.find(c=>c.id===id);if(!c||s.priority!==p||['opening','attack','block','discard'].includes(s.phase)||s.result)throw Error('You do not have priority.');
   const kind=support(c).kind;if(kind==='manual'||kind==='land')throw Error('This card is not an automated spell.');
   if(kind==='creature'&&(s.active!==p||!['main1','main2'].includes(s.phase)||s.stack.length))throw Error('Cast creatures in your main phase with an empty stack.');
   if(['damage','pump'].includes(kind)&&!legalTarget(s,c,target))throw Error('Choose a legal target.');
