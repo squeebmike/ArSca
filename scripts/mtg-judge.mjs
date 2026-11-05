@@ -21,6 +21,17 @@ export async function cardLookup(name,fetcher=fetch){
  const rulings=JSON.parse(await boundedText(rr,300000));
  return {name:c.name,url:c.scryfall_uri,checkedAt:new Date().toISOString(),faces:(c.card_faces||[c]).map(f=>({name:f.name,manaCost:f.mana_cost||'',type:f.type_line||'',text:f.oracle_text||'',image:verifiedCardImage(f.image_uris?.normal||c.image_uris?.normal)})),rulings:(rulings.data||[]).slice(0,30).map(r=>({date:r.published_at,text:r.comment}))};
 }
+// Close-enough names too (ByteRider on the website, 2026-11-05: visitors type
+// "lightning bolt" or "Elesh Norn"): Scryfall's fuzzy match, then the same
+// verified card + rulings as cardLookup.
+export async function fuzzyCardLookup(name,fetcher=fetch){
+ if(typeof name!=='string'||!name.trim()||name.length>120)throw new Error('Enter a card name.');
+ const r=await fetcher('https://api.scryfall.com/cards/named?fuzzy='+encodeURIComponent(name.trim()),{headers:HEADERS,signal:AbortSignal.timeout(12000),cf:{cacheTtl:86400,cacheEverything:true}});
+ if(r.status===404)throw new Error('No card found.');
+ const c=JSON.parse(await boundedText(r,100000));
+ if(!c.id||typeof c.name!=='string')throw new Error('Card data could not be verified.');
+ return cardLookup(c.name,fetcher);
+}
 export function parseRules(text){
  const rules=[];let current;
  for(const line of text.split(/\r?\n/)){const m=/^(\d{3}\.\d+[a-z]?)\.?\s+(.+)$/.exec(line);if(m){current={id:m[1],text:m[2]};rules.push(current);}else if(current&&line.trim()&&!/^\d{3}\.\s/.test(line)&&!/^Glossary/.test(line)){current.text+=' '+line.trim();}else if(/^\d{3}\.\s|^Glossary/.test(line))current=null;}

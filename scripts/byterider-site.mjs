@@ -23,7 +23,16 @@ const safe = fn => { try { return fn(); } catch { return null; } };
 // The Worker: the same site when it serves the page, else its own address.
 const WORKER = /(^|\.)themanapocket\.com$/.test(typeof location !== 'undefined' ? location.hostname : '') ? '' : 'https://still-resonance-4f87.swarnerauto.workers.dev';
 export const ASK_URL = WORKER + '/public/byterider/ask';
-const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What comics come out next week?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'How does the stack work in Magic?'];
+// The visitor's first name, from their own website sign-in (account.js keeps
+// the session here). Read in their browser only; nothing but the first name
+// is ever sent, and only with their own question.
+export function signedInFirstName() {
+  const s = safe(() => JSON.parse(localStorage.getItem('mp-foc-session-v1') || 'null')) || null;
+  const meta = s?.user?.user_metadata || {};
+  const w = String(meta.full_name || meta.name || meta.first_name || '').trim().split(/\s+/)[0] || '';
+  return /^[A-Za-zÀ-ÿ'-]{1,20}$/.test(w) ? w[0].toUpperCase() + w.slice(1) : '';
+}
+const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What comics come out next week?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'Magic: can I respond to [[Lightning Bolt]]?'];
 // The chat: built from DOM nodes and textContent only (nothing a visitor or
 // the answer types is ever read as HTML).
 function buildChat(corner, onAsk) {
@@ -71,7 +80,8 @@ function buildChat(corner, onAsk) {
     c.onclick = () => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
     chips.append(c);
   }
-  bubble("Hi! I'm ByteRider_97. I can find stuff in stock, suggest gifts, tell you what comics are coming (and what to read), help with your account and theme -- and I know my Magic rules.", 'br');
+  const who = signedInFirstName();
+  bubble((who ? 'Hey ' + who + "! " : "Hi! I'm ByteRider_97. ") + "I can find stuff in stock, suggest gifts, tell you what comics are coming (and what to read), help with your account and theme -- and I'm your Magic rules helper. Name a card like [[Lightning Bolt]].", 'br');
   log.append(chips);
   let busy = false;
   form.onsubmit = async e => {
@@ -112,7 +122,7 @@ export function mountSiteByteRider({ size = 76, corner = 'left' } = {}) {
   const history = [];
   const chat = buildChat(corner, async q => {
     br.wake(); br.play('thinking', { ms: 1200 });
-    const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname }) });
+    const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname, name: signedInFirstName() }) });
     const d = await res.json().catch(() => ({}));
     const text = d.ok ? String(d.answer || '') : String(d.error || 'Hmm, try that again?');
     history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
@@ -128,7 +138,8 @@ export function mountSiteByteRider({ size = 76, corner = 'left' } = {}) {
   if (!safe(() => sessionStorage.getItem('byterider-hello'))) {
     safe(() => sessionStorage.setItem('byterider-hello', '1'));
     br.play('disappearing', { boot: true });
-    br.play('talking', { text: 'WELCOME TO THE POCKET, PRIMARY USER.' });
+    const who = signedInFirstName();
+    br.play('talking', { text: who ? 'WELCOME BACK, ' + who.toUpperCase() + '!' : 'WELCOME TO THE POCKET, PRIMARY USER.' });
   }
   // Buttons that put something in the cart, or check out.
   document.addEventListener('click', e => {

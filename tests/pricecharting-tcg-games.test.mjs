@@ -41,3 +41,21 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /return features\.sharedPriceChartingKey \? envWithSharedPriceChartingKey\(env, withPpt, own\) : withPpt;/);
 assert.match(fs.readFileSync('supabase-migrations/2026-11-05-store-features-shared-pricecharting-key.sql', 'utf8'), /shared_pricecharting_key boolean not null default false/);
 console.log('PriceCharting: video games + unlinked/graded trading cards; shared key only');
+
+// 2026-11-05: 429s. The pause no longer equals the hourly run; slow kinds every 3 days.
+{
+  const { pausePcMs, PC_429_PAUSE_MS } = await import('../scripts/reference-price-refresh.mjs');
+  const { dueForCheck } = await import('../scripts/pricecharting-daily-sync.mjs');
+  const res = (status, ra) => ({ status, headers: { get: k => k === 'Retry-After' ? ra ?? null : null } });
+  assert.equal(pausePcMs(res(429)), PC_429_PAUSE_MS); assert.ok(PC_429_PAUSE_MS < 55 * 60000, 'shorter than the hourly run');
+  assert.equal(pausePcMs(res(429, '120')), 5 * 60000, 'Retry-After, at least 5 min');
+  assert.equal(pausePcMs(res(429, '1200')), 20 * 60000);
+  assert.equal(pausePcMs(res(429, '99999')), 50 * 60000, 'at most 50 min');
+  assert.equal(pausePcMs(res(403)), 3600000); assert.equal(pausePcMs(res(500)), 60000);
+  const now = Date.parse('2026-11-05T12:00:00Z');
+  assert.equal(dueForCheck('comic', { priceSyncCheckedAt: '2026-11-04T12:00:00Z' }, now), true, 'comics daily');
+  assert.equal(dueForCheck('tcg', { priceSyncCheckedAt: '2026-11-04T12:00:00Z' }, now), false, 'cards every 3 days');
+  assert.equal(dueForCheck('tcg', { priceSyncCheckedAt: '2026-11-02T13:00:00Z' }, now), true);
+  assert.equal(dueForCheck('game', {}, now), true);
+}
+console.log('PriceCharting 429 pause + every-3-days for cards/games');
