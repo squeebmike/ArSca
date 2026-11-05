@@ -59,6 +59,10 @@
   <label class="mana-check"><span><input type="checkbox" id="mana-dash-br"> Show ByteRider in the dashboard corner (this device)</span></label>
   <label class="mana-check"><span><input type="checkbox" id="mana-keys"> Keyboard shortcuts (the letters/numbers on the buttons; only on the Whatnot tab, never while typing in a box)</span></label>
   <div class="mana-row"><input id="mana-say" maxlength="120" placeholder="Make him say something (a promo, a shout-out)…"><button type="button" id="mana-say-go">SAY IT</button></div>
+  <h3>Ask ByteRider (website)</h3>
+  <small>On the website, a tap on ByteRider opens a chat. He answers from what's in stock right now and the facts below -- nothing else, so put in what customers ask: store hours, address, events, policies. One fact per line.</small>
+  <textarea id="mana-br-facts" maxlength="6000" rows="7" placeholder="Connect / reload to load what he knows…"></textarea>
+  <div class="mana-row"><button type="button" id="mana-br-facts-save">SAVE WHAT HE KNOWS</button><button type="button" id="mana-br-facts-reset">BACK TO DEFAULT</button><small id="mana-br-facts-status" role="status"></small></div>
   <div class="mana-row"><button type="button" id="mana-pin">📌 PIN PREVIEW</button><small id="mana-br-status" role="status">Tap a reaction: he plays it in the preview (and on stream once connected).</small></div>
   <h3>Sign &amp; layout</h3>
   <label>Marquee message (separate lines with • or | -- ByteRider says them one at a time)<textarea name="message" maxlength="300"></textarea></label>
@@ -98,7 +102,13 @@
   function values(){const out={};for(const el of form.elements){if(!el.name)continue;out[el.name]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;}return out;}
   function preview(effect,demoStats){frame.contentWindow?.postMessage({type:'mana-preview',settings:values(),stage,stats:demoStats||stats||undefined,effect},location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
-  host.querySelector('#mana-load').onclick=()=>run(async()=>{const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';});
+  host.querySelector('#mana-load').onclick=()=>run(async()=>{const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';loadFacts();});
+  // What ByteRider knows on the website (Worker: /byterider/facts).
+  const factsBox=host.querySelector('#mana-br-facts'),factsStatus=host.querySelector('#mana-br-facts-status');
+  async function factsCall(body){const res=await storeWorkerFetch('/byterider/facts?store_id='+encodeURIComponent(store()),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Could not reach ByteRider');return d;}
+  async function loadFacts(){try{const d=await factsCall();factsBox.value=d.facts||'';factsStatus.textContent='';}catch(e){factsStatus.textContent=e.message;}}
+  host.querySelector('#mana-br-facts-save').onclick=()=>run(async()=>{const d=await factsCall({facts:factsBox.value});factsBox.value=d.facts;factsStatus.textContent='Saved -- he knows it now.';});
+  host.querySelector('#mana-br-facts-reset').onclick=()=>run(async()=>{if(!confirm('Put back the default facts?'))return;const d=await factsCall({facts:''});factsBox.value=d.facts;factsStatus.textContent='Back to the defaults.';});
   // Quick switches (store: "I might not want the marquee sign to show
   // sometimes"): flip the setting and save it live in one tap.
   host.querySelector('#mana-quick').onclick=e=>{const b=e.target.closest('[data-toggle]');if(!b)return;

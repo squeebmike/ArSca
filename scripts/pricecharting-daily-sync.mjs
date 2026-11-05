@@ -14,7 +14,7 @@
 // its title -- waits in PRICE SYNC for review. A batch each hour from 3 AM
 // Pacific until all are checked. Cards with no PriceCharting link are left to
 // the dashboard's own sync (it searches by name).
-import { pacificDay, pacificHour, SMALL_CHANGE_PCT } from './pokemon-daily-sync.mjs';
+import { pacificDay, pacificHour, SMALL_CHANGE_PCT, markPriceReview } from './pokemon-daily-sync.mjs';
 
 export const PC_SYNC_BATCH = 80;
 export const PC_SYNC_START_HOUR = 3; // Pacific
@@ -347,7 +347,7 @@ export async function runPriceChartingServerSync(storeId, deps, now = Date.now()
       let plan;
       try {
         // One odd item can't stop the rest.
-        plan = planRow(row, kind, hit.product, { viaTitle: hit.viaTitle, now, sku: skus.get(String(row.data?.focSkuId || '')) || null });
+        plan = markPriceReview(planRow(row, kind, hit.product, { viaTitle: hit.viaTitle, now, sku: skus.get(String(row.data?.focSkuId || '')) || null }), now);
         const res = await deps.db(`inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: plan.data, updated_at: new Date(now).toISOString() }) });
         if (res?.response && !res.response.ok) throw new Error('save failed');
       } catch (e) { out.failed++; (out.errors ||= []).length < 5 && out.errors.push(row.id + ': ' + String(e.message || e).slice(0, 120)); continue; }

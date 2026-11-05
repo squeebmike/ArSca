@@ -126,3 +126,6 @@
 @keyframes br-spin {to {transform:rotate(360deg)}}
 @keyframes br-bar {0%,100% {opacity:.15} 10%,90% {opacity:1}}
 @keyframes br-look {0%,100% {transform:translateX(0)} 30%,45% {transform:translateX(-24px)} 65%,80% {transform:translateX(24px)}}
+
+/* Ask ByteRider (website): the chat says it, so his own bubble hides while it's open. */
+#byterider-site.br-chat-open .br-bubble {display:none}

@@ -8,7 +8,7 @@
 // Pokemon: a change under 10% is applied, a bigger one waits in PRICE SYNC.
 // A played copy (LP/MP/HP/DMG) is left to the dashboard's own sync, which
 // prices conditions through JustTCG.
-import { pacificDay, pacificHour, SMALL_CHANGE_PCT, tcgPlayerIdOf, checkedToday, marketOf, ruled } from './pokemon-daily-sync.mjs';
+import { pacificDay, pacificHour, SMALL_CHANGE_PCT, tcgPlayerIdOf, checkedToday, marketOf, ruled, markPriceReview } from './pokemon-daily-sync.mjs';
 
 export const MTG_SYNC_BATCH = 60;
 export const MTG_SYNC_START_HOUR = 3; // Pacific
@@ -78,7 +78,7 @@ export async function runMtgServerSync(storeId, deps, now = Date.now()) {
   for (const row of batch) {
     const id = tcgPlayerIdOf(row.data || {});
     if (!cache.has(id)) { let pp = null; try { pp = await deps.pricepoints(id); } catch (_) { pp = null; } cache.set(id, pp); }
-    const plan = planMtgRow(row, cache.get(id), now);
+    const plan = markPriceReview(planMtgRow(row, cache.get(id), now), now);
     try { await deps.db(`inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: plan.data, updated_at: new Date(now).toISOString() }) }); }
     catch (_) { out.failed++; continue; }
     out.checked++;

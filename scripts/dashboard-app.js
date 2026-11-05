@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.4-whatnot-instant';
+const APP_VERSION = '2026.11.05.5-price-review';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -173,7 +173,7 @@ const WALKOFF_SCOPED_KEYS = new Set([
   // A second store (Crull001, 2026-11-05) gets its own copy of these too.
   'inventory_edit_overrides_v1','inventory_import_history_v2','grading_submissions_cache_v1','pos_closed_buy_trays',
   'dealer_show_mode','price_sync_daily_result','price_sync_daily_off','price_sync_daily_last','price_sync_pending_v1',
-  'webflow_integration_v1','whatnot_fee_pct','whatnot_fee_flat',
+  'webflow_integration_v1','whatnot_fee_pct','whatnot_fee_flat','price_sync_server_seen_v1',
 ]);
 // The Mana Pocket: the store everything here was built for. An account in
 // more than one store (only the owner's) can visit another one, but every
@@ -11960,9 +11960,16 @@ async function claimServerPriceSyncReview(){
     const res = await storeWorkerFetch('/price-sync/review', { cache:'no-store' });
     proposals = (await res.json().catch(() => ({})))?.proposals || [];
   } catch(e) { return 0; }
+  // The server now keeps its list for every device; each device takes a
+  // change once (a dismissed one doesn't come back), and never one the item
+  // already carries.
+  let seen = {}; try { seen = JSON.parse(localStorage.getItem('price_sync_server_seen_v1') || '{}') || {}; } catch(e) { seen = {}; }
+  const seenKey = p => p.itemId + ':' + Number(p.newPrice).toFixed(2);
   const fresh = proposals.map(p => {
     const item = (all || []).find(i => i.id === p.itemId || i.supabaseRowId === p.itemId);
-    if(!item || !(Number(p.newPrice) > 0)) return null;
+    if(!item || !(Number(p.newPrice) > 0) || seen[seenKey(p)]) return null;
+    seen[seenKey(p)] = Date.now();
+    if(Math.abs(Number(item.market || item.marketPrice || 0) - Number(p.newPrice)) < 0.01) return null;
     const oldPrice = Number(p.oldPrice) || 0, newPrice = Number(p.newPrice);
     const delta = newPrice - oldPrice, direction = delta >= 0 ? 'up' : 'down';
     const big = oldPrice > 0 ? isBigPriceChange(oldPrice, newPrice) : false;
@@ -11980,6 +11987,7 @@ async function claimServerPriceSyncReview(){
     return { ...common, mode:'live', source:'PokemonPriceTracker (overnight check)', matchStatus:'exact TCGplayer ID (server daily check)',
       tcgPlayerId:p.tcgPlayerId || inventoryTcgPlayerId(item), prices:p.prices || null, variants:p.variants || null };
   }).filter(Boolean);
+  try { const keep = Object.entries(seen).sort((a, b) => b[1] - a[1]).slice(0, 3000); localStorage.setItem('price_sync_server_seen_v1', JSON.stringify(Object.fromEntries(keep))); } catch(e) {}
   if(!fresh.length) return 0;
   restorePendingPriceSyncProposals();
   _priceSyncProposal = mergePendingPriceSyncProposals(_priceSyncProposal, fresh);
