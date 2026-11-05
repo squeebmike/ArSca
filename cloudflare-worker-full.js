@@ -64,7 +64,7 @@ import { buildRestockList } from './scripts/restock.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
-import { askByteRider, DEFAULT_FACTS as BYTERIDER_DEFAULT_FACTS, LIMITS as BYTERIDER_LIMITS } from './scripts/byterider-ask.mjs';
+import { askByteRider, DEFAULT_FACTS as BYTERIDER_DEFAULT_FACTS, LIMITS as BYTERIDER_LIMITS, MONTHLY_CAP_USD as BYTERIDER_MONTHLY_CAP_USD, addSpend as byteriderAddSpend } from './scripts/byterider-ask.mjs';
 import { runPokemonLinkSync } from './scripts/pokemon-link-sync.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
@@ -1154,14 +1154,16 @@ function publicEventFromWebflow(item, optionLabels = {}) {
   };
 }
 
-async function handlePublicEvents(env) {
-  if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
+// The store's shows and live streams (Webflow CMS "Events"), soonest first;
+// null when Webflow can't be read. Shared by the homepage and ByteRider.
+async function loadPublicEvents(env) {
+  if (!env.WEBFLOW_TOKEN) return null;
   const headers = { Authorization:`Bearer ${env.WEBFLOW_TOKEN}`, accept:'application/json' };
   const [collectionResponse, itemsResponse] = await Promise.all([
     fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}`, { headers }),
     fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}/items/live?limit=100`, { headers }),
   ]);
-  if (!itemsResponse.ok) return json({ ok:false, error:'Event schedule unavailable' }, 502);
+  if (!itemsResponse.ok) return null;
   const collection = collectionResponse.ok ? await collectionResponse.json().catch(() => null) : null;
   const payload = await itemsResponse.json().catch(() => null);
   const labels = webflowEventOptionLabels(collection);
@@ -1170,6 +1172,12 @@ async function handlePublicEvents(env) {
     .map(item => publicEventFromWebflow(item, labels))
     .filter(Boolean)
     .sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  return events;
+}
+async function handlePublicEvents(env) {
+  if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
+  const events = await loadPublicEvents(env);
+  if (!events) return json({ ok:false, error:'Event schedule unavailable' }, 502);
   return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
 }
 
@@ -16802,6 +16810,10 @@ async function routeRequest(request, env, ctx) {
       const ipKey = `byterider-ask:ip:${who}:${hour}`, dayKey = `byterider-ask:day:${day}`;
       const [ipCount, dayCount] = await Promise.all([env.LBA_KV.get(ipKey), env.LBA_KV.get(dayKey)]).then(v => v.map(n => Number(n) || 0));
       if (ipCount >= BYTERIDER_LIMITS.perIpHour) return json({ ok: false, error: 'BRB -- cooling my circuits. Ask again in a bit!' }, 429);
+      // The month's spend cap (env BYTERIDER_MONTHLY_USD can lower or raise it).
+      const spendKey = 'byterider-spend:' + day.slice(0, 7), monthCap = Number(env.BYTERIDER_MONTHLY_USD) > 0 ? Number(env.BYTERIDER_MONTHLY_USD) : BYTERIDER_MONTHLY_CAP_USD;
+      const spend = await env.LBA_KV.get(spendKey, 'json').catch(() => null);
+      if ((spend?.usd || 0) >= monthCap) return json({ ok: false, error: 'I\'m resting my circuits until next month. Try /faq or hintline@themanapocket.com!' }, 429);
       if (dayCount >= BYTERIDER_LIMITS.perDay) return json({ ok: false, error: 'I\'ve talked so much today my screen is fuzzy. Try /faq or hintline@themanapocket.com!' }, 429);
       await Promise.all([env.LBA_KV.put(ipKey, String(ipCount + 1), { expirationTtl: 3700 }), env.LBA_KV.put(dayKey, String(dayCount + 1), { expirationTtl: 2 * 86400 })]);
       try {
@@ -16826,6 +16838,15 @@ async function routeRequest(request, env, ctx) {
             await env.LBA_KV.put('byterider-upcoming-v4', JSON.stringify(list), { expirationTtl: 6 * 3600 }).catch(() => {});
             return list;
           },
+          // Card shows and live streams from the Webflow Events list (the
+          // homepage schedule), still to come; read at most once an hour.
+          events: async () => {
+            const cached = await env.LBA_KV.get('byterider-events-v1', 'json').catch(() => null);
+            const list = cached || await loadPublicEvents(env).catch(() => null) || [];
+            if (!cached) await env.LBA_KV.put('byterider-events-v1', JSON.stringify(list), { expirationTtl: 3600 }).catch(() => {});
+            const now = Date.now() - 6 * 3600000;
+            return list.filter(e => Date.parse(e.end || e.start) >= now);
+          },
           // Magic rules: the official Comprehensive Rules, the same excerpts
           // the MTG Judge (/mtg-judge) works from.
           rules: async (q, cards = []) => retrieveMtgRules(await loadMtgRules(), q, cards),
@@ -16840,6 +16861,9 @@ async function routeRequest(request, env, ctx) {
             if (!res.ok && [400, 403, 404].includes(res.status)) { console.warn('ByteRider model', res.status, (await res.text().catch(() => '')).slice(0, 200)); res = await ask('claude-haiku-4-5-20251001'); }
             const d = await res.json().catch(() => null);
             if (!res.ok) throw new Error('model ' + res.status + ' ' + String(d?.error?.message || '').slice(0, 120));
+            // What it cost, counted toward the month's cap.
+            const latest = await env.LBA_KV.get(spendKey, 'json').catch(() => null);
+            await env.LBA_KV.put(spendKey, JSON.stringify(byteriderAddSpend(latest || spend, d?.model || 'claude-haiku-5-5', d?.usage)), { expirationTtl: 62 * 86400 }).catch(() => {});
             return (d?.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ');
           },
         });
@@ -16855,7 +16879,8 @@ async function routeRequest(request, env, ctx) {
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
       if (storeId !== ITEM_DETAIL_STORE_ID) return json({ ok: false, error: 'ByteRider answers on The Mana Pocket\'s website only' }, 403);
-      if (request.method === 'GET') return json({ ok: true, facts: (await env.LBA_KV.get('byterider-facts:' + storeId)) || BYTERIDER_DEFAULT_FACTS, defaults: BYTERIDER_DEFAULT_FACTS });
+      if (request.method === 'GET') { const month = new Date().toISOString().slice(0, 7); const spend = await env.LBA_KV.get('byterider-spend:' + month, 'json').catch(() => null);
+        return json({ ok: true, facts: (await env.LBA_KV.get('byterider-facts:' + storeId)) || BYTERIDER_DEFAULT_FACTS, defaults: BYTERIDER_DEFAULT_FACTS, spend: { month, usd: spend?.usd || 0, answers: spend?.answers || 0, models: spend?.models || {}, capUsd: Number(env.BYTERIDER_MONTHLY_USD) > 0 ? Number(env.BYTERIDER_MONTHLY_USD) : BYTERIDER_MONTHLY_CAP_USD } }); }
       if (request.method === 'POST') {
         const parsed = await readJsonWithLimit(request, 16384);
         if (parsed.error) return parsed.error;

@@ -129,3 +129,15 @@
 
 /* Ask ByteRider (website): the chat says it, so his own bubble hides while it's open. */
 #byterider-site.br-chat-open .br-bubble {display:none}
+
+/* Website and dashboard badge: a gentle float while idle (not on stream). */
+.byterider.br-badge.br-idle .br-motion {animation:br-float 3.4s ease-in-out infinite}
+.byterider.br-badge.br-thinking .br-motion {animation:br-think-loop 1.3s ease-in-out infinite}
+@keyframes br-float {0%,100% {transform:translateY(0)} 50% {transform:translateY(-14px)}}
+@keyframes br-think-loop {0%,100% {transform:rotate(0)} 50% {transform:rotate(5deg) translate(10px,-12px)}}
+/* Ask ByteRider: his "typing..." dots. */
+.br-typing {align-self:flex-start;display:flex;gap:5px;padding:12px 14px;border-radius:10px;background:#0b0612;border:1px solid #b4ff3a55}
+.br-typing i {width:7px;height:7px;border-radius:50%;background:#b4ff3a;animation:br-dot 1s ease-in-out infinite}
+.br-typing i:nth-child(2) {animation-delay:.15s}.br-typing i:nth-child(3) {animation-delay:.3s}
+@keyframes br-dot {0%,60%,100% {transform:translateY(0);opacity:.4} 30% {transform:translateY(-6px);opacity:1}}
+@media(prefers-reduced-motion:reduce) {.br-typing i,.byterider.br-badge .br-motion {animation:none!important}}
