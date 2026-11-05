@@ -1,3 +1,4 @@
+import {licensedSportsSets} from './licensed-sports-seed.mjs';
 import {sectionsForSet} from './baseball-section-pages.mjs';
 import {releaseOrderInfo} from './release-order.mjs';
 import {upcomingSets,upcomingSetsPage} from './upcoming-sets.mjs';
@@ -10,6 +11,7 @@ export const pocketGuideCategories=[
  ['mtg','Magic: The Gathering','Learn to play, explore rules and browse set guides.'],
  ['pokemon','Pokémon','Sets, releases and the cards you’re looking for.'],
  ['baseball','Baseball','Topps and Bowman checklists, teams and players.'],
+ ['basketball','Basketball','NBA sets, rookie cards and numbered checklists.'],
  ['football','Football','Licensed Topps releases and numbered checklists.'],
  ['comics','Comics','New books, cover guides and how preorders work.'],
  ['secret-lair','Secret Lair','Individual drops, illustrated contents and exact printings.'],
@@ -19,7 +21,7 @@ export const pocketGuideCategories=[
 ];
 export const pocketGuidePaths=['/pocket-guides',...pocketGuideCategories.map(([id])=>'/pocket-guides/'+id)];
 const origin='https://www.themanapocket.com',pageSize=24;
-const articleCategory=a=>/baseball|bowman/.test(a.slug)?'baseball':/football/.test(a.slug)?'football':articleTopics(a).find(t=>['mtg','pokemon','comics'].includes(t))||'collecting';
+const articleCategory=a=>/baseball|bowman/.test(a.slug)?'baseball':/football/.test(a.slug)?'football':/basketball/.test(a.slug)?'basketball':articleTopics(a).find(t=>['mtg','pokemon','comics'].includes(t))||'collecting';
 function articleRelease(article,releaseSets){
  const guide=releaseGuide(article.slug);
  const source=[...baseballSets,...footballSets].find(s=>guide?.sets?.includes(s.displayName));
@@ -32,6 +34,7 @@ export function pocketGuideEntries(articles,releaseSets=[]){
  const entries=articles.map(a=>({title:a.title,url:'/articles/'+a.slug,summary:a.summary||'',image:a.image||'',category:articleCategory(a),kind:'Article',...articleRelease(a,releaseSets)}));
  entries.push(...secretLairDrops.filter(d=>d.reviewed).map(d=>({title:d.title,url:'/secret-lair/'+d.id,summary:d.summary,image:d.cards[0]?.image||'',category:'secret-lair',kind:'Drop guide',date:d.saleDate||String(d.year||''),dateLabel:d.saleDate?'Drop '+d.saleDate:'Set year '+d.year})));
  for(const [category,sets]of [['baseball',baseballSets],['football',footballSets]])for(const s of sets.filter(s=>s.reviewed))entries.push({title:s.displayName||s.setName,url:'/'+category+'/checklists/'+s.id,summary:s.cards.length+' base entries · '+sectionsForSet(s).reduce((n,g)=>n+g.cards.length,0)+' imported non-base references across '+sectionsForSet(s).length+' sections. Open the checklist for verified scope and shopping links.',category,kind:'Checklist',date:releaseOrderInfo(s).key,dateLabel:releaseOrderInfo(s).label});
+ for(const s of licensedSportsSets.filter(s=>s.reviewed&&s.sport==='basketball'))entries.push({title:s.displayName,url:'/basketball/checklists/'+s.id,summary:s.cards.length+' base cards and '+(s.sections||[]).length+' separately numbered sections. See exact checklist scope.',category:'basketball',kind:'Checklist',date:releaseOrderInfo(s).key,dateLabel:releaseOrderInfo(s).label});
  for(const a of articles){const g=RELEASE_GUIDES[a.slug];if(g?.checklist&&g.checklist!=='/mtg'&&g.checklist!=='/pokemon')entries.push({title:g.name+' checklist',url:g.checklist,summary:'Browse the current card catalog and exact printing pages. Catalog entries are separate from store stock.',category:g.game,kind:'Checklist',...articleRelease(a,releaseSets)});}
  entries.push({title:'Learn to Play Magic',url:'/mtg-rules#play-table',summary:'Interactive Magic: The Gathering lessons with a battlefield, moving cards, mana, combat and the stack.',category:'mtg',kind:'Interactive lessons',date:''},{title:'MTG Judge',url:'/mtg-judge',summary:'Ask a Magic rules question with exact cards and board state. Check current Oracle text and rules-supported explanations. Sign in to ask.',category:'mtg',kind:'Rules help',date:''});
  entries.push({title:'Comic bags and boards: find the right size',url:'/comic-bags-boards-size-guide',summary:'Compare comic sizes before choosing bags and boards.',category:'supplies',kind:'Help guide',date:''},{title:'Card thickness and toploader size guide',url:'/toploader-size-guide',summary:'Check card thickness and protection sizes before ordering.',category:'supplies',kind:'Help guide',date:''},{title:'Ordering and collecting questions',url:'/faq',summary:'Answers about shopping, shipping and comic preorders.',category:'collecting',kind:'Help guide',date:''});
