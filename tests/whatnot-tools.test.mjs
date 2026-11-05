@@ -32,13 +32,15 @@ assert.equal(auctionStartPrice({ amount: 0.2 }, 3), 1);
   const res = await addItemsToWhatnotShow(['a'], 'show-1', { api, storeId: 'S', kvGet: async k => kv.get(k) ?? null, kvPut: async (k, v) => { kv.set(k, v); },
     rows: async () => [{ id: 'a', status: 'in_stock', data: { name: 'A', sellOnWhatnot: true } }], shape: () => ({ price: 20 }) }, { auction: { percent: 50 } });
   assert.equal(res[0].added, true); assert.equal(res[0].startPrice, 10);
-  assert.deepEqual(calls[0], ['PATCH', '/products/pa/variants', { variants: [{ id: 'va', pricing: { auction: { start_price: { amount: '10.00', currency: 'USD' } } } }] }]);
-  assert.deepEqual(calls[1][2], { transaction_type: 'auction', shows: { strategy: 'ADD', show_ids: ['show-1'] } });
+  // Auction first, then the starting bid as its price (set before, it would be the shop price).
+  assert.deepEqual(calls[0][2], { transaction_type: 'auction', shows: { strategy: 'ADD', show_ids: ['show-1'] } });
+  assert.deepEqual(calls[1], ['PATCH', '/products/pa/variants', { variants: [{ id: 'va', price: { amount: '10.00', currency: 'USD' } }] }]);
   assert.deepEqual(kv.get('whatnot-link:S:a').auction, { startPrice: 10, showId: 'show-1' });
   // Back to Buy It Now.
   const back = await backToBuyItNow(['a', 'nope'], { api, storeId: 'S', kvGet: async k => kv.get(k) ?? null, kvPut: async (k, v) => { kv.set(k, v); } });
   assert.deepEqual(back.map(r => !!r.done), [true, false]);
-  assert.deepEqual(calls.at(-1)[2], { transaction_type: 'buy_it_now', reserve_for_live: false });
+  assert.deepEqual(calls.at(-2)[2], { transaction_type: 'buy_it_now', reserve_for_live: false });
+  assert.deepEqual(calls.at(-1), ['PATCH', '/products/pa/variants', { variants: [{ id: 'va', price: { amount: '20.00', currency: 'USD' } }] }], 'back in the shop at its shop price, not the starting bid');
   assert.equal(kv.get('whatnot-link:S:a').auction, undefined);
 }
 
@@ -84,3 +86,14 @@ assert.match(dash, /onclick="runWhatnotPayouts\(7\)">LAST 7 DAYS</);
 assert.match(dash, /onclick="renderWhatnotInsights\(\)">SHOW TRENDS &amp; TOP BUYERS</);
 assert.match(dash, /id="whatnot-auto-titles"/);
 console.log('whatnot tools checks passed');
+// While auctioned: the sync never sends the shop price, and a pull never
+// takes the starting bid as the dashboard price.
+{
+  const { whatnotEditPlan } = await import('../scripts/whatnot-sync.mjs');
+  const link = { price: 20, qty: 1, auction: { startPrice: 1, showId: 's' } };
+  assert.equal(whatnotEditPlan({ link, want: { price: 20, qty: 1 }, wnPrice: 1, wnQty: 1 }).price, null, 'a $1 starting bid is not a price edit');
+  assert.equal(whatnotEditPlan({ link: { price: 20, qty: 1 }, want: { price: 20, qty: 1 }, wnPrice: 18, wnQty: 1 }).price, 18, 'a real Whatnot price edit still comes back');
+  const src = (await import('node:fs')).readFileSync('scripts/whatnot-sync.mjs', 'utf8');
+  assert.match(src, /base\.price !== want\.price && !base\.auction\)/);
+  assert.doesNotMatch(src, /pricing: \{ (buy_it_now|auction)/, 'no retired pricing writes left');
+}
