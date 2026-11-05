@@ -1,3 +1,4 @@
+import { packageFor, PACKAGES } from './shipping-package.mjs';
 // Whatnot Seller API -- selling (store, 2026-10-31: "Anything I checkbox
 // will be put on whatnot and synced. Whenever we run a price update, the
 // whatnot should update also." Same price as the dashboard, Buy It Now any
@@ -71,22 +72,22 @@ export function whatnotCategoryId(item) {
     default: return null;
   }
 }
-// Simple shipping profiles, made on Whatnot the first time each is needed.
-export const WHATNOT_PROFILES = {
-  card: { name: 'Card', weight: { value: 1, unit: 'ounce' }, dimensions: { length: 6, width: 4, height: 0.5, unit: 'inch' } },
-  slab: { name: 'Graded card', weight: { value: 4, unit: 'ounce' }, dimensions: { length: 8, width: 5, height: 1, unit: 'inch' } },
-  // A single issue, bagged and boarded in a Gemini Comic Flash Mailer: the
-  // same outside size and 8 oz packed weight the eBay comic listings use
-  // (COMIC_GEMINI_MAILER in the Worker; store, 2026-11-03: "make sure
-  // shipping makes sense with the Gemini boxes").
-  comic: { name: 'Comic (Gemini mailer)', weight: { value: 8, unit: 'ounce' }, dimensions: { length: 12.75, width: 7.75, height: 1.25, unit: 'inch' } },
-  box: { name: 'Box', weight: { value: 1, unit: 'pound' }, dimensions: { length: 10, width: 8, height: 4, unit: 'inch' } },
-};
-export function whatnotProfileKind(item) {
-  if (item.categorySlug === 'comics') return 'comic';
-  if (item.isSealed || ['supplies', 'collectibles', 'other'].includes(item.categorySlug)) return 'box';
-  if (item.gradingCompany) return 'slab';
-  return 'card';
+// Shipping profiles, one per package (scripts/shipping-package.mjs), made on
+// Whatnot the first time each is needed. Packed weight and outside size.
+// The comic profile keeps its old key (already made on Whatnot); the others
+// are "v2-" (2026-11-05: singles by price, sealed by what it is) so a size
+// saved under an old key is never reused for a different package.
+const asProfile = p => ({ name: p.name, weight: p.weightOz >= 16 && p.weightOz % 16 === 0 ? { value: p.weightOz / 16, unit: 'pound' } : { value: p.weightOz, unit: 'ounce' }, dimensions: { length: p.length, width: p.width, height: p.height, unit: 'inch' } });
+export const WHATNOT_PROFILES = Object.fromEntries(Object.entries(PACKAGES).map(([k, p]) => [k === 'comic' ? 'comic' : 'v2-' + k, asProfile(p)]));
+// d: the row's data; item: the shaped listing (its category, sealed flag,
+// grade and number fill in what the raw data leaves out).
+export function whatnotPackage(d = {}, price = 0, item = {}) {
+  const pkg = packageFor({
+    ...d, name: d.name || item.name, cardNumber: d.cardNumber || item.cardNumber,
+    category: item.categorySlug === 'comics' ? 'Comic' : (d.category || item.category), isSealed: d.isSealed === true || item.isSealed === true,
+    gradingCompany: d.gradingCompany || item.gradingCompany, grade: d.grade || item.grade,
+  }, price);
+  return pkg.kind === 'custom' ? { profileKind: '', profile: asProfile(pkg) } : { profileKind: pkg.kind === 'comic' ? 'comic' : 'v2-' + pkg.kind, profile: WHATNOT_PROFILES[pkg.kind === 'comic' ? 'comic' : 'v2-' + pkg.kind] };
 }
 
 // --- What Whatnot should show ------------------------------------------------
@@ -113,7 +114,8 @@ export function whatnotDesired(row, item, { autoTitles = true } = {}) {
     description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
     categoryId,
     attributes: categoryId ? whatnotAttributes(item, d, categoryId) : [],
-    profileKind: whatnotProfileKind(item),
+    // How it ships: the package for what it is (custom weight: no saved profile).
+    ...whatnotPackage(d, price, item),
     media: (item.photos || []).filter(u => /^https:\/\//i.test(u)).slice(0, 8).map(url => ({ url })),
   };
 }
@@ -150,24 +152,24 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
     // profile id Whatnot returned for the first one was then refused for the
     // rest ("Dimension profile not found"). A refused saved profile is
     // dropped for good ('inline'): every listing sends its size spelled out.
-    const savedProfile = await profileId?.(want.profileKind);
+    const savedProfile = want.profileKind ? await profileId?.(want.profileKind) : '';
     const knownProfile = savedProfile && savedProfile !== 'inline' ? savedProfile : '';
     const product = {
       title: want.title, description: want.description, external_id: row.id,
       category: { id: want.categoryId }, media: want.media, attributes: want.attributes,
-      dimension_profile: knownProfile ? { id: knownProfile } : WHATNOT_PROFILES[want.profileKind],
+      dimension_profile: knownProfile ? { id: knownProfile } : want.profile,
     };
     let created = await api('POST', '/products', product);
     if (!created.ok && knownProfile && /dimension profile/i.test(whatnotErrorText(created))) {
       await saveProfileId?.(want.profileKind, 'inline');
-      product.dimension_profile = WHATNOT_PROFILES[want.profileKind];
+      product.dimension_profile = want.profile;
       created = await api('POST', '/products', product);
     }
     // Item details are extra: if Whatnot turns one down, list it without them.
     if (!created.ok && created.status === 422 && want.attributes.length) { created = await api('POST', '/products', { ...product, attributes: [] }); base.detailsNote = 'Item details not accepted by Whatnot'; }
     if (!created.ok || !created.data?.id) return fail(created);
     productId = created.data.id;
-    if (!savedProfile && created.data.dimension_profile?.id) await saveProfileId?.(want.profileKind, String(created.data.dimension_profile.id));
+    if (!savedProfile && want.profileKind && created.data.dimension_profile?.id) await saveProfileId?.(want.profileKind, String(created.data.dimension_profile.id));
     const variants = await api('GET', `/products/${encodeURIComponent(productId)}/variants?limit=5`);
     variantId = variants.data?.data?.[0]?.id || '';
     if (!variantId) return fail(variants, 'Whatnot made the product but no variant came back');

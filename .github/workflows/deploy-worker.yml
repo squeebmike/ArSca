@@ -156,6 +156,7 @@ on:
       - scripts/orders-board.mjs
       - scripts/whatnot-api.mjs
       - scripts/whatnot-sync.mjs
+      - scripts/shipping-package.mjs
       - scripts/morning-health.mjs
       - scripts/live-studio-bosses.mjs
       - scripts/live-studio-dungeon.mjs
