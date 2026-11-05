@@ -77,6 +77,8 @@ export function packageFor(d = {}, price = 0) {
   if (/comic|manga|graphic novel/.test(category) && !/sealed|supplies/.test(productType)) kind = 'comic';
   else if (d.isSlabbed === true || (String(d.grader || d.gradingCompany || d.grading_company || '').trim() && String(d.grade || '').trim()) || SLAB_RE.test(name)) kind = 'slab';
   else if (/suppl/.test(category)) kind = supplyKind(name);
+  // A promo card still in its wrapper ("... Promo ... SEALED") is a single.
+  else if (/\bpromo\b/i.test(name) && !/\b(box|pack|collection|tin|blister|bundle)\b/i.test(name) && d.isSealed !== true && d.is_sealed !== true) kind = Number(price) >= PWE_MAX_PRICE ? 'bubble' : 'pwe';
   else if (d.isSealed === true || d.is_sealed === true || /sealed/.test(productType) || /sealed/.test(category) || (SEALED_NAME.test(name) && !hasCardNumber(d, name))) kind = sealedKind(name, category);
   else kind = Number(price) >= PWE_MAX_PRICE ? 'bubble' : 'pwe';
   const base = PACKAGES[kind];

@@ -14,6 +14,7 @@ assert.equal(k('Giratina (Team Plasma)', {}, 19.99), 'pwe');
 assert.equal(k('Charizard ex - 199/165 SV: Scarlet & Violet 151 Special Illustration Rare', {}, 397), 'bubble');
 assert.equal(k('Pikachu', {}, 20), 'bubble');
 assert.equal(k('Charizard - Celebrations Classic Collection', { cardNumber: '4/102' }, 30), 'bubble', 'a numbered card from a "Collection" set is a single');
+assert.equal(k('Pikachu 093 Black Star Promo World Championships 2026 SEALED', {}, 25), 'bubble', 'a sealed promo card is still a single');
 // Slabs.
 assert.equal(k('Pikachu ex - 219/191 PSA 10', {}, 150), 'slab');
 assert.equal(k('Lucario V', { grader: 'CGC', grade: '9.5' }, 40), 'slab');
