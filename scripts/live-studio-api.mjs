@@ -32,7 +32,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/stage') return deps.json({ok:true,...await room.setStage(body.stage)});
     // The Shed Dungeon: a follow / share / bookmark tapped in, or a fix.
     if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await room.dungeonTap(String(body.kind||''))});
-    if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),resetWeek:body.resetWeek===true})});
+    if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true})});
     if (url.pathname==='/live-studio/stats-reset') return deps.json({ok:true,...await room.resetStats()});
     // Totals from Whatnot's own order list for the selected show.
     if (url.pathname==='/live-studio/stats-sync') {

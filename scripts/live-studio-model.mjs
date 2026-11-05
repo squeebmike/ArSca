@@ -1,6 +1,6 @@
 import { BOSS_IDS } from './live-studio-bosses.mjs';
 import { MASCOT_STATES } from './byterider.mjs';
-import { DUNGEON_DEFAULTS, DUNGEON_LIMITS, DUNGEON_STRINGS, TAP_KINDS } from './live-studio-dungeon.mjs';
+import { DUNGEON_DEFAULTS, DUNGEON_LIMITS, DUNGEON_STRINGS, TAP_KINDS, roomById } from './live-studio-dungeon.mjs';
 // Live Studio: the OBS overlay for Whatnot shows. 90s comic + arcade look
 // (store, 2026-11-01: "I want 90s comic. Arcade style").
 //
@@ -50,8 +50,8 @@ export const DEFAULT_STUDIO = Object.freeze({
   ...DUNGEON_DEFAULTS,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
-export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap'];
-export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!' };
+export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room'];
+export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!', room: 'CHAT PICKED A DOOR!' };
 // Comic sound effects for a sale (a cycle, not chance -- the next one in line).
 export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', 'KA-CHING!', 'THWIP!', 'SNIKT!', 'BOOM!'];
 // Words for games of chance / raffles: not allowed on the sign or the boss reward.
@@ -100,7 +100,7 @@ export function validateSettings(input) {
   if (!/^[A-Z]{3}$/.test(full.currency)) throw new Error('Use a three-letter currency');
   if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
-  const WHERE = { message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks' };
+  const WHERE = { message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards' };
   for (const key of Object.keys(WHERE)) {
     const word = chanceWordIn(full[key]);
     if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those. Reword the ${WHERE[key]}.`);
@@ -211,7 +211,7 @@ export function whatnotEffect(event, settings, now = Date.now()) {
   const big = amount?.currency === settings.currency && Number.isFinite(Number(amount.amount)) && Number(amount.amount) >= settings.jackpotAmount;
   return { kind: big ? 'jackpot' : 'sold', at };
 }
-const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500 };
+const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000 };
 export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (!EFFECTS.includes(kind)) throw new Error('Unknown effect');
   const length = kind === 'countdown' ? settings.countdownSeconds * 1000 + 1200 : DURATION[kind] ?? 5000;
@@ -232,6 +232,11 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (TAP_KINDS.includes(extra.tapKind)) safe.tapKind = extra.tapKind;
   for (const k of ['floor', 'nextFloor', 'stars', 'mana', 'unlockAt']) if (Number.isFinite(extra[k])) safe[k] = extra[k];
   if (typeof extra.shed === 'string') safe.shed = txt(extra.shed, 40);
+  // Rooms, doors and relics (the dungeon's fixed lists -- ids only in, names out).
+  if (roomById(extra.room)) safe.room = extra.room;
+  if (Array.isArray(extra.doors)) safe.doors = extra.doors.filter(id => roomById(id)).slice(0, 2);
+  if (typeof extra.relic === 'string') { safe.relic = txt(extra.relic, 40); safe.relicIcon = txt(extra.relicIcon, 4); }
+  if (extra.auto) safe.auto = true;
   if (kind === 'mascot') {
     if (!MASCOT_STATES.includes(extra.mascotState)) throw new Error('Unknown ByteRider reaction');
     safe.mascotState = extra.mascotState;
