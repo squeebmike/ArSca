@@ -63,6 +63,7 @@ import { buildRestockList } from './scripts/restock.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
+import { askByteRider, DEFAULT_FACTS as BYTERIDER_DEFAULT_FACTS, LIMITS as BYTERIDER_LIMITS } from './scripts/byterider-ask.mjs';
 import { runPokemonLinkSync } from './scripts/pokemon-link-sync.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
@@ -16787,6 +16788,54 @@ async function routeRequest(request, env, ctx) {
     // the cron out on the very next run). The only real fix: devices don't
     // get a path to PPT's export endpoint at all, ever. Only the cron calls
     // it now, directly with the server-side key, never through this Worker.
+    // Ask ByteRider_97 on the website (scripts/byterider-ask.mjs). Public:
+    // 20 questions an hour per visitor, 800 a day in all, short answers on
+    // a small model, from the store facts and what's in stock only.
+    if (url.pathname === '/public/byterider/ask' && request.method === 'POST') {
+      if (!env.ANTHROPIC_API_KEY || !env.LBA_KV) return json({ ok: false, error: 'ByteRider is offline right now.' }, 503);
+      const parsed = await readJsonWithLimit(request, 8192);
+      if (parsed.error) return parsed.error;
+      const day = new Date().toISOString().slice(0, 10), hour = new Date().toISOString().slice(0, 13);
+      const who = (await sha256Hex(new TextEncoder().encode(String(request.headers.get('CF-Connecting-IP') || 'x') + ':' + day))).slice(0, 24);
+      const ipKey = `byterider-ask:ip:${who}:${hour}`, dayKey = `byterider-ask:day:${day}`;
+      const [ipCount, dayCount] = await Promise.all([env.LBA_KV.get(ipKey), env.LBA_KV.get(dayKey)]).then(v => v.map(n => Number(n) || 0));
+      if (ipCount >= BYTERIDER_LIMITS.perIpHour) return json({ ok: false, error: 'BRB -- cooling my circuits. Ask again in a bit!' }, 429);
+      if (dayCount >= BYTERIDER_LIMITS.perDay) return json({ ok: false, error: 'I\'ve talked so much today my screen is fuzzy. Try /faq or hintline@themanapocket.com!' }, 429);
+      await Promise.all([env.LBA_KV.put(ipKey, String(ipCount + 1), { expirationTtl: 3700 }), env.LBA_KV.put(dayKey, String(dayCount + 1), { expirationTtl: 2 * 86400 })]);
+      try {
+        const out = await askByteRider(parsed.data || {}, {
+          items: async () => (await fetchAllListableStorefrontItemsCached(env, ctx)).filter(i => isStorefrontItemAvailable(i))
+            .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
+          facts: async () => (await env.LBA_KV.get('byterider-facts:' + ITEM_DETAIL_STORE_ID)) || BYTERIDER_DEFAULT_FACTS,
+          claude: async (system, messages) => {
+            const res = await fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 220, temperature: 0.6, system, messages }) });
+            const d = await res.json().catch(() => null);
+            if (!res.ok) throw new Error('model ' + res.status);
+            return (d?.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ');
+          },
+        });
+        return json(out, out.ok ? 200 : 400, { 'Cache-Control': 'no-store' });
+      } catch (e) {
+        console.warn('ByteRider ask failed:', e.message);
+        return json({ ok: false, error: 'My circuits glitched. Try again, or email hintline@themanapocket.com!' }, 502);
+      }
+    }
+    // What ByteRider knows (the store facts above), from the dashboard.
+    if (url.pathname === '/byterider/facts') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      if (storeId !== ITEM_DETAIL_STORE_ID) return json({ ok: false, error: 'ByteRider answers on The Mana Pocket\'s website only' }, 403);
+      if (request.method === 'GET') return json({ ok: true, facts: (await env.LBA_KV.get('byterider-facts:' + storeId)) || BYTERIDER_DEFAULT_FACTS, defaults: BYTERIDER_DEFAULT_FACTS });
+      if (request.method === 'POST') {
+        const parsed = await readJsonWithLimit(request, 16384);
+        if (parsed.error) return parsed.error;
+        const facts = String(parsed.data?.facts || '').replace(/\r/g, '').slice(0, 6000).trim();
+        if (facts) await env.LBA_KV.put('byterider-facts:' + storeId, facts); else await env.LBA_KV.delete('byterider-facts:' + storeId);
+        return json({ ok: true, facts: facts || BYTERIDER_DEFAULT_FACTS });
+      }
+    }
     // The public Pokémon Set Guide's set list and set cards (no sign-in).
     const publicPokemon = await handlePublicPokemonRequest(request, env, url, json);
     if (publicPokemon) return publicPokemon;
