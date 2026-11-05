@@ -34,9 +34,11 @@ export function signedInFirstName() {
   const w = String(meta.full_name || meta.name || meta.first_name || '').trim().split(/\s+/)[0] || '';
   return /^[A-Za-zÀ-ÿ'-]{1,20}$/.test(w) ? w[0].toUpperCase() + w.slice(1) : '';
 }
-const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What comics come out next week?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'Magic: can I respond to [[Lightning Bolt]]?'];
+const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What preorders are coming up?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'Magic: can I respond to [[Lightning Bolt]]?'];
 // The chat: built from DOM nodes and textContent only (nothing a visitor or
 // the answer types is ever read as HTML).
+// Phones and tablets: never pop the keyboard by itself (it covers his answer).
+const touchScreen = () => safe(() => matchMedia('(pointer: coarse)').matches) || false;
 function buildChat(corner, onAsk) {
   const box = document.createElement('div');
   box.id = 'byterider-chat';
@@ -60,6 +62,10 @@ function buildChat(corner, onAsk) {
   Object.assign(send.style, { padding: '8px 12px', borderRadius: '8px', border: 0, background: '#b4ff3a', color: '#0b0612', fontWeight: '800', cursor: 'pointer' });
   form.append(input, send);
   box.append(head, log, form);
+  const ask = q => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
+  const chipButton = q => { const c = document.createElement('button'); c.type = 'button'; c.textContent = q;
+    Object.assign(c.style, { padding: '5px 8px', borderRadius: '999px', border: '1px solid #b4ff3a88', background: 'transparent', color: '#eaffd6', font: '12px system-ui, sans-serif', cursor: 'pointer' });
+    c.onclick = () => ask(q); return c; };
   const bubble = (text, who, items = []) => {
     const b = document.createElement('div');
     Object.assign(b.style, { alignSelf: who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '8px 10px', borderRadius: '10px',
@@ -76,12 +82,7 @@ function buildChat(corner, onAsk) {
   };
   const chips = document.createElement('div');
   Object.assign(chips.style, { display: 'flex', flexWrap: 'wrap', gap: '6px' });
-  for (const q of SUGGESTIONS) {
-    const c = document.createElement('button'); c.type = 'button'; c.textContent = q;
-    Object.assign(c.style, { padding: '5px 8px', borderRadius: '999px', border: '1px solid #b4ff3a88', background: 'transparent', color: '#eaffd6', font: '12px system-ui, sans-serif', cursor: 'pointer' });
-    c.onclick = () => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
-    chips.append(c);
-  }
+  for (const q of SUGGESTIONS) chips.append(chipButton(q));
   const who = signedInFirstName();
   bubble((who ? 'Hey ' + who + "! " : "Hi! I'm ByteRider_97. ") + "I can find stuff in stock, suggest gifts, tell you what comics are coming (and what to read), help with your account and theme -- and I'm your Magic rules helper. Name a card like [[Lightning Bolt]].", 'br');
   log.append(chips);
@@ -90,13 +91,17 @@ function buildChat(corner, onAsk) {
     e.preventDefault();
     const q = input.value.trim();
     if (!q || busy) return;
-    busy = true; chips.remove(); input.value = ''; bubble(q, 'you');
+    busy = true; chips.remove(); log.querySelectorAll('.br-followups').forEach(n => n.remove()); input.value = ''; if (touchScreen()) input.blur(); bubble(q, 'you');
     const wait = bubble('…', 'br');
-    try { const r = await onAsk(q); wait.remove(); bubble(r.text, 'br', r.items); }
+    try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items);
+      // Follow-up questions to tap.
+      if ((r.followUps || []).length) { const f = document.createElement('div'); f.className = 'br-followups'; Object.assign(f.style, { display: 'flex', flexWrap: 'wrap', gap: '6px' });
+        for (const q2 of r.followUps.slice(0, 3)) f.append(chipButton(String(q2).slice(0, 60))); log.append(f); }
+      b.scrollIntoView?.({ block: 'start' }); }
     catch { wait.remove(); bubble('My circuits glitched. Try again!', 'br'); }
-    busy = false; input.focus();
+    busy = false; if (!touchScreen()) input.focus();
   };
-  return { box, open: () => { box.style.display = 'flex'; document.getElementById('byterider-site')?.classList.add('br-chat-open'); setTimeout(() => input.focus(), 50); }, close: () => { box.style.display = 'none'; document.getElementById('byterider-site')?.classList.remove('br-chat-open'); }, get isOpen() { return box.style.display !== 'none'; }, x };
+  return { box, open: () => { box.style.display = 'flex'; document.getElementById('byterider-site')?.classList.add('br-chat-open'); if (!touchScreen()) setTimeout(() => input.focus(), 50); }, close: () => { box.style.display = 'none'; document.getElementById('byterider-site')?.classList.remove('br-chat-open'); }, get isOpen() { return box.style.display !== 'none'; }, x };
 }
 
 // After his × he waits as a small tab in the corner; a tap brings him back.
@@ -144,7 +149,7 @@ export function mountSiteByteRider(opts = {}) {
     const text = d.ok ? String(d.answer || '') : String(d.error || 'Hmm, try that again?');
     history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
     br.play(d.ok ? 'talking' : 'sad', { text: text.length > 90 ? text.slice(0, 88) + '…' : text });
-    return { text, items: d.ok ? d.items || [] : [] };
+    return { text, items: d.ok ? d.items || [] : [], followUps: d.ok ? d.followUps || [] : [] };
   });
   document.body.append(chat.box);
   chat.x.onclick = () => chat.close();

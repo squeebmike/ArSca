@@ -56,7 +56,11 @@ const shop = [
 ];
 assert.equal(budgetOf('a gift under $20 please'), 20);
 assert.deepEqual(matchItems(shop, 'suggest a pokemon gift under $20').map(i => i.name), ['Pikachu V'], 'within budget, right game');
-assert.deepEqual(matchItems(shop, 'any pokemon cards?').map(i => i.name).sort(), [], 'no suggestion asked, no name: nothing forced');
+assert.deepEqual(matchItems(shop, 'any pokemon cards?').map(i => i.name).sort(), ['Pikachu V', 'Scarlet ETB'], 'a department asked: some from it');
+assert.deepEqual(matchItems(shop, 'how do I set the theme?'), [], 'site help: no items');
+assert.deepEqual(matchItems([{ id: 'x', name: 'Caterpie', set: 'Base Set', category: 'Pokemon', price: 27, url: '/i' }], 'what set is this'), [], 'whole words only, set is not a search word');
+assert.deepEqual(matchItems(shop, 'any good gift ideas?').map(i => i.name).sort(), ['Pikachu V', 'Scarlet ETB', 'Sol Ring'], 'no department: a spread from each');
+assert.deepEqual(matchItems(shop, 'pikachus?').map(i => i.name), ['Pikachu V'], 'plural');
 assert.equal(matchItems(shop, 'recommend some pokemon').length, 2);
 // Upcoming comics and what to read.
 const comics = [
@@ -107,4 +111,19 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.match(site, /if \(safe\(\(\) => localStorage\.getItem\('byterider-hidden'\) === '1'\)\) return showReturnTab\(opts\);/, 'hidden shows the return tab');
   assert.match(site, /tab\.onclick = \(\) => \{ safe\(\(\) => localStorage\.removeItem\('byterider-hidden'\)\); tab\.remove\(\); mountSiteByteRider\(opts\); \};/, 'tab brings him back');
   assert.match(site, /chat\.box\.remove\(\); showReturnTab\(opts\); \};/, '× leaves the tab');
+}
+
+// Follow-ups to tap, and all preorders.
+{
+  const { followUps, matchComics: mc } = await import('../scripts/byterider-ask.mjs');
+  assert.ok(followUps('suggest a pokemon gift under $40', { items: [{}] }).includes('Anything under $20?'));
+  assert.ok(followUps('hi').length === 3);
+  const list = [['Batman #1', 'DC'], ['Batman #2', 'DC'], ['Saga #70', 'Image'], ['Spawn #360', 'Image'], ['X-Men #5', 'Marvel']].map(([title, publisher], i) => ({ title, publisher, onSale: '2026-12-0' + (i + 1) }));
+  assert.deepEqual(mc(list, 'what preorders are coming up?').map(c => c.title), ['Batman #1', 'Saga #70', 'Spawn #360', 'X-Men #5'], 'one per series');
+  const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
+  assert.match(site, /if \(!touchScreen\(\)\) setTimeout\(\(\) => input\.focus\(\), 50\);/, 'no keyboard pop on open (phones)');
+  assert.match(site, /busy = false; if \(!touchScreen\(\)\) input\.focus\(\);/, 'no keyboard pop after an answer (phones)');
+  const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  assert.match(w, /byterider-upcoming-v2', JSON\.stringify\(list\), \{ expirationTtl: 6 \* 3600 \}/, 'preorders read at most every 6 hours');
+  assert.match(w, /on_sale_date=gte\.\$\{today\}&select=title,on_sale_date,publisher,writer,cover_artist,customer_price_cents,msrp_cents&order=on_sale_date\.asc&limit=5000/, 'all preorders');
 }
