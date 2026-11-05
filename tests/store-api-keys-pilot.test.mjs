@@ -39,14 +39,14 @@ assert.equal(lastFour('abcd1234efgh'), 'efgh');
 // ── The Worker, end to end ──
 const originalFetch = globalThis.fetch, originalCaches = globalThis.caches;
 const upstream = [], dbWrites = [], kvPuts = [];
-let savedRows = [];
+let savedRows = [], featureRows = [];
 globalThis.caches = { default: { match: async () => null, put: async () => {} } };
 globalThis.fetch = async (input, init = {}) => {
   const url = String(input);
   const ok = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
   if (url.includes('/auth/v1/user')) return ok({ id: 'user-1' });
   if (url.includes('/rest/v1/store_members')) return ok([{ role: 'owner' }]);
-  if (url.includes('/rest/v1/store_features')) return ok([]);
+  if (url.includes('/rest/v1/store_features')) return ok(featureRows);
   if (url.includes('/rest/v1/store_api_keys')) {
     if (init.method === 'POST' || init.method === 'DELETE') { dbWrites.push({ url, method: init.method, body: init.body ? JSON.parse(init.body) : null }); return new Response(null, { status: 201 }); }
     return ok(url.includes('select=provider,last4') ? savedRows.map(r => ({ provider: r.provider, last4: r.last4, updated_at: 'x' })) : savedRows.map(r => ({ provider: r.provider, ciphertext: r.ciphertext })));
@@ -105,6 +105,17 @@ try {
   res = await call('/pricing/pokemon/cards?tcgPlayerId=2&fresh=true', OTHER);
   assert.ok(kvPuts.includes('ppt_daily_quota_exhausted_until_v3:' + OTHER), 'paused under their store');
   assert.ok(!kvPuts.includes('ppt_daily_quota_exhausted_until_v3'), 'your pause flag untouched');
+
+  // Shared PokemonPriceTracker key only (Crull001, 2026-11-05): with no key
+  // of its own the store prices on yours -- and a pause is your key's pause.
+  featureRows = [{ store_id: OTHER, shared_pokemon_key: true }];
+  savedRows = []; clearStoreKeyCache(); clearStoreFeatureCache(); upstream.length = 0;
+  res = await call('/pricing/pokemon/cards?tcgPlayerId=3&fresh=true', OTHER);
+  assert.equal(upstream.at(-1), 'Bearer mana-pocket-key', 'shared: your PPT key');
+  env.POKEMONPRICE_API_KEY = 'broke-yours'; kvPuts.length = 0;
+  res = await call('/pricing/pokemon/cards?tcgPlayerId=4&fresh=true', OTHER);
+  assert.ok(kvPuts.includes('ppt_daily_quota_exhausted_until_v3'), 'shared key out of credits pauses your key');
+  env.POKEMONPRICE_API_KEY = 'mana-pocket-key'; featureRows = []; clearStoreFeatureCache(); savedRows = [{ provider: 'pokemonprice', ciphertext: sealedBroke, last4: '0000' }]; clearStoreKeyCache();
 
   // Remove.
   res = await call('/store/api-keys', OTHER, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider: 'pokemonprice', key: '' }) });

@@ -11,7 +11,10 @@ export const PLATFORM_STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9'; // The 
 
 // Account-tied features are enforced by the Worker; the rest only shape the
 // dashboard (nothing of the platform's is reachable through them).
-export const FEATURE_KEYS = ['ebay', 'shopify', 'comics', 'website', 'sms', 'sharedPricingKeys', 'consignment', 'whatnot'];
+// sharedPokemonKey: only The Mana Pocket's PokemonPriceTracker key, nothing
+// else of its (store, 2026-11-05, Crull001: "He can use mine until I have
+// issues" -- PriceCharting, JustTCG and SportsCardsPro stay his own).
+export const FEATURE_KEYS = ['ebay', 'shopify', 'comics', 'website', 'sms', 'sharedPricingKeys', 'consignment', 'whatnot', 'sharedPokemonKey'];
 export const SERVER_FEATURES = ['ebay', 'shopify', 'comics', 'website', 'sms'];
 
 export const PLATFORM_FEATURES = Object.freeze({
@@ -25,7 +28,7 @@ export const PILOT_DEFAULTS = Object.freeze({
   feeFixedCents: 10, feeBps: 0, platform: false,
 });
 
-const COLUMN = { ebay:'ebay', shopify:'shopify', comics:'comics', website:'website', sms:'sms', sharedPricingKeys:'shared_pricing_keys', consignment:'consignment', whatnot:'whatnot' };
+const COLUMN = { ebay:'ebay', shopify:'shopify', comics:'comics', website:'website', sms:'sms', sharedPricingKeys:'shared_pricing_keys', consignment:'consignment', whatnot:'whatnot', sharedPokemonKey:'shared_pokemon_key' };
 
 export function isPlatformStore(storeId, env = {}) {
   const id = String(storeId || '').trim();

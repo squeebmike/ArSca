@@ -73,3 +73,12 @@ export function envWithStoreKeys(env, storeId, keys = {}) {
   for (const [provider, spec] of Object.entries(KEY_PROVIDERS)) for (const name of spec.envKeys) out[name] = keys[provider] || '';
   return out;
 }
+// A store allowed The Mana Pocket's PokemonPriceTracker key (and nothing
+// else): its own key if it has one, else the platform's. Out-of-credits
+// pauses then follow the platform key (no STORE_KEYS_OWNER scope for it).
+export function envWithSharedPokemonKey(env, storeEnv, ownKeys = {}) {
+  if (ownKeys.pokemonprice) return storeEnv;
+  const out = { ...storeEnv, PPT_SHARED_FROM_PLATFORM: '1' };
+  for (const name of KEY_PROVIDERS.pokemonprice.envKeys) out[name] = env[name] || '';
+  return out;
+}
