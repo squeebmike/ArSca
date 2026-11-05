@@ -165,5 +165,6 @@ console.log('FOC email, price watch and eBay refund checks passed');
 assert.match(worker, /const COMIC_SINGLE_PACKED_LB = 0\.5;/);
 assert.match(worker, /: \{ weightValue: COMIC_SINGLE_PACKED_LB, weightUnit: 'POUND' \};/, 'FOC single-cover listings');
 assert.match(worker, /if \(!\(Number\(out\.weightValue\) > 0\.1\)\) Object\.assign\(out, \{ weightValue: COMIC_SINGLE_PACKED_LB, weightUnit: 'POUND' \}\);/, 'any comic listing sent without a real weight');
-assert.match(app, /const weightVal = \(liveOk && live\.item\?\.weightValue\) \|\| \(isComic \? 0\.5 : isSealed \? 1 : 0\.1\);/, 'the inventory eBay listing screen');
+assert.match(app, /const weightVal = \(liveOk && live\.item\?\.weightValue\) \|\| \(pkg \? Math\.round\(pkg\.weightOz \/ 16 \* 1000\) \/ 1000 : \(isComic \? 0\.5 : isSealed \? 1 : 0\.1\)\);/, 'the inventory eBay listing screen');
+assert.match(app, /const pkg = shipChart && !isComic \?/, 'a comic keeps 8 oz (no other package)');
 console.log('8 oz single comic default checks passed');

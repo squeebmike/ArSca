@@ -1,4 +1,5 @@
 import {handleDeltaReignChecklist} from './scripts/delta-reign-page.mjs';
+import { packageFor } from './scripts/shipping-package.mjs';
 import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules, fuzzyCardLookup as mtgFuzzyCard} from './scripts/mtg-judge.mjs';
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
@@ -625,9 +626,8 @@ async function loadCartForShipping(env, storeId, requestedItemsRaw) {
   let subtotalCents = 0;
   let totalQuantity = 0;
   let allRawSingles = true;
-  // No per-item weight is tracked in inventory, so this is a heuristic --
-  // raw singles are treated as near-weightless, graded slabs (rigid plastic
-  // holders) as the heaviest single unit, sealed product in between.
+  // Each item's weight comes from its package (an ETB weighs what an ETB
+  // weighs; a weight typed on the item wins).
   let totalWeightOz = 0;
   for (const req of requestedItems) {
     const itemId = String(req.itemId || '').trim();
@@ -653,13 +653,13 @@ async function loadCartForShipping(env, storeId, requestedItemsRaw) {
     const checkoutBase = Number(d.priceOverride || 0) || marketRulePrice(Number(d.market || d.marketPrice || d.rawMarketPrice || d.price || 0) || 0, d.priceRule);
     const unitPrice = Math.max(checkoutBase, Number(d.minPrice || 0) || 0, Number(d.autoFloor || 0) || 0) + (Number(d.signature_value || 0) || 0);
     if (unitPrice <= 0) return { error: json({ ok:false, error:`"${d.name || 'An item'}" doesn't have a price set yet` }, 409) };
-    const category = String(d.category || d.type || '').toLowerCase();
-    const isSealed = !!d.is_sealed || category.includes('sealed') || category === 'comic';
-    const isGraded = !!(d.grading_company || d.grader);
-    if (isSealed || isGraded) allRawSingles = false;
+    // What it ships in (scripts/shipping-package.mjs, the same chart Whatnot
+    // uses): only raw singles can share an envelope.
+    const pkg = packageFor(d, unitPrice);
+    if (!['pwe', 'bubble'].includes(pkg.kind)) allRawSingles = false;
     totalQuantity += qty;
     subtotalCents += Math.round(unitPrice * 100) * qty;
-    totalWeightOz += (isGraded ? 8 : (isSealed ? 10 : 1.2)) * qty;
+    totalWeightOz += pkg.contentsOz * qty;
     lineItems.push({ itemId, quantity: qty, unitPrice, costBasis:inventoryCostBasisFromData(d), title: d.name || d.title || 'Item', category: d.category || d.type || 'Other', condition: d.condition || d.grade || '', imageUrl: cleanUrlLoose(d.image || d.img || d.imageUrl || d.image_url || d.photo) });
   }
   if (subtotalCents < 50) return { error: json({ ok:false, error:'Order subtotal is too small to check out' }, 400) };
