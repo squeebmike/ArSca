@@ -5,7 +5,7 @@ import {footballSets} from './topps/football-seed.mjs';
 import {checklistPublicationProblems,footballChecklistPublicationProblems} from './topps/public-checklist-policy.mjs';
 import {sectionsForSet,checklistCardNavigation} from './baseball-section-pages.mjs';
 import {sportsChecklistNavigation,sportsChecklistRedirect,sportsSectionCollections} from './sports-checklist-ui.mjs';
-import {setPageHeader} from './collector-page-ui.mjs';
+import {collectorPageStyles,setPageHeader} from './collector-page-ui.mjs';
 import {collectionToolsHtml} from './collection-tools.mjs';
 import {referenceImageHtml} from './sports-reference-images.mjs';
 import {newestReleases} from './release-order.mjs';
@@ -19,7 +19,7 @@ function pathsFor(sport){const sets=publishedLicensedSportsSets.filter(s=>s.spor
 export async function handleLicensedSportsCatalog(request,env,url,deps){
  const sport=Object.keys(labels).find(s=>url.pathname==='/'+s||url.pathname.startsWith('/'+s+'/')||url.pathname==='/sitemap-'+s+'.xml');
  if(!['GET','HEAD'].includes(request.method)||(!sport&&!['/sports/sets','/sitemap-sports-sets.xml'].includes(url.pathname)))return null;
- const esc=deps.escape,html=(p,status=200)=>new Response(request.method==='HEAD'?null:deps.shell(p),{status,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store'}});
+ const esc=deps.escape,html=(p,status=200)=>new Response(request.method==='HEAD'?null:deps.shell({...p,bodyHtml:collectorPageStyles+'<div class="mp-collector-page">'+p.bodyHtml+'</div>'}),{status,headers:{'Content-Type':'text/html;charset=UTF-8','Cache-Control':'no-store'}});
  const missing=()=>html({title:'Checklist not found | The Mana Pocket',canonicalPath:url.pathname,robotsNoindex:true,bodyHtml:'<h1>Checklist not found</h1><p><a href="/sports/sets">Browse published sports checklists</a></p>'},404);
  if(url.pathname==='/sitemap-sports-sets.xml'||url.pathname==='/sitemap-'+sport+'.xml'){
   if(sport&&!publishedLicensedSportsSets.some(s=>s.sport===sport))return missing();
