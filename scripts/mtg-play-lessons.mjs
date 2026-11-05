@@ -261,6 +261,7 @@ const playClientSource=String.raw`
  const root=document.querySelector('#play-table');if(!root)return;
  const $=s=>root.querySelector(s);let data=[];try{data=JSON.parse(document.querySelector('#play-lesson-data').textContent);}catch{return;}
  const savedKey='mp-mtg-play-v1';let completed=[];try{const v=JSON.parse(localStorage.getItem(savedKey)||'[]');if(Array.isArray(v))completed=v.filter(id=>data.some(l=>l.id===id));}catch{}
+ const requestedGame=new URLSearchParams(location.search).get('play');if(data.some(l=>l.id===requestedGame))$('#play-lesson').value=requestedGame;
  let state=createPlayState($('#play-lesson').value),busy=false;
  function node(tag,text){const n=document.createElement(tag);n.textContent=text;return n;}
  function button(text,action){const b=node('button',text);b.type='button';b.className='play-card-action';b.dataset.action=action;b.addEventListener('click',()=>act(action));return b;}
