@@ -124,8 +124,8 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.match(site, /if \(!touchScreen\(\)\) setTimeout\(\(\) => input\.focus\(\), 50\);/, 'no keyboard pop on open (phones)');
   assert.match(site, /busy = false; if \(!touchScreen\(\)\) input\.focus\(\);/, 'no keyboard pop after an answer (phones)');
   const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-  assert.match(w, /byterider-upcoming-v3', JSON\.stringify\(list\), \{ expirationTtl: 6 \* 3600 \}/, 'preorders read at most every 6 hours');
-  assert.match(w, /on_sale_date=gte\.\$\{today\}&select=title,on_sale_date,publisher,writer,cover_artist,customer_price_cents,msrp_cents&order=on_sale_date\.asc&limit=5000/, 'all preorders');
+  assert.match(w, /byterider-upcoming-v4', JSON\.stringify\(list\), \{ expirationTtl: 6 \* 3600 \}/, 'preorders read at most every 6 hours');
+  assert.match(w, /on_sale_date=gte\.\$\{today\}&select=title,on_sale_date,publisher,writer,cover_artist,interior_artist,customer_price_cents,msrp_cents&order=on_sale_date\.asc&limit=6000/, 'all preorders');
 }
 // He sets the theme: only when none is picked, from the site's own list.
 {
@@ -167,4 +167,17 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.deepEqual(b.matchComics(cs, 'What comics released yesterday', 8, '2026-11-05').map(c => c.title), ['Batman #160', 'Saga #70'], 'already out, newest first');
   assert.deepEqual(b.matchComics(cs, 'what comics come out next week', 8, '2026-11-05').map(c => c.title), ['Teen Titans #3 Cvr C Francis Manapul', 'X-Men #9']);
   assert.match(b.systemPrompt('', [], { today: '2026-11-05' }), /TODAY is 2026-11-05/);
+}
+
+// Writers and artists: comics coming/out, and in-stock comics' credits.
+{
+  const b = await import('../scripts/byterider-ask.mjs');
+  const cs = [{ title: 'Batman #161', onSale: '2026-11-18', writer: 'Jeph Loeb', artist: 'Jim Lee', interior: 'Jim Lee', covers: ['Jim Lee', 'Artgerm'] }, { title: 'Saga #71', onSale: '2026-11-18', writer: 'Brian K Vaughan', interior: 'Fiona Staples' }];
+  assert.deepEqual(b.matchComics(cs, 'any upcoming comics with Artgerm covers?', 8, '2026-11-05').map(c => c.title), ['Batman #161'], 'variant cover artist');
+  assert.deepEqual(b.matchComics(cs, 'what is Fiona Staples drawing next?', 8, '2026-11-05').map(c => c.title), ['Saga #71'], 'interior artist');
+  assert.match(b.systemPrompt('', [], { comics: b.matchComics(cs, 'artgerm comics', 8, '2026-11-05') }), /written by Jeph Loeb, art by Jim Lee, cover Jim Lee, variant covers by Artgerm/);
+  const stock = [{ id: 'k', name: 'Absolute Batman #1', category: 'Comic', price: 12, url: '/i/k', comic: { writers: ['Scott Snyder'], artists: ['Nick Dragotta'], coverArtists: ['Nick Dragotta'] } }];
+  const [k] = b.matchItems(stock, 'anything by scott snyder in stock?');
+  assert.equal(k?.name, 'Absolute Batman #1', 'in-stock by writer');
+  assert.match(k.details, /written by Scott Snyder, art by Nick Dragotta, cover by Nick Dragotta/);
 }

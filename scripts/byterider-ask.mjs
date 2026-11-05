@@ -70,35 +70,40 @@ export function matchItems(items = [], q, max = LIMITS.items) {
   }
   items = pool;
   return items.map(item => {
-    const hay = [item.name, item.set, item.subset, item.category, item.game, item.sport, item.player, item.team, item.year, item.cardNumber, item.setCode, item.publisher, item.series, item.brand, item.variant, item.treatment, item.rarity, item.finish, item.gradingCompany, item.signedBy, item.language].filter(Boolean).join(' ').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const hay = [item.name, item.set, item.subset, item.category, item.game, item.sport, item.player, item.team, item.year, item.cardNumber, item.setCode, item.publisher, item.series, item.brand, item.variant, item.treatment, item.rarity, item.finish, item.gradingCompany, item.signedBy, item.language, ...credits(item)].filter(Boolean).join(' ').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
     const hits = words.filter(w => wordHit(hay, w)).length;
     return { item, score: hits / words.length + (hits === words.length ? 1 : 0) };
   }).filter(x => x.score >= 0.5).sort((a, b) => b.score - a.score).slice(0, max).map(({ item }) => publicItem(item));
 }
+// A comic's creators from its public listing (writers, artists, covers).
+const credits = item => { const c = item.comic || {}; return [c.seriesName, c.publisher, ...(c.writers || []), ...(c.artists || []), ...(c.coverArtists || [])].filter(Boolean).map(String); };
+const creditLine = item => { const c = item.comic || {}; const j = (l, n) => (l || []).slice(0, n).join(' & ');
+  return [c.writers?.length && 'written by ' + j(c.writers, 2), c.artists?.length && 'art by ' + j(c.artists, 2), c.coverArtists?.length && 'cover by ' + j(c.coverArtists, 2)].filter(Boolean).join(', '); };
 // What he may say about an item: the public listing fields only.
 const publicItem = item => {
   const grade = [item.gradingCompany, item.grade].filter(Boolean).join(' ');
-  const details = [item.cardNumber && '#' + item.cardNumber, item.year, item.variant || item.treatment || item.finish, item.rarity, grade || item.condition, item.language && !/^english$/i.test(item.language) ? item.language : '', item.signedBy ? 'signed by ' + item.signedBy : '', Number(item.quantity) > 0 && Number(item.quantity) <= 3 ? 'only ' + Number(item.quantity) + ' left' : '']
-    .map(v => cleanText(v, 40)).filter(Boolean).join(', ');
+  const details = [item.cardNumber && '#' + item.cardNumber, item.year, item.variant || item.treatment || item.finish, item.rarity, grade || item.condition, item.language && !/^english$/i.test(item.language) ? item.language : '', item.signedBy ? 'signed by ' + item.signedBy : '', creditLine(item), Number(item.quantity) > 0 && Number(item.quantity) <= 3 ? 'only ' + Number(item.quantity) + ' left' : '']
+    .map(v => cleanText(v, 90)).filter(Boolean).join(', ');
   return { name: cleanText(item.name, 90), set: cleanText(item.set, 60), price: Number(item.price) > 0 ? Math.round(Number(item.price) * 100) / 100 : null, url: cleanText(item.url, 200), details, about: cleanText(String(item.description || '').replace(/<[^>]*>/g, ' '), 140), added: cleanText(item.addedAt, 10) };
 };
 // Upcoming comics a question is about, or the soonest ones.
 export function matchComics(comics = [], q, max = LIMITS.comics, today = new Date().toISOString().slice(0, 10)) {
   q = storeless(q);
-  const titled = w => w.length >= 4 && comics.some(c => wordHit(String(c.title || '').toLowerCase(), w));
+  // A title or a creator named is enough ("what's Fiona Staples drawing?").
+  const titled = w => w.length >= 4 && comics.some(c => wordHit([c.title, c.writer, c.artist, c.interior, ...(c.covers || [])].join(' ').toLowerCase(), w));
   if (!wantsComics(q) && !wantsRecent(q) && !keywords(q).some(titled)) return [];
   // Already out (newest first) or still to come (soonest first).
   const recent = wantsRecent(q);
   comics = recent ? comics.filter(c => String(c.onSale) < today).sort((a, b) => String(b.onSale).localeCompare(String(a.onSale))) : comics.filter(c => !c.onSale || String(c.onSale) >= today);
   const words = keywords(q).filter(w => !/^(comics?|issues?|books?|read|reading|series|releases?|released|coming|came|out|upcoming|new|week|preorders?|pre|order|foc|variants?|covers?|next|good|suggest|recommend|yesterday|last|this|dropped|store)$/.test(w));
-  const scored = comics.map(c => { const hay = [c.title, c.publisher, c.writer, c.artist].join(' ').toLowerCase(); return { c, hits: words.filter(w => wordHit(hay, w)).length }; });
+  const scored = comics.map(c => { const hay = [c.title, c.publisher, c.writer, c.artist, c.interior, ...(c.covers || [])].join(' ').toLowerCase(); return { c, hits: words.filter(w => wordHit(hay, w)).length }; });
   const hits = scored.filter(x => x.hits).sort((a, b) => b.hits - a.hits || (recent ? String(b.c.onSale).localeCompare(String(a.c.onSale)) : String(a.c.onSale).localeCompare(String(b.c.onSale))));
   // Nothing named: the soonest, one per series, mixed publishers.
   let pick = hits;
   if (!hits.length) { const seen = new Set(), pubs = new Map(); pick = [];
     for (const x of scored) { const series = String(x.c.title || '').replace(/\s*#.*$/, '').toLowerCase(); const pub = String(x.c.publisher || '').toLowerCase();
       if (seen.has(series) || (pubs.get(pub) || 0) >= Math.ceil(max / 3)) continue; seen.add(series); pubs.set(pub, (pubs.get(pub) || 0) + 1); pick.push(x); if (pick.length >= max) break; } }
-  return pick.slice(0, max).map(({ c }) => ({ title: cleanText(c.title, 90), onSale: cleanText(c.onSale, 10), publisher: cleanText(c.publisher, 40), writer: cleanText(c.writer, 60), artist: cleanText(c.artist, 60), price: Number(c.price) > 0 ? Math.round(Number(c.price) * 100) / 100 : null, url: cleanText(c.url, 200) }));
+  return pick.slice(0, max).map(({ c }) => ({ title: cleanText(c.title, 90), onSale: cleanText(c.onSale, 10), publisher: cleanText(c.publisher, 40), writer: cleanText(c.writer, 60), artist: cleanText(c.artist, 60), interior: cleanText(c.interior, 60), covers: (c.covers || []).slice(0, 6).map(a => cleanText(a, 40)), price: Number(c.price) > 0 ? Math.round(Number(c.price) * 100) / 100 : null, url: cleanText(c.url, 200) }));
 }
 // The visitor's first name from their own signed-in website account (read in
 // their browser; store, 2026-11-05: "Can ByteRider say the user's name if
@@ -152,7 +157,7 @@ export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], r
     '', 'STORE FACTS:', facts || DEFAULT_FACTS,
     '', 'SITE HELP:', SITE_HELP,
     '', 'IN-STOCK MATCHES (live, in stock now; details are from the listing):', items.length ? items.map(i => `- ${i.name}${i.set ? ' (' + i.set + ')' : ''}${i.price ? ' $' + i.price.toFixed(2) : ''}${i.details ? ' -- ' + i.details : ''}${i.added ? ', added ' + i.added : ''}${i.about ? '. ' + i.about : ''}`).join('\n') : '(none for this question)',
-    ...(comics.length ? ['', 'COMICS (with on-sale dates; dates after TODAY are open for preorder, earlier ones are already out):', comics.map(c => `- ${c.title} -- on sale ${c.onSale}${c.publisher ? ', ' + c.publisher : ''}${c.writer ? ', written by ' + c.writer : ''}${c.artist ? ', cover ' + c.artist : ''}${c.price ? ', $' + c.price.toFixed(2) : ''}`).join('\n')] : []),
+    ...(comics.length ? ['', 'COMICS (with on-sale dates; dates after TODAY are open for preorder, earlier ones are already out):', comics.map(c => `- ${c.title} -- on sale ${c.onSale}${c.publisher ? ', ' + c.publisher : ''}${c.writer ? ', written by ' + c.writer : ''}${c.interior ? ', art by ' + c.interior : ''}${c.artist ? ', cover ' + c.artist : ''}${(c.covers || []).filter(a => a !== c.artist).length ? ', variant covers by ' + c.covers.filter(a => a !== c.artist).join(', ') : ''}${c.price ? ', $' + c.price.toFixed(2) : ''}`).join('\n')] : []),
     ...(rules.length ? ['', 'OFFICIAL RULES (Magic Comprehensive Rules excerpts):', rules.map(r => `${r.id} ${r.text}`).join('\n')] : []),
     ...(cards.length ? ['', 'CARDS (current Oracle text and official rulings):', cards.map(c => `${c.name} -- ${c.faces.map(f => [f.name !== c.name ? f.name : '', f.manaCost, f.type, f.text].filter(Boolean).join(' | ')).join(' // ')}${c.rulings.length ? '\n  Rulings: ' + c.rulings.join(' / ') : ''}`).join('\n')] : []),
   ].join('\n');
