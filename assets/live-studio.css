@@ -223,3 +223,28 @@
 #mana-effect.k-unlock .mana-burst {background:linear-gradient(160deg,#0b3b4a,#22e6ff 55%,#ffe23d);animation:mana-pop .45s cubic-bezier(.2,2,.4,1)}
 .mana-3d #mana-effect.k-floor #mana-effect-boss {display:block;width:260px;height:260px;margin:-30px 0 -24px;filter:drop-shadow(0 10px 12px #0008)}
 #mana-effect.k-floor #mana-effect-sub,#mana-effect.k-unlock #mana-effect-sub {background:var(--ink);color:var(--yel);padding:8px 14px;font-size:20px;margin-bottom:90px}
+
+/* The dungeon map + relic shelf (chat picks the path; every boss drops a relic). */
+#mana-map {width:250px;padding:12px 12px 14px;font-size:11px}
+#mana-map .mana-card-head {font-size:26px;margin-bottom:6px}
+#mana-map-list {list-style:none;margin:0;padding:0;display:flex;flex-direction:column-reverse;gap:5px}
+#mana-map-list li {position:relative;padding:7px 8px 6px 34px;border-radius:10px;background:#0b0418cc;border:2px solid #3a1d66;line-height:1.5;color:#cfc3e8}
+#mana-map-list li b {position:absolute;left:6px;top:6px;font-size:13px;color:var(--yel)}
+#mana-map-list li em {display:block;font-style:normal;font-size:9px;color:#9b8fb0}
+#mana-map-list li.cleared {border-color:#4a8f2a;color:#d8ffc0}
+#mana-map-list li.current {border-color:var(--lime);background:#1d3a0bcc;color:#fff;box-shadow:0 0 12px #b4ff3a88;animation:mana-map-pulse 1.4s ease-in-out infinite alternate}
+#mana-map-list li.dark {border-style:dashed;color:#5d4f78;background:#05020ccc}
+@keyframes mana-map-pulse {to {box-shadow:0 0 22px #b4ff3acc}}
+#mana-doors:empty {display:none}
+#mana-doors {margin-bottom:8px;padding:8px;border-radius:12px;background:#ffe23d;color:var(--ink);text-align:center;animation:mana-blink 1.1s steps(2) infinite}
+#mana-doors > b {display:block;font-size:11px;margin-bottom:6px}
+#mana-doors div {display:flex;gap:6px}
+#mana-doors span {flex:1;padding:6px 4px;border-radius:8px;background:var(--ink);color:#fff;font-size:9px;line-height:1.5}
+#mana-doors span i {display:block;font-style:normal;font-size:22px}
+.mana-relic-head {margin:10px 0 4px;font-size:10px;color:var(--yel)}
+#mana-relics {display:flex;flex-wrap:wrap;gap:4px;min-height:34px}
+#mana-relics i {font-style:normal;font-size:26px;width:34px;height:34px;display:grid;place-items:center;border-radius:8px;background:#ffe23d22;border:2px solid #ffc40066;filter:drop-shadow(0 0 4px #ffe23d)}
+#mana-relics:empty::after {content:"NONE YET";font-size:9px;color:#5d4f78}
+#mana-effect.k-room .mana-burst {background:linear-gradient(160deg,#3a1200,#ff9d00 55%,#ffe23d);animation:mana-pop .45s cubic-bezier(.2,2,.4,1)}
+#mana-effect.k-room #mana-effect-sub {background:var(--ink);color:var(--yel);padding:8px 14px;font-size:20px}
+@media(prefers-reduced-motion:reduce) {#mana-doors,#mana-map-list li.current {animation:none}}

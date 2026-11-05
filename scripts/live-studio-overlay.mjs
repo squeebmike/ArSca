@@ -1,6 +1,7 @@
 import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats, marqueeLines, hypeNow, hypeAfterSale, HYPE_MOOD, HYPE_MAX} from './live-studio-model.mjs';
 import {bossById, drawBoss} from './live-studio-bosses.mjs';
 import {createByteRider} from './byterider.mjs';
+import {roomById} from './live-studio-dungeon.mjs';
 const $=id=>document.getElementById(id);
 const sign=$('mana-sign'), text=$('mana-message'), effectEl=$('mana-effect'), coins=$('mana-coins');
 const hud=$('mana-hud'), boss=$('mana-boss'), card=$('mana-card'), queue=$('mana-queue');
@@ -93,14 +94,32 @@ function paintStats(next,fromSale) {
 function paintDungeon(d){
   sign.classList.toggle('dungeon',!!d);sign.classList.toggle('boss',!!d&&d.phase==='boss');sign.classList.toggle('full',!!d&&d.phase==='floor'&&d.pct>=90);
   $('mana-dungeon').classList.toggle('mana-hidden',!d);
+  paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
-  $('mana-title-text').textContent='FLOOR '+d.floor+' · '+d.shed;
+  $('mana-title-text').textContent='FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
   $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
-  $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.finale?' · FINALE':'');
+  $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
+}
+// The map (floors this week, the next one dark), the doors chat is voting
+// on, and the relic shelf.
+let mapKey='';
+function paintMap(d){
+  const el=$('mana-map');el.classList.toggle('mana-hidden',!d||settings.showMap===false);
+  if(!d)return;
+  el.style.left=(Number(settings.mapX)||0)+'px';el.style.top=(Number(settings.mapY)||0)+'px';
+  const key=JSON.stringify([d.map,d.doors,d.relics]);if(key===mapKey)return;mapKey=key;
+  const doors=$('mana-doors');doors.replaceChildren();
+  if(d.doors){const b=document.createElement('b');b.textContent='CHAT: PICK A DOOR!';const row=document.createElement('div');
+    d.doors.forEach((r,i)=>{const sp=document.createElement('span'),ic=document.createElement('i');ic.textContent=r.icon;sp.append(ic,document.createTextNode((i+1)+' · '+r.name));row.append(sp);});doors.append(b,row);}
+  $('mana-map-list').replaceChildren(...d.map.map(m=>{const li=document.createElement('li');li.className=m.cleared?'cleared':m.current?'current':'dark';
+    const n=document.createElement('b');n.textContent=m.floor;const em=document.createElement('em');
+    if(m.dark){li.append(n,document.createTextNode('???'));return li;}
+    em.textContent=m.shed;li.append(n,document.createTextNode((m.icon?m.icon+' ':'')+(m.room||(m.floor===1?'THE WAY IN':m.current&&d.doors?'DOOR VOTE…':'UNEXPLORED'))+(m.cleared?' ✓':'')),em);return li;}));
+  $('mana-relics').replaceChildren(...d.relics.map(r=>{const i=document.createElement('i');i.textContent=r.icon;i.title=r.name;return i;}));
 }
 function paintStage() {
   const now=stage.now;
@@ -143,7 +162,9 @@ function react(e){
       break;
     }
     case 'jackpot': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('jackpot',{text:'BIG HIT!'+amt});break;
-    case 'boss': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:e.nextFloor?'FLOOR '+e.nextFloor+' UNLOCKED!':'BOSS DOWN! GG!'});break;
+    case 'boss': hype=hypeAfterSale(hype,{big:true},Date.now());paintHype();mascot.play('shocked',{text:'WAIT-- WE BEAT IT?!',ms:1400});mascot.play('celebrating',{text:e.relic?'IT DROPPED THE '+e.relic+'!':e.nextFloor?'FLOOR '+e.nextFloor+' UNLOCKED!':'BOSS DOWN! GG!'});
+      if(e.doors?.length===2){const [a,b]=e.doors.map(roomById);if(a&&b)setTimeout(()=>mascot.play('alert',{text:'TWO DOORS! CHAT, TYPE 1 FOR '+a.name+' OR 2 FOR '+b.name+'!',ms:5000}),6000);}break;
+    case 'room': {const r=roomById(e.room);mascot.play('excited',{text:r?'INTO THE '+r.name+'!':'ONWARD!'});break;}
     case 'floor': mascot.play('alert',{text:'FLASK FULL! '+(e.bossName||'THE BOSS')+' INCOMING!',ms:1800});mascot.play('angry',{text:'GET HIM, CHAT!'});break;
     case 'unlock': mascot.play('celebrating',{text:'UNLOCKED: '+(e.unlockText||'')});break;
     case 'tap': mascot.play(e.tapKind==='follow'?'love':'happy',{text:TAP_LINES[e.tapKind]||'MANA!'});break;
@@ -208,6 +229,7 @@ const SOUNDS={
   winner:()=>tune([784,988,1175,1568,0,1568],.11),
   floor:()=>{tone(70,.6,0,'sawtooth',1);tune([262,0,247,0,233,0,220,330,440],.12);},
   unlock:()=>tune([659,880,1175,1319],.09),
+  room:()=>{noise(.3,0,.6);tune([196,262,330,392,523],.1);},
   tap:()=>tune([1047,1568],.06),
 };
 document.addEventListener('click',()=>{audio ||= new AudioContext();void audio.resume();});
@@ -235,7 +257,8 @@ function words(e) {
   switch(e.kind){
     case 'sold': return [e.word||'POW!',e.amount?usd(e.amount):'SOLD!',e.amount?['SOLD!',extras].filter(Boolean).join(' • '):extras];
     case 'jackpot': return ['BIG HIT!',e.amount?usd(e.amount):'',['SOLD!',extras].filter(Boolean).join(' • ')];
-    case 'boss': if(e.dungeon)return [(e.bossName||'BOSS')+' DEFEATED!','FLOOR '+(e.nextFloor||'')+' UNLOCKED!',e.reward?'REWARD: '+e.reward:(e.shed||'')];
+    case 'boss': if(e.dungeon)return [(e.bossName||'BOSS')+' DEFEATED!','FLOOR '+(e.nextFloor||'')+' UNLOCKED!',[e.reward?'REWARD: '+e.reward:'',e.relic?'RELIC: '+(e.relicIcon||'')+' '+e.relic:''].filter(Boolean).join(' • ')];
+    case 'room': {const r=roomById(e.room);return [(r?r.icon+' ':'')+(r?r.name:'A NEW ROOM'),'FLOOR '+(e.floor||''),e.auto?'NO VOTE IN -- DOOR 1 IT IS!':(r?r.blurb.toUpperCase():'')];}
       return [(e.bossName||settings.bossName)+' DEFEATED!','K.O.!',e.reward||settings.bossReward];
     case 'floor': return ['FLOOR '+(e.floor||'')+' CLEARED!','BOSS APPEARS!','VS '+(e.bossName||'THE BOSS')];
     case 'unlock': return ['UNLOCKED!',e.unlockAt?usd(e.unlockAt):'',e.unlockText||''];

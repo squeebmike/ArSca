@@ -9,6 +9,8 @@ function dungeonEffect(events, unlocks, base) {
   if (boss) return { ...base, kind: 'boss', dungeon: true, ...boss };
   if (floor) return { ...base, kind: 'floor', ...floor };
   if (unlock) return { ...base, kind: 'unlock', unlockText: unlock.text, unlockAt: unlock.n };
+  const room = events.filter(e => e.kind === 'room').pop();
+  if (room) return { ...base, kind: 'room', ...room };
   return null;
 }
 
@@ -58,6 +60,10 @@ export class ManaLiveStudio extends DurableObject {
       const r = addMana(s.dungeon, amount, s.settings, now);
       s.dungeon = r.dungeon;
       fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 });
+    } else if (input.door !== undefined) {
+      // Chat's vote: the door the host tapped sets this floor's room.
+      s.dungeon = adjustDungeon(s.dungeon, { door: input.door }, now);
+      fx = { kind: 'room', floor: s.dungeon.floor, room: s.dungeon.rooms[s.dungeon.floor] };
     } else s.dungeon = adjustDungeon(s.dungeon, { floor: input.floor, resetWeek: !!input.resetWeek }, now);
     if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);

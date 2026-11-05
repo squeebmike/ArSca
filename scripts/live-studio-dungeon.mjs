@@ -16,6 +16,29 @@ export const shedFor = floor => SHEDS[Math.min(Math.max(1, floor), SHEDS.length)
 export const bossForFloor = floor => BOSS_IDS[(Math.max(1, floor) - 1) % BOSS_IDS.length];
 export const DUNGEON_RESET_DAY = 3; // Wednesday
 export const TAP_KINDS = ['follow', 'share', 'bookmark'];
+// Chat picks the path (store, 2026-11-05: "more adventure and exploration"):
+// after each boss two doors open; chat votes in Whatnot's chat and the host
+// taps the winner. The room sets that floor's theme and reward. The two
+// doors offered are fixed by the floor number -- a set order, never a draw.
+export const ROOMS = [
+  { id: 'vault', name: 'TREASURE VAULT', icon: '💰', blurb: '$1 starts glitter in the dark' },
+  { id: 'library', name: 'BACK ISSUE LIBRARY', icon: '📚', blurb: 'long boxes, stacked to the ceiling' },
+  { id: 'armory', name: 'SLAB ARMORY', icon: '🛡️', blurb: 'graded slabs on every wall' },
+  { id: 'forge', name: 'PACK FORGE', icon: '🔥', blurb: 'sealed wax, still warm' },
+  { id: 'crypt', name: 'DOLLAR BIN CRYPT', icon: '🕯️', blurb: 'forgotten gems in the bins' },
+  { id: 'lab', name: 'VARIANT LAB', icon: '🧪', blurb: 'covers you have never seen' },
+];
+export const roomById = id => ROOMS.find(r => r.id === id) || null;
+export const doorsFor = floor => [ROOMS[(2 * (floor - 2)) % ROOMS.length], ROOMS[(2 * (floor - 2) + 1) % ROOMS.length]].map(r => r.id);
+// Every boss drops a relic: it sits on the overlay's shelf all week.
+// Original items, one per floor in order.
+export const RELICS = [
+  { name: 'RUSTY TROWEL', icon: '🪏' }, { name: 'BENT PRICE GUN', icon: '🔫' }, { name: 'SOGGY LONG BOX', icon: '📦' },
+  { name: 'HAUNTED SEED PACKET', icon: '👻' }, { name: 'RACCOON CROWN', icon: '👑' }, { name: 'SCORCHED SLAB', icon: '🔥' },
+  { name: 'KEY TO THE SHED BELOW', icon: '🗝️' }, { name: 'GOLDEN BAG & BOARD', icon: '🏆' }, { name: 'MANA POCKET WATCH', icon: '⌚' },
+  { name: 'CRYSTAL TOPLOADER', icon: '💎' },
+];
+export const relicFor = floor => RELICS[(Math.max(1, floor) - 1) % RELICS.length];
 
 // Settings (merged into DEFAULT_STUDIO).
 export const DUNGEON_DEFAULTS = Object.freeze({
@@ -28,10 +51,13 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   finale: false,       // tonight is the week's finale
   finaleBoost: 10,     // finale goals: +this % for each star the week earned
   floorRewards: '',    // lines "3: Free giveaway in the Whatnot tool"
+  roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
+  showMap: true,       // the dungeon map + relic shelf panel
+  mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
 });
-export const DUNGEON_LIMITS = { floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
-export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200 };
+export const DUNGEON_LIMITS = { mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
+export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200 };
 
 const r2 = n => Math.round(n * 100) / 100;
 function pacificParts(at) {
@@ -50,14 +76,14 @@ export function nextResetKey(now = Date.now()) {
   return t.toISOString().slice(0, 10);
 }
 export function emptyDungeon(week = weekKey()) {
-  return { week, floor: 1, phase: 'floor', mana: 0, bossHp: 0, stars: 0, cleared: [], taps: {}, lastAt: 0 };
+  return { week, floor: 1, phase: 'floor', mana: 0, bossHp: 0, stars: 0, cleared: [], taps: {}, rooms: {}, doors: null, lastAt: 0 };
 }
 // A new week (Wednesday) starts at floor 1; last week's result is kept.
 export function ensureWeek(d, now = Date.now()) {
   const week = weekKey(now);
   if (d && d.week === week) return d;
   const fresh = emptyDungeon(week);
-  if (d?.week) fresh.lastWeek = { week: d.week, floor: d.floor, stars: d.stars };
+  if (d?.week) fresh.lastWeek = { week: d.week, floor: d.floor, stars: d.stars, relics: (d.cleared || []).length };
   return fresh;
 }
 // "3: Free giveaway" lines -> [{ n:3, text }], sorted.
@@ -71,7 +97,14 @@ export function floorGoal(s, floor, d = {}) {
   return Math.max(1, Math.round(base * Math.pow(1 + g / 100, Math.max(0, floor - 1)) * finale));
 }
 export const bossMax = (s, floor, d) => Math.max(1, Math.round(floorGoal(s, floor, d) * (Number(s.bossShare) || 50) / 100));
-export const floorReward = (s, floor) => parseLines(s.floorRewards).find(x => x.n === floor)?.text || '';
+// "vault: $1 start" lines -> { vault: '$1 start' }.
+export function parseRoomLines(text) {
+  const out = {};
+  for (const l of String(text || '').split(/\r?\n/)) { const m = l.match(/^\s*([a-z]+)\s*[:=\-–]\s*(.+?)\s*$/i); if (m && roomById(m[1].toLowerCase())) out[m[1].toLowerCase()] = m[2].slice(0, 120); }
+  return out;
+}
+// A floor's reward: its own line, else its room's.
+export const floorReward = (s, floor, d = {}) => parseLines(s.floorRewards).find(x => x.n === floor)?.text || (d.rooms?.[floor] ? parseRoomLines(s.roomRewards)[d.rooms[floor]] || '' : '');
 export const tapMana = (s, kind) => kind === 'follow' ? Number(s.manaFollow) || 0 : kind === 'share' ? Number(s.manaShare) || 0 : kind === 'bookmark' ? Number(s.manaBookmark) || 0 : 0;
 
 // Mana in: fills the floor, then (a full flask) brings out the boss, then
@@ -80,7 +113,7 @@ export const tapMana = (s, kind) => kind === 'follow' ? Number(s.manaFollow) || 
 // boss appears) and { kind:'boss' } (floor cleared, next one unlocked).
 export function addMana(dIn, amount, s, now = Date.now()) {
   const w = ensureWeek(dIn, now);
-  let d = { ...w, cleared: [...(w.cleared || [])], taps: { ...(w.taps || {}) } };
+  let d = { ...w, cleared: [...(w.cleared || [])], taps: { ...(w.taps || {}) }, rooms: { ...(w.rooms || {}) } };
   const events = [];
   if (!s.dungeonOn || !(amount > 0)) return { dungeon: d, events };
   let left = r2(amount);
@@ -89,6 +122,8 @@ export function addMana(dIn, amount, s, now = Date.now()) {
       const goal = floorGoal(s, d.floor, d), need = r2(goal - d.mana);
       if (left < need) { d.mana = r2(d.mana + left); left = 0; break; }
       left = r2(left - need); d.mana = goal; d.phase = 'boss'; d.bossHp = bossMax(s, d.floor, d);
+      // Chat didn't pick in time: the first door it is (stated on the overlay).
+      if (d.doors?.length) { d.rooms[d.floor] = d.doors[0]; d.doors = null; events.push({ kind: 'room', floor: d.floor, room: d.rooms[d.floor], auto: true }); }
       const id = bossForFloor(d.floor);
       events.push({ kind: 'floor', floor: d.floor, shed: shedFor(d.floor), bossCharacter: id, bossName: bossById(id).name });
     } else {
@@ -96,9 +131,10 @@ export function addMana(dIn, amount, s, now = Date.now()) {
       left = r2(left - d.bossHp); d.bossHp = 0;
       const cleared = d.floor, id = bossForFloor(cleared);
       d.stars += Number(s.starsPerFloor) || 0;
-      d.cleared.push({ floor: cleared, at: now });
-      d.floor = cleared + 1; d.phase = 'floor'; d.mana = 0;
-      events.push({ kind: 'boss', floor: cleared, nextFloor: d.floor, shed: shedFor(d.floor), bossCharacter: id, bossName: bossById(id).name, reward: floorReward(s, cleared), stars: d.stars });
+      const relic = relicFor(cleared);
+      d.cleared.push({ floor: cleared, at: now, room: d.rooms[cleared] || '' });
+      d.floor = cleared + 1; d.phase = 'floor'; d.mana = 0; d.doors = doorsFor(d.floor);
+      events.push({ kind: 'boss', floor: cleared, nextFloor: d.floor, shed: shedFor(d.floor), bossCharacter: id, bossName: bossById(id).name, reward: floorReward(s, cleared, d), stars: d.stars, relic: relic.name, relicIcon: relic.icon, doors: d.doors });
     }
   }
   d.lastAt = now;
@@ -113,18 +149,36 @@ export function addTap(dIn, kind, s, now = Date.now()) {
   return { ...addMana({ ...w, taps }, amount, s, now), amount };
 }
 // The host's fixes: set the floor, or start the week over.
-export function adjustDungeon(dIn, { floor, resetWeek } = {}, now = Date.now()) {
+export function adjustDungeon(dIn, { floor, resetWeek, door } = {}, now = Date.now()) {
   const w = ensureWeek(dIn, now);
+  // The door chat voted for (0 or 1) sets this floor's room.
+  if (door !== undefined) {
+    if (!w.doors?.length) throw new Error('Invalid door: no doors are open right now');
+    if (door !== 0 && door !== 1) throw new Error('Invalid door');
+    return { ...w, rooms: { ...(w.rooms || {}), [w.floor]: w.doors[door] }, doors: null, lastAt: now };
+  }
   if (resetWeek) { const fresh = emptyDungeon(w.week); if (w.lastWeek) fresh.lastWeek = w.lastWeek; return fresh; }
   if (floor !== undefined) {
     if (!Number.isInteger(floor) || floor < 1 || floor > 99) throw new Error('Invalid floor');
-    return { ...w, floor, phase: 'floor', mana: 0, bossHp: 0, lastAt: now };
+    return { ...w, floor, phase: 'floor', mana: 0, bossHp: 0, doors: floor > 1 && !w.rooms?.[floor] ? doorsFor(floor) : null, lastAt: now };
   }
   return w;
 }
 // Per-show unlocks crossed when the show's own sales went from before to after.
 export const showUnlocksCrossed = (before, after, s) => parseLines(s.showUnlocks).filter(u => u.n > before && u.n <= after);
 
+const roomPublic = id => { const r = roomById(id); return r ? { id: r.id, name: r.name, icon: r.icon, blurb: r.blurb } : null; };
+// The map: the floors around this one, the next still dark.
+function mapOf(d) {
+  const out = [];
+  // The floor ahead, this one and up to three behind (the relic shelf keeps the rest).
+  const last = Math.max(d.floor + 1, 4);
+  for (let f = Math.max(1, last - 4); f <= last; f++) {
+    const r = roomById(d.rooms?.[f]);
+    out.push({ floor: f, shed: shedFor(f), room: r ? r.name : '', icon: r ? r.icon : '', cleared: f < d.floor, current: f === d.floor, dark: f > d.floor });
+  }
+  return out;
+}
 // What the overlay sees.
 export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
   const d = ensureWeek(dIn, now);
@@ -134,7 +188,9 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     on: !!s.dungeonOn, week: d.week, resets: nextResetKey(now), floor: d.floor, shed: shedFor(d.floor), phase: d.phase,
     mana: d.mana, goal, pct: d.phase === 'boss' ? Math.round(d.bossHp / max * 1000) / 10 : Math.round(Math.min(1, d.mana / goal) * 1000) / 10,
     boss: { character: id, name: bossById(id).name, hp: d.phase === 'boss' ? d.bossHp : max, max, active: d.phase === 'boss' },
-    stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
+    room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
+    map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
+    stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };
 }
