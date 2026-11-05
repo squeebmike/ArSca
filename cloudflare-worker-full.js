@@ -66,7 +66,7 @@ import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './sc
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
 import { runWebOrderNotify } from './scripts/web-order-notify.mjs';
-import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys } from './scripts/store-api-keys.mjs';
+import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys, envWithSharedPokemonKey } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
 import { lookupNeedsLogin } from './scripts/lookup-auth.mjs';
@@ -1267,10 +1267,16 @@ function storeKeyReader(env) {
 // The pricing keys a store's requests run on (scripts/store-api-keys.mjs):
 // The Mana Pocket's own for it and for a store allowed to share them,
 // otherwise the store's own -- blank where it has none, never yours.
+// Which PokemonPriceTracker key a pause (out of credits / rate limited)
+// belongs to: a store's own key, or The Mana Pocket's (also when shared).
+function pptScope(env) { return env.STORE_KEYS_OWNER && !env.PPT_SHARED_FROM_PLATFORM ? ':' + env.STORE_KEYS_OWNER : ''; }
 async function pricingEnvForStore(env, storeId) {
   if (!storeId || isPlatformStore(storeId, env)) return env;
-  if ((await storeFeaturesFor(env, storeId)).sharedPricingKeys) return env;
-  return envWithStoreKeys(env, storeId, await storeApiKeys(env, storeId, storeKeyReader(env)));
+  const features = await storeFeaturesFor(env, storeId);
+  if (features.sharedPricingKeys) return env;
+  const own = await storeApiKeys(env, storeId, storeKeyReader(env));
+  const storeEnv = envWithStoreKeys(env, storeId, own);
+  return features.sharedPokemonKey ? envWithSharedPokemonKey(env, storeEnv, own) : storeEnv;
 }
 
 async function requirePlatformAdmin(request, env) {
@@ -16890,14 +16896,14 @@ async function routeRequest(request, env, ctx) {
         // (store: "added prepaid credits, still not working") sat unused.
         // Out of credits now pauses 5 minutes, then PPT is asked again.
         // Per key: another store running out never pauses The Mana Pocket's lookups.
-        const pptScope = env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : '';
-        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + pptScope).catch(() => null) || 0);
+        const pptKeyScope = pptScope(env);
+        const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + pptKeyScope).catch(() => null) || 0);
         if (quotaUntil && Date.now() < quotaUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'exhausted', retryAt:new Date(quotaUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
           return json({ ok: false, source: 'pokemonpricetracker', error: 'PokemonPriceTracker quota exhausted', providerStatus: 429, providerQuotaState: 'exhausted', retryAt: new Date(quotaUntil).toISOString() }, 429);
         }
-        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2' + pptScope).catch(() => null) || 0);
+        const rateLimitUntil = Number(await env.LBA_KV.get('ppt_rate_limited_until_v2' + pptKeyScope).catch(() => null) || 0);
         if (rateLimitUntil && Date.now() < rateLimitUntil) {
           const stale = await env.LBA_KV.get(cacheKey, 'json').catch(() => null);
           if (stale) return json({ ...stale, providerQuotaState:'rate_limited', retryAt:new Date(rateLimitUntil).toISOString(), cache:{ state:'stale', source:'worker-kv', cacheKey, cachedAt:stale.cache?.cachedAt || null } });
@@ -16938,9 +16944,9 @@ async function routeRequest(request, env, ctx) {
           || (upstream.status === 403 && /quota|credits?|exhaust/i.test(providerMessage));
         const transientRateLimited = upstream.status === 429 && !dailyQuotaBlocked;
         if (dailyQuotaBlocked && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
+          await env.LBA_KV.put('ppt_daily_quota_exhausted_until_v3' + pptScope(env), String(Date.now() + 5 * 60 * 1000), { expirationTtl: 5 * 60 });
         } else if (transientRateLimited && env.LBA_KV) {
-          await env.LBA_KV.put('ppt_rate_limited_until_v2' + (env.STORE_KEYS_OWNER ? ':' + env.STORE_KEYS_OWNER : ''), String(Date.now() + 60 * 1000), { expirationTtl: 60 });
+          await env.LBA_KV.put('ppt_rate_limited_until_v2' + pptScope(env), String(Date.now() + 60 * 1000), { expirationTtl: 60 });
         }
         const stale = env.LBA_KV ? await env.LBA_KV.get(cacheKey, 'json').catch(() => null) : null;
         if ((dailyQuotaBlocked || transientRateLimited) && stale) {
@@ -19939,7 +19945,7 @@ async function runScheduledPokemonServerSync(env) {
     const storeEnv = await pricingEnvForStore(env, storeId);
     const key = storeEnv.POKEMONPRICE_API_KEY || storeEnv.POKEMON_PRICE_TRACKER_API_KEY;
     if (!key) continue;
-    const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + (storeEnv.STORE_KEYS_OWNER ? ':' + storeEnv.STORE_KEYS_OWNER : '')).catch(() => null) || 0);
+    const quotaUntil = Number(await env.LBA_KV.get('ppt_daily_quota_exhausted_until_v3' + (pptScope(storeEnv))).catch(() => null) || 0);
     if (quotaUntil && Date.now() < quotaUntil) { await noteJobHealth(env, 'pokemon:' + storeId, '', { note: 'daily PokemonPriceTracker credits used up until ' + new Date(quotaUntil).toLocaleTimeString('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit' }) + ' Pacific' }); continue; }
     const deps = {
       db: (path, opts) => supabaseAdminFetch(env, path, opts),
