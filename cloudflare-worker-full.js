@@ -16811,17 +16811,17 @@ async function routeRequest(request, env, ctx) {
           // Comics open for preorder (main covers), kept an hour so a busy
           // chat doesn't re-read the catalog.
           upcoming: async () => {
-            const cached = await env.LBA_KV.get('byterider-upcoming-v2', 'json').catch(() => null);
+            const cached = await env.LBA_KV.get('byterider-upcoming-v3', 'json').catch(() => null);
             if (cached) return cached;
-            const today = new Date().toISOString().slice(0, 10);
-            // Every comic open for preorder (main covers only -- variants of
+            const today = new Date(Date.now() - 21 * 86400000).toISOString().slice(0, 10);
+            // The last three weeks' releases and every comic open for preorder (main covers only -- variants of
             // the same issue are one suggestion), read at most every 6 hours.
             const { data } = await supabaseAdminFetch(env, `comic_skus?store_id=eq.${ITEM_DETAIL_STORE_ID}&customer_enabled=eq.true&is_incentive=eq.false&on_sale_date=gte.${today}&select=title,on_sale_date,publisher,writer,cover_artist,customer_price_cents,msrp_cents&order=on_sale_date.asc&limit=5000`);
             const mains = new Map();
             for (const r of data || []) { const k = String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').trim().toLowerCase(); const main = /\b(?:cvr|cover)\s+a\b/i.test(r.title || '') || !/\b(?:cvr|cover|var|variant)\b/i.test(r.title || ''); if (!mains.has(k) || (main && !mains.get(k).main)) mains.set(k, { ...r, main }); }
             const list = [...mains.values()].map(r => ({ title: r.title, onSale: r.on_sale_date, publisher: r.publisher || '', writer: r.writer || '', artist: r.cover_artist || '',
               price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100, url: '/comics/search?q=' + encodeURIComponent(String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').slice(0, 80)) }));
-            await env.LBA_KV.put('byterider-upcoming-v2', JSON.stringify(list), { expirationTtl: 6 * 3600 }).catch(() => {});
+            await env.LBA_KV.put('byterider-upcoming-v3', JSON.stringify(list), { expirationTtl: 6 * 3600 }).catch(() => {});
             return list;
           },
           // Magic rules: the official Comprehensive Rules, the same excerpts
