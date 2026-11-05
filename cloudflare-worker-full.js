@@ -1,4 +1,4 @@
-import {handleMtgLearning} from './scripts/mtg-judge.mjs';
+import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules} from './scripts/mtg-judge.mjs';
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {coordinatedPriceFetch} from './scripts/reference-price-refresh.mjs';
@@ -16807,9 +16807,24 @@ async function routeRequest(request, env, ctx) {
           items: async () => (await fetchAllListableStorefrontItemsCached(env, ctx)).filter(i => isStorefrontItemAvailable(i))
             .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
           facts: async () => (await env.LBA_KV.get('byterider-facts:' + ITEM_DETAIL_STORE_ID)) || BYTERIDER_DEFAULT_FACTS,
+          // Comics open for preorder (main covers), kept an hour so a busy
+          // chat doesn't re-read the catalog.
+          upcoming: async () => {
+            const cached = await env.LBA_KV.get('byterider-upcoming-v1', 'json').catch(() => null);
+            if (cached) return cached;
+            const today = new Date().toISOString().slice(0, 10);
+            const { data } = await supabaseAdminFetch(env, `comic_skus?store_id=eq.${ITEM_DETAIL_STORE_ID}&customer_enabled=eq.true&is_incentive=eq.false&on_sale_date=gte.${today}&select=title,on_sale_date,publisher,writer,cover_artist,customer_price_cents,msrp_cents&order=on_sale_date.asc&limit=400`);
+            const list = (data || []).map(r => ({ title: r.title, onSale: r.on_sale_date, publisher: r.publisher || '', writer: r.writer || '', artist: r.cover_artist || '',
+              price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100, url: '/comics/search?q=' + encodeURIComponent(String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').slice(0, 80)) }));
+            await env.LBA_KV.put('byterider-upcoming-v1', JSON.stringify(list), { expirationTtl: 3600 }).catch(() => {});
+            return list;
+          },
+          // Magic rules: the official Comprehensive Rules, the same excerpts
+          // the Rules Boss (/mtg-judge) works from.
+          rules: async q => retrieveMtgRules(await loadMtgRules(), q, []),
           claude: async (system, messages) => {
             const res = await fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 220, temperature: 0.6, system, messages }) });
+              body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 300, temperature: 0.6, system, messages }) });
             const d = await res.json().catch(() => null);
             if (!res.ok) throw new Error('model ' + res.status);
             return (d?.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ');

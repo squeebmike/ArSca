@@ -23,7 +23,7 @@ const safe = fn => { try { return fn(); } catch { return null; } };
 // The Worker: the same site when it serves the page, else its own address.
 const WORKER = /(^|\.)themanapocket\.com$/.test(typeof location !== 'undefined' ? location.hostname : '') ? '' : 'https://still-resonance-4f87.swarnerauto.workers.dev';
 export const ASK_URL = WORKER + '/public/byterider/ask';
-const SUGGESTIONS = ['When do new comics come out?', 'Do you have any Charizard?', 'Do you ship?', 'When is the next Whatnot show?'];
+const SUGGESTIONS = ['Suggest a Pokémon gift under $25', 'What comics come out next week?', 'Do you have any Charizard?', 'How do I sign in and pick a theme?', 'How does the stack work in Magic?'];
 // The chat: built from DOM nodes and textContent only (nothing a visitor or
 // the answer types is ever read as HTML).
 function buildChat(corner, onAsk) {
@@ -71,7 +71,7 @@ function buildChat(corner, onAsk) {
     c.onclick = () => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
     chips.append(c);
   }
-  bubble("Hi! I'm ByteRider_97. Ask me about the shop, new comics, shipping -- or if we've got a card in stock.", 'br');
+  bubble("Hi! I'm ByteRider_97. I can find stuff in stock, suggest gifts, tell you what comics are coming (and what to read), help with your account and theme -- and I know my Magic rules.", 'br');
   log.append(chips);
   let busy = false;
   form.onsubmit = async e => {
