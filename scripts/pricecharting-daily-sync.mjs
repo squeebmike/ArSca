@@ -229,8 +229,16 @@ export function planRow(row, kind, product, { viaTitle = false, now = Date.now()
 }
 
 // This hour's rows: linked ones, plus comics a barcode or title can look up.
+// Trading cards and video games move slowly: checked every 3 days, so the
+// PriceCharting allowance goes to comics and sports first (2026-11-05: 429s).
+export const SLOW_KINDS_EVERY_DAYS = 3;
+export function dueForCheck(kind, d = {}, now = Date.now()) {
+  if (kind !== 'tcg' && kind !== 'game') return !checkedToday(d, now);
+  const at = Date.parse(d.priceSyncCheckedAt || '');
+  return !Number.isFinite(at) || now - at >= (SLOW_KINDS_EVERY_DAYS * 24 - 2) * 3600000;
+}
 export function nextBatch(rows = [], now = Date.now(), size = PC_SYNC_BATCH) {
-  return rows.map(row => ({ row, kind: syncKind(row) })).filter(x => x.kind && !checkedToday(x.row.data, now))
+  return rows.map(row => ({ row, kind: syncKind(row) })).filter(x => x.kind && dueForCheck(x.kind, x.row.data, now))
     .filter(x => pricechartingIdOf(x.kind, x.row.data) || (x.kind === 'comic' && (comicFullUpc(x.row.data) || comicTitleHint(x.row.data) || !comicHasAnyPrice(x.row.data))))
     .sort((a, b) => String(a.row.data?.priceSyncCheckedAt || '').localeCompare(String(b.row.data?.priceSyncCheckedAt || '')))
     .slice(0, size);

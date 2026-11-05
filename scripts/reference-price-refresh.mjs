@@ -13,6 +13,12 @@ const nextUtcDay=t=>Date.parse(utcDay(t)+'T00:00:00Z')+DAY;
 const fold=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
 const reply=(value,status=200)=>Response.json(value,{status});
 const coordinatorName='pricecharting-global-v1';
+export const PC_429_PAUSE_MS=45*60000;
+export function pausePcMs(response){
+ const s=response.status;
+ if(s===429){const ra=response.headers?.get?.('Retry-After');const n=Number(ra);const ms=ra?(Number.isFinite(n)?n*1000:Date.parse(ra)-Date.now()):NaN;return Number.isFinite(ms)&&ms>0?Math.min(50*60000,Math.max(5*60000,ms)):PC_429_PAUSE_MS;}
+ return [401,403].includes(s)?3600000:60000;
+}
 export async function coordinatedPriceFetch(env,path,params={}){
  if(!env.CARD_REFERENCE_ARCHIVE)return reply({error:'Shared price coordinator unavailable'},503);
  const stub=env.CARD_REFERENCE_ARCHIVE.get(env.CARD_REFERENCE_ARCHIVE.idFromName(coordinatorName));
@@ -41,7 +47,12 @@ async function upstream(owner,path,params,serverToken){
   // is not a reason to pause every lookup (2026-11-01: each 404 paused all
   // calls for a minute and the price sync stopped after a few items).
   if(response.status===404)return reply({error:'No such product (PriceCharting HTTP 404)'},404);
-  if(!response.ok){await store.put('pc-paused-until',Date.now()+([401,403,429].includes(response.status)?3600000:60000));if(response.status===429)await store.put('pc-website-paused-until',Date.now()+WEBSITE_429_PAUSE_MS);return reply({error:'Price provider unavailable (PriceCharting HTTP '+response.status+')'},response.status);}
+  // 2026-11-05: a 429 paused PriceCharting for exactly an hour -- the same
+  // length as the hourly price sync, which then started a few seconds
+  // before the pause ended and was turned away every hour, all morning.
+  // Now: PriceCharting's own Retry-After when it sends one (5-50 min), else
+  // 45 minutes, so the next hourly run goes through.
+  if(!response.ok){await store.put('pc-paused-until',Date.now()+pausePcMs(response));if(response.status===429)await store.put('pc-website-paused-until',Date.now()+WEBSITE_429_PAUSE_MS);return reply({error:'Price provider unavailable (PriceCharting HTTP '+response.status+')'},response.status);}
   const text=await response.text();if(text.length>2000000)return reply({error:'Price response too large'},502);
   try{const data=JSON.parse(text);if(data.status!=='error'&&text.length<100000)await store.put(cacheKey,{at:Date.now(),text});}catch{return reply({error:'Invalid price response'},502);}
   return new Response(text,{headers:{'Content-Type':'application/json'}});
