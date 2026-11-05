@@ -14,7 +14,8 @@ export const PLATFORM_STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9'; // The 
 // sharedPokemonKey: only The Mana Pocket's PokemonPriceTracker key, nothing
 // else of its (store, 2026-11-05, Crull001: "He can use mine until I have
 // issues" -- PriceCharting, JustTCG and SportsCardsPro stay his own).
-export const FEATURE_KEYS = ['ebay', 'shopify', 'comics', 'website', 'sms', 'sharedPricingKeys', 'consignment', 'whatnot', 'sharedPokemonKey'];
+// sharedPriceChartingKey: likewise, only its PriceCharting key (same day: "Use my pricecharting").
+export const FEATURE_KEYS = ['ebay', 'shopify', 'comics', 'website', 'sms', 'sharedPricingKeys', 'consignment', 'whatnot', 'sharedPokemonKey', 'sharedPriceChartingKey'];
 export const SERVER_FEATURES = ['ebay', 'shopify', 'comics', 'website', 'sms'];
 
 export const PLATFORM_FEATURES = Object.freeze({
@@ -28,7 +29,7 @@ export const PILOT_DEFAULTS = Object.freeze({
   feeFixedCents: 10, feeBps: 0, platform: false,
 });
 
-const COLUMN = { ebay:'ebay', shopify:'shopify', comics:'comics', website:'website', sms:'sms', sharedPricingKeys:'shared_pricing_keys', consignment:'consignment', whatnot:'whatnot', sharedPokemonKey:'shared_pokemon_key' };
+const COLUMN = { ebay:'ebay', shopify:'shopify', comics:'comics', website:'website', sms:'sms', sharedPricingKeys:'shared_pricing_keys', consignment:'consignment', whatnot:'whatnot', sharedPokemonKey:'shared_pokemon_key', sharedPriceChartingKey:'shared_pricecharting_key' };
 
 export function isPlatformStore(storeId, env = {}) {
   const id = String(storeId || '').trim();

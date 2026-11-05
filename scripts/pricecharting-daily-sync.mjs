@@ -42,7 +42,25 @@ export function syncKind(row = {}) {
   const cat = String(d.category || '').trim();
   if (/comic/i.test(cat)) return 'comic';
   if (SPORTS_CATEGORY.test(cat)) return 'sports';
+  // Video games, and trading cards nothing free can price (graded, or not
+  // linked to TCGplayer) -- Crull001's import, 2026-11-05: "Use my
+  // pricecharting ... His video games should connect to pricecharting".
+  if (VIDEO_GAME_CATEGORY.test(cat)) return 'game';
+  if (TCG_CATEGORY.test(cat) && (gradingOf(d).grade || !tcgIdOf(d))) return 'tcg';
   return '';
+}
+const VIDEO_GAME_CATEGORY = /^video\s*games?$/i;
+const TCG_CATEGORY = /^(pok[eé]mon|magic|mtg|yu-?gi-?oh|disney lorcana|lorcana|one piece|tcg)\b/i;
+function tcgIdOf(d = {}) {
+  const refs = d.externalRefs && typeof d.externalRefs === 'object' ? d.externalRefs : {};
+  return /^\d+$/.test(String(d.tcgPlayerId || d.tcgplayerId || refs.tcgPlayerId || '').trim()) || /tcgplayer\.com\/product\/\d+/i.test(String(d.tcgPlayerUrl || ''));
+}
+// A video game's guide price: complete-in-box, new/sealed, or loose.
+export function gameGuidePrice(d = {}, product = {}) {
+  const prices = product.prices || {}, cfg = [d.configuration, d.condition, d.variant].filter(Boolean).join(' ').toLowerCase();
+  const [path, label] = /complete|\bcib\b|box and manual/.test(cfg) ? ['grade7', 'complete in box'] : /\bnew\b|sealed/.test(cfg) ? ['grade8', 'new'] : ['ungraded', 'loose'];
+  const price = Number(prices[path] || 0);
+  return price > 0 ? { price, path: 'prices.' + path, label: 'PriceCharting ' + label } : null;
 }
 export function checkedToday(d = {}, now = Date.now()) {
   return !!d.priceSyncCheckedAt && pacificDay(d.priceSyncCheckedAt) === pacificDay(now);
@@ -175,7 +193,7 @@ export function planRow(row, kind, product, { viaTitle = false, now = Date.now()
   const at = new Date(now).toISOString();
   const checked = { ...d, priceSyncCheckedAt: at };
   const okProduct = product && product.productId && (kind !== 'comic' || /^comic books\b/i.test(String(product.consoleName || '')));
-  const guide = okProduct ? (kind === 'comic' ? comicGuidePrice(d, product) : sportsGuidePrice(d, product)) : null;
+  const guide = okProduct ? (kind === 'comic' ? comicGuidePrice(d, product) : kind === 'game' ? gameGuidePrice(d, product) : sportsGuidePrice(d, product)) : null;
   const fresh = money(guide?.price);
   if (!(fresh > 0)) {
     if (kind === 'comic' && !comicHasAnyPrice(d)) {
@@ -227,9 +245,11 @@ const PICK_KEYS = ['category', 'archivedAt', 'dropship', 'ownershipType', 'sourc
   'pricechartingProductId', 'providerProductId', 'sourceProductId', 'providerUrl', 'upc', 'barcode',
   'name', 'title', 'series', 'issue', 'issueNumber', 'variant', 'comicMetadata', 'selectedComicCover', 'externalRefs', 'focComicDetail',
   // For the cover-price fallback: a comic with none of these is picked too.
-  'marketPrice', 'rawMarketPrice', 'market', 'price', 'displayPrice', 'salePrice', 'listPrice', 'minPrice', 'autoFloor', 'priceOverride', 'focSkuId'];
+  'marketPrice', 'rawMarketPrice', 'market', 'price', 'displayPrice', 'salePrice', 'listPrice', 'minPrice', 'autoFloor', 'priceOverride', 'focSkuId',
+  // Trading cards and video games: graded? linked to TCGplayer?
+  'grader', 'grade', 'grading_company', 'selectedGrade', 'tcgPlayerId', 'tcgplayerId', 'tcgPlayerUrl', 'configuration'];
 const PICK_SELECT = 'id,status,' + PICK_KEYS.map(k => `k_${k}:data->${k}`).join(',');
-const PICK_CATEGORY = 'comic|sport|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis|boxing';
+const PICK_CATEGORY = 'comic|sport|baseball|basketball|football|hockey|soccer|wrestling|ufc|mma|racing|golf|tennis|boxing|pok|magic|mtg|yu-?gi-?oh|lorcana|one piece|tcg|video';
 async function loadCandidateRows(deps, s) {
   const rows = [];
   for (let offset = 0; offset < 20000; offset += 1000) {

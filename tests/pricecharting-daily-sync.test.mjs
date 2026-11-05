@@ -11,7 +11,8 @@ const sports = row('s1', { category:'Sports', name:'Cal Raleigh #49', providerUr
 const slab = row('s2', { category:'Baseball', name:'Ohtani PSA 10', grader:'PSA', grade:'10', pricechartingProductId:'333', market:100 });
 const focBook = row('c2', { category:'Comic', name:'SPIDER-WOMAN #1 COVER F', upc:'75960621668000151', market:6 });
 const presale = row('c3', { category:'Comic', source:'foc_presale', pricechartingProductId:'444', market:5 }, 'presale');
-const pokemon = row('p1', { category:'Pokemon TCG', pricechartingProductId:'555' });
+// A raw card linked to TCGplayer: its own (PokemonPriceTracker) server sync.
+const pokemon = row('p1', { category:'Pokemon TCG', pricechartingProductId:'555', tcgPlayerId:'86000' });
 const unlinkedSports = row('s3', { category:'Sports', name:'No link', market:3 });
 
 assert.equal(syncKind(comic), 'comic');

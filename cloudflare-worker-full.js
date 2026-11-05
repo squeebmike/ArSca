@@ -67,7 +67,7 @@ import { runPokemonLinkSync } from './scripts/pokemon-link-sync.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
 import { runWebOrderNotify } from './scripts/web-order-notify.mjs';
-import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys, envWithSharedPokemonKey } from './scripts/store-api-keys.mjs';
+import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys, envWithSharedPokemonKey, envWithSharedPriceChartingKey } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
 import { lookupNeedsLogin } from './scripts/lookup-auth.mjs';
@@ -1277,7 +1277,8 @@ async function pricingEnvForStore(env, storeId) {
   if (features.sharedPricingKeys) return env;
   const own = await storeApiKeys(env, storeId, storeKeyReader(env));
   const storeEnv = envWithStoreKeys(env, storeId, own);
-  return features.sharedPokemonKey ? envWithSharedPokemonKey(env, storeEnv, own) : storeEnv;
+  const withPpt = features.sharedPokemonKey ? envWithSharedPokemonKey(env, storeEnv, own) : storeEnv;
+  return features.sharedPriceChartingKey ? envWithSharedPriceChartingKey(env, withPpt, own) : withPpt;
 }
 
 async function requirePlatformAdmin(request, env) {
