@@ -181,3 +181,8 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.equal(k?.name, 'Absolute Batman #1', 'in-stock by writer');
   assert.match(k.details, /written by Scott Snyder, art by Nick Dragotta, cover by Nick Dragotta/);
 }
+// Plain text only in the chat.
+{
+  const { plainAnswer } = await import('../scripts/byterider-ask.mjs');
+  assert.equal(plainAnswer('*BEEP BOOP!* We have **Archie in Hell #1** and __Saga__. 2*3 stays.'), 'BEEP BOOP! We have Archie in Hell #1 and Saga. 2*3 stays.');
+}

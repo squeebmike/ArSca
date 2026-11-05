@@ -41,6 +41,8 @@ const STOP = new Set('a an and are any anything at be can could did do does for 
 const storeless = q => String(q || '').replace(/\b(the\s+)?mana\s*pocket\b/gi, ' store ');
 export const wantsNew = q => /\b(new arrivals?|just (?:came in|got in|added|arrived)|newest|what'?s new|latest|recently added|new stuff|new in stock)\b/i.test(q);
 export const wantsRecent = q => /\b(yesterday|last week|this week|released|came out|dropped|just (?:came|dropped)|new this week|new comics? (?:day|this))\b/i.test(q) && !/\b(next week|coming|upcoming|pre-?order)\b/i.test(q);
+// The chat shows plain text: markdown marks the model slips in come out.
+export const plainAnswer = s => String(s || '').replace(/\*\*([^*]+)\*\*/g, '$1').replace(/__([^_]+)__/g, '$1').replace(/(^|\s)\*([^*\n]+)\*(?=\s|[.,!?]|$)/g, '$1$2').replace(/^#{1,6}\s+/gm, '').replace(/`([^`]+)`/g, '$1');
 export function cleanText(s, n) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); }
 export function keywords(q) {
   return [...new Set(String(q || '').toLowerCase().replace(/[^a-z0-9#/ ]+/g, ' ').split(/\s+/).filter(w => w.length >= 2 && !STOP.has(w)))].slice(0, 8);
@@ -187,7 +189,7 @@ export async function askByteRider(input = {}, deps) {
   while (messages.length && messages[0].role !== 'user') messages.shift();
   if (messages.length && messages[messages.length - 1].role === 'user') messages.pop();
   messages.push({ role: 'user', content: question });
-  const answer = cleanText(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules, cards, name, today: input.today || new Date().toISOString().slice(0, 10) }), messages, { long: rules.length > 0 }), 900);
+  const answer = cleanText(plainAnswer(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules, cards, name, today: input.today || new Date().toISOString().slice(0, 10) }), messages, { long: rules.length > 0 })), 900);
   // Links under the answer: items, then comics, then the MTG Judge.
   const links = [...items.filter(i => i.url), ...comics.filter(c => c.url).map(c => ({ name: c.title + ' (' + c.onSale + ')', price: c.price, url: c.url }))].slice(0, 4);
   for (const c of cards) if (/^https:\/\/scryfall\.com\//.test(c.url)) links.push({ name: c.name + ' (card text)', price: null, url: c.url });
