@@ -255,7 +255,7 @@ export const playStyles=String.raw`
 #mtg-academy .play-card.casting .play-art{outline:2px solid #edc68a;outline-offset:4px;box-shadow:0 0 22px #e5b56866}
 #mtg-academy .play-focused .play-auto-setting{margin-left:auto}
 @media(prefers-reduced-motion:reduce){#mtg-academy .play-art,#mtg-academy .play-card{transition:none}#mtg-academy .play-hand .play-card:hover{transform:none}}
-#mtg-academy .play-pregame .play-board{grid-template-areas:'turn turn' 'opponent opponent' 'hand hand' 'you controls'}#mtg-academy .play-pregame :is(.play-opponent-field,.play-combat,.play-your-field,.play-stack){display:none}#mtg-academy .play-pregame .play-hand{padding:24px 14px;min-height:230px}@media(max-width:650px){#mtg-academy .play-pregame .play-board{grid-template-columns:1fr;grid-template-areas:'turn' 'cue' 'opponent' 'hand' 'you' 'controls'}#mtg-academy .play-pregame .play-hand{padding:14px 8px;min-height:190px}}
+#mtg-academy .play-pregame .play-board{grid-template-areas:'turn turn' 'opponent opponent' 'hand hand' 'you controls'}#mtg-academy .play-pregame :is(.play-opponent-field,.play-combat,.play-your-field,.play-stack){display:none}#mtg-academy .play-pregame .play-hand{padding:24px 14px;min-height:230px}@media(max-width:650px){#mtg-academy .play-pregame .play-board{grid-template-columns:minmax(0,1fr);grid-template-areas:'turn' 'cue' 'opponent' 'hand' 'you' 'controls'}#mtg-academy .play-pregame .play-hand{padding:14px 8px;min-height:190px}}
 
 `;
 
