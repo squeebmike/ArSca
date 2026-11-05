@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.11.05.2-ps1-sheds">
+<meta name="version" content="2026.11.05.3-store-switcher">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1165,6 +1165,14 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   #sync-status,#refresh-btn,#fullscreen-btn,#logout-btn{display:none!important;}
   #header-actions-btn{display:inline-flex;align-items:center;justify-content:center;}
   #store-switcher{max-width:150px;}
+  /* An account in more than one store: the visit bar (renderStoreVisitBar). */
+  #store-visit-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 14px;font:700 12px/1.3 system-ui,sans-serif;position:sticky;top:0;z-index:9999}
+  #store-visit-bar.away{background:#ff6a00;color:#1a0800;padding:10px 14px;font-size:14px;box-shadow:0 2px 0 #000}
+  #store-visit-bar.away b{font-size:16px;letter-spacing:.5px}
+  #store-visit-bar.away .hbtn{background:#1a0800;color:#fff;border-color:#1a0800}
+  #store-visit-bar.home{background:#1b1430;color:#cfc3e8;display:none}
+  #store-visit-bar select{font:inherit;padding:3px 6px;border-radius:6px;max-width:220px}
+  body.store-visiting{box-shadow:inset 0 0 0 6px #ff6a00}
   .tabs{position:sticky;top:0;z-index:99;padding:8px 12px;background:rgba(7,8,10,.97);border-bottom:1px solid var(--border);}
   .tab{min-height:44px;padding:10px 12px;}
   .panel{padding:18px;}
@@ -1263,6 +1271,7 @@ body.customer-browse-mode{padding-bottom:0}body.customer-browse-mode header,body
   .logo{padding-top:0;font-size:13px;line-height:1;}
   .hdr-right{display:none!important;}
   #store-user-chip,#store-switcher,#top-show-chip,#top-drawer-chip,.show-mode-toggle,#header-actions-wrap{display:none!important;}
+  #store-visit-bar.home{display:flex}
   /* Dealer status bar — hide verbose chips, keep drawer/net/intake */
   .dealer-status-bar{gap:6px;padding:3px 10px;}
   #dsb-sync,#dsb-version{display:none!important;}
@@ -1809,27 +1818,27 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/store-demand.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/buy-signal.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/query-routing.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/comic-demand.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/database-viewer.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/expenses.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.11.05.2-ps1-sheds" defer></script>
+<script src="scripts/store-demand.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/buy-signal.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/query-routing.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/comic-demand.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/database-viewer.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/expenses.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.11.05.3-store-switcher" defer></script>
 <script src="scripts/research-loupe.js?v=b90e780e52" defer></script>
-<script src="scripts/card-compare.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.11.05.2-ps1-sheds" defer></script>
+<script src="scripts/card-compare.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.11.05.3-store-switcher" defer></script>
 </head>
 <body>
 
@@ -1881,7 +1890,7 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.11.05.2-ps1-sheds</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.11.05.3-store-switcher</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2962,9 +2971,9 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 </div>
 
 <!-- WHATNOT MODE TAB -->
-<link rel="stylesheet" href="assets/live-studio.css?v=2026.11.05.2-ps1-sheds">
-<link rel="stylesheet" href="assets/byterider.css?v=2026.11.05.2-ps1-sheds">
-<script src="scripts/live-studio-controls.js?v=2026.11.05.2-ps1-sheds" defer></script>
+<link rel="stylesheet" href="assets/live-studio.css?v=2026.11.05.3-store-switcher">
+<link rel="stylesheet" href="assets/byterider.css?v=2026.11.05.3-store-switcher">
+<script src="scripts/live-studio-controls.js?v=2026.11.05.3-store-switcher" defer></script>
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
@@ -4112,9 +4121,9 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.11.05.2-ps1-sheds"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.11.05.2-ps1-sheds" defer></script>
-<script src="scripts/reference-audit-dashboard.js?v=2026.11.05.2-ps1-sheds" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.11.05.3-store-switcher"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.11.05.3-store-switcher" defer></script>
+<script src="scripts/reference-audit-dashboard.js?v=2026.11.05.3-store-switcher" defer></script>
 </body>
 </html>
 
