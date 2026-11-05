@@ -63,10 +63,11 @@ import { buildRestockList } from './scripts/restock.mjs';
 import { extractSiteChrome, SITE_CHROME_SOURCE, currentChromeAssets } from './scripts/site-chrome.mjs';
 import {loadPokemonSets,loadPokemonSetCards,isCrawler as isPokemonCrawler} from './scripts/public-pokemon-sets.mjs';
 import { logPptUsage, pptRouteLabel, pptCreditsFrom, pptSourceLabel } from './scripts/ppt-usage.mjs';
+import { runPokemonLinkSync } from './scripts/pokemon-link-sync.mjs';
 import { runPokemonServerSync } from './scripts/pokemon-daily-sync.mjs';
 import { runMtgServerSync } from './scripts/mtg-daily-sync.mjs';
 import { runWebOrderNotify } from './scripts/web-order-notify.mjs';
-import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys, envWithSharedPokemonKey } from './scripts/store-api-keys.mjs';
+import { KEY_PROVIDERS, cleanApiKey, lastFour, sealApiKey, storeApiKeys, clearStoreKeyCache, envWithStoreKeys, envWithSharedPokemonKey, envWithSharedPriceChartingKey } from './scripts/store-api-keys.mjs';
 import { storeFeatures, walledRequest, featureForPath, storesWithFeature, isPlatformStore, rowFromFeatures, clearStoreFeatureCache, FEATURE_KEYS } from './scripts/store-features.mjs';
 import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
 import { lookupNeedsLogin } from './scripts/lookup-auth.mjs';
@@ -1276,7 +1277,8 @@ async function pricingEnvForStore(env, storeId) {
   if (features.sharedPricingKeys) return env;
   const own = await storeApiKeys(env, storeId, storeKeyReader(env));
   const storeEnv = envWithStoreKeys(env, storeId, own);
-  return features.sharedPokemonKey ? envWithSharedPokemonKey(env, storeEnv, own) : storeEnv;
+  const withPpt = features.sharedPokemonKey ? envWithSharedPokemonKey(env, storeEnv, own) : storeEnv;
+  return features.sharedPriceChartingKey ? envWithSharedPriceChartingKey(env, withPpt, own) : withPpt;
 }
 
 async function requirePlatformAdmin(request, env) {
@@ -13605,6 +13607,19 @@ async function routeRequest(request, env, ctx) {
       const result = await runWhatnotSyncForStore(env, ctx, storeId, { force: body.force === true, orders: body.orders === true, allowCreate: false });
       return json({ ok: true, ...result });
     }
+    // POST /whatnot/push-items { itemIds } -- just these items' Whatnot
+    // listings, now (a register sale; the dashboard sends the sold items).
+    if (url.pathname === '/whatnot/push-items' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager','employee']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env)) return json({ ok: true, skipped: 'Whatnot is connected to a different store' });
+      if (!env.WHATNOT_API_KEY) return json({ ok: false, error: 'WHATNOT_API_KEY is not set' }, 503);
+      const body = await request.json().catch(() => ({}));
+      const ids = Array.isArray(body.itemIds) ? body.itemIds.map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)).slice(0, 50) : [];
+      if (!ids.length) return json({ ok: false, error: 'itemIds required' }, 400);
+      return json({ ok: true, listings: await pushWhatnotItemsNow(env, ctx, storeId, ids) });
+    }
     // POST /whatnot/apply-costs -- past Whatnot-only sales still at $0 cost
     // get the cost Settings -> Whatnot gives them; ended shows are worked
     // out again (the last 20, so older shows get their totals too).
@@ -14010,6 +14025,11 @@ async function routeRequest(request, env, ctx) {
         if (!/^ebay$/i.test(channel)) {
           try { ebay = await syncEbayQuantityForItems(storeId, [invRow.id]); }
           catch (e) { console.warn('Could not update eBay after external sale:', invRow.id, e.message); }
+        }
+        // And its Whatnot listing, now (a Whatnot sale: Whatnot already knows).
+        if (!/whatnot/i.test(channel) && (d.sellOnWhatnot === true || d.whatnotListing)) {
+          const push = pushWhatnotItemsNow(env, ctx, storeId, [invRow.id]).catch(e => console.warn('Could not update Whatnot after external sale:', invRow.id, e.message));
+          if (ctx?.waitUntil) ctx.waitUntil(push); else await push;
         }
 
         return json({ ok: true, itemId: invRow.id, saleId, salePrice, feeAmount, profit, depleted, channel, consigned, ebay });
@@ -19960,6 +19980,21 @@ async function runScheduledPokemonServerSync(env) {
         return { ok: res.ok, status: res.status, card: cards[0] || null };
       },
     };
+    // A second store's imported cards: linked to TCGplayer first, a batch an
+    // hour (scripts/pokemon-link-sync.mjs), so the daily update can price them.
+    if (!isPlatformStore(storeId, env)) {
+      try {
+        const linked = await runPokemonLinkSync(storeId, { ...deps, isPlatform: id => isPlatformStore(id, env), pptList: async (path, paramsObj) => {
+          const params = new URLSearchParams(paramsObj);
+          const res = await fetch('https://www.pokemonpricetracker.com/api/v2' + path + '?' + params, { headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' } });
+          let data = null; try { data = await res.json(); } catch (_) {}
+          const cards = Array.isArray(data?.data) ? data.data : (data?.data && typeof data.data === 'object') ? [data.data] : [];
+          await logPptUsage(env, { storeId, source: 'server-link', route: pptRouteLabel(path, params), credits: res.ok ? pptCreditsFrom(res.headers, cards.length, params) : Number(res.headers.get('X-API-Calls-Consumed')) || 0, cards: cards.length, status: res.status });
+          return { ok: res.ok, status: res.status, cards };
+        } });
+        if (linked.linked || linked.noMatch || linked.failed) console.log('Pokemon link sync', storeId, JSON.stringify(linked));
+      } catch (e) { console.error('Pokemon link sync failed for store', storeId, e.message); }
+    }
     try {
       const result = await runPokemonServerSync(storeId, deps);
       if (result.checked) console.log('Pokemon server sync', storeId, JSON.stringify(result));
@@ -20033,6 +20068,14 @@ async function whatnotListingSettings(env, storeId) {
 async function whatnotFeeSettings(env, storeId) {
   const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(storeId)}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }));
   return data?.[0]?.receipt_settings || {};
+}
+// A sale in the store (register, a sale recorded elsewhere): those items'
+// Whatnot listings drop to what's left now, not at the next 10-minute run.
+async function pushWhatnotItemsNow(env, ctx, storeId, itemIds) {
+  const ids = [...new Set((itemIds || []).map(String).filter(Boolean))].slice(0, 50);
+  if (!ids.length || !env.WHATNOT_API_KEY || storeId !== whatnotStoreId(env)) return { skipped: true };
+  const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
+  return runWhatnotListingSync(storeId, deps, { onlyIds: ids, allowCreate: false });
 }
 async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 150, allowCreate = true } = {}) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };

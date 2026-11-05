@@ -226,7 +226,9 @@ export async function syncWhatnotItem(api, row, item, link, { profileId, savePro
 // deps: db(path, opts), kvGet(key), kvPut(key, value), api, shape(row).
 // Only items whose updated_at moved since the last run are looked at, so a
 // quiet run is one small query.
-export async function runWhatnotListingSync(storeId, deps, { limit = 40, force = false, allowCreate = true } = {}) {
+// onlyIds: just these items, now (a sale in the store, 2026-11-05: "do the
+// whatnot instant push") -- checked whatever the last run saw, never created.
+export async function runWhatnotListingSync(storeId, deps, { limit = 40, force = false, allowCreate = true, onlyIds = null } = {}) {
   const s = encodeURIComponent(storeId);
   const { data: index } = await deps.db(`inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&select=id,updated_at&limit=5000`);
   // -v2 (2026-11-03): one fresh pass, so the comics refused for the size
@@ -242,7 +244,11 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 40, force =
   for (const id of linkedIds) if (!ids.has(id)) ids.set(id, 'missing');
   // A listing not confirmed published (a draft, or made before publishing
   // was checked) is tried again every run.
-  const todo = [...ids].filter(([id, at]) => seen[id] !== at || linkedIds.has(id) && linkedState[id] !== 'ok').slice(0, limit);
+  const only = Array.isArray(onlyIds) ? new Set(onlyIds.map(String)) : null;
+  if (only) allowCreate = false;
+  const todo = only
+    ? [...ids].filter(([id]) => only.has(id)).slice(0, 50)
+    : [...ids].filter(([id, at]) => seen[id] !== at || linkedIds.has(id) && linkedState[id] !== 'ok').slice(0, limit);
   const out = { checked: 0, created: 0, updated: 0, errors: [], more: Math.max(0, [...ids].filter(([id, at]) => seen[id] !== at).length - limit) };
   if (!todo.length) return out;
   const rows = new Map();

@@ -22,7 +22,7 @@ assert.equal(featuresFromRow({ shared_pokemon_key: true }).sharedPricingKeys, fa
 assert.equal((await storeFeatures({}, '0f9dd4bc-42a7-487e-a972-2905d24513e9', () => { throw new Error('never read'); })).sharedPokemonKey, true, 'The Mana Pocket: everything, never looked up');
 
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /return features\.sharedPokemonKey \? envWithSharedPokemonKey\(env, storeEnv, own\) : storeEnv;/);
+assert.match(worker, /const withPpt = features\.sharedPokemonKey \? envWithSharedPokemonKey\(env, storeEnv, own\) : storeEnv;/);
 // A pause on the shared key pauses the shared key (yours), not a separate copy.
 assert.match(worker, /function pptScope\(env\) \{ return env\.STORE_KEYS_OWNER && !env\.PPT_SHARED_FROM_PLATFORM \? ':' \+ env\.STORE_KEYS_OWNER : ''; \}/);
 assert.doesNotMatch(worker, /'ppt_(?:daily_quota_exhausted_until_v3|rate_limited_until_v2)' \+ \(env\.STORE_KEYS_OWNER/);

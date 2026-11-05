@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.3-store-switcher';
+const APP_VERSION = '2026.11.05.4-whatnot-instant';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -43192,6 +43192,9 @@ async function markCartItemsSoldFromPayment(items, method, soldAt, options={}){
   // Their eBay listings follow: the Worker sets each to what's left.
   const onEbay = tracked.map(c => c.shopId || c.wfId).filter(id => all.find(i => i.id === id)?.ebayListingId);
   if(onEbay.length) storeWorkerFetch('/ebay/sync-item-quantities', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:onEbay }) }).catch(() => {});
+  // And their Whatnot listings, now (not at the next 10-minute run).
+  const onWhatnot = tracked.map(c => c.shopId || c.wfId).map(id => all.find(i => i.id === id)).filter(i => i && (i.sellOnWhatnot === true || i.whatnotListing)).map(i => i.supabaseRowId || i.id);
+  if(onWhatnot.length) storeWorkerFetch('/whatnot/push-items', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:onWhatnot }) }).then(() => { _whatnotItemsCache = null; }).catch(() => {});
 }
 
 // Locked Checkout Mode v2 - Supabase money ledger, customer-safe payment screen.
