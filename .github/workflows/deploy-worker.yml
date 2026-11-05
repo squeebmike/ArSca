@@ -153,6 +153,7 @@ on:
       - scripts/whatnot-sync.mjs
       - scripts/morning-health.mjs
       - scripts/live-studio-bosses.mjs
+      - scripts/live-studio-dungeon.mjs
       - scripts/byterider.mjs
       - scripts/live-studio-api.mjs
       - scripts/live-studio-room.mjs

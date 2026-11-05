@@ -57,7 +57,8 @@ assert.equal(st.now.image,'');assert.equal(st.now.price,120);assert.equal(st.nex
 assert.equal(validateStage({next:Array.from({length:80},(_,i)=>({title:'#'+i}))}).next.length,60);
 assert.equal(validateStage({now:{title:'X',image:'https://still-resonance-4f87.swarnerauto.workers.dev/p.jpg'}}).now.image,'https://still-resonance-4f87.swarnerauto.workers.dev/p.jpg');
 // Score board: every order counts -- auction and Buy It Now -- and the boss takes the damage.
-const live={...DEFAULT_STUDIO,automatic:true,showId:'show-a',bossGoal:100,jackpotAmount:50};
+// (The show's boss bar is the mode with the dungeon off.)
+const live={...DEFAULT_STUDIO,automatic:true,showId:'show-a',bossGoal:100,jackpotAmount:50,dungeonOn:false};
 const order=(id,amount,extra={})=>({id,show_id:'show-a',status:'pending_fulfillment',transaction_type:'auction',amounts:{subtotal:{amount:String(amount),currency:'USD'}},buyer:{username:'collector42'},...extra});
 let t0=1_000_000,stats=emptyStats('show-a'),r;
 r=applyOrder(stats,order('o1',20),live,t0);stats=r.stats;

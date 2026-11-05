@@ -1,5 +1,16 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
+import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon } from './live-studio-dungeon.mjs';
+
+// The dungeon's events become the effect to play: a boss beaten beats a
+// boss appearing, which beats a show unlock, which beats the sale itself.
+function dungeonEffect(events, unlocks, base) {
+  const boss = events.filter(e => e.kind === 'boss').pop(), floor = events.filter(e => e.kind === 'floor').pop(), unlock = unlocks[unlocks.length - 1];
+  if (boss) return { ...base, kind: 'boss', dungeon: true, ...boss };
+  if (floor) return { ...base, kind: 'floor', ...floor };
+  if (unlock) return { ...base, kind: 'unlock', unlockText: unlock.text, unlockAt: unlock.n };
+  return null;
+}
 
 export class ManaLiveStudio extends DurableObject {
   constructor(ctx, env) {
@@ -15,11 +26,43 @@ export class ManaLiveStudio extends DurableObject {
     s.settings = { ...DEFAULT_STUDIO, ...s.settings };
     s.stats ||= emptyStats(s.settings.showId);
     s.stage ||= { now:null, next:[] };
+    // The dungeon runs all week (Wednesday to Wednesday), across shows.
+    s.dungeon = ensureWeek(s.dungeon);
     return s;
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
+  publicStats(state) {
+    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0) };
+  }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:publicStats(state.stats, state.settings), stage:state.stage, serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, serverNow:Date.now() };
+  }
+  // A follow / share / bookmark the host tapped in fills the flask.
+  dungeonTap(kind) {
+    const s = this.read(), now = Date.now();
+    const r = addTap(s.dungeon, kind, s.settings, now);
+    s.dungeon = r.dungeon;
+    const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
+    s.effect = makeEffect(fx.kind, s.settings, now, fx);
+    this.write(s);
+    this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now });
+    return this.publicState(s);
+  }
+  // Manual: + $ mana (a sale off Whatnot), set the floor, or start the week over.
+  dungeonAdjust(input = {}) {
+    const s = this.read(), now = Date.now();
+    let fx = null;
+    if (input.mana !== undefined) {
+      const amount = Number(input.mana);
+      if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Invalid mana');
+      const r = addMana(s.dungeon, amount, s.settings, now);
+      s.dungeon = r.dungeon;
+      fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 });
+    } else s.dungeon = adjustDungeon(s.dungeon, { floor: input.floor, resetWeek: !!input.resetWeek }, now);
+    if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
+    this.write(s);
+    this.broadcast(fx ? { type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now } : { type:'stats', stats:this.publicStats(s), serverNow:now });
+    return this.publicState(s);
   }
   snapshot() { return this.publicState(); }
   update(settings, revision) {
@@ -87,10 +130,20 @@ export class ManaLiveStudio extends DurableObject {
     const ours = s.settings.automatic && event?.version === 'v2' && event.data?.show_id === s.settings.showId && (!s.settings.sellerId || event.seller_id === s.settings.sellerId);
     let effect = null, statsChanged = false, stageMoved = false;
     if (isOrder && ours) {
+      const grossBefore = s.stats.showId === s.settings.showId ? s.stats.gross : 0;
       const r = applyOrder(s.stats, event.data, s.settings, now);
       statsChanged = r.stats !== s.stats;
       s.stats = r.stats;
-      if (r.effect && eventIsFresh(event, s.settings, now)) effect = r.effect;
+      // A new sale's dollars fill the dungeon's flask (cancellations don't
+      // drain it: a floor reached stays reached).
+      let dfx = null;
+      if (s.stats.gross > grossBefore) {
+        const m = addMana(s.dungeon, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
+        s.dungeon = m.dungeon;
+        const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];
+        if (r.effect) dfx = dungeonEffect(m.events, unlocks, r.effect);
+      }
+      if (r.effect && eventIsFresh(event, s.settings, now)) effect = dfx || r.effect;
       // A fresh auction sale moves NOW PLAYING to the next item.
       const moved = effect && r.effect.kind !== 'winner' ? advanceStage(s.stage, event.data, s.settings) : null;
       if (moved) { s.stage = moved; statsChanged = true; stageMoved = true; }
@@ -106,8 +159,8 @@ export class ManaLiveStudio extends DurableObject {
       }
       if (emitted || statsChanged) this.write(s);
     });
-    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:publicStats(s.stats,s.settings),...(stageMoved?{stage:s.stage}:{}),serverNow:now});
-    else if (statsChanged) this.broadcast({type:'stats',stats:publicStats(s.stats,s.settings),serverNow:now});
+    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage}:{}),serverNow:now});
+    else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),serverNow:now});
     return {ok:true};
   }
   async fetch(request) {
