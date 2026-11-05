@@ -45,6 +45,8 @@ export const DEFAULT_STUDIO = Object.freeze({
   // ByteRider's sounds (chiptune blips, under the overlay's volume and mute)
   // and the hype meter (store, 2026-11-02: "do sounds and hype meter").
   mascotSounds: true, showHype: true,
+  // Boss look: 'ps1' (store, 2026-11-04: "animated and PS1 graphics") or 'n64'.
+  bossStyle: 'ps1',
   showCombo: true, showBuyerNames: false, attract: true,
   // The Shed Dungeon (scripts/live-studio-dungeon.mjs): the sign is the mana flask.
   ...DUNGEON_DEFAULTS,
@@ -99,6 +101,7 @@ export function validateSettings(input) {
   if (full.x + full.width > 1080 || full.y + full.height > 1920) throw new Error('Sign must fit within 1080 × 1920');
   if (!/^[A-Z]{3}$/.test(full.currency)) throw new Error('Use a three-letter currency');
   if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
+  if (!['ps1', 'n64'].includes(full.bossStyle)) throw new Error('Invalid bossStyle');
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
   const WHERE = { message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards' };
   for (const key of Object.keys(WHERE)) {

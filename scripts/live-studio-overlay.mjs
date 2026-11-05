@@ -18,18 +18,19 @@ for(let i=0;i<12;i++){const b=document.createElement('i');b.style.left=(i*8)+'%'
 const mascotHost=$('byterider'), mascot=mascotHost?createByteRider(mascotHost,{onChange:e=>mascotSound(e)}):null;
 // The hype meter (see HYPE_* in live-studio-model.mjs).
 let hype={level:0,at:Date.now()};
-let lastNowTitle=null, soldLine=0;
+let lastNowTitle=null, soldLine=0, lastPhase='';
 // Polished-N64 3D (scripts/live-studio-3d.mjs): the boss and the coins. If
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
 let gl=null, bossView=null, effectBoss=null, coinLayer=null;
 import('./live-studio-3d.mjs').then(m=>{
   try{
-    bossView=m.createBossView($('mana-boss-3d'),{size:280});
-    effectBoss=m.createBossView($('mana-effect-boss'),{size:420,fov:28});
+    const ps1=settings.bossStyle!=='n64';
+    bossView=m.createBossView($('mana-boss-3d'),{size:280,ps1});
+    effectBoss=m.createBossView($('mana-effect-boss'),{size:420,fov:28,ps1});
     coinLayer=m.createCoinLayer($('mana-coins-3d'));
     gl=m;document.body.classList.add('mana-3d');drawnBoss='';apply(settings);bossView.start();
     // Read-only peek for tests: is 3D on, which boss, how many coins in the air.
-    window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels()});
+    window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels(),ps1:bossView.ps1,exploded:effectBoss.exploded});
   }catch(e){console.warn('[studio] 3D off:',e?.message||e);bossView=effectBoss=coinLayer=gl=null;document.body.classList.remove('mana-3d');}
 }).catch(e=>console.warn('[studio] 3D off:',e?.message||e));
 // The Shed Dungeon (scripts/live-studio-dungeon.mjs), when it's on.
@@ -61,6 +62,8 @@ function apply(s) {
   // Bursts are centered on the sign.
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
+  // PS1 or N64 bosses.
+  bossView?.style(settings.bossStyle!=='n64');effectBoss?.style(settings.bossStyle!=='n64');
   if(mascot){mascot.place({y:settings.mascotFaceY,scale:settings.mascotScale,border:settings.mascotBorder,idleFace:settings.mascotIdleFace});mascot.show(settings.mascotOn!==false);}
   paintStage();paintStats(stats,false);paintHype();
 }
@@ -71,6 +74,8 @@ function paintStats(next,fromSale) {
   boss.classList.toggle('mana-hidden',!b.show);
   // The boss's sprite and catchphrase, redrawn when the boss changes.
   if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
+  // The boss bar's boss stomps in when the flask fills.
+  const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase)bossView?.enter();lastPhase=phase;
   paintDungeon(d);
   $('mana-boss-name').textContent=b.name;
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
@@ -279,7 +284,9 @@ function draw() {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind;lastKind=effect.id;
       if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg())){
         const who=effect.bossCharacter||settings.bossCharacter;
-        if(effectBoss){effectBoss.set(who);effectBoss.defeat(effect.kind==='boss');effectBoss.start();}
+        if(effectBoss){effectBoss.set(who);effectBoss.defeat(false);if(effect.kind==='floor')effectBoss.enter();effectBoss.start();
+          // Beaten: a beat of HP-zero, then it blows apart (PS1) or keels over.
+          if(effect.kind==='boss'){const id=effect.id;setTimeout(()=>{if(effect?.id===id)effectBoss.defeat(true);},700);}}
         else{try{$('mana-effect-art').src=$('mana-boss-sprite').toDataURL();}catch{}}
       } else effectBoss?.stop();
       if(effect.kind!=='countdown'){const [w,m,s]=words(effect);$('mana-effect-word').textContent=w;$('mana-effect-main').textContent=m;$('mana-effect-sub').textContent=s;}}

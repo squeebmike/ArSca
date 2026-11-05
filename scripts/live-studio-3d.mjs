@@ -11,8 +11,8 @@ export const THREE_VERSION = THREE.REVISION;
 const TAU = Math.PI * 2;
 
 // ── shared bits ─────────────────────────────────────────────────────────────
-function renderer(canvas, w, h) {
-  const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: true });
+function renderer(canvas, w, h, { antialias = true } = {}) {
+  const r = new THREE.WebGLRenderer({ canvas, alpha: true, antialias, premultipliedAlpha: true });
   r.setPixelRatio(1);
   r.setSize(w, h, false);
   r.setClearColor(0x000000, 0);
@@ -174,31 +174,94 @@ const BUILD = {
 };
 export const BOSS_3D_IDS = Object.keys(BUILD);
 
-// One boss on its own little stage. view.set(id), .hit(), .defeat(on).
-export function createBossView(canvas, { size = 280, fov = 30 } = {}) {
-  const r = renderer(canvas, size, size);
+// ── the PS1 look ────────────────────────────────────────────────────────────
+// Store, 2026-11-04: "graphics would have to be animated and PS1 graphics".
+// The same models drawn the way a 1995 console did: rendered small and
+// blown up with hard pixels, vertices snapped to a coarse screen grid (the
+// wobble), flat shading, and colours cut down with an ordered dither.
+// Animation steps at 15 fps. Each material gets the two uniforms; 0 = off.
+export const PS1 = { scale: 3, snap: 44, levels: 20, fps: 15 };
+function ps1Patch(m, u) {
+  if (m.userData.ps1) return;
+  m.userData.ps1 = { flatShading: !!m.flatShading, shininess: m.shininess };
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uSnap = u.snap; sh.uniforms.uLevels = u.levels;
+    sh.vertexShader = 'uniform float uSnap;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  if (uSnap > 0.0) { vec4 sp = gl_Position; sp.xyz /= sp.w; sp.xy = floor(sp.xy * uSnap + 0.5) / uSnap; sp.xyz *= sp.w; gl_Position = sp; }');
+    sh.fragmentShader = 'uniform float uLevels;\nfloat ps1Bayer2(vec2 p) { return mod(2.0 * p.x + 3.0 * p.y, 4.0); }\n' + sh.fragmentShader.replace('#include <dithering_fragment>',
+      '#include <dithering_fragment>\n  if (uLevels > 0.0) { vec2 q = floor(gl_FragCoord.xy); float b = (4.0 * ps1Bayer2(mod(q, 2.0)) + ps1Bayer2(mod(floor(q / 2.0), 2.0)) + 0.5) / 16.0; gl_FragColor.rgb = floor(gl_FragColor.rgb * uLevels + b) / uLevels; }');
+  };
+  m.needsUpdate = true;
+}
+function ps1Set(m, on) {
+  const o = m.userData.ps1; if (!o) return;
+  m.flatShading = on ? true : o.flatShading;
+  if ('shininess' in m) m.shininess = on ? Math.min(8, o.shininess ?? 8) : o.shininess;
+  if (m.map) { m.map.magFilter = on ? THREE.NearestFilter : THREE.LinearFilter; m.map.minFilter = on ? THREE.NearestFilter : THREE.LinearMipmapLinearFilter; m.map.needsUpdate = true; }
+  m.needsUpdate = true;
+}
+
+// One boss on its own little stage. view.set(id), .hit(), .defeat(on),
+// .enter() (stomps in), .style(ps1).
+export function createBossView(canvas, { size = 280, fov = 30, ps1 = true } = {}) {
+  const r = renderer(canvas, size, size, { antialias: false });
   const scene = new THREE.Scene(); lights(scene);
   const cam = new THREE.PerspectiveCamera(fov, 1, 0.1, 50); cam.position.set(0, 0.4, 7.0); cam.lookAt(0, 0.1, 0);
   const holder = new THREE.Group(); scene.add(holder);
   // A soft shadow blob under the feet.
   const shadow = add(scene, new THREE.Mesh(new THREE.CircleGeometry(0.95, 24), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 })), 0, -1.55, 0);
   shadow.rotation.x = -Math.PI / 2;
-  let model = null, id = '', hitAt = -9, defeated = false, defeatAt = 0, raf = 0;
+  let model = null, id = '', hitAt = -9, defeated = false, defeatAt = 0, raf = 0, enterAt = -9, pieces = null, isPs1 = false, px = size;
   const clock = new THREE.Clock();
+  const u = { snap: { value: 0 }, levels: { value: 0 } };
   const tint = (fn) => holder.traverse(o => { if (o.material) for (const m of [].concat(o.material)) fn(m); });
-  function set(next) {
+  const styleAll = () => { tint(m => { ps1Patch(m, u); ps1Set(m, isPs1); }); shadow.material.opacity = isPs1 ? 0.5 : 0.35; };
+  function set(next, force = false) {
     next = BUILD[next] ? next : 'scalper';
-    if (next === id) return;
+    if (next === id && !force) return;
     id = next;
-    holder.clear();
+    if (pieces) for (const p of pieces) scene.remove(p.o);
+    pieces = null;
+    holder.clear(); holder.position.set(0, 0, 0); holder.rotation.set(0, 0, 0);
     const root = new THREE.Group(); holder.add(root);
     model = { root, ...BUILD[id](root) };
     tint(m => { m.userData.color = m.color?.clone(); });
+    styleAll();
   }
+  function style(on) {
+    on = !!on;
+    if (on === isPs1 && px === (on ? Math.round(size / PS1.scale) : size)) return;
+    isPs1 = on; px = on ? Math.round(size / PS1.scale) : size;
+    r.setSize(px, px, false);
+    u.snap.value = on ? PS1.snap : 0; u.levels.value = on ? PS1.levels : 0;
+    canvas.classList.toggle('ps1', on);
+    styleAll();
+  }
+  // Knocked out, PS1 style: the model blows apart into its pieces, which
+  // tumble and fall (a fixed spread from each piece's place, no chance).
+  function explode() {
+    const next = seq(7), center = new THREE.Vector3();
+    holder.updateMatrixWorld(true);
+    const meshes = []; model.root.traverse(o => { if (o.isMesh) meshes.push(o); });
+    pieces = meshes.map(o => {
+      const w = new THREE.Vector3(); o.getWorldPosition(w); scene.attach(o);
+      const dir = w.clone().sub(center); dir.z += 0.6; dir.normalize();
+      return { o, v: dir.multiplyScalar(3 + next() * 3).add(new THREE.Vector3(0, 3 + next() * 2, 0)), s: new THREE.Vector3(next() * 8 - 4, next() * 8 - 4, next() * 8 - 4) };
+    });
+  }
+  let lastT = 0;
   function frame() {
     raf = requestAnimationFrame(frame);
-    const t = clock.getElapsedTime();
+    const real = clock.getElapsedTime();
+    // PS1: the pose steps at 15 fps.
+    const t = isPs1 ? Math.floor(real * PS1.fps) / PS1.fps : real;
     if (!model) return;
+    if (pieces) {
+      const dt = Math.min(0.05, real - lastT);
+      for (const p of pieces) { p.v.y -= 9.8 * dt; p.o.position.addScaledVector(p.v, dt); p.o.rotation.x += p.s.x * dt; p.o.rotation.y += p.s.y * dt; p.o.rotation.z += p.s.z * dt; }
+      lastT = real; r.render(scene, cam); return;
+    }
+    lastT = real;
     if (!defeated) {
       model.tick(t);
       // Idle: a bouncy hover with a little squash at the bottom.
@@ -206,6 +269,13 @@ export function createBossView(canvas, { size = 280, fov = 30 } = {}) {
       model.root.position.y = b * 0.08;
       model.root.scale.set(1 + (b < 0 ? -b * 0.03 : 0), 1 - (b < 0 ? -b * 0.04 : 0), 1);
       holder.rotation.set(0, Math.sin(t * 0.7) * 0.18, 0);
+      // Entrance: drops in from above, lands with a squash and a shake.
+      const e = t - enterAt;
+      if (e >= 0 && e < 1) {
+        if (e < 0.45) { const k = e / 0.45; holder.position.y = 4 * (1 - k * k); model.root.scale.set(0.9, 1.15, 0.9); }
+        else { const k = (e - 0.45) / 0.55, sq = Math.sin(k * Math.PI * 3) * (1 - k) * 0.3; holder.position.y = 0; holder.position.x = Math.sin(k * 50) * 0.08 * (1 - k); model.root.scale.set(1 + sq, 1 - sq, 1 + sq); }
+        shadow.scale.setScalar(e < 0.45 ? 0.4 + 0.6 * (e / 0.45) : 1);
+      } else if (e >= 1 && e < 1.1) { holder.position.set(0, 0, 0); shadow.scale.setScalar(1); }
     }
     // A hit: knocked back, flashing white then red, with a shake.
     const since = t - hitAt;
@@ -215,7 +285,7 @@ export function createBossView(canvas, { size = 280, fov = 30 } = {}) {
       holder.rotation.z = -0.25 * k;
       tint(m => { if (m.emissive) m.emissive.setRGB(since < 0.1 ? 1 : 0.9 * k, since < 0.1 ? 1 : 0.1 * k, since < 0.1 ? 1 : 0.1 * k); });
     } else if (since < 0.7) { holder.position.x = 0; holder.rotation.z = 0; tint(m => m.emissive?.setRGB(0, 0, 0)); }
-    if (defeated) {
+    if (defeated && !isPs1) {
       const d = Math.min(1, (t - defeatAt) / 0.7);
       holder.rotation.z = -1.45 * (d * d);
       holder.position.y = -0.4 * d;
@@ -223,12 +293,17 @@ export function createBossView(canvas, { size = 280, fov = 30 } = {}) {
     }
     r.render(scene, cam);
   }
+  style(ps1);
   return {
-    set,
+    set, style,
     hit() { hitAt = clock.getElapsedTime(); },
+    enter() { if (defeated) this.defeat(false); enterAt = clock.getElapsedTime(); },
+    get ps1() { return isPs1; },
+    get exploded() { return !!pieces; },
     defeat(on) {
       if (on === defeated) return;
       defeated = on; defeatAt = clock.getElapsedTime();
+      if (isPs1) { if (on) { if (model) explode(); } else set(id, true); return; }
       // Knocked out: drained of colour.
       tint(m => { if (!m.userData.color || !m.color) return; if (on) { const c = m.userData.color, g = c.r * 0.3 + c.g * 0.59 + c.b * 0.11; m.color.setRGB(g * 0.7, g * 0.7, g * 0.75); } else m.color.copy(m.userData.color); });
       if (!on) { holder.rotation.set(0, 0, 0); holder.position.set(0, 0, 0); }
@@ -239,9 +314,9 @@ export function createBossView(canvas, { size = 280, fov = 30 } = {}) {
     // How many pixels the boss covers, read right after a render (tests).
     litPixels() {
       r.render(scene, cam);
-      const g = r.getContext(), px = new Uint8Array(size * size * 4);
-      g.readPixels(0, 0, size, size, g.RGBA, g.UNSIGNED_BYTE, px);
-      let n = 0; for (let i = 3; i < px.length; i += 4) if (px[i] > 0) n++;
+      const g = r.getContext(), buf = new Uint8Array(px * px * 4);
+      g.readPixels(0, 0, px, px, g.RGBA, g.UNSIGNED_BYTE, buf);
+      let n = 0; for (let i = 3; i < buf.length; i += 4) if (buf[i] > 0) n++;
       return n;
     },
   };

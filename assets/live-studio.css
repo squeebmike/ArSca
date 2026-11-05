@@ -248,3 +248,6 @@
 #mana-effect.k-room .mana-burst {background:linear-gradient(160deg,#3a1200,#ff9d00 55%,#ffe23d);animation:mana-pop .45s cubic-bezier(.2,2,.4,1)}
 #mana-effect.k-room #mana-effect-sub {background:var(--ink);color:var(--yel);padding:8px 14px;font-size:20px}
 @media(prefers-reduced-motion:reduce) {#mana-doors,#mana-map-list li.current {animation:none}}
+
+/* PS1 bosses: drawn small, shown big with hard pixels. */
+canvas.ps1 {image-rendering:pixelated;image-rendering:crisp-edges}
