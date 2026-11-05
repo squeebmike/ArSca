@@ -1,7 +1,7 @@
 // Store, 2026-11-05: "Can you ask him questions? Like clippy?"
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { askByteRider, matchItems, matchComics, keywords, systemPrompt, cleanHistory, budgetOf, wantsRules, DEFAULT_FACTS, LIMITS } from '../scripts/byterider-ask.mjs';
+import { visitorName, cardNames, askByteRider, matchItems, matchComics, keywords, systemPrompt, cleanHistory, budgetOf, wantsRules, DEFAULT_FACTS, LIMITS } from '../scripts/byterider-ask.mjs';
 
 const items = [
   { id: '1', name: 'Charizard ex', set: 'Obsidian Flames', category: 'Pokemon TCG', price: 38.05, url: '/item/1/charizard-ex', cost: 9, buyer: 'nope' },
@@ -37,7 +37,7 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /url\.pathname === '\/public\/byterider\/ask' && request\.method === 'POST'/);
 assert.match(worker, /if \(ipCount >= BYTERIDER_LIMITS\.perIpHour\)/, 'per-visitor limit');
 assert.match(worker, /if \(dayCount >= BYTERIDER_LIMITS\.perDay\)/, 'daily cap');
-assert.match(worker, /model: 'claude-haiku-5-5', max_tokens: 300/, 'small model, short answers');
+assert.match(worker, /model: 'claude-haiku-5-5', max_tokens: opts\.long \? 500 : 300/, 'small model, short answers');
 assert.match(worker, /requireStoreUser\(request, env, storeId, \['owner','admin'\]\);\n\s+if \(auth\.error\) return auth\.error;\n\s+if \(storeId !== ITEM_DETAIL_STORE_ID\)/, 'facts: owner/admin of The Mana Pocket only');
 const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
 assert.match(site, /export const ASK_URL = WORKER \+ '\/public\/byterider\/ask'/);
@@ -75,4 +75,26 @@ assert.deepEqual(r.items.at(-1), { name: 'Ask the Rules Boss', price: null, url:
 const c2 = await askByteRider({ question: 'what batman books are coming out?' }, { items: async () => [], facts: async () => '', upcoming: async () => comics, claude: async system => { seen = system; return 'Absolute Batman #25 lands Dec 9!'; } });
 assert.match(seen, /UPCOMING COMICS[\s\S]*Absolute Batman #25 -- on sale 2026-12-09/);
 assert.equal(c2.items[0].url, comics[0].url);
+// The signed-in visitor's first name: one word, letters only.
+assert.equal(visitorName('mike warner'), 'Mike'); assert.equal(visitorName('<b>x</b>'), ''); assert.equal(visitorName('Robert); DROP'), '');
+// Card names: [[brackets]], quotes, or Capitalized Words in a rules question.
+assert.deepEqual(cardNames('what does [[Sol Ring]] do'), ['Sol Ring']);
+assert.deepEqual(cardNames('Does Lightning Bolt kill a Tarmogoyf?', true), ['Lightning Bolt', 'Tarmogoyf']);
+assert.deepEqual(cardNames('If I cast Counterspell on Llanowar Elves, what happens?', true), ['Counterspell', 'Llanowar Elves']);
+assert.deepEqual(cardNames('How does the stack work in Magic?', true), []);
+{
+  let sys, opts, ruleCards;
+  const out = await askByteRider({ question: 'Can I respond to [[Lightning Bolt]]?', name: 'mike' }, { items: async () => [], facts: async () => '',
+    card: async n => ({ name: 'Lightning Bolt', url: 'https://scryfall.com/card/lea/161', faces: [{ name: 'Lightning Bolt', manaCost: '{R}', type: 'Instant', text: 'Lightning Bolt deals 3 damage to any target.' }], rulings: [{ comment: 'It can target a planeswalker.' }] }),
+    rules: async (q, cards) => { ruleCards = cards; return [{ id: '117.3b', text: 'priority...' }]; },
+    claude: async (s, m, o) => { sys = s; opts = o; return 'Yes, Mike! Bolt goes on the stack (117.3b).'; } });
+  assert.match(sys, /signed in as Mike/);
+  assert.match(sys, /CARDS \(current Oracle text and official rulings\):\nLightning Bolt -- \{R\} \| Instant \| Lightning Bolt deals 3 damage to any target\.\n  Rulings: It can target a planeswalker\./);
+  assert.equal(ruleCards[0].name, 'Lightning Bolt', 'rules picked with the card text');
+  assert.equal(opts.long, true, 'room for the steps');
+  assert.deepEqual(out.items.map(i => i.url), ['https://scryfall.com/card/lea/161', '/mtg-judge']);
+}
+const siteSrc = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
+assert.match(siteSrc, /localStorage\.getItem\('mp-foc-session-v1'\)/); assert.match(siteSrc, /name: signedInFirstName\(\)/);
+assert.doesNotMatch(siteSrc, /access_token/, 'the sign-in token is never read or sent');
 console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');

@@ -71,13 +71,40 @@ export function matchComics(comics = [], q, max = LIMITS.comics) {
   const hits = scored.filter(x => x.hits).sort((a, b) => b.hits - a.hits || String(a.c.onSale).localeCompare(String(b.c.onSale)));
   return (hits.length ? hits : scored).slice(0, max).map(({ c }) => ({ title: cleanText(c.title, 90), onSale: cleanText(c.onSale, 10), publisher: cleanText(c.publisher, 40), writer: cleanText(c.writer, 60), artist: cleanText(c.artist, 60), price: Number(c.price) > 0 ? Math.round(Number(c.price) * 100) / 100 : null, url: cleanText(c.url, 200) }));
 }
-export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], rules = [] } = {}) {
+// The visitor's first name from their own signed-in website account (read in
+// their browser; store, 2026-11-05: "Can ByteRider say the user's name if
+// they're logged in?"). Letters only, one word -- never anything else.
+export const visitorName = n => { const w = String(n || '').trim().split(/\s+/)[0] || ''; return /^[A-Za-zÀ-ÿ'-]{1,20}$/.test(w) ? w[0].toUpperCase() + w.slice(1) : ''; };
+// Magic card names the visitor wrote: [[Card Name]], "Card Name", or (for a
+// rules question) Capitalized Words that look like a card.
+export function cardNames(q = '', rules = false) {
+  const out = new Set();
+  for (const m of String(q).matchAll(/\[\[([^\]]{2,60})\]\]|"([^"]{2,60})"|“([^”]{2,60})”/g)) out.add((m[1] || m[2] || m[3]).trim());
+  if (rules && !out.size) {
+    // Runs of Capitalized words ("of"/"the" allowed inside), minus a
+    // leading question word: "Does Lightning Bolt kill a Tarmogoyf?" ->
+    // Lightning Bolt, Tarmogoyf.
+    const NOT = new Set('magic gathering mtg commander if when what how can does do is my i a an the and or yes no rule rules stack priority combat mana turn whats who which why'.split(' '));
+    const words = String(q).replace(/[?!.;:()]/g, ' ').split(/\s+/).filter(Boolean);
+    let run = [];
+    const flush = () => { while (run.length && NOT.has(run[0].toLowerCase().replace(/[^a-z]/g, ''))) run.shift(); while (run.length && /^(of|the)$/i.test(run[run.length - 1])) run.pop(); if (run.length && run.join(' ').length >= 4) out.add(run.join(' ').replace(/,$/, '')); run = []; };
+    for (const w of words) {
+      if (/^[A-Z][A-Za-z'’,-]*$/.test(w)) run.push(w);
+      else if (run.length && /^(of|the)$/i.test(w)) run.push(w);
+      else flush();
+    }
+    flush();
+  }
+  return [...out].slice(0, 3);
+}
+export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], rules = [], cards = [], name = '' } = {}) {
   return [
     "You are ByteRider_97, The Mana Pocket's mascot: a cheerful 1997 arcade computer who lives on the store's website. Talk like a friendly retro game character -- short, upbeat, a little nerdy.",
-    'Answer in 1 to 4 short sentences (80 words at most), plain text, no markdown.',
+    'Answer in 1 to 4 short sentences (80 words at most), plain text, no markdown -- except a Magic rules explanation, which may take up to 6 short numbered steps (150 words).',
     'Store facts -- prices, stock, release dates, policies, hours -- come ONLY from STORE FACTS, SITE HELP, IN-STOCK MATCHES and UPCOMING COMICS below. Never make them up. If those do not answer it, say you are not sure and point to /faq or hintline@themanapocket.com.',
     'You may use general fan knowledge to suggest what to read or collect (characters, series, creators), but only suggest items that are in the lists below when you name something to buy.',
-    'For Magic rules, explain using the OFFICIAL RULES excerpts below and cite rule numbers (like 117.3b) only from them; for a tricky card interaction, suggest the Rules Boss at /mtg-judge. You are not an official judge.',
+    'For Magic rules you are the store\'s rules helper: explain step by step using the OFFICIAL RULES excerpts and the CARDS (current Oracle text and official rulings) below; cite rule numbers (like 117.3b) only from those excerpts. Never invent card text or rulings -- if a card is not listed, say you need its exact name (they can type it like [[Lightning Bolt]]). For a tournament ruling or a very tricky stack, suggest the Rules Boss at /mtg-judge. You are not an official judge.',
+    ...(name ? [`The visitor is signed in as ${name}. Greet or use their first name now and then, naturally (not every message).`] : []),
     'You cannot look up orders, accounts or payments -- send those to hintline@themanapocket.com.',
     'Never talk about chance, gambling, odds or "pulls" as prizes; never promise a card will go up in value; no grading guarantees.',
     'If a match fits, name it and its price; the website shows the links under your answer.',
@@ -87,6 +114,7 @@ export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], r
     '', 'IN-STOCK MATCHES (live, in stock now):', items.length ? items.map(i => `- ${i.name}${i.set ? ' (' + i.set + ')' : ''}${i.price ? ' $' + i.price.toFixed(2) : ''}`).join('\n') : '(none for this question)',
     ...(comics.length ? ['', 'UPCOMING COMICS (open for preorder):', comics.map(c => `- ${c.title} -- on sale ${c.onSale}${c.publisher ? ', ' + c.publisher : ''}${c.writer ? ', written by ' + c.writer : ''}${c.artist ? ', cover ' + c.artist : ''}${c.price ? ', $' + c.price.toFixed(2) : ''}`).join('\n')] : []),
     ...(rules.length ? ['', 'OFFICIAL RULES (Magic Comprehensive Rules excerpts):', rules.map(r => `${r.id} ${r.text}`).join('\n')] : []),
+    ...(cards.length ? ['', 'CARDS (current Oracle text and official rulings):', cards.map(c => `${c.name} -- ${c.faces.map(f => [f.name !== c.name ? f.name : '', f.manaCost, f.type, f.text].filter(Boolean).join(' | ')).join(' // ')}${c.rulings.length ? '\n  Rulings: ' + c.rulings.join(' / ') : ''}`).join('\n')] : []),
   ].join('\n');
 }
 export function cleanHistory(history = []) {
@@ -100,7 +128,13 @@ export async function askByteRider(input = {}, deps) {
   if (!question) return { ok: false, error: 'Ask me something!' };
   const items = matchItems(await deps.items(), question);
   const comics = deps.upcoming ? matchComics(await deps.upcoming().catch(() => []), question) : [];
-  const rules = deps.rules && wantsRules(question) ? (await deps.rules(question).catch(() => [])).slice(0, LIMITS.rules).map(r => ({ id: cleanText(r.id, 12), text: cleanText(r.text, 420) })) : [];
+  // Magic: the cards named (current Oracle text + rulings), then the rules
+  // that fit the question and those cards.
+  const ruleQ = wantsRules(question) || /\[\[/.test(question);
+  const cards = [];
+  if (deps.card && ruleQ) for (const n of cardNames(question, true)) { const c = await deps.card(n).catch(() => null); if (c) cards.push({ name: cleanText(c.name, 80), url: cleanText(c.url, 200), faces: (c.faces || []).slice(0, 2).map(f => ({ name: cleanText(f.name, 80), manaCost: cleanText(f.manaCost, 40), type: cleanText(f.type, 80), text: cleanText(f.text, 700) })), rulings: (c.rulings || []).slice(0, 3).map(r => cleanText(r.comment || r, 240)) }); }
+  const rules = deps.rules && ruleQ ? (await deps.rules(question, cards).catch(() => [])).slice(0, LIMITS.rules).map(r => ({ id: cleanText(r.id, 12), text: cleanText(r.text, 420) })) : [];
+  const name = visitorName(input.name);
   const history = cleanHistory(input.history);
   // Alternating turns, ending with the visitor's question.
   const messages = [];
@@ -108,9 +142,10 @@ export async function askByteRider(input = {}, deps) {
   while (messages.length && messages[0].role !== 'user') messages.shift();
   if (messages.length && messages[messages.length - 1].role === 'user') messages.pop();
   messages.push({ role: 'user', content: question });
-  const answer = cleanText(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules }), messages), 520);
+  const answer = cleanText(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules, cards, name }), messages, { long: rules.length > 0 }), 900);
   // Links under the answer: items, then comics, then the Rules Boss.
   const links = [...items.filter(i => i.url), ...comics.filter(c => c.url).map(c => ({ name: c.title + ' (' + c.onSale + ')', price: c.price, url: c.url }))].slice(0, 4);
+  for (const c of cards) if (/^https:\/\/scryfall\.com\//.test(c.url)) links.push({ name: c.name + ' (card text)', price: null, url: c.url });
   if (rules.length) links.push({ name: 'Ask the Rules Boss', price: null, url: '/mtg-judge' });
   return { ok: true, answer: answer || "Hmm, my circuits blanked. Try /faq or hintline@themanapocket.com!", items: links };
 }

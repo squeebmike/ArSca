@@ -1,4 +1,4 @@
-import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules} from './scripts/mtg-judge.mjs';
+import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules, fuzzyCardLookup as mtgFuzzyCard} from './scripts/mtg-judge.mjs';
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {coordinatedPriceFetch} from './scripts/reference-price-refresh.mjs';
@@ -16821,10 +16821,13 @@ async function routeRequest(request, env, ctx) {
           },
           // Magic rules: the official Comprehensive Rules, the same excerpts
           // the Rules Boss (/mtg-judge) works from.
-          rules: async q => retrieveMtgRules(await loadMtgRules(), q, []),
-          claude: async (system, messages) => {
+          rules: async (q, cards = []) => retrieveMtgRules(await loadMtgRules(), q, cards),
+          // A named Magic card: its current Oracle text and official rulings.
+          card: async n => mtgFuzzyCard(n),
+          claude: async (system, messages, opts = {}) => {
             const res = await fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: 300, temperature: 0.6, system, messages }) });
+              // A rules explanation gets room for its steps.
+              body: JSON.stringify({ model: 'claude-haiku-5-5', max_tokens: opts.long ? 500 : 300, temperature: opts.long ? 0.2 : 0.6, system, messages }) });
             const d = await res.json().catch(() => null);
             if (!res.ok) throw new Error('model ' + res.status);
             return (d?.content || []).filter(c => c.type === 'text').map(c => c.text).join(' ');
