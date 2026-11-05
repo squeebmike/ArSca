@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.2-ps1-sheds';
+const APP_VERSION = '2026.11.05.3-store-switcher';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -170,7 +170,26 @@ const WALKOFF_SCOPED_KEYS = new Set([
   'sheet_mapping_v1','grade_submissions','research_needs_review_v1',
   'dealer_items_v1','dealer_photos_v1',
   'dealer_queues_v1','lba_sales',
+  // A second store (Crull001, 2026-11-05) gets its own copy of these too.
+  'inventory_edit_overrides_v1','inventory_import_history_v2','grading_submissions_cache_v1','pos_closed_buy_trays',
+  'dealer_show_mode','price_sync_daily_result','price_sync_daily_off','price_sync_daily_last','price_sync_pending_v1',
+  'webflow_integration_v1','whatnot_fee_pct','whatnot_fee_flat',
 ]);
+// The Mana Pocket: the store everything here was built for. An account in
+// more than one store (only the owner's) can visit another one, but every
+// fresh tab opens back here, and nothing saved on this device from before
+// stores were separated is ever carried into another store.
+const HOME_STORE_ID = '0f9dd4bc-42a7-487e-a972-2905d24513e9';
+const STORE_VISIT_KEY = 'walkoff_store_visit';
+function storeVisitAllowed(storeId){ try { return sessionStorage.getItem(STORE_VISIT_KEY) === storeId; } catch(e) { return false; } }
+// The store to open: a visit to another store lasts only for this tab;
+// otherwise home if the account has it.
+function pickActiveStoreId(stores, preferred){
+  if(!stores?.length) return preferred || '';
+  const has = id => stores.some(s => s.id === id);
+  if(has(preferred) && (preferred === HOME_STORE_ID || !has(HOME_STORE_ID) || storeVisitAllowed(preferred))) return preferred;
+  return has(HOME_STORE_ID) ? HOME_STORE_ID : (has(preferred) ? preferred : stores[0]?.id || '');
+}
 const WALKOFF_AUTH_SESSION_KEY = 'walkoff_auth_session_v1';
 const WALKOFF_ACTIVE_STORE_KEY = 'walkoff_active_store_id';
 const WALKOFF_STORAGE_MIGRATION_KEY = 'walkoff_store_migration_v1';
@@ -416,7 +435,9 @@ async function loadStoreFeatures(storeId = getActiveStoreId()){
       // Migrate old global key into scoped store namespace — but NEVER for demo mode.
       // This is how Walk-Off owner data transitions from pre-scoping (global keys) to
       // the new per-store namespace without losing data.
-      if(oldVal !== null && !getAuthSession()?.demoMode) { rawSet.call(this, scoped, oldVal); markStoreMigration(key, scoped); return oldVal; }
+      // Only into The Mana Pocket: these are its pre-separation copies, and
+      // another store must start clean (never inherit its cart, sales, queue).
+      if(oldVal !== null && !getAuthSession()?.demoMode && scoped === 'walkoff:' + HOME_STORE_ID + ':' + key) { rawSet.call(this, scoped, oldVal); markStoreMigration(key, scoped); return oldVal; }
       return null;
     }
     return rawGet.call(this, key);
@@ -489,7 +510,9 @@ async function ensureAuthReady(){
   if(!sb) {
     const fallback = getAuthSession();
     if(!fallback) { showAuthMode('login', 'Supabase library did not load. Check your connection and try again.'); return false; }
-    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, fallback.activeStoreId || fallback.user.defaultStoreId || '');
+    const fallbackId = pickActiveStoreId(fallback.stores || [], fallback.activeStoreId || fallback.user.defaultStoreId || '');
+    fallback.activeStoreId = fallbackId; localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify(fallback));
+    localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, fallbackId);
     document.getElementById('auth-screen')?.classList.remove('on');
     renderAccountHeader();
     return true;
@@ -515,7 +538,7 @@ async function ensureAuthReady(){
     return false;
   }
   const preferred = localStorage.getItem(WALKOFF_ACTIVE_STORE_KEY);
-  if(stores.length > 1 && !stores.some(s => s.id === preferred)) {
+  if(stores.length > 1 && !stores.some(s => s.id === preferred) && !stores.some(s => s.id === HOME_STORE_ID)) {
     // Write session before showing picker so switchActiveStore can find stores on OPEN STORE click
     localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({
       user:{ id:user.id, email:user.email || '', displayName:user.user_metadata?.display_name || user.email || 'User', role:stores[0]?.role || 'employee', defaultStoreId:stores[0].id },
@@ -525,7 +548,7 @@ async function ensureAuthReady(){
     showAuthMode('picker', 'Choose which store to open.');
     return false;
   }
-  const activeStoreId = stores.some(s => s.id === preferred) ? preferred : stores[0].id;
+  const activeStoreId = pickActiveStoreId(stores, preferred);
   const member = stores.find(s => s.id === activeStoreId);
   localStorage.setItem(WALKOFF_AUTH_SESSION_KEY, JSON.stringify({
     user:{ id:user.id, email:user.email || '', displayName:user.user_metadata?.display_name || user.email || 'User', role:member?.role || 'employee', defaultStoreId:activeStoreId },
@@ -1297,6 +1320,9 @@ async function logoutAccount(){
 function switchActiveStore(storeId){
   const session = getAuthSession();
   if(!session || !session.stores?.some(s => s.id === storeId)) return;
+  // An open sale or buy stays with its own store (each store keeps its own
+  // carts on this device) and is there again on switching back.
+  try { if(storeId === HOME_STORE_ID) sessionStorage.removeItem(STORE_VISIT_KEY); else sessionStorage.setItem(STORE_VISIT_KEY, storeId); } catch(e) {}
   session.activeStoreId = storeId;
   const member = session.stores.find(s => s.id === storeId);
   if(member) session.user.role = member.role || session.user.role;
@@ -1304,6 +1330,21 @@ function switchActiveStore(storeId){
   localStorage.setItem(WALKOFF_ACTIVE_STORE_KEY, storeId);
   logOpsEvent('store_switch', 'Switched active store', { storeId });
   location.reload();
+}
+// Only for an account in more than one store: a bright bar while visiting a
+// store that isn't The Mana Pocket (with the way back), and the store picker
+// on phones, where the header's switcher is hidden.
+function renderStoreVisitBar(session = getAuthSession(), store = getActiveStore()){
+  let bar = document.getElementById('store-visit-bar');
+  const multi = (session?.stores?.length || 0) > 1;
+  if(!multi) { bar?.remove(); document.body?.classList.remove('store-visiting'); return; }
+  if(!bar) { bar = document.createElement('div'); bar.id = 'store-visit-bar'; document.body.prepend(bar); }
+  const away = store.id !== HOME_STORE_ID && session.stores.some(s => s.id === HOME_STORE_ID);
+  bar.className = away ? 'away' : 'home';
+  document.body.classList.toggle('store-visiting', away);
+  const opts = session.stores.map(s => `<option value="${escHtml(s.id)}" ${s.id===store.id?'selected':''}>${escHtml(s.displayName || s.name || 'Store')}</option>`).join('');
+  bar.innerHTML = (away ? `<b>VIEWING ${escHtml(String(store.displayName || 'ANOTHER STORE').toUpperCase())}</b><span>not The Mana Pocket -- sales, buys and stock here go to this store</span><button type="button" class="hbtn" onclick="switchActiveStore(HOME_STORE_ID)">BACK TO THE MANA POCKET</button>` : '<span>Store</span>')
+    + `<select aria-label="Switch store" onchange="switchActiveStore(this.value)">${opts}</select>`;
 }
 function renderAccountHeader(){
   const session = getAuthSession(), store = getActiveStore();
@@ -1322,6 +1363,7 @@ function renderAccountHeader(){
     switcher.style.display = '';
     switcher.innerHTML = session.stores.map(s => `<option value="${s.id}" ${s.id===store.id?'selected':''}>${escHtml(s.displayName)}</option>`).join('');
   }
+  renderStoreVisitBar(session, store);
   updateTopStateChips();
 }
 
@@ -7406,17 +7448,21 @@ function saveSyncQueueItem(item){
   return syncOutboxWriteChain;
 }
 
+// A queued save belongs to the store it was made in; it only ever runs
+// while that store is open. Older ones (no store) are The Mana Pocket's.
+function syncItemStore(item){ return item?.storeId || HOME_STORE_ID; }
+function syncItemHere(item){ return syncItemStore(item) === (getActiveStoreId() || HOME_STORE_ID); }
 function enqueueSync(type, label, payload, error){
   const q = getSyncQueue();
-  const item = { id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+  const item = { storeId:getActiveStoreId() || HOME_STORE_ID, id:'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), type, label, payload, error:error||'', status:'pending', attempts:0, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
   q.unshift(item);
   return saveSyncQueueItem(item);
 }
 
 function enqueueOrReplaceSync(type, syncKey, label, payload, error){
   const q = getSyncQueue();
-  const idx = q.findIndex(x => x.type === type && x.syncKey === syncKey && x.status !== 'done');
-  const next = { id:idx >= 0 ? q[idx].id : 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), syncKey, type, label, payload, error:error||'', status:'pending', attempts:idx >= 0 ? (q[idx].attempts||0) : 0, createdAt:idx >= 0 ? q[idx].createdAt : new Date().toISOString(), updatedAt:new Date().toISOString() };
+  const idx = q.findIndex(x => x.type === type && x.syncKey === syncKey && x.status !== 'done' && syncItemHere(x));
+  const next = { storeId:getActiveStoreId() || HOME_STORE_ID, id:idx >= 0 ? q[idx].id : 'sync_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), syncKey, type, label, payload, error:error||'', status:'pending', attempts:idx >= 0 ? (q[idx].attempts||0) : 0, createdAt:idx >= 0 ? q[idx].createdAt : new Date().toISOString(), updatedAt:new Date().toISOString() };
   if(idx >= 0) q[idx] = next;
   else q.unshift(next);
   return saveSyncQueueItem(next);
@@ -7471,7 +7517,7 @@ function getConflictItemIds(){
   return Object.entries(getInventorySyncMeta()).filter(([,v])=>v.syncStatus==='conflict').map(([id])=>id);
 }
 function getPendingInventoryQueueItems(){
-  return getSyncQueue().filter(x => x.status!=='done' && ['supabase-inventory-update','inventory-create'].includes(x.type));
+  return getSyncQueue().filter(x => x.status!=='done' && ['supabase-inventory-update','inventory-create'].includes(x.type) && syncItemHere(x));
 }
 function getFailedInventoryQueueItems(){
   return getSyncQueue().filter(x => x.status==='failed' && ['supabase-inventory-update','inventory-create'].includes(x.type));
@@ -8088,6 +8134,7 @@ async function retrySyncItem(id){
   const q = getSyncQueue();
   const item = q.find(x => x.id === id);
   if(!item) return;
+  if(!syncItemHere(item)) return; // another store's: waits until that store is open
   item.status = 'running'; item.attempts = (item.attempts||0)+1; item.updatedAt = new Date().toISOString(); saveSyncQueue(q);
   try {
     await processSyncItem(item);
@@ -8105,7 +8152,7 @@ async function retryAllSyncQueue(){
   syncQueueRetryRunning = true;
   try {
     await syncOutboxReady;
-    for(const item of getSyncQueue().filter(x => x.status !== 'done')) await retrySyncItem(item.id);
+    for(const item of getSyncQueue().filter(x => x.status !== 'done' && syncItemHere(x))) await retrySyncItem(item.id);
   } finally {
     syncQueueRetryRunning = false;
   }
