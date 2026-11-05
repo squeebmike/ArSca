@@ -66,3 +66,9 @@ assert.match(w, /const pkg = packageFor\(d, unitPrice\);/);
 assert.match(w, /totalWeightOz \+= pkg\.contentsOz \* qty;/);
 assert.match(fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8'), /scripts\/shipping-package\.mjs/);
 console.log('Shipping packages: singles by price, sealed by what it is, supplies, slabs, comics, custom weights passed');
+// The eBay listing screen starts from the same chart (old guesses only if it can't load).
+{
+  const dash = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.match(dash, /const shipChart = await import\(new URL\('scripts\/shipping-package\.mjs', document\.baseURI\)\.href\)\.catch\(\(\) => null\);/);
+  assert.match(dash, /const pkg = shipChart && !isComic \? shipChart\.packageFor\(item, Number\(inventoryListPrice\(item\)\) \|\| 0\) : null;/);
+}

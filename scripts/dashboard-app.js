@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.5-price-review';
+const APP_VERSION = '2026.11.05.7-shipping-chart';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22675,11 +22675,18 @@ async function openEbayFromDash(id){
   // Comics ship bagged & boarded in a Gemini Comic Flash Mailer: 12.75 x
   // 7.75 x 1.25 in outside; a single issue in it ships at 8 oz (store call).
   const packageTypeVal = (liveOk && live.item?.packageType) || '';
-  const weightVal = (liveOk && live.item?.weightValue) || (isComic ? 0.5 : isSealed ? 1 : 0.1);
+  // Store, 2026-11-05 ("fix the shipping issues for all items"): the same
+  // package chart Whatnot and the website use (scripts/shipping-package.mjs)
+  // -- an ETB starts at an ETB's weight and size, a $20+ single in a bubble
+  // mailer, a cheaper one in an envelope. The old guesses only if it can't load.
+  const shipChart = await import(new URL('scripts/shipping-package.mjs', document.baseURI).href).catch(() => null);
+  // Comics keep the Gemini mailer below, however their category is spelled.
+  const pkg = shipChart && !isComic ? shipChart.packageFor(item, Number(inventoryListPrice(item)) || 0) : null;
+  const weightVal = (liveOk && live.item?.weightValue) || (pkg ? Math.round(pkg.weightOz / 16 * 1000) / 1000 : (isComic ? 0.5 : isSealed ? 1 : 0.1));
   const weightUnitVal = (liveOk && live.item?.weightUnit) || 'POUND';
-  const dimLengthVal = (liveOk && live.item?.dimLength) || (isComic ? 12.75 : isSealed ? 8 : 6.5);
-  const dimWidthVal = (liveOk && live.item?.dimWidth) || (isComic ? 7.75 : isSealed ? 6 : 4);
-  const dimHeightVal = (liveOk && live.item?.dimHeight) || (isComic ? 1.25 : isSealed ? 3 : 0.1);
+  const dimLengthVal = (liveOk && live.item?.dimLength) || (pkg ? pkg.length : (isComic ? 12.75 : isSealed ? 8 : 6.5));
+  const dimWidthVal = (liveOk && live.item?.dimWidth) || (pkg ? pkg.width : (isComic ? 7.75 : isSealed ? 6 : 4));
+  const dimHeightVal = (liveOk && live.item?.dimHeight) || (pkg ? pkg.height : (isComic ? 1.25 : isSealed ? 3 : 0.1));
   const dimUnitVal = (liveOk && live.item?.dimUnit) || 'INCH';
 
   document.getElementById('dash-ebay-modal')?.remove();
