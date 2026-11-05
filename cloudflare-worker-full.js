@@ -1,3 +1,4 @@
+import {handleDeltaReignChecklist} from './scripts/delta-reign-page.mjs';
 import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules, fuzzyCardLookup as mtgFuzzyCard} from './scripts/mtg-judge.mjs';
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
@@ -8780,6 +8781,7 @@ async function routeRequest(request, env, ctx) {
       const response=await handleBaseballCatalog(request,env,url,{ctx,searchEbay:(query,campaignId,signal)=>fetchEbayActiveListings(env,query,{campaignId,listingType:'AllPurchasable',limit:50,signal}),escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
     }
+    {const page=handleDeltaReignChecklist(request,url,{escape:mtgEscapeHtml,shell:mtgPageShell});if(page)return page;}
     if(url.pathname==='/pokemon'||url.pathname.startsWith('/pokemon/')||url.pathname==='/sitemap-pokemon.xml') {
       const response=await handlePokemonCatalog(request,env,url,{escape:mtgEscapeHtml,slug:mtgSlugify,shell:mtgPageShell,listItems:()=>optionalCatalogInventory(signal=>fetchAllListableStorefrontItemsCached(env,ctx,signal)),available:isStorefrontItemAvailable});
       if(response)return response;
@@ -9170,7 +9172,7 @@ async function routeRequest(request, env, ctx) {
       // 'other' is a low-value catch-all bucket -- both routes still work if
       // visited directly, just not worth asking Google to index separately.
       const skippedCategorySlugs = ['supplies', 'other'];
-      const staticUrls = [...pocketGuidePaths, '/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/mtg-rules', '/mtg-judge', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
+      const staticUrls = [...pocketGuidePaths, '/faq', '/links', '/news', '/dougvana-print', '/category', '/preorders/catalog', '/pokemon', '/mtg', '/mtg-rules', '/mtg-judge', '/pokemon/checklists/delta-reign', '/comic-new-releases-the-mana-pocket', ...(await articleSitemapPaths(env)), ...Object.keys(CATEGORY_LANDING_LABELS).filter(slug => !skippedCategorySlugs.includes(slug)).map(slug => categoryLandingHref(slug))]
         .map(path => `<url><loc>https://www.themanapocket.com${path}</loc></url>`).join('');
       const xml = `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${staticUrls}</urlset>`;
       return new Response(xml, { headers: { 'Content-Type': 'application/xml;charset=UTF-8', 'Cache-Control': 'public, max-age=3600' } });

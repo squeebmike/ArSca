@@ -1,3 +1,4 @@
+import {mergeNovemberGuides} from './november-release-guides.mjs';
 import {articleMarketplace,sportsArticleSet,renderArticleMarketplace,affiliateTcgImages,tcgImageAffiliateUrl} from './article-marketplace.mjs';
 import {articleContents} from './collector-page-ui.mjs';
 import {sportsSetKey} from './topps/public-checklist-policy.mjs';
@@ -23,6 +24,7 @@ const PAGE_CACHE_SECONDS = 300;
 // Published release guides: match only their verified set names/codes, never
 // loosely match a character name to another printing or promise allocations.
 export const RELEASE_GUIDES = {
+ '2026-27-topps-flagship-basketball-collector-guide':{game:'basketball',categorySlug:'sports-cards',inventoryLabel:'sports-card',name:'2026–27 Topps Flagship Basketball',sets:['2026–27 Topps Flagship Basketball','2026-27 Topps Flagship Basketball'],codes:[],checklist:'/basketball/checklists/2026-27-topps-flagship-basketball',viewer:'/basketball/checklists/2026-27-topps-flagship-basketball'},
   "2025-topps-series-2-baseball-collector-guide":{game:"baseball",categorySlug:"sports-cards",inventoryLabel:"sports-card",name:"2025 Topps Series 2 Baseball",sets:["2025 Topps Series 2 Baseball","2025 Topps Series 2"],codes:[],checklist:"/baseball/checklists/2025-topps-series-2-baseball",viewer:"/baseball/checklists/2025-topps-series-2-baseball"},
   "pokemon-black-bolt-2025-collector-guide":{"game":"pokemon","name":"Black Bolt","sets":["SV: Black Bolt","Black Bolt"],"codes":[],"checklist":"/pokemon/sets/696e3ca8bb2a772e0d0568df/sv-black-bolt","viewer":"/pokemon-new-releases?set=SV%3A%20Black%20Bolt"},
   "pokemon-white-flare-2025-collector-guide":{"game":"pokemon","name":"White Flare","sets":["SV: White Flare","White Flare"],"codes":[],"checklist":"/pokemon/sets/696e3ca8bb2a772e0d0568e0/sv-white-flare","viewer":"/pokemon-new-releases?set=SV%3A%20White%20Flare"},
@@ -50,8 +52,8 @@ export const RELEASE_GUIDES = {
   "pokemon-pitch-black-2026-collector-guide":{"game":"pokemon","name":"Pitch Black","sets":["Pitch Black","ME05: Pitch Black"],"codes":[],"checklist":"/pokemon/sets/69f562ee6222edcca357f0fc/me05-pitch-black","viewer":"/pokemon-new-releases?set=ME05%3A%20Pitch%20Black"},
   "pokemon-30th-celebration-2026-collector-guide":{"game":"pokemon","name":"30th Celebration","sets":["30th Celebration","ME: 30th Celebration"],"codes":[],"checklist":"/pokemon/sets/6a23994ceef6d8fe7e225ca5/me-30th-celebration","viewer":"/pokemon-new-releases?set=ME%3A%2030th%20Celebration"},
 
-  'pokemon-delta-reign-release-date-card-checklist':{game:'pokemon',name:'Pokémon Delta Reign',sets:['ME06: Delta Reign','Delta Reign'],codes:['me06'],checklist:'/pokemon/sets/6a883dd245dd2d15c8a710d0/me06-delta-reign',viewer:'/pokemon-new-releases?set=ME06%3A%20Delta%20Reign'},
-  'mtg-star-trek-release-dates-set-codes-card-guide':{game:'mtg',name:'MTG Star Trek',sets:['Star Trek','Star Trek Commander','Star Trek: Stardates'],codes:['trk','trc','sds'],checklist:'/mtg',viewer:'/mtg-new-releases?set=trk'},
+  'pokemon-delta-reign-release-date-card-checklist':{game:'pokemon',name:'Pokémon Delta Reign',sets:['ME06: Delta Reign','Delta Reign'],codes:['me06'],checklist:'/pokemon/checklists/delta-reign',viewer:'/pokemon-new-releases?set=ME06%3A%20Delta%20Reign'},
+  'mtg-star-trek-release-dates-set-codes-card-guide':{game:'mtg',name:'MTG Star Trek',sets:['Star Trek','Star Trek Commander','Star Trek: Stardates'],codes:['trk','trc','sds'],checklist:'/mtg/trk',viewer:'/mtg-new-releases?set=trk'},
 };
 // Derive sports guide links from the reviewed release catalog rather than a second registry.
 export function releaseGuide(slug){
@@ -194,7 +196,7 @@ export function shapeArticle(item) {
 
 export async function fetchArticles(env,ctx) {
   if (!env.WEBFLOW_TOKEN) return [];
-  return cachedPublicCatalog(env,ctx,'published-articles-v2',async signal=>{
+  return cachedPublicCatalog(env,ctx,'published-articles-v3',async signal=>{
   const headers = { Authorization: `Bearer ${env.WEBFLOW_TOKEN}`, accept: 'application/json' };
   const items=[],seen=new Set();
   let complete=false;
@@ -219,10 +221,10 @@ export async function fetchArticles(env,ctx) {
     }else if(batch.length<100){complete=true;break;}
   }
   if(!complete)throw new Error('Webflow article pagination limit exceeded');
-  return items
+  return mergeNovemberGuides(items
     .filter(item => !item.isArchived && !item.isDraft)
     .map(shapeArticle).filter(Boolean)
-    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+    .sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''))));
   },{freshMs:180000,maxAgeMs:300000,timeoutMs:8000});
 }
 
@@ -525,10 +527,10 @@ export function renderArticlePage(article, statuses, related, deps) {
 
 export function renderBookUpdates(article,storeId,esc) { return renderBookAlertForm(article.books,storeId,esc); }
 
-const articleGroups=[['mtg','Magic: The Gathering'],['pokemon','Pokémon'],['baseball','Baseball'],['football','Football'],['comics','Comics'],['collecting','Collector guides']];
+const articleGroups=[['mtg','Magic: The Gathering'],['pokemon','Pokémon'],['baseball','Baseball'],['football','Football'],['basketball','Basketball'],['comics','Comics'],['collecting','Collector guides']];
 export function renderArticleList(articles, deps) {
   const esc=deps.esc;
-  const category=a=>/baseball|bowman/.test(a.slug)?'baseball':/football/.test(a.slug)?'football':articleTopics(a).find(t=>['mtg','pokemon','comics'].includes(t))||'collecting';
+  const category=a=>/baseball|bowman/.test(a.slug)?'baseball':/football/.test(a.slug)?'football':/basketball/.test(a.slug)?'basketball':articleTopics(a).find(t=>['mtg','pokemon','comics'].includes(t))||'collecting';
   const groups=articleGroups.filter(([key])=>articles.some(a=>category(a)===key));
   const topic=groups.some(([key])=>key===deps.topic)?deps.topic:'';
   const visible=articles.filter(a=>!topic||category(a)===topic);

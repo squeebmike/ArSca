@@ -78,6 +78,7 @@ assert.equal(Object.keys(remainingParallelSpecs).length,33);
 assert.equal(Object.keys(parallelPrograms).length,65);
 const baseOnlyReleases=new Set([...bigLeagueBaseballSets,...missingBaseball2024Sets,...draftFinest2024Sets,...historicalBaseballSets].map(s=>s.id));
 for(const release of [...baseballSets,...footballSets]){
+ if(release.parallelReviewPending){assert.match(release.scope,/Unnumbered parallel programs are not included/);assert.equal(parallelPrograms[release.id],undefined);for(const card of release.cards)assert.deepEqual(cardParallelProgram(release,card).variants,[]);continue;}
  if(baseOnlyReleases.has(release.id)&&release.id!=='2024-topps-big-league-baseball'){
   assert.match(release.scope,/(?:additional parallels are|Additional parallel programs and odds are) not yet imported/,'base-only releases disclose their scope');
   assert.equal(parallelPrograms[release.id],undefined,'do not invent unverified parallel programs');

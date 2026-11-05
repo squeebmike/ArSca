@@ -1,3 +1,4 @@
+import {novemberReleaseGuides} from '../scripts/november-release-guides.mjs';
 import assert from 'node:assert/strict';
 import {fetchArticles} from '../scripts/comic-articles.mjs';
 import {clearPublicCatalogBackoff} from '../scripts/public-catalog-cache.mjs';
@@ -192,7 +193,7 @@ console.log('Comic article wiring checks passed');
  try{
   globalThis.fetch=async url=>{const offset=Number(new URL(url).searchParams.get('offset'));offsets.push(offset);return {ok:true,json:async()=>({items:rows.slice(offset,offset+100),pagination:{total:205}})};};
   const articles=await fetchArticles(env);
-  assert.equal(articles.length,205);assert.equal(articles.at(-1).slug,'guide-204');assert.deepEqual(offsets,[0,100,200]);assert.equal(writes,1);
+  assert.equal(articles.length,205+novemberReleaseGuides.length);assert.equal(articles.at(-1).slug,'guide-204');assert.deepEqual(offsets,[0,100,200]);assert.equal(writes,1);
   writes=0;
   globalThis.fetch=async url=>Number(new URL(url).searchParams.get('offset'))===0?{ok:true,json:async()=>({items:rows.slice(0,100),pagination:{total:205}})}:{ok:false,status:503};
   await assert.rejects(fetchArticles(env),/Webflow articles 503/);assert.equal(writes,0,'partial library must not enter shared cache');

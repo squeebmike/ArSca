@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
     paths:
+      - scripts/november-release-guides.mjs
+      - scripts/delta-reign-page.mjs
+      - scripts/pokemon-delta-reign-checklist.mjs
+      - scripts/topps/new-releases-2026-11.mjs
+      - scripts/mtg-full-game.mjs
       - scripts/mtg-play-lessons.mjs
       - scripts/mtg-practice.mjs
       - scripts/mtg-academy.mjs

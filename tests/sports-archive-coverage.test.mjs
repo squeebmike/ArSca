@@ -1,3 +1,4 @@
+import {licensedSportsSets} from '../scripts/licensed-sports-seed.mjs';
 import assert from 'node:assert/strict';
 import {archiveNonbaseSections} from '../scripts/topps/archive-nonbase-sections.mjs';
 import {bowmanProspectSections} from '../scripts/topps/bowman-prospect-sections.mjs';
@@ -9,12 +10,12 @@ import {sportsReferenceRows,sportsPlayerTeamSearch} from '../scripts/sports-play
 const sets=[...baseballSets,...footballSets];let cards=0;
 for(const source of archiveNonbaseSections){assert.match(source.sourceSha256,/^[a-f0-9]{64}$/);assert.match(source.sourceUrl,/^https:\/\/(?:cdn.shopify.com|(?:www\.)?topps.com)\//);assert.ok(sets.some(s=>s.id===source.setId));}
 for(const set of sets){const groups=sectionsForSet(set);if((set.id==='2024-topps-update-series-baseball')){assert.equal(groups.length,0);assert.match(set.scope,/Inserts, autographs.*not yet imported/);}else if(set.id==='2024-topps-five-star-baseball')assert.equal(groups.length,0,'Five Star scope is explicitly base autographs only');else assert.ok(groups.length,set.id);assert.equal(new Set(groups.map(g=>g.id)).size,groups.length);const ids=new Set(set.cards.map(c=>c.id));for(const g of groups){assert.ok(g.cards.length);assert.equal(new Set(g.cards.map(c=>c.cardNumber)).size,g.cards.length);for(const c of g.cards){assert.ok(!ids.has(c.id),c.id);ids.add(c.id);cards++;assert.ok(c.cardNumber&&c.player&&c.subjects.length);assert.doesNotMatch(c.player+c.team,/�|Ã|Â/);assert.ok(c.subjects.every(s=>s.name));assert.equal(c.section,g.name);}}}
-assert.equal(cards,68824);assert.equal(sets.length,73);
+assert.equal(cards,69514);assert.equal(sets.length,74);
 const paths=baseballSectionSitemapPaths(sets);assert.equal(new Set(paths).size,paths.length);
-const refs=sportsReferenceRows();assert.equal(refs.length,sets.reduce((n,s)=>n+s.cards.length,0)+cards+16260);assert.equal(refs.filter(r=>r.sport==='hockey').length,12942);
+const refs=sportsReferenceRows();assert.equal(refs.length,sets.reduce((n,s)=>n+s.cards.length,0)+cards+licensedSportsSets.reduce((n,s)=>n+s.cards.length+(s.sections||[]).reduce((m,g)=>m+g.cards.length,0),0));assert.equal(refs.filter(r=>r.sport==='hockey').length,12942);
 const black=sets.find(s=>s.id==='2025-topps-chrome-black-football');assert.ok(sectionsForSet(black).some(g=>g.cards.some(c=>c.player==='A.J. Brown'&&c.cardNumber==='AU-ABR')));
 const draft=sets.find(s=>s.id==='2025-bowman-draft-baseball');assert.ok(sectionsForSet(draft).some(g=>g.cards.some(c=>c.team===''&&c.player==='Anthony Eyanson')),'unprinted teams stay blank');
-console.log('73 releases, 68,824 native non-base references, unique routes, source hashes, and player/team discovery checked');
+console.log('74 releases, 69,514 native non-base references, unique routes, source hashes, and player/team discovery checked');
 for(const set of sets){
  const identities=new Set();
  for(const group of sectionsForSet(set).filter(g=>/^(?:(?:bowman-)?chrome|paper)-prospects(?:-i{1,2})?$/.test(g.id)))for(const card of group.cards){

@@ -1,3 +1,4 @@
+import {novemberSportsSets} from './topps/new-releases-2026-11.mjs';
 import {toppsBasketball2025} from './topps-basketball-2025-seed.mjs';
 import {upperDeckExtended} from './upper-deck-extended-seed.mjs';
 import {upperDeckSeries2} from './upper-deck-series-2-seed.mjs';
@@ -9,3 +10,5 @@ licensedSportsSets.push(upperDeckSeries2);
 licensedSportsSets.push(upperDeckExtended);
 
 licensedSportsSets.push(toppsBasketball2025);
+
+licensedSportsSets.push(...novemberSportsSets.filter(s=>s.sport==='basketball'));
