@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {deckLabEngineSource} from '../scripts/mtg/deck-lab-match.mjs';
+import {createDeckLabServerEngine} from '../scripts/mtg/deck-lab-server-engine.mjs';
+import {roomView,putRoomDeck,applyRoomAction,verifiedRoomDeck,boundedJson} from '../scripts/mtg/deck-lab-room-model.mjs';
+import {deckLabClient,deckLabBody} from '../scripts/mtg/deck-lab-page.mjs';
+const body=deckLabEngineSource.slice('const Engine=(()=>{'.length,-')();'.length-1);
+assert.equal(createDeckLabServerEngine.toString().split('{').slice(1).join('{').slice(0,-1),body,'browser and server execute the same checked-in rules');
+const forest={name:'Forest',type_line:'Basic Land — Forest',oracle_text:'',mana_cost:'',id:'11111111-1111-4111-8111-111111111111'},bear={name:'Grizzly Bears',type_line:'Creature — Bear',power:'2',toughness:'2',oracle_text:'',mana_cost:'{1}{G}',cmc:2,id:'22222222-2222-4222-8222-222222222222'};
+const cards=[...Array.from({length:24},()=>forest),...Array.from({length:36},()=>bear)];
+let r={revision:0,mode:'rules',expiresAt:Date.now()+10000,players:[{keyHash:'host'},null],state:null,inviteHash:'invite'};
+r=putRoomDeck(r,0,cards,'Host',0,()=>.5);r.players[1]={keyHash:'guest'};r=putRoomDeck(r,1,cards,'Guest',r.revision,()=>.5);
+for(const seat of [0,1]){const v=roomView(r,seat),str=JSON.stringify(v);assert(!str.includes('keyHash'));assert(!str.includes('inviteHash'));assert.equal(v.state.players[0].hand.length,7);assert(v.state.players[0].hand.every(c=>c.name));assert(v.state.players[1].hand.every(c=>Object.keys(c).join()==='hidden'));assert(v.state.players.every(p=>p.library.every(c=>Object.keys(c).join()==='hidden')));assert.equal(v.state.active,seat===0?0:1);}
+const rev=r.revision;r=applyRoomAction(r,0,{type:'keep',args:[1,[]]},rev);assert.equal(r.state.players[0].kept,true,'actor index from the client cannot steal the other seat');assert.equal(r.state.players[1].kept,false);assert.throws(()=>applyRoomAction(r,1,{type:'keep',args:[0,[]]},rev),/changed/);r=applyRoomAction(r,1,{type:'keep',args:[0,[]]},r.revision);assert.equal(r.state.phase,'main1');
+assert.throws(()=>applyRoomAction(r,1,{type:'land',args:[0,r.state.players[1].hand.find(c=>c.name==='Forest')?.id]},r.revision),/legal/);
+assert.throws(()=>applyRoomAction(r,0,{type:'manual',args:[{player:0,kind:'life',value:50}]},r.revision),/not supported/);
+const f=r.state.players[0].hand.find(c=>c.name==='Forest');r=applyRoomAction(r,0,{type:'land',args:[0,f.id]},r.revision);assert.equal(roomView(r,1).state.players[1].field[0].name,'Forest');assert.equal(roomView(r,1).state.players[1].hand.length,6);
+const free={...structuredClone(r),mode:'table'};assert.throws(()=>applyRoomAction(free,1,{type:'manual',args:[{player:1,kind:'draw'}]},free.revision),/own cards/);
+const moved=applyRoomAction(free,0,{type:'manual',args:[{player:0,from:'field',to:'graveyard',id:f.id}]},free.revision);assert.equal(roomView(moved,1).state.players[1].graveyard[0].name,'Forest');
+const searching=applyRoomAction(moved,1,{type:'search'},moved.revision);assert(roomView(searching,1).state.players[0].library.every(c=>c.name));assert(roomView(searching,0).state.players[1].library.every(c=>c.hidden));const shuffled=applyRoomAction(searching,1,{type:'shuffle'},searching.revision);assert(roomView(shuffled,1).state.players[0].library.every(c=>c.hidden));assert.throws(()=>applyRoomAction(r,0,{type:'search'},r.revision),/not supported/);
+const lost=applyRoomAction(r,0,{type:'concede'},r.revision);assert.equal(roomView(lost,1).state.result.winner,0);assert.throws(()=>applyRoomAction(lost,1,{type:'pass',args:[0]},lost.revision),/ended/);
+const initial={...r,state:null,players:[{keyHash:'host'},null]};assert.throws(()=>putRoomDeck(initial,0,[{...bear,oracle_text:'Flying'}],'X',initial.revision),/outside/);
+let calls=0;const verified=await verifiedRoomDeck([{id:forest.id,quantity:24},{id:bear.id,quantity:36}],async(url,init)=>{calls++;assert.equal(url,'https://api.scryfall.com/cards/collection');assert.deepEqual(JSON.parse(init.body).identifiers,[{id:forest.id},{id:bear.id}]);return Response.json({data:[{...forest,set:'lea',collector_number:'295',image_uris:{normal:'https://evil.test/forest.jpg'}},{...bear,set:'lea',collector_number:'199'}]});});assert.equal(calls,1);assert.equal(verified.length,60);assert.equal(verified[0].image_uris.normal,'');
+await assert.rejects(()=>verifiedRoomDeck([{id:'bad',quantity:60}]),/identifier/);await assert.rejects(()=>boundedJson(new Response('x'.repeat(300)),100),/large/);
+new Function(deckLabClient);assert(deckLabBody().includes('Create private room'));assert(fs.readFileSync('wrangler.deploy.jsonc','utf8').includes('deck-lab-room-v1'));
+console.log('Online rooms: shared rules, private projection, own-seat authorization, stale revisions, turn legality, public card moves, concession and trusted card verification passed');

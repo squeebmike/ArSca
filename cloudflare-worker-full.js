@@ -2,6 +2,8 @@ import {handleDeltaReignChecklist} from './scripts/delta-reign-page.mjs';
 import { packageFor } from './scripts/shipping-package.mjs';
 import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules, fuzzyCardLookup as mtgFuzzyCard} from './scripts/mtg-judge.mjs';
 import {handleDeckLab} from './scripts/mtg/deck-lab-page.mjs';
+import {DeckLabRoom,handleDeckLabRooms} from './scripts/mtg/deck-lab-room.mjs';
+export {DeckLabRoom};
 import {handleLicensedSportsCatalog} from './scripts/licensed-sports-pages.mjs';
 import {releaseCatalogMetadata} from './scripts/release-order.mjs';
 import {coordinatedPriceFetch} from './scripts/reference-price-refresh.mjs';
@@ -6305,6 +6307,8 @@ async function routeRequest(request, env, ctx) {
     try {
     const url = new URL(request.url);
 
+    const onlineDeckLab = await handleDeckLabRooms(request,env,{limit:enforceUsageLimit});
+    if(onlineDeckLab)return onlineDeckLab;
     const deckLab = handleDeckLab(request,{shell:mtgPageShell});
     if(deckLab)return deckLab;
     const learning = await handleMtgLearning(request, env, {shell:mtgPageShell, auth:requireAuthenticatedUser, limit:enforceUsageLimit});
