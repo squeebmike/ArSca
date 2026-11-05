@@ -21,7 +21,9 @@ const BASE = new URL('..', import.meta.url).href;
 const LINES = ['PSST. NEW STUFF DROPS EVERY WEEK.', 'I LIVE IN THE ARCADE SYSTEM. DON\'T TELL ANYONE.', 'THAT ONE\'S A GOOD PULL.', 'CATCH US LIVE ON WHATNOT!', 'BUILT IN 1997. STILL RUNNING.', 'NEAR MINT? I\'LL ALLOW IT.'];
 const safe = fn => { try { return fn(); } catch { return null; } };
 // The Worker: the same site when it serves the page, else its own address.
-const WORKER = /(^|\.)themanapocket\.com$/.test(typeof location !== 'undefined' ? location.hostname : '') ? '' : 'https://still-resonance-4f87.swarnerauto.workers.dev';
+// Always the worker: the website itself is served by Webflow, which
+// answers a POST to /public/... with 405.
+const WORKER = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 export const ASK_URL = WORKER + '/public/byterider/ask';
 // The visitor's first name, from their own website sign-in (account.js keeps
 // the session here). Read in their browser only; nothing but the first name
@@ -97,8 +99,23 @@ function buildChat(corner, onAsk) {
   return { box, open: () => { box.style.display = 'flex'; document.getElementById('byterider-site')?.classList.add('br-chat-open'); setTimeout(() => input.focus(), 50); }, close: () => { box.style.display = 'none'; document.getElementById('byterider-site')?.classList.remove('br-chat-open'); }, get isOpen() { return box.style.display !== 'none'; }, x };
 }
 
-export function mountSiteByteRider({ size = 76, corner = 'left' } = {}) {
-  if (document.getElementById('byterider-site') || safe(() => localStorage.getItem('byterider-hidden') === '1')) return null;
+// After his × he waits as a small tab in the corner; a tap brings him back.
+function showReturnTab(opts) {
+  if (document.getElementById('byterider-return')) return null;
+  const corner = opts.corner || 'left';
+  const tab = document.createElement('button');
+  tab.id = 'byterider-return'; tab.type = 'button'; tab.textContent = '▶ BYTERIDER';
+  tab.setAttribute('aria-label', 'Bring back ByteRider');
+  Object.assign(tab.style, { position: 'fixed', bottom: '14px', [corner]: '14px', zIndex: '2147483000', padding: '6px 10px', borderRadius: '999px', border: '2px solid #b4ff3a', background: '#160a2b', color: '#b4ff3a', font: '700 11px/1 system-ui, sans-serif', letterSpacing: '1px', cursor: 'pointer', opacity: '0.85' });
+  tab.onclick = () => { safe(() => localStorage.removeItem('byterider-hidden')); tab.remove(); mountSiteByteRider(opts); };
+  document.body.append(tab);
+  return null;
+}
+
+export function mountSiteByteRider(opts = {}) {
+  const { size = 76, corner = 'left' } = opts;
+  if (document.getElementById('byterider-site')) return null;
+  if (safe(() => localStorage.getItem('byterider-hidden') === '1')) return showReturnTab(opts);
   if (!document.querySelector('link[data-byterider]')) {
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = BASE + 'assets/byterider.css'; css.dataset.byterider = '1';
@@ -131,7 +148,7 @@ export function mountSiteByteRider({ size = 76, corner = 'left' } = {}) {
   });
   document.body.append(chat.box);
   chat.x.onclick = () => chat.close();
-  close.onclick = e => { e.stopPropagation(); safe(() => localStorage.setItem('byterider-hidden', '1')); br.destroy(); wrap.remove(); chat.box.remove(); };
+  close.onclick = e => { e.stopPropagation(); safe(() => localStorage.setItem('byterider-hidden', '1')); br.destroy(); wrap.remove(); chat.box.remove(); showReturnTab(opts); };
   // On the frame round him (it takes the taps, not the face inside).
   wrap.onclick = e => { if (close.contains(e.target)) return; br.wake(); if (chat.isOpen) { chat.close(); br.play('wink', { text: LINES[line++ % LINES.length] }); } else { chat.open(); br.play('happy', { text: 'ASK ME ANYTHING!' }); } };
   // Hello, once a visit.
@@ -144,7 +161,7 @@ export function mountSiteByteRider({ size = 76, corner = 'left' } = {}) {
   // Buttons that put something in the cart, or check out.
   document.addEventListener('click', e => {
     const b = e.target?.closest?.('button,a,input[type=submit]');
-    if (!b || wrap.contains(b)) return;
+    if (!b || !wrap.isConnected || wrap.contains(b)) return;
     const words = (b.textContent || b.value || b.getAttribute('aria-label') || '').toLowerCase();
     if (/check\s*out|place order|pay now/.test(words)) br.play('jackpot', { text: 'LET\'S GOOO!' });
     else if (/pre-?order/.test(words)) br.play('love', { text: 'LOCKED IN. GOOD CALL.' });
@@ -152,6 +169,7 @@ export function mountSiteByteRider({ size = 76, corner = 'left' } = {}) {
   }, true);
   // The website's own code can make him react.
   window.addEventListener('byterider', e => {
+    if (!wrap.isConnected) return;
     const { state = 'happy', text = '' } = e.detail || {};
     if (MASCOT_STATES.includes(state)) br.play(state, { text: String(text).slice(0, 120) });
   });
