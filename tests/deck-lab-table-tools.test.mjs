@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {roomEngine as E,applyRoomAction,roomView} from '../scripts/mtg/deck-lab-room-model.mjs';
+import {deckLabClient} from '../scripts/mtg/deck-lab-page.mjs';
+const land={name:'Forest',type_line:'Basic Land — Forest'},spell={name:'Practice creature',type_line:'Creature — Bear',power:'2',toughness:'2',mana_cost:'{1}{G}'};
+const s=E.create([Array(60).fill(land),Array(60).fill(land)],{mode:'manual'});E.keep(s,0,[]);E.keep(s,1,[]);s.players[0].hand.push({...spell,id:'spell-1',owner:0});
+E.manual(s,{player:0,kind:'table-cast',from:'hand',id:'spell-1'});assert.equal(s.stack[0].card.id,'spell-1');assert.throws(()=>E.manual(s,{player:1,kind:'table-resolve',id:'spell-1',to:'field'}),/Your spell/);E.manual(s,{player:0,kind:'table-resolve',id:'spell-1',to:'field'});assert.equal(s.players[0].field[0].name,spell.name);
+E.manual(s,{player:0,from:'field',id:'spell-1',kind:'counter',label:'+1/+1',value:2});assert.equal(s.players[0].field[0].counters['+1/+1'],2);assert.throws(()=>E.manual(s,{player:0,from:'field',id:'spell-1',kind:'counter',label:'<script>',value:1}),/Invalid counter/);
+E.manual(s,{player:0,from:'field',to:'hand',id:'spell-1'});assert.deepEqual(s.players[0].hand.at(-1).counters,{});
+E.manual(s,{player:0,kind:'token',label:'Soldier',power:1,toughness:1,value:3});assert.equal(s.players[0].field.length,3);const ids=s.players[0].field.map(c=>c.id);assert.equal(new Set(ids).size,3);E.manual(s,{player:0,kind:'tap',from:'field',id:ids[0]});assert(s.players[0].field[0].tapped);E.manual(s,{player:0,from:'field',to:'graveyard',id:ids[0]});assert(!s.players[0].graveyard.some(c=>c.token));assert.equal(s.players[0].field.length,2);
+assert.throws(()=>E.manual(s,{player:0,kind:'token',label:'Bad',power:Infinity,toughness:1,value:1}),/token name/);assert.throws(()=>E.manual(s,{player:0,kind:'token',label:'Bad',power:1,toughness:1,value:21}),/token name/);
+let room={mode:'table',revision:0,players:[{name:'Host'},{name:'Guest'}],state:s};room=applyRoomAction(room,1,{type:'manual',args:[{player:0,kind:'token',label:'Spirit',power:1,toughness:1,value:1}]},0);assert.equal(room.state.players[1].field[0].name,'Spirit');assert.equal(roomView(room,0).state.players[1].field[0].name,'Spirit');assert.throws(()=>applyRoomAction(room,1,{type:'manual',args:[{player:1,from:'field',id:ids[1],kind:'tap'}]},room.revision),/own cards/);
+E.manual(s,{player:0,kind:'phase'});assert.equal(s.tableStep,'begin-combat');assert.throws(()=>E.manual(s,{player:1,kind:'phase'}),/active player/);s.stack.push({card:{id:'pending'},controller:0});assert.throws(()=>E.manual(s,{player:0,kind:'phase'}),/Resolve the stack/);s.stack=[];
+new Function(deckLabClient);
+console.log('Table play: generic casting/resolution, spell ownership, bounded tokens, tap, counters, counter reset, token disappearance and online seat privacy passed');

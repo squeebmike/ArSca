@@ -57,7 +57,7 @@ export function applyRoomAction(room,seat,action,expected){
   if(s.phase==='opening')throw Error('Keep your opening hand first.');s.players[seat].library=roomEngine.shuffled(s.players[seat].library,secureRandom);next.players[seat].searching=false;s.log.push((seat?'Guest':'Host')+' shuffles their library.');
  }else if(type==='turn'){
   if(s.phase==='opening'||s.active!==seat)throw Error('Only the active player can pass the turn.');
-  s.active=roomEngine.nextPlayer(s,s.active);s.priority=s.active;s.turn++;s.players[s.active].field.forEach(c=>c.tapped=false);s.log.push('Turn passed. Untap applied; draw and other turn actions are manual.');
+  s.active=roomEngine.nextPlayer(s,s.active);s.priority=s.active;s.turn++;s.tableStep='upkeep';s.players[s.active].field.forEach(c=>c.tapped=false);s.log.push('Turn passed. Untap applied; draw and other turn actions are manual.');
  }else throw Error('Unknown table action.');
  next.revision++;s.decisions++;return next;
 }

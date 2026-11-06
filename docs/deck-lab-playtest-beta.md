@@ -167,3 +167,23 @@ with controls beside it and a separate hand lane. Safe-area insets and dynamic
 viewport height keep controls reachable. Tests cover four-seat privacy, turn
 rotation, invite reuse rejection, casting, per-commander damage and concessions
 in both pure models and real Workerd/SQLite rooms.
+
+## Direct tabletop controls
+
+In manual tables, click a land in your hand to put it onto the battlefield;
+click another spell to place it on the shared stack. Command-zone casting keeps
+its existing tax counter. Click a battlefield card to tap/untap; the magnifier
+still opens card text and explicit actions. Drag a card to the drop tray to
+choose a zone, or onto your battlefield/hand. Hand-to-battlefield drops of spells
+use the stack. Costs, timing and effects remain manual. Escape cancels a drag.
+
+Players can create bounded groups of named creature tokens with numeric stats,
+and add/remove +1/+1, -1/-1, loyalty, charge and stun counters. Power/toughness
+counter totals appear on cards; other counter effects are manual. Counters reset
+when a card changes zones; tokens disappear when moved off the battlefield.
+The server enforces ownership and payload bounds. Generic spells can resolve
+from the shared stack to a chosen public zone; effects are applied by players.
+
+A manual phase marker highlights beginning, main, combat and ending phases. Only
+the active online seat advances it, and the stack must be empty. The marker does
+not execute card effects or declare attacks/blocks automatically.

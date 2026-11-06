@@ -152,18 +152,23 @@ export function createDeckLabServerEngine(){
   }
   pass(s,1);return true;
  }
- function manual(s,{player,from,to,id,kind,value}){
+ function manual(s,{player,from,to,id,kind,value,label,power,toughness}){
   if(s.mode!=='manual')throw Error('Freeform actions are only available at the freeform table.');
   const p=s.players[player];if(!p||p.eliminated)throw Error('Invalid or eliminated player.');if(s.phase==='opening')throw Error('Keep both opening hands before using table actions.');
+  if(kind==='phase'){if(s.active!==player)throw Error('Only the active player advances the phase marker.');if(s.stack.length)throw Error('Resolve the stack before advancing the phase marker.');const steps=['upkeep','draw','main1','begin-combat','attack','block','main2','end'],i=steps.indexOf(s.tableStep||'main1');if(i>=steps.length-1)throw Error('Pass the turn after the end step.');s.tableStep=steps[i+1];return;}
+  if(kind==='token'){if(typeof label!=='string'||!label.trim()||label.length>80||!Number.isInteger(power)||!Number.isInteger(toughness)||Math.abs(power)>99||Math.abs(toughness)>99||!Number.isInteger(value)||value<1||value>20)throw Error('Enter a token name, numeric stats and 1–20 copies.');if(p.field.filter(c=>c.token).length+value>60)throw Error('Token limit: 60 per player.');for(let n=0;n<value;n++)p.field.push({id:'token-'+player+'-'+(s.tokenSerial=(s.tokenSerial||0)+1),owner:player,name:label.trim(),type_line:'Token Creature',oracle_text:'Apply token abilities manually.',power:String(power),toughness:String(toughness),token:true,tapped:false,sick:true,damage:0,boost:0});return;}
+  if(kind==='table-cast'){if(!['hand','commandZone'].includes(from))throw Error('Cast from your hand or command zone.');if(from==='commandZone')return manual(s,{player,kind:'commander-cast',id});const i=p.hand.findIndex(c=>c.id===id);if(i<0||/\bLand\b/.test(p.hand[i].type_line))throw Error('Choose a spell in your hand.');s.stack.push({card:p.hand.splice(i,1)[0],controller:player,target:null});return;}
+  if(kind==='table-resolve'){if(!['field','graveyard','exile'].includes(to))throw Error('Choose a public destination.');const i=s.stack.findIndex(t=>t.card.id===id&&t.controller===player);if(i<0)throw Error('Your spell is not on the stack.');const c=s.stack.splice(i,1)[0].card;c.sick=true;p[to].push(c);return;}
   if(kind==='commander-damage'){if(s.format!=='commander'||!s.commanders.some(c=>c.id===id)||!Number.isInteger(value)||Math.abs(value)>21)throw Error('Invalid commander damage entry.');const n=(p.commanderDamage[id]||0)+value;if(n<0)throw Error('Commander damage cannot be negative.');p.commanderDamage[id]=n;return;}
   if(kind==='commander-cast'){if(s.format!=='commander')throw Error('This is not a Commander table.');const i=p.commandZone.findIndex(c=>c.id===id);if(i<0)throw Error('Commander is not in your command zone.');const c=p.commandZone.splice(i,1)[0];c.commandCasts++;s.stack.push({card:c,controller:player,target:null});return;}
   if(kind==='commander-resolve'||kind==='commander-counter'){const i=s.stack.findIndex(t=>t.card.id===id&&t.card.isCommander&&t.controller===player);if(i<0)throw Error('Your commander is not on the stack.');const c=s.stack.splice(i,1)[0].card;c.sick=true;p[kind==='commander-resolve'?'field':'graveyard'].push(c);return;}
   if(kind==='life'){if(!Number.isFinite(value)||Math.abs(value)>100)throw Error('Invalid life change.');p.life+=value;return;}
   if(kind==='draw'){draw(s,player);return;}
   if(!['hand','field','graveyard','exile','library','commandZone','sideboard'].includes(from))throw Error('Invalid source zone.');const i=p[from].findIndex(c=>c.id===id);if(i<0)throw Error('Card not found.');
+  if(kind==='counter'){if(from!=='field'||!['+1/+1','-1/-1','loyalty','charge','stun'].includes(label)||!Number.isInteger(value)||Math.abs(value)>20)throw Error('Invalid counter change.');const c=p[from][i];c.counters||={};const n=(c.counters[label]||0)+value;if(n<0||n>999)throw Error('Counter count must be 0–999.');c.counters[label]=n;return;}
   if(kind==='tap'){p[from][i].tapped=!p[from][i].tapped;return;}
   if(kind==='flip'){const c=p[from][i];if(!c.card_faces?.length)throw Error('No other face.');c.face=((c.face||0)+1)%c.card_faces.length;return;}
-  if(!['hand','field','graveyard','exile','library','commandZone','sideboard'].includes(to))throw Error('Invalid destination zone.');if(to==='commandZone'&&!p[from][i].isCommander)throw Error('Only a designated commander can enter the command zone.');p[to].push(p[from].splice(i,1)[0]);
+  if(!['hand','field','graveyard','exile','library','commandZone','sideboard'].includes(to))throw Error('Invalid destination zone.');if(to==='commandZone'&&!p[from][i].isCommander)throw Error('Only a designated commander can enter the command zone.');const moved=p[from].splice(i,1)[0];if(!moved.token||to==='field')p[to].push(moved);if(to!=='field'){moved.counters={};moved.damage=0;moved.boost=0;moved.tapped=false;}
  }
  return {support,parse,shuffled,validateDeck,create,mulligan,keep,payment,land,cast,pass,attack,block,discard,bot,manual,eliminate,nextPlayer,clone};
 }

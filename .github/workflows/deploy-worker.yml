@@ -13,6 +13,7 @@ on:
       - scripts/mtg/deck-lab-page.mjs
       - scripts/mtg/deck-lab-battlefield.mjs
       - scripts/mtg/deck-lab-formats.mjs
+      - scripts/mtg/deck-lab-table-tools.mjs
       - scripts/mtg/deck-lab-online.mjs
       - scripts/mtg/deck-lab-room.mjs
       - scripts/mtg/deck-lab-room-model.mjs
