@@ -7,12 +7,14 @@ export function roomView(room,seat){
  if(state){
   // Do not transmit library identities to either seat, or the other hand to anyone.
   state.players.forEach((p,i)=>{if(i!==seat||!room.players[seat].searching)p.library=p.library.map(()=>({hidden:true}));if(i!==seat){p.hand=p.hand.map(()=>({hidden:true}));p.sideboard=(p.sideboard||[]).map(()=>({hidden:true}));}});
-  if(seat===1){state.players.reverse();state.active=1-state.active;state.priority=1-state.priority;(state.commanders||[]).forEach(c=>c.owner=1-c.owner);state.stack.forEach(t=>{t.controller=1-t.controller;if(t.target==='player0')t.target='player1';else if(t.target==='player1')t.target='player0';});if(state.result&&state.result.winner!==null)state.result.winner=1-state.result.winner;}
+  const count=state.players.length,order=Array.from({length:count},(_,i)=>(seat+i)%count),relative=p=>(p-seat+count)%count;
+  state.players=order.map(i=>state.players[i]);state.active=relative(state.active);state.priority=relative(state.priority);
+  (state.commanders||[]).forEach(c=>c.owner=relative(c.owner));state.stack.forEach(t=>{t.controller=relative(t.controller);if(/^player[0-9]+$/.test(t.target||''))t.target='player'+relative(Number(t.target.slice(6)));});if(state.result&&state.result.winner!==null)state.result.winner=relative(state.result.winner);
   state.mode=room.mode==='rules'?'remote-rules':'remote-table';
   state.librarySearch=!!room.players[seat].searching;
   state.log=state.log.map(t=>t.replace(/^You /,'Host ').replace(/^Opponent /,'Guest ').replace(/^(Turn \d+: )you /,'$1host ').replace(/^(Turn \d+: )opponent /,'$1guest '));
  }
- return {revision:room.revision,expiresAt:room.expiresAt,seat,mode:room.mode,format:room.format||'casual',names:seat===0?room.players.map(p=>p?.name||'Waiting for opponent'):room.players.map(p=>p?.name||'Waiting for opponent').reverse(),ready:room.players.map(p=>!!p?.cards),joined:!!room.players[1],state};
+ return {revision:room.revision,expiresAt:room.expiresAt,seat,mode:room.mode,format:room.format||'casual',capacity:room.players.length,names:Array.from({length:room.players.length},(_,i)=>room.players[(seat+i)%room.players.length]?.name||'Waiting for player'),ready:room.players.map(p=>!!p?.cards),joined:room.players.filter(Boolean).length===room.players.length,joinedCount:room.players.filter(Boolean).length,state};
 }
 export function putRoomDeck(room,seat,cards,name,expected,random=secureRandom){
  if(room.revision!==expected)throw Error('The room changed. Sync and try again.');
@@ -31,12 +33,12 @@ export function putRoomDeck(room,seat,cards,name,expected,random=secureRandom){
 }
 export function applyRoomAction(room,seat,action,expected){
  if(room.revision!==expected)throw Error('The room changed. Sync and try again.');
- if(!room.state)throw Error('Waiting for both players to load a deck.');
+ if(!room.state)throw Error('Waiting for all players to load a deck.');
  const next=structuredClone(room),s=next.state;
  if(s.result)throw Error('This match has ended. Create another room for a rematch.');
- const {type,args=[]}=action||{};
- if(type==='concede'){s.result={winner:1-seat,reason:'Concession'};s.log.push((seat?'Guest':'Host')+' concedes.');}
- else if(type==='keep'){roomEngine.keep(s,seat,args[1]||[]);if(s.phase!=='opening')s.log[s.log.length-1]='Host plays first and skips the first draw. Precombat main phase.';}
+ const {type,args=[]}=action||{};if(s.players[seat].eliminated)throw Error('You are out of this game.');
+ if(type==='concede'){if(s.players.length>2)roomEngine.eliminate(s,seat,'Last player remaining');else s.result={winner:1-seat,reason:'Concession'};s.log.push(next.players[seat].name+' concedes.');}
+ else if(type==='keep'){roomEngine.keep(s,seat,args[1]||[]);if(s.phase!=='opening')s.log[s.log.length-1]=s.players.length>2?'Multiplayer: the starting player also draws. Beginning steps are manual.':'Host plays first and skips the first draw. Precombat main phase.';}
  else if(type==='mulligan')roomEngine.mulligan(s,seat,secureRandom);
  else if(room.mode==='rules'){
   if(!['land','cast','pass','attack','block','discard'].includes(type))throw Error('Action is not supported in a rules room.');
@@ -55,7 +57,7 @@ export function applyRoomAction(room,seat,action,expected){
   if(s.phase==='opening')throw Error('Keep your opening hand first.');s.players[seat].library=roomEngine.shuffled(s.players[seat].library,secureRandom);next.players[seat].searching=false;s.log.push((seat?'Guest':'Host')+' shuffles their library.');
  }else if(type==='turn'){
   if(s.phase==='opening'||s.active!==seat)throw Error('Only the active player can pass the turn.');
-  s.active=1-s.active;s.priority=s.active;s.turn++;s.players[s.active].field.forEach(c=>c.tapped=false);s.log.push('Turn passed. Untap applied; draw and other turn actions are manual.');
+  s.active=roomEngine.nextPlayer(s,s.active);s.priority=s.active;s.turn++;s.players[s.active].field.forEach(c=>c.tapped=false);s.log.push('Turn passed. Untap applied; draw and other turn actions are manual.');
  }else throw Error('Unknown table action.');
  next.revision++;s.decisions++;return next;
 }

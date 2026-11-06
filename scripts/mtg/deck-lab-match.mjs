@@ -52,11 +52,12 @@ export const deckLabEngineSource=String.raw`const Engine=(()=>{
  }
  function create(decks,{mode='manual',skill='regular',random=Math.random,format='casual'}={}){
   if(!['manual','bot'].includes(mode)||!['learner','regular','practiced'].includes(skill))throw Error('Invalid match settings.');
+  if(![2,4].includes(decks.length)||decks.length===4&&(format!=='commander'||mode!=='manual'))throw Error('Four-player tables require Commander freeform.');
   if(format==='commander'&&mode==='bot')throw Error('Commander currently uses the freeform table; automated Commander abilities are not implemented.');
-  const players=decks.map((deck,p)=>{const report=validateDeck(deck,format);if(report.errors.length)throw Error((p?'Opponent: ':'Your deck: ')+report.errors.join(' '));if(report.main<7)throw Error('Both decks need at least seven main-deck cards.');if(deck.length>250)throw Error('Deck exceeds 250 cards.');const physical=deck.map((c,i)=>({...clone(c),quantity:null,id:p+'-'+i,owner:p,isCommander:format==='commander'&&c.deckSection==='commander',commandCasts:0,tapped:false,sick:true,damage:0,boost:0}));return {life:format==='commander'?40:20,mulligans:0,kept:false,landPlayed:false,mana:{},hand:[],field:[],graveyard:[],exile:[],commandZone:physical.filter(c=>c.isCommander),commanderDamage:{},sideboard:physical.filter(c=>c.deckSection==='sideboard'),library:shuffled(physical.filter(c=>!c.deckSection||c.deckSection==='main'),random)};});
+  const players=decks.map((deck,p)=>{const report=validateDeck(deck,format);if(report.errors.length)throw Error((p?'Opponent: ':'Your deck: ')+report.errors.join(' '));if(report.main<7)throw Error('Both decks need at least seven main-deck cards.');if(deck.length>250)throw Error('Deck exceeds 250 cards.');const physical=deck.map((c,i)=>({...clone(c),quantity:null,id:p+'-'+i,owner:p,isCommander:format==='commander'&&c.deckSection==='commander',commandCasts:0,tapped:false,sick:true,damage:0,boost:0}));return {life:format==='commander'?40:20,eliminated:false,mulligans:0,mulliganCount:0,kept:false,landPlayed:false,mana:{},hand:[],field:[],graveyard:[],exile:[],commandZone:physical.filter(c=>c.isCommander),commanderDamage:{},sideboard:physical.filter(c=>c.deckSection==='sideboard'),library:shuffled(physical.filter(c=>!c.deckSection||c.deckSection==='main'),random)};});
   if(mode==='bot'&&players.some(p=>p.library.some(c=>support(c).kind==='manual')))throw Error('Automated mode requires supported cards in both decks. Use the freeform table for this list.');
   const s={mode,skill,format,players,commanders:players.flatMap(p=>p.commandZone.map(c=>({id:c.id,name:c.name,owner:c.owner}))),active:0,priority:0,passes:0,turn:1,phase:'opening',stack:[],attackers:[],blocks:{},log:[],result:null,decisions:0};
-  for(let p=0;p<2;p++)for(let i=0;i<7;i++)draw(s,p);
+  for(let p=0;p<players.length;p++)for(let i=0;i<7;i++)draw(s,p);
   if(mode==='bot'){
    const p=players[1],landCount=()=>p.hand.filter(c=>support(c).kind==='land').length;
    while(skill!=='learner'&&(landCount()<2||landCount()>5)&&p.mulligans<2){mulligan(s,1,random);}
@@ -66,9 +67,11 @@ export const deckLabEngineSource=String.raw`const Engine=(()=>{
   return s;
  }
  function log(s,t){s.log.push(t);if(s.log.length>180)s.log.shift();}
- function draw(s,p){const x=s.players[p];if(!x.library.length){s.result={winner:1-p,reason:'Tried to draw from an empty library'};return;}x.hand.push(x.library.shift());}
- function mulligan(s,p,random=Math.random){const x=s.players[p];if(s.phase!=='opening'||x.kept||x.mulligans>=7)throw Error('Cannot mulligan now.');x.library=shuffled([...x.hand,...x.library],random);x.hand=[];x.mulligans++;for(let i=0;i<7;i++)draw(s,p);log(s,(p?'Opponent':'You')+' mulligans to '+(7-x.mulligans)+'.');}
- function keep(s,p,bottom=[]){const x=s.players[p];if(s.phase!=='opening'||x.kept)throw Error('Cannot keep now.');if(new Set(bottom).size!==x.mulligans||bottom.length!==x.mulligans||bottom.some(id=>!x.hand.some(c=>c.id===id)))throw Error('Choose exactly '+x.mulligans+' card(s) to bottom.');for(const id of bottom)x.library.push(x.hand.splice(x.hand.findIndex(c=>c.id===id),1)[0]);x.kept=true;if(s.players.every(x=>x.kept)){s.phase='main1';s.priority=0;log(s,'You play first; skip your first draw. Precombat main phase.');}}
+ function eliminate(s,p,reason='Concession'){const x=s.players[p];if(!x||x.eliminated)throw Error('Player is already out.');x.eliminated=true;x.kept=true;for(const z of ['hand','library','field','graveyard','exile','commandZone','sideboard'])x[z]=[];s.stack=s.stack.filter(t=>t.controller!==p);const alive=s.players.map((x,i)=>x.eliminated?null:i).filter(i=>i!==null);if(alive.length<2)s.result={winner:alive[0]??null,reason};else if(s.active===p){s.active=nextPlayer(s,p);s.priority=s.active;}if(s.phase==='opening'&&s.players.every(x=>x.kept))s.phase='main1';}
+ function nextPlayer(s,p){for(let i=1;i<=s.players.length;i++){const n=(p+i)%s.players.length;if(!s.players[n].eliminated)return n;}return p;}
+ function draw(s,p){const x=s.players[p];if(!x.library.length){if(s.players.length>2)eliminate(s,p,'Last player remaining');else s.result={winner:1-p,reason:'Tried to draw from an empty library'};return;}x.hand.push(x.library.shift());}
+ function mulligan(s,p,random=Math.random){const x=s.players[p];if(s.phase!=='opening'||x.kept||x.mulligans>=7)throw Error('Cannot mulligan now.');x.library=shuffled([...x.hand,...x.library],random);x.hand=[];x.mulliganCount=(x.mulliganCount||0)+1;x.mulligans=s.players.length>2?Math.max(0,x.mulliganCount-1):x.mulliganCount;for(let i=0;i<7;i++)draw(s,p);log(s,(p?'Opponent':'You')+' mulligans to '+(7-x.mulligans)+'.');}
+ function keep(s,p,bottom=[]){const x=s.players[p];if(s.phase!=='opening'||x.kept)throw Error('Cannot keep now.');if(new Set(bottom).size!==x.mulligans||bottom.length!==x.mulligans||bottom.some(id=>!x.hand.some(c=>c.id===id)))throw Error('Choose exactly '+x.mulligans+' card(s) to bottom.');for(const id of bottom)x.library.push(x.hand.splice(x.hand.findIndex(c=>c.id===id),1)[0]);x.kept=true;if(s.players.every(x=>x.kept)){s.phase='main1';s.priority=0;log(s,s.players.length>2?'Multiplayer: the starting player also draws. Apply beginning steps manually.':'You play first; skip your first draw. Precombat main phase.');}}
  function payment(player,cost){
   const lands=player.field.filter(c=>support(c).kind==='land'&&!c.tapped),chosen=[];let generic=0;
   for(const symbol of [...String(cost||'').matchAll(/\{([^}]+)\}/g)].map(m=>m[1])){
@@ -151,7 +154,7 @@ export const deckLabEngineSource=String.raw`const Engine=(()=>{
  }
  function manual(s,{player,from,to,id,kind,value}){
   if(s.mode!=='manual')throw Error('Freeform actions are only available at the freeform table.');
-  const p=s.players[player];if(!p)throw Error('Invalid player.');if(s.phase==='opening')throw Error('Keep both opening hands before using table actions.');
+  const p=s.players[player];if(!p||p.eliminated)throw Error('Invalid or eliminated player.');if(s.phase==='opening')throw Error('Keep both opening hands before using table actions.');
   if(kind==='commander-damage'){if(s.format!=='commander'||!s.commanders.some(c=>c.id===id)||!Number.isInteger(value)||Math.abs(value)>21)throw Error('Invalid commander damage entry.');const n=(p.commanderDamage[id]||0)+value;if(n<0)throw Error('Commander damage cannot be negative.');p.commanderDamage[id]=n;return;}
   if(kind==='commander-cast'){if(s.format!=='commander')throw Error('This is not a Commander table.');const i=p.commandZone.findIndex(c=>c.id===id);if(i<0)throw Error('Commander is not in your command zone.');const c=p.commandZone.splice(i,1)[0];c.commandCasts++;s.stack.push({card:c,controller:player,target:null});return;}
   if(kind==='commander-resolve'||kind==='commander-counter'){const i=s.stack.findIndex(t=>t.card.id===id&&t.card.isCommander&&t.controller===player);if(i<0)throw Error('Your commander is not on the stack.');const c=s.stack.splice(i,1)[0].card;c.sick=true;p[kind==='commander-resolve'?'field':'graveyard'].push(c);return;}
@@ -162,5 +165,5 @@ export const deckLabEngineSource=String.raw`const Engine=(()=>{
   if(kind==='flip'){const c=p[from][i];if(!c.card_faces?.length)throw Error('No other face.');c.face=((c.face||0)+1)%c.card_faces.length;return;}
   if(!['hand','field','graveyard','exile','library','commandZone','sideboard'].includes(to))throw Error('Invalid destination zone.');if(to==='commandZone'&&!p[from][i].isCommander)throw Error('Only a designated commander can enter the command zone.');p[to].push(p[from].splice(i,1)[0]);
  }
- return {support,parse,shuffled,validateDeck,create,mulligan,keep,payment,land,cast,pass,attack,block,discard,bot,manual,clone};
+ return {support,parse,shuffled,validateDeck,create,mulligan,keep,payment,land,cast,pass,attack,block,discard,bot,manual,eliminate,nextPlayer,clone};
 })();`;

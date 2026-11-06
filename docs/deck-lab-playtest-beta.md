@@ -16,7 +16,7 @@ required. Opponent hand and library are hidden in automated mode.
 
 ## Online private rooms
 
-The same `/deck-lab` page offers a private host/guest room on separate devices.
+The same `/deck-lab` page offers private two-player rooms and four-player Commander pods on separate devices.
 Each player loads their own deck. A separate SQLite-backed Durable Object owns
 each room, including its shuffled cards, revisions and actions. Host plays
 first. Rules rooms use the exact same source as the tested browser engine;
@@ -29,8 +29,7 @@ room. A freeform room accepts other verified cards and players apply their
 effects themselves. Each player can move only their own cards and adjust their
 own life. Private library search is explicit and ends on shuffle.
 
-The host receives a random seat capability and a distinct single-use guest
-invite. Only SHA-256 capability digests are stored server-side. The invite is
+The host receives a random seat capability and a distinct single-use invite for each guest seat. Only SHA-256 capability digests are stored server-side. The invite is
 in the URL fragment and removed when claimed. Seat keys travel in Authorization
 headers, not URLs. Browser storage retains the seat for reconnecting. Polling
 syncs revisions every 2.5 seconds while visible; stale writes cannot overwrite
@@ -95,7 +94,7 @@ Your hand is visible; the local opponent hand opens through an explicit button. 
 battlefield, graveyard, exile and library bottom, tap/untap, turn multi-face cards
 over, and change life. The user applies rules and effects manually. This beta
 does not yet provide token creation, arbitrary counters, control changes,
-four-player multiplayer, midgame sideboarding, or a complete ability engine.
+midgame sideboarding, or a complete ability engine.
 
 ## Remaining work
 
@@ -110,7 +109,7 @@ matches run through ordinary actions to a result, checking unique IDs and card
 conservation, alongside stack, mulligan, mana, combat and freeform fixtures.
 Local preview: `node scripts/mtg/preview-deck-lab.mjs`.
 
-## Standard and 1v1 Commander
+## Standard and Commander
 
 The format selector separates custom practice, Standard and 1v1 Commander.
 Standard checks at least 60 main cards, at most 15 sideboard cards, combined
@@ -123,7 +122,7 @@ singleton limits, color identity and provider Commander legality. Commander
 sections are recognized in exports; an exact commander-name field can designate
 a single matching card when the export lacks a section. Two-commander pairing
 eligibility requires manual review. This is 40-life one-on-one Commander
-practice, not Duel Commander or a four-player pod.
+practice, not Duel Commander. Online rooms support two or four players.
 
 Commander uses freeform mode locally and online. Commanders have stable physical
 IDs, stay outside the opening library, and retain their command-zone cast count
@@ -144,3 +143,27 @@ Validation: `tests/deck-lab-formats.test.mjs` covers format checks, commander
 conservation, opening hands, tax persistence, per-commander damage and seat
 projection. The real SQLite room runtime test covers Commander cast/counter/zone
 return, 40 life, private hands and guest-seat normalization.
+
+## Four-player Commander pods and responsive play
+
+Choose four players in the online room setup. This selects Commander freeform;
+the host loads one deck and receives three different one-use guest links. Each
+guest claims one seat, loads their own deck, and submits it. The match starts
+only after all four decks are verified. Four-player local/bot play is not offered.
+
+Every seat receives its own hand, hidden library identities unless explicitly
+searching, and only the public zones of the other three players. Projection
+rotates players, stack controllers, active player, results and commander owners
+into each seat's viewpoint. Turns rotate through remaining players. Conceding
+removes that player's cards/spells and skips their seat; it does not end the
+whole pod unless one player remains. Empty-library draws eliminate only that
+player. Commander losses and arbitrary card effects still require manual play.
+The first multiplayer mulligan is free; the starting player also draws, with
+beginning steps applied manually. No full Commander ability engine is implied.
+
+Desktop shows three opposing battlefields above your own. Portrait phones have
+horizontally scrollable opposing seats; landscape phones use a compact table
+with controls beside it and a separate hand lane. Safe-area insets and dynamic
+viewport height keep controls reachable. Tests cover four-seat privacy, turn
+rotation, invite reuse rejection, casting, per-commander damage and concessions
+in both pure models and real Workerd/SQLite rooms.

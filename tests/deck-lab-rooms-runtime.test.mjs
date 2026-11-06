@@ -32,6 +32,22 @@ try{
  let cmdHost=await call('/'+cid+'/action',{auth:ckey,body:{revision:cmd.data.revision,action:{type:'keep',args:[0,[]]}}});cmd=await call('/'+cid+'/action',{auth:gkey,body:{revision:cmdHost.data.revision,action:{type:'keep',args:[0,[]]}}});const commanderId=cmd.data.state.players[0].commandZone[0].id;
  cmd=await call('/'+cid+'/action',{auth:gkey,body:{revision:cmd.data.revision,action:{type:'manual',args:[{player:0,kind:'commander-cast',id:commanderId}]}}});assert.equal(cmd.data.state.stack[0].card.commandCasts,1);assert.equal(cmd.data.state.stack[0].controller,0);
  cmd=await call('/'+cid+'/action',{auth:gkey,body:{revision:cmd.data.revision,action:{type:'manual',args:[{player:0,kind:'commander-counter',id:commanderId}]}}});cmd=await call('/'+cid+'/action',{auth:gkey,body:{revision:cmd.data.revision,action:{type:'manual',args:[{player:0,from:'graveyard',to:'commandZone',id:commanderId}]}}});assert.equal(cmd.data.state.players[0].commandZone[0].commandCasts*2,2);cmdHost=await call('/'+cid+'/state',{auth:ckey});assert.equal(cmdHost.data.state.players[1].commandZone[0].id,commanderId);
+ // Four distinct one-use invitations and four independently private seats.
+ const pod=await call('',{body:{mode:'table',format:'commander',capacity:4,name:'Pod host',cards:commanderRows}});assert.equal(pod.status,201);assert.equal(pod.data.invites.length,3);const pid=pod.data.room,pkeys=[pod.data.key,'e'.repeat(64),'f'.repeat(64),'a'.repeat(64)];
+ let pv=pod;
+ for(let i=1;i<4;i++){
+  const j=await call('/'+pid+'/join',{body:{invite:pod.data.invites[i-1],key:pkeys[i]}});assert.equal(j.status,200);assert.equal(j.data.seat,i);
+  assert([403,409].includes((await call('/'+pid+'/join',{body:{invite:pod.data.invites[i-1],key:'9'.repeat(64)}})).status));
+  pv=await call('/'+pid+'/deck',{auth:pkeys[i],body:{revision:j.data.revision,name:'Pod '+i,cards:commanderRows}});assert.equal(pv.status,200);assert.equal(!!pv.data.state,i===3);
+ }
+ assert.equal((await call('/'+pid+'/join',{body:{invite:pod.data.invites[0],key:'9'.repeat(64)}})).status,409);
+ for(let i=0;i<4;i++){
+  const v=await call('/'+pid+'/state',{auth:pkeys[i]});assert.equal(v.data.state.players.length,4);assert.equal(v.data.names[0],i?'Pod '+i:'Pod host');assert.equal(v.data.state.players[0].life,40);assert(v.data.state.players.slice(1).every(p=>p.hand.every(c=>c.hidden&&!c.id)));assert(v.data.state.players.every(p=>p.library.every(c=>c.hidden)));assert(!JSON.stringify(v).includes('keyHash'));assert(!JSON.stringify(v).includes('inviteHashes'));
+  pv=await call('/'+pid+'/action',{auth:pkeys[i],body:{revision:v.data.revision,action:{type:'keep',args:[0,[]]}}});assert.equal(pv.status,200);
+ }
+ for(let i=0;i<4;i++){const v=await call('/'+pid+'/state',{auth:pkeys[i]});assert.equal(v.data.state.active,0);pv=await call('/'+pid+'/action',{auth:pkeys[i],body:{revision:v.data.revision,action:{type:'turn'}}});assert.equal(pv.status,200);}
+ const v=await call('/'+pid+'/state',{auth:pkeys[1]});pv=await call('/'+pid+'/action',{auth:pkeys[1],body:{revision:v.data.revision,action:{type:'concede'}}});assert.equal(pv.status,200);assert.equal(pv.data.state.result,null);assert.equal(pv.data.state.players[0].eliminated,true);
+ console.log('Real SQLite four-player pod: three single-use invitations, four private seats, deck readiness, full turn cycle and independent concession passed');
  assert.equal((await call('',{body:{mode:'rules',format:'commander',cards:commanderRows}})).status,400);
  console.log('Real SQLite Commander room: 40 life, public command zones, private hands, guest cast/counter/return and per-commander tax passed');
  console.log('Real Durable Object / SQLite: two independent seats, trusted deck lookup, single-use invite, private hands/libraries, reconnect, room isolation, ownership, concurrent revision conflict, concession and origin checks passed');

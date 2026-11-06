@@ -15,17 +15,20 @@ export class DeckLabRoom extends DurableObject{
    if(path==='/create'){
     const b=await boundedJson(request);if(!['rules','table'].includes(b.mode)||!['casual','standard','commander'].includes(b.format||'casual'))return json({error:'Choose a valid format and room mode.'},400);
     if(b.format==='commander'&&b.mode==='rules')return json({error:'Commander currently uses a freeform room.'},400);
-    const cards=await verifiedRoomDeck(b.cards);const hostKey=token(),invite=token(),hostHash=await digest(hostKey),inviteHash=await digest(invite);
-    let r={revision:0,mode:b.mode,format:b.format||'casual',expiresAt:Date.now()+ROOM_TTL,players:[{keyHash:hostHash,name:'Host',cards:null},null],inviteHash,state:null};
+    const capacity=b.capacity??2;if(![2,4].includes(capacity)||capacity===4&&(b.format!=='commander'||b.mode!=='table'))return json({error:'Four-player rooms require Commander freeform.'},400);
+    const cards=await verifiedRoomDeck(b.cards);const hostKey=token(),invite=token(),hostHash=await digest(hostKey),inviteHash=await digest(invite);const invites=[invite,...Array.from({length:capacity-2},()=>token())],inviteHashes=await Promise.all(invites.map(digest));
+    let r={revision:0,mode:b.mode,format:b.format||'casual',expiresAt:Date.now()+ROOM_TTL,players:[{keyHash:hostHash,name:'Host',cards:null},...Array(capacity-1).fill(null)],inviteHash,inviteHashes,state:null};
     r=putRoomDeck(r,0,cards,b.name,0);if(this.read())return json({error:'Room already exists.'},409);
-    this.write(r);await this.ctx.storage.setAlarm(r.expiresAt);return json({key:hostKey,invite,...roomView(r,0)},201);
+    this.write(r);await this.ctx.storage.setAlarm(r.expiresAt);return json({key:hostKey,invite,invites,...roomView(r,0)},201);
    }
    if(path==='/join'){
     const b=await boundedJson(request,1000);if(!/^[a-f0-9]{64}$/.test(b.invite||'')||!/^[a-f0-9]{64}$/.test(b.key||''))return json({error:'Invalid invite.'},400);
     const inviteHash=await digest(b.invite),keyHash=await digest(b.key),r=this.read();if(!r||Date.now()>=r.expiresAt)return json({error:'Room expired or unavailable.'},410);
-    if(r.players[1])return equal(r.players[1].keyHash,keyHash)?json(roomView(r,1)):json({error:'The guest seat has already been claimed.'},409);
-    if(!equal(r.inviteHash,inviteHash))return json({error:'Invite is invalid.'},403);
-    r.players[1]={keyHash,name:'Guest',cards:null};r.inviteHash='';r.revision++;this.write(r);return json(roomView(r,1));
+    const existing=r.players.findIndex(p=>p&&equal(p.keyHash,keyHash));if(existing>=0)return json(roomView(r,existing));
+    if(r.players.every(Boolean))return json({error:'The guest seat has already been claimed.'},409);
+    const hashes=r.inviteHashes||[r.inviteHash],slot=hashes.findIndex(h=>equal(h,inviteHash));if(slot<0)return json({error:'Invite is invalid or already claimed.'},403);
+    const seat=slot+1;if(r.players[seat])return json({error:'This guest seat has already been claimed.'},409);
+    r.players[seat]={keyHash,name:'Guest '+seat,cards:null};hashes[slot]='';r.inviteHashes=hashes;if(seat===1)r.inviteHash='';r.revision++;this.write(r);return json(roomView(r,seat));
    }
    const bearer=request.headers.get('Authorization')?.replace(/^Bearer /,'')||'';if(!/^[a-f0-9]{64}$/.test(bearer))return json({error:'Room access required.'},401);
    const hashed=await digest(bearer);let r=this.read();if(!r||Date.now()>=r.expiresAt)return json({error:'Room expired or unavailable.'},410);
