@@ -1,5 +1,6 @@
 import {handleDeltaReignChecklist} from './scripts/delta-reign-page.mjs';
 import { packageFor } from './scripts/shipping-package.mjs';
+import { newArrivalsEmail } from './scripts/new-arrivals-email.mjs';
 import {handleMtgLearning, loadRules as loadMtgRules, retrieveRules as retrieveMtgRules, fuzzyCardLookup as mtgFuzzyCard} from './scripts/mtg-judge.mjs';
 import {handleDeckLab} from './scripts/mtg/deck-lab-page.mjs';
 import {DeckLabRoom,handleDeckLabRooms} from './scripts/mtg/deck-lab-room.mjs';
@@ -13671,6 +13672,54 @@ async function routeRequest(request, env, ctx) {
       const show = await nextWhatnotShow(whatnotClient(env));
       return json({ ok: true, show: show ? { id: show.id, title: show.title, startsAt: show.scheduled_start_at, url: show.url || '' } : null });
     }
+    // NEW ARRIVALS EMAIL (scripts/new-arrivals-email.mjs): the store's list
+    // (customers.new_arrivals_email) and the send after an FOC slip is received.
+    if (url.pathname.startsWith('/foc/new-arrivals/')) {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== ITEM_DETAIL_STORE_ID) return json({ ok: false, error: 'New-arrival emails are for The Mana Pocket only' }, 403);
+      const s = encodeURIComponent(storeId);
+      const listRows = async () => (await supabaseAdminFetch(env, `customers?store_id=eq.${s}&new_arrivals_email=eq.true&select=id,name,email&order=name.asc&limit=500`)).data || [];
+      // GET .../list -- who's on it.  POST .../list { customerId, on } -- add or remove one.
+      if (url.pathname === '/foc/new-arrivals/list') {
+        if (request.method === 'POST') {
+          const body = (await readJsonWithLimit(request, 4096)).data || {};
+          const id = String(body.customerId || '');
+          if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok: false, error: 'customerId is required' }, 400);
+          const on = body.on !== false;
+          await supabaseAdminFetch(env, `customers?id=eq.${encodeURIComponent(id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ new_arrivals_email: on, new_arrivals_email_at: on ? new Date().toISOString() : null }) });
+        }
+        return json({ ok: true, list: (await listRows()).map(c => ({ id: c.id, name: c.name || '', email: c.email || '' })) });
+      }
+      // POST .../send { itemIds, force } -- the received books to everyone on the list.
+      if (url.pathname === '/foc/new-arrivals/send' && request.method === 'POST') {
+        const body = (await readJsonWithLimit(request, 32 * 1024)).data || {};
+        const ids = [...new Set((body.itemIds || []).map(String).filter(id => /^[0-9a-f-]{36}$/i.test(id)))].slice(0, 120);
+        if (!ids.length) return json({ ok: false, error: 'No books to send' }, 400);
+        const sentKey = `new-arrivals-sent:${storeId}:` + (await sha256Hex(new TextEncoder().encode(ids.slice().sort().join(',')))).slice(0, 24);
+        if (!body.force && await env.LBA_KV.get(sentKey)) return json({ ok: false, error: 'This batch was already emailed', alreadySent: true }, 409);
+        const rows = [];
+        for (let i = 0; i < ids.length; i += 50) rows.push(...((await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&id=in.(${ids.slice(i, i + 50).map(encodeURIComponent).join(',')})&select=id,status,updated_at,created_at,data`)).data || []));
+        const site = 'https://www.themanapocket.com';
+        const items = rows.map(r => ({ r, it: shapeStorefrontItem(r) })).filter(({ it }) => it && isStorefrontItemAvailable(it))
+          .map(({ r, it }) => ({ name: it.name, price: it.price, image: it.image || (it.photos || [])[0] || '', url: site + (it.linkUrl || '/item/' + encodeURIComponent(r.id) + '/' + itemDetailSlug(it)) }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        if (!items.length) return json({ ok: false, error: 'None of those books are listed in the shop yet' }, 400);
+        const list = (await listRows()).filter(c => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c.email || '')));
+        if (!list.length) return json({ ok: false, error: 'Nobody is on the new-arrivals list yet' }, 400);
+        const settings = (await supabaseAdminFetch(env, `store_settings?store_id=eq.${s}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }))).data?.[0]?.receipt_settings || {};
+        const sent = [], failed = [];
+        for (const c of list) {
+          const mail = newArrivalsEmail(items, { storeName: settings.storeName || 'The Mana Pocket', site, location: settings.location || '', firstName: String(c.name || '').trim().split(/\s+/)[0] || '' });
+          try { await sendEmail(env, c.email, mail.subject, mail.text, { html: mail.html }); sent.push(c.name || c.email); }
+          catch (e) { failed.push((c.name || c.email) + ': ' + e.message); }
+        }
+        if (sent.length) await env.LBA_KV.put(sentKey, JSON.stringify({ at: new Date().toISOString(), sent: sent.length }), { expirationTtl: 30 * 86400 });
+        return json({ ok: true, books: items.length, sent, failed });
+      }
+      return json({ ok: false, error: 'Not found' }, 404);
+    }
     // GET /whatnot/shows/upcoming -- every scheduled show still to come (the
     // show picker after receiving FOC comics).
     if (url.pathname === '/whatnot/shows/upcoming' && request.method === 'GET') {
@@ -20756,7 +20805,7 @@ async function sendEmail(env, to, subject, text, opts = {}) {
     body: JSON.stringify({
       from: { address: fromAddress, name: fromName },
       to: [{ address: to }],
-      content: { subject, html: emailTextToHtml(text), text },
+      content: { subject, html: opts.html || emailTextToHtml(text), text },
       tags: { source: 'mana-pocket-worker' },
     }),
   });

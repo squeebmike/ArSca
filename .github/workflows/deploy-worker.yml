@@ -166,6 +166,7 @@ on:
       - scripts/whatnot-api.mjs
       - scripts/whatnot-sync.mjs
       - scripts/shipping-package.mjs
+      - scripts/new-arrivals-email.mjs
       - scripts/morning-health.mjs
       - scripts/live-studio-bosses.mjs
       - scripts/live-studio-dungeon.mjs
