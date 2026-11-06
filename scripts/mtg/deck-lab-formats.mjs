@@ -12,7 +12,7 @@ export const podLayoutStyles=String.raw`
 `;
 export const orientationFixStyles=String.raw`
 .dl-playing .dl-board,.dl-playing .dl-gallery,.dl-playing #dl-opponent,.dl-playing .dl-controls{scrollbar-color:#64828d #142a35;scrollbar-width:thin}
-@media(orientation:landscape) and (max-height:600px){.dl-playing.dl-pod .dl-board{grid-template-rows:minmax(128px,.9fr) minmax(142px,1.1fr)}.dl-pod-seat{grid-template-rows:58px 36px minmax(30px,1fr)}.dl-playing .dl-controls #dl-prompt{font-size:11px;line-height:1.25}.dl-playing .dl-priority{font-size:9px}.dl-playing .dl-controls .dl-actions{margin:3px 0;gap:4px}.dl-playing .dl-controls #dl-feedback{font-size:9px;max-height:28px;overflow:auto}.dl-playing .dl-command-zone .dl-gallery{padding:0 2px}.dl-playing #dl-opponent .dl-command-zone .dl-cardwrap{max-height:28px}}
+@media(orientation:landscape) and (max-height:600px){.dl-playing.dl-pod .dl-board{grid-template-rows:minmax(128px,.9fr) minmax(142px,1.1fr)}.dl-pod-seat{grid-template-rows:58px 36px minmax(30px,1fr)}.dl-pod-seat .dl-side-meta{font-size:8px!important;gap:2px;line-height:1.1}.dl-playing .dl-controls #dl-prompt{font-size:11px;line-height:1.25}.dl-playing .dl-priority{font-size:9px}.dl-playing .dl-controls .dl-actions{margin:3px 0;gap:4px}.dl-playing .dl-controls #dl-feedback{font-size:9px;max-height:28px;overflow:auto}.dl-playing .dl-command-zone .dl-gallery{padding:0 2px}.dl-playing #dl-opponent .dl-command-zone .dl-cardwrap{max-height:28px}}
 `;
 export const formatHelpers=String.raw`
 function selectedFormat(){return $('dl-format')?.value||'casual';}
