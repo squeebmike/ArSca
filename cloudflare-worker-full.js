@@ -53,7 +53,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText , upcomingWhatnotShows, SHOW_ONLY_START } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText , upcomingWhatnotShows, SHOW_ONLY_START, auctionRuleFrom } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
 export { ManaLiveStudio };
@@ -13583,11 +13583,13 @@ async function routeRequest(request, env, ctx) {
       // The Whatnot tab's export screen saves this object from its own copy;
       // costs set in Settings -> Whatnot (listingCosts) are kept when a save
       // doesn't carry them.
-      const existing = settings.listingCosts && 'autoTitles' in settings && 'unsoldBackToShop' in settings ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
+      const existing = settings.listingCosts && 'autoTitles' in settings && 'unsoldBackToShop' in settings && settings.auctionStart ? null : await env.LBA_KV.get(key, 'json').catch(() => null);
       const kept = {};
       if (existing?.listingCosts && !settings.listingCosts) kept.listingCosts = existing.listingCosts;
       if (existing && 'autoTitles' in existing && !('autoTitles' in settings)) kept.autoTitles = existing.autoTitles;
       if (existing && 'unsoldBackToShop' in existing && !('unsoldBackToShop' in settings)) kept.unsoldBackToShop = existing.unsoldBackToShop;
+      // The auction starting-bid rule (Settings -> Whatnot) stays unless this save sets it.
+      if (existing?.auctionStart && !settings.auctionStart) kept.auctionStart = existing.auctionStart;
       const saved = { ...kept, ...settings, updatedAt: new Date().toISOString(), updatedBy: auth.user?.email || auth.user?.id || '' };
       await env.LBA_KV.put(key, JSON.stringify(saved));
       return json({ ok: true, settings: saved });
@@ -13706,7 +13708,7 @@ async function routeRequest(request, env, ctx) {
       const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
       const results = await addItemsToWhatnotShow(itemIds, showId, { ...deps, rows: readRows,
         profileId: kind => profileIds[kind] || '',
-        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction: SHOW_ONLY_START });
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction: auctionRuleFrom(deps.listingSettings) });
       return json({ ok: true, added: results.filter(r => r.added).length, results });
     }
     // POST /whatnot/show-add { itemIds, showId } -- adds items to a show's

@@ -78,8 +78,8 @@ assert.match(worker, /deps\.api\('POST', '\/shipments\/add_tracking_code', \{ or
 assert.match(worker, /report_type: 'seller_financial_report', start_date: start\.toISOString\(\), end_date: end\.toISOString\(\)/);
 assert.match(worker, /listingSettings: await whatnotListingSettings\(env, storeId\) \};\n  const out = \{ at: new Date\(\)\.toISOString\(\) \};/, 'listing sync knows the auto-title choice');
 const dash = fs.readFileSync('dashboard.html', 'utf8');
-assert.match(dash, /onclick="addSelectedToNextWhatnotShow\(true\)"[^>]*>AUCTION IN NEXT SHOW</);
-assert.match(dash, /onclick="backToBuyItNowSelected\(\)"[^>]*>BACK TO BUY IT NOW</);
+assert.match(dash, /onclick="setWhatnotModeSelected\('auction'\)"[^>]*>AUCTION</);
+assert.match(dash, /onclick="setWhatnotModeSelected\('bin'\)"[^>]*>BUY IT NOW</, 'Buy It Now brings auctions back to the shop');
 assert.match(dash, /createWhatnotLabel\('\$\{escHtml\(o\.shipment\.id\)\}'\)">CREATE LABEL</);
 assert.match(dash, /addWhatnotTracking\('\$\{escHtml\(o\.id\)\}'\)">ADD TRACKING</);
 assert.match(dash, /onclick="runWhatnotPayouts\(7\)">LAST 7 DAYS</);
@@ -111,7 +111,11 @@ console.log('whatnot tools checks passed');
   const api = async (m, path, body) => { calls.push([m, path, body]); if (m === 'POST' && path === '/products') return { ok: true, status: 201, data: { id: 'p9' } }; if (m === 'GET') return { ok: true, status: 200, data: { data: [{ id: 'v9' }] } }; if (path === '/inventory/set') return { ok: true, status: 200, data: { results: [{ status: 'applied' }] } }; return { ok: true, status: 200, data: {} }; };
   const row = { id: '00000000-0000-4000-8000-0000000000aa', status: 'in_stock', data: { sellOnWhatnot: true, whatnotShowOnly: true, quantity: 2, name: 'Batman #1' } };
   const item = { name: 'Batman #1', price: 4.99, categorySlug: 'comics', category: 'Comic', photos: ['https://img/b.jpg'], description: 'x' };
-  const r = await w.syncWhatnotItem(api, row, item, null, { newKey: () => 'k' });
+  // The 10-minute sync: nothing made on Whatnot until it goes into a show.
+  const idle = await w.syncWhatnotItem(api, row, item, null, { newKey: () => 'k' });
+  assert.equal(idle.link, null); assert.equal(calls.length, 0, 'no listing outside a show');
+  // Going into a show (forShow): made, never in the shop.
+  const r = await w.syncWhatnotItem(api, row, item, null, { newKey: () => 'k', forShow: true });
   assert.ok(r.link.productId);
   assert.ok(!calls.some(c => c[1].startsWith('/merchandising/')), 'never published as Buy It Now');
   assert.ok(!calls.some(c => c[1].endsWith('/variants') && c[0] === 'PATCH'), 'no shop price');
@@ -135,11 +139,38 @@ console.log('whatnot tools checks passed');
   // The receive screens offer the show picker; the dashboard keeps the setting.
   const focDash = (await import('node:fs')).readFileSync('scripts/foc-dashboard.js', 'utf8');
   assert.match(focDash, /setTimeout\(function\(\)\{offerWhatnotShowForReceived\(pickState\.labelItems\);\},400\);/);
-  assert.match(focDash, /api\('\/whatnot\/show-only\?store_id='/);
+  assert.match(focDash, /window\.openWhatnotShowPicker\(ids,/, 'the same show picker as Inventory');
   const app = (await import('node:fs')).readFileSync('scripts/dashboard-app.js', 'utf8');
   assert.match(app, /\['whatnotShowOnly', false, 'bool'\],/);
   assert.match(app, /updateBuiltInInventoryItem\(item, \{ whatnotShowOnly:false \}\)/, 'BACK TO BUY IT NOW ends show only');
+  assert.match(app, /if\(item\.whatnotShowOnly === true && nextData\.whatnotShowOnly !== true && nextData\.sellOnWhatnot === true\) backToBuyItNowIds\(/, 'Auction -> Buy It Now returns it to the shop');
   const worker = (await import('node:fs')).readFileSync('cloudflare-worker-full.js', 'utf8');
   assert.match(worker, /url\.pathname === '\/whatnot\/show-only' && request\.method === 'POST'/);
-  assert.match(worker, /\{ auction: SHOW_ONLY_START \}\);/);
+  assert.match(worker, /\{ auction: auctionRuleFrom\(deps\.listingSettings\) \}\);/, 'the starting bid rule from Settings');
+}
+// WHATNOT MODE: Off / Buy It Now / Auction (show only).
+{
+  const w = await import('../scripts/whatnot-sync.mjs');
+  assert.deepEqual(w.auctionRuleFrom({}), { percent: 50, min: 4 });
+  assert.deepEqual(w.auctionRuleFrom({ auctionStart: { percent: 40, min: 3 } }), { percent: 40, min: 3 });
+  assert.deepEqual(w.auctionRuleFrom({ auctionStart: { percent: 500 } }), { percent: 50, min: 4 }, 'nonsense falls back');
+  // Auction mode, not in a show: 0 on Whatnot (not buyable in the shop).
+  const calls = [];
+  const api = async (m, path, body) => { calls.push([m, path, body]); if (path === '/inventory/set') return { ok: true, status: 200, data: { results: [{ status: 'applied' }] } }; return { ok: true, status: 200, data: {} }; };
+  const row = { id: '00000000-0000-4000-8000-0000000000bb', status: 'in_stock', data: { sellOnWhatnot: true, whatnotShowOnly: true, quantity: 3, name: 'X' } };
+  const item = { name: 'X', price: 10, categorySlug: 'comics', category: 'Comic', photos: ['https://img/x.jpg'], description: 'x' };
+  await w.syncWhatnotItem(api, row, item, { productId: 'p', variantId: 'v', qty: 3, price: 10, published: true }, { newKey: () => 'k' });
+  assert.equal(calls.find(c => c[1] === '/inventory/set')[2].items[0].quantity, 0, 'out of the shop until it is in a show');
+  calls.length = 0;
+  await w.syncWhatnotItem(api, row, item, { productId: 'p', variantId: 'v', qty: 0, published: true, auction: { startPrice: 5, showId: 's' } }, { newKey: () => 'k' });
+  assert.equal(calls.find(c => c[1] === '/inventory/set')[2].items[0].quantity, 3, 'in a show: its real count');
+  const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  const modeSrc = app.match(/function whatnotModeOf\(item = \{\}\)\{[^\n]*\n/)[0] + app.match(/function whatnotModePatch\(mode\)\{[^\n]*\n/)[0];
+  const [modeOf, patch] = new Function(modeSrc + 'return [whatnotModeOf, whatnotModePatch];')();
+  assert.equal(modeOf({}), 'off'); assert.equal(modeOf({ sellOnWhatnot: true }), 'bin'); assert.equal(modeOf({ sellOnWhatnot: true, whatnotShowOnly: true }), 'auction');
+  assert.deepEqual(patch('auction'), { sellOnWhatnot: true, whatnotShowOnly: true }); assert.deepEqual(patch('off'), { sellOnWhatnot: false, whatnotShowOnly: false });
+  assert.match(app, /if\(listing === 'whatnot_auction'\) return whatnotModeOf\(i\) === 'auction';/);
+  assert.match(app, /const auctionStart = \{ percent: pct > 0 && pct <= 100 \? pct : 50, min: min >= 1 \? Math\.round\(min\) : 4 \};/, 'the rule is saved in Settings');
+  const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  assert.match(worker, /if \(existing\?\.auctionStart && !settings\.auctionStart\) kept\.auctionStart = existing\.auctionStart;/);
 }

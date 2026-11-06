@@ -3681,42 +3681,9 @@ window.quickAddFocSkuToInventory=quickAddFocSkuToInventory;window.focEbayBulkChe
 // Whatnot (turn them on when scheduling it).
 async function offerWhatnotShowForReceived(labelItems){
   var ids=[];(labelItems||[]).forEach(function(x){var id=String(x&&x.itemId||'');if(id&&!(x&&x.flag)&&Number(x&&x.copies)>0&&ids.indexOf(id)<0)ids.push(id);});
-  if(!ids.length)return;
-  var shows;
-  try{var d=await api('/whatnot/shows/upcoming?store_id='+encodeURIComponent(getActiveStoreId()));shows=d.shows||[];}
-  catch(e){return;} // Whatnot not connected to this store: nothing to offer.
-  document.getElementById('foc-wn-show-modal')&&document.getElementById('foc-wn-show-modal').remove();
-  var m=document.createElement('div');m.id='foc-wn-show-modal';
-  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
-  var when=function(t){try{return new Date(t).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}catch(e){return t||'';}};
-  m.innerHTML='<div style="width:100%;max-width:460px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'
-    +'<div style="font-family:Orbitron,monospace;color:var(--purple);font-size:13px;letter-spacing:2px;margin-bottom:8px">PUT IN A WHATNOT SHOW?</div>'
-    +'<div style="font:11px var(--font-mono);color:var(--text);line-height:1.6;margin-bottom:10px">'+ids.length+' comic'+(ids.length===1?'':'s')+' just received. They go into the show you pick as <b>auctions</b> (starting bid 50% of the price or $4, whichever is more) and are <b>show only</b> -- not in your Buy It Now shop. Unsold ones stay show only until BACK TO BUY IT NOW in Inventory.</div>'
-    +(shows.length?'<select id="foc-wn-show-pick" style="width:100%;padding:8px;margin-bottom:6px;background:#050507;color:var(--text);border:1px solid var(--border);border-radius:6px">'
-      +shows.map(function(sh){return '<option value="'+esc(sh.id)+'">'+esc(when(sh.startsAt))+' -- '+esc(sh.title||'Whatnot show')+'</option>';}).join('')+'</select>'
-      +'<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Pre-bids: turn them on for the show in Whatnot when you schedule it.</div>'
-      :'<div style="font:11px var(--font-mono);color:var(--gold);margin-bottom:10px">No upcoming Whatnot show is scheduled. Schedule one in Whatnot, then use AUCTION IN NEXT SHOW in Inventory.</div>')
-    +'<div style="display:flex;gap:8px;justify-content:flex-end">'
-    +'<button class="hbtn" id="foc-wn-show-skip">SKIP</button>'
-    +(shows.length?'<button class="hbtn" style="color:var(--purple)" id="foc-wn-show-go">ADD AS AUCTIONS</button>':'')
-    +'</div><div id="foc-wn-show-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px"></div></div>';
-  document.body.appendChild(m);
-  m.querySelector('#foc-wn-show-skip').onclick=function(){m.remove();};
-  var go=m.querySelector('#foc-wn-show-go');
-  if(go)go.onclick=async function(){
-    var showId=m.querySelector('#foc-wn-show-pick').value,status=m.querySelector('#foc-wn-show-status');
-    go.disabled=true;var added=0,problems=[];
-    for(var i=0;i<ids.length;i+=25){
-      status.textContent='Adding to the show: '+Math.min(i+25,ids.length)+' of '+ids.length+'…';
-      try{
-        var r=await api('/whatnot/show-only?store_id='+encodeURIComponent(getActiveStoreId()),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({itemIds:ids.slice(i,i+25),showId:showId})});
-        added+=Number(r.added||0);(r.results||[]).forEach(function(x){if(x.error)problems.push((x.name||x.id)+': '+x.error);});
-      }catch(e){problems.push(e.message);}
-    }
-    status.innerHTML='<span style="color:var(--g)">'+added+' added as show-only auctions.</span>'+(problems.length?'<div style="color:var(--red);margin-top:4px">'+problems.slice(0,8).map(esc).join('<br>')+'</div>':'');
-    // This screen's copy of those items now says show only (a later edit keeps it).
-    if(added&&typeof loadInventory==='function'){try{await loadInventory();}catch(e){}}
-    go.textContent='DONE';go.onclick=function(){m.remove();};go.disabled=false;
-  };
+  if(!ids.length||typeof window.openWhatnotShowPicker!=='function')return;
+  // Whatnot not connected to this store: nothing to offer.
+  try{await api('/whatnot/shows/upcoming?store_id='+encodeURIComponent(getActiveStoreId()));}catch(e){return;}
+  window.openWhatnotShowPicker(ids,ids.length+' comic'+(ids.length===1?'':'s')+' just received (not the copies held or sold).');
 }
 window.offerWhatnotShowForReceived=offerWhatnotShowForReceived;

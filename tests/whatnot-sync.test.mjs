@@ -396,9 +396,9 @@ assert.equal((worker.match(/confirmed_by: auth\.user\.id \|\| null, confirmed_at
 assert.match(worker, /url\.pathname === '\/whatnot\/sync' && request\.method === 'POST'[\s\S]{0,200}\['owner','admin','manager'\]/);
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /\['sellOnWhatnot', false, 'bool'\],/);
-assert.equal((app.match(/sellOnWhatnot: !!document\.getElementById\('edit-sell-whatnot'\)\?\.checked,/g) || []).length, 2);
+assert.equal((app.match(/\.\.\.whatnotModePatch\(document\.getElementById\('edit-whatnot-mode'\)\?\.value\),/g) || []).length, 2, 'both edit screens save the Whatnot mode');
 assert.match(app, /if\(nextData\.sellOnWhatnot === true \|\| item\.sellOnWhatnot === true\) queueWhatnotSync\(\);/);
-assert.match(fs.readFileSync('dashboard.html', 'utf8'), /id="edit-sell-whatnot"/);
+assert.match(fs.readFileSync('dashboard.html', 'utf8'), /<select id="edit-whatnot-mode"[^>]*><option value="off">Off<\/option><option value="bin">Buy It Now<\/option><option value="auction">Auction \(show only\)<\/option><\/select>/);
 assert.doesNotMatch(app, /\['whatnotProductId'/, 'Whatnot ids are never saved from the dashboard copy');
 // The show-report import skips sales already recorded from Whatnot's notifications.
 const bridge = fs.readFileSync('scripts/whatnot-bridge.js', 'utf8');
@@ -411,8 +411,11 @@ assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql
 // Bulk SELL ON WHATNOT / STOP ON WHATNOT from the inventory bulk bar.
 {
   const dash = fs.readFileSync('dashboard.html', 'utf8');
-  assert.match(dash, /onclick="setSellOnWhatnotSelected\(true\)"[^>]*>SELL ON WHATNOT</);
-  assert.match(dash, /onclick="setSellOnWhatnotSelected\(false\)"[^>]*>STOP ON WHATNOT</);
+  // WHATNOT MODE buttons (2026-11-05); setSellOnWhatnotSelected stays for older callers.
+  assert.match(dash, /onclick="setWhatnotModeSelected\('bin'\)"[^>]*>BUY IT NOW</);
+  assert.match(dash, /onclick="setWhatnotModeSelected\('auction'\)"[^>]*>AUCTION</);
+  assert.match(dash, /onclick="setWhatnotModeSelected\('off'\)"[^>]*>OFF</);
+  assert.match(dash, /onclick="addSelectedToWhatnotShowPicker\(\)"[^>]*>ADD TO SHOW</);
   const src = dash.match(/async function setSellOnWhatnotSelected\(on\)\{[\s\S]*?\n\}\n/)[0];
   const run = (items, selected, answer = true) => {
     const saved = [], toasts = []; let syncs = 0;
@@ -431,7 +434,7 @@ assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql
   r = run([{ id: 'x', source: 'built_in' }], ['x'], false);
   await r.fn(true);
   assert.equal(r.saved.length, 0, 'cancel changes nothing');
-  assert.match(fs.readFileSync('scripts/dashboard-app.js', 'utf8'), /\$\{i\.sellOnWhatnot===true\?` <span[^`]*>WN SYNC<\/span>`:''\}/, 'the list shows which items sell on Whatnot');
+  assert.match(fs.readFileSync('scripts/dashboard-app.js', 'utf8'), /\$\{whatnotModeChipHtml\(i\)\}/, 'the list shows each item\'s Whatnot mode');
   assert.match(worker, /runWhatnotSyncForStore\(env, ctx, whatnotStoreId\(env\), \{ limit: 100 \}\)/, 'the 10-minute run takes up to 100');
   assert.match(worker, /job: 'whatnot-sync', store_id: storeId/, 'Whatnot runs are kept where they can be checked');
 }

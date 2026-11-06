@@ -99,7 +99,7 @@ assert.match(worker, /if \(existing\?\.listingCosts && !settings\.listingCosts\)
 assert.match(worker, /if \(existing && 'autoTitles' in existing && !\('autoTitles' in settings\)\) kept\.autoTitles = existing\.autoTitles;/, 'and the auto-title choice');
 assert.match(worker, /listingSettings: await whatnotListingSettings\(env, storeId\) \};\n    if \(type\.startsWith\('orders\.'\)/, 'webhook sales use the costs');
 const dash = fs.readFileSync('dashboard.html', 'utf8');
-assert.match(dash, /onclick="addSelectedToNextWhatnotShow\(\)"[^>]*>ADD TO NEXT WHATNOT SHOW</);
+assert.match(dash, /onclick="addSelectedToWhatnotShowPicker\(\)"[^>]*>ADD TO SHOW</, 'any scheduled show, picked');
 const parseSrc = dash.match(/function parseWhatnotCostRules\(text\)\{[\s\S]*?\n\}\n/)[0];
 const parse = new Function(parseSrc + '; return parseWhatnotCostRules;')();
 assert.deepEqual(parse('ManaPocket | 1.50\nTOOFER: $3\nbig boy bundle = 25\n\nnonsense'), [{ match: 'ManaPocket', cost: 1.5 }, { match: 'TOOFER', cost: 3 }, { match: 'big boy bundle', cost: 25 }]);
