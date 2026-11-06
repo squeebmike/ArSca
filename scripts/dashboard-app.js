@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.05.9-whatnot-mode';
+const APP_VERSION = '2026.11.06.1-new-arrivals-email';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4555,7 +4555,7 @@ async function setWhatnotModeSelected(mode){
 }
 // ADD TO SHOW (bulk bar, and after receiving FOC comics): pick any scheduled
 // show; the items go in as auctions (set to Auction / show only first).
-async function openWhatnotShowPicker(ids, intro){
+async function openWhatnotShowPicker(ids, intro, onClose){
   ids = [...new Set((ids || []).map(String).filter(Boolean))];
   if(!ids.length){ toast_dash('Select inventory items first'); return; }
   let shows = [], rule = null;
@@ -4566,7 +4566,7 @@ async function openWhatnotShowPicker(ids, intro){
     shows = d.shows || [];
     const s = await storeWorkerFetch(WORKER + '/store/whatnot-settings?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' });
     rule = ((await s.json().catch(() => ({}))).settings || {}).auctionStart || null;
-  } catch(e) { toast_dash(e.message || String(e)); return; }
+  } catch(e) { toast_dash(e.message || String(e)); if(typeof onClose === 'function') onClose(); return; }
   const pct = Number(rule?.percent) > 0 ? Number(rule.percent) : 50, min = Number(rule?.min) >= 1 ? Number(rule.min) : 4;
   document.getElementById('wn-show-picker')?.remove();
   const m = document.createElement('div'); m.id = 'wn-show-picker';
@@ -4581,7 +4581,8 @@ async function openWhatnotShowPicker(ids, intro){
     + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="wn-show-skip">' + (shows.length ? 'SKIP' : 'CLOSE') + '</button>' + (shows.length ? '<button class="hbtn" style="color:var(--purple)" id="wn-show-go">ADD AS AUCTIONS</button>' : '') + '</div>'
     + '<div id="wn-show-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px"></div></div>';
   document.body.appendChild(m);
-  m.querySelector('#wn-show-skip').onclick = () => m.remove();
+  const closePicker = () => { m.remove(); if(typeof onClose === 'function') onClose(); };
+  m.querySelector('#wn-show-skip').onclick = closePicker;
   const go = m.querySelector('#wn-show-go');
   if(go) go.onclick = async () => {
     const showId = m.querySelector('#wn-show-pick').value, status = m.querySelector('#wn-show-status');
@@ -4598,10 +4599,57 @@ async function openWhatnotShowPicker(ids, intro){
     status.innerHTML = '<span style="color:var(--g)">' + added + ' added as auctions.</span>' + (problems.length ? '<div style="color:var(--red);margin-top:4px">' + problems.slice(0, 8).map(escHtml).join('<br>') + '</div>' : '');
     // This screen's copy now says Auction (a later edit keeps it).
     if(added && typeof loadInventory === 'function'){ try { await loadInventory(); } catch(e) {} }
-    go.textContent = 'DONE'; go.onclick = () => m.remove(); go.disabled = false;
+    go.textContent = 'DONE'; go.onclick = closePicker; go.disabled = false;
   };
 }
 window.openWhatnotShowPicker = openWhatnotShowPicker;
+// NEW ARRIVALS EMAIL (store, 2026-11-06: "email blast new releases when I
+// scan the slip ... right now I only want Sean VanO to get one"). After a
+// slip is received: the books that came in, emailed with covers, prices and
+// links to everyone on the new-arrivals list -- only when SEND is pressed.
+// The list is per customer (customers.new_arrivals_email), edited right here.
+async function offerNewArrivalsEmail(ids){
+  ids = [...new Set((ids || []).map(String).filter(Boolean))];
+  if(!ids.length) return;
+  const base = WORKER + '/foc/new-arrivals/';
+  const q = '?store_id=' + encodeURIComponent(getActiveStoreId());
+  const call = async (path, body) => { const r = await storeWorkerFetch(base + path + q, body ? { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) } : { cache:'no-store' }); const d = await r.json().catch(() => ({})); return { r, d }; };
+  let list = [];
+  try { const { r, d } = await call('list'); if(!r.ok || !d.ok) return; list = d.list || []; } catch(e) { return; }
+  document.getElementById('na-email-modal')?.remove();
+  const m = document.createElement('div'); m.id = 'na-email-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  const people = (typeof customersCache !== 'undefined' && Array.isArray(customersCache) ? customersCache : []).filter(c => c.email);
+  const draw = () => {
+    m.innerHTML = '<div style="width:100%;max-width:460px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'
+      + '<div style="font-family:Orbitron,monospace;color:var(--g);font-size:13px;letter-spacing:2px;margin-bottom:8px">EMAIL NEW ARRIVALS?</div>'
+      + '<div style="font:11px var(--font-mono);color:var(--text);line-height:1.6;margin-bottom:8px">' + ids.length + ' book' + (ids.length === 1 ? '' : 's') + ' just came in. Email them -- covers, prices and links to buy -- to your new-arrivals list:</div>'
+      + (list.length ? list.map(c => '<div style="display:flex;justify-content:space-between;align-items:center;font:11px var(--font-mono);padding:4px 0;border-bottom:1px solid var(--border)"><span>' + escHtml(c.name || c.email) + ' <span style="color:var(--dim)">' + escHtml(c.email) + '</span></span><button class="hbtn" style="margin:0;padding:2px 8px" data-na-remove="' + escHtml(c.id) + '">REMOVE</button></div>').join('') : '<div style="font:11px var(--font-mono);color:var(--gold)">Nobody on the list yet.</div>')
+      + '<div style="display:flex;gap:6px;margin:10px 0"><input id="na-add" class="tsi" style="flex:1;margin:0" list="na-people" placeholder="Add a customer (name or email)"><datalist id="na-people">' + people.slice(0, 500).map(c => '<option value="' + escHtml(c.email) + '">' + escHtml(c.name || '') + '</option>').join('') + '</datalist><button class="hbtn" style="margin:0" id="na-add-go">ADD</button></div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="na-skip">SKIP</button>' + (list.length ? '<button class="hbtn" style="color:var(--g)" id="na-send">SEND TO ' + list.length + (list.length === 1 ? ' PERSON' : ' PEOPLE') + '</button>' : '') + '</div>'
+      + '<div id="na-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px"></div></div>';
+    m.querySelector('#na-skip').onclick = () => m.remove();
+    m.querySelectorAll('[data-na-remove]').forEach(b => b.onclick = async () => { const { d } = await call('list', { customerId:b.dataset.naRemove, on:false }); list = d.list || list; draw(); });
+    m.querySelector('#na-add-go').onclick = async () => {
+      const v = String(m.querySelector('#na-add').value || '').trim().toLowerCase();
+      const c = people.find(p => String(p.email || '').toLowerCase() === v) || people.find(p => String(p.name || '').toLowerCase() === v);
+      if(!c){ m.querySelector('#na-status').textContent = 'Pick a customer who has an email on file.'; return; }
+      const { d } = await call('list', { customerId:c.id, on:true }); list = d.list || list; draw();
+    };
+    const send = m.querySelector('#na-send');
+    if(send) send.onclick = async () => {
+      const status = m.querySelector('#na-status'); send.disabled = true; status.textContent = 'Sending...';
+      let { r, d } = await call('send', { itemIds:ids });
+      if(r.status === 409 && d.alreadySent && confirm('These books were already emailed. Send again?')) ({ r, d } = await call('send', { itemIds:ids, force:true }));
+      if(!r.ok || !d.ok){ status.innerHTML = '<span style="color:var(--red)">' + escHtml(d.error || 'Could not send') + '</span>'; send.disabled = false; return; }
+      status.innerHTML = '<span style="color:var(--g)">Sent ' + d.books + ' book' + (d.books === 1 ? '' : 's') + ' to ' + escHtml((d.sent || []).join(', ')) + '.</span>' + ((d.failed || []).length ? '<div style="color:var(--red)">' + d.failed.map(escHtml).join('<br>') + '</div>' : '');
+      send.textContent = 'DONE'; send.disabled = false; send.onclick = () => m.remove();
+    };
+  };
+  draw();
+  document.body.appendChild(m);
+}
+window.offerNewArrivalsEmail = offerNewArrivalsEmail;
 function addSelectedToWhatnotShowPicker(){
   openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id));
 }

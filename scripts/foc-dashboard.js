@@ -3681,9 +3681,12 @@ window.quickAddFocSkuToInventory=quickAddFocSkuToInventory;window.focEbayBulkChe
 // Whatnot (turn them on when scheduling it).
 async function offerWhatnotShowForReceived(labelItems){
   var ids=[];(labelItems||[]).forEach(function(x){var id=String(x&&x.itemId||'');if(id&&!(x&&x.flag)&&Number(x&&x.copies)>0&&ids.indexOf(id)<0)ids.push(id);});
-  if(!ids.length||typeof window.openWhatnotShowPicker!=='function')return;
-  // Whatnot not connected to this store: nothing to offer.
-  try{await api('/whatnot/shows/upcoming?store_id='+encodeURIComponent(getActiveStoreId()));}catch(e){return;}
-  window.openWhatnotShowPicker(ids,ids.length+' comic'+(ids.length===1?'':'s')+' just received (not the copies held or sold).');
+  if(!ids.length)return;
+  // Then: email them to the new-arrivals list (after the show picker closes).
+  var thenEmail=function(){if(typeof window.offerNewArrivalsEmail==='function')window.offerNewArrivalsEmail(ids);};
+  if(typeof window.openWhatnotShowPicker!=='function'){thenEmail();return;}
+  // Whatnot not connected to this store: straight to the email.
+  try{await api('/whatnot/shows/upcoming?store_id='+encodeURIComponent(getActiveStoreId()));}catch(e){thenEmail();return;}
+  window.openWhatnotShowPicker(ids,ids.length+' comic'+(ids.length===1?'':'s')+' just received (not the copies held or sold).',thenEmail);
 }
 window.offerWhatnotShowForReceived=offerWhatnotShowForReceived;

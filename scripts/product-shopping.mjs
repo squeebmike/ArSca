@@ -18,6 +18,19 @@ function productShoppingClient(){
     var after=(cart.getCart().find(function(line){return line.id===data.id;})||{}).qty||0;
     out.textContent=after>before?'Added to your cart. '+after+' in cart.':'This item could not be added. Please try the shop.';
   });
+  // BUY NOW from an email (?buy=1): put it in the cart and open the cart, once
+  // (the address loses ?buy=1, so a reload doesn't add another).
+  if(typeof location!=='undefined'&&/[?&]buy=1\b/.test(location.search||'')){
+    try{history.replaceState(null,'',location.pathname+location.search.replace(/([?&])buy=1\b&?/,'$1').replace(/[?&]$/,'')+location.hash);}catch(error){}
+    var tries=0,timer=setInterval(function(){
+      tries++;var cart=window.WO;
+      if(cart&&typeof cart.addToCart==='function'&&typeof cart.getCart==='function'){
+        clearInterval(timer);var data;try{data=JSON.parse(document.getElementById('mp-product-cart-data').textContent);}catch(error){return;}
+        if(!((cart.getCart().find(function(line){return line.id===data.id;})||{}).qty>0))button.click();
+        if(typeof cart.openCart==='function')setTimeout(function(){cart.openCart();},300);
+      }else if(tries>40){clearInterval(timer);}
+    },150);
+  }
 }
 export function productShoppingParts(item,available,esc){
   const photos=[...new Set([item.image,...(item.photos||[])].filter(Boolean))].slice(0,8);
