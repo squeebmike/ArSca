@@ -13,9 +13,10 @@ export class DeckLabRoom extends DurableObject{
   try{
    const path=new URL(request.url).pathname;
    if(path==='/create'){
-    const b=await boundedJson(request);if(!['rules','table'].includes(b.mode))return json({error:'Choose rules or freeform room.'},400);
+    const b=await boundedJson(request);if(!['rules','table'].includes(b.mode)||!['casual','standard','commander'].includes(b.format||'casual'))return json({error:'Choose a valid format and room mode.'},400);
+    if(b.format==='commander'&&b.mode==='rules')return json({error:'Commander currently uses a freeform room.'},400);
     const cards=await verifiedRoomDeck(b.cards);const hostKey=token(),invite=token(),hostHash=await digest(hostKey),inviteHash=await digest(invite);
-    let r={revision:0,mode:b.mode,expiresAt:Date.now()+ROOM_TTL,players:[{keyHash:hostHash,name:'Host',cards:null},null],inviteHash,state:null};
+    let r={revision:0,mode:b.mode,format:b.format||'casual',expiresAt:Date.now()+ROOM_TTL,players:[{keyHash:hostHash,name:'Host',cards:null},null],inviteHash,state:null};
     r=putRoomDeck(r,0,cards,b.name,0);if(this.read())return json({error:'Room already exists.'},409);
     this.write(r);await this.ctx.storage.setAlarm(r.expiresAt);return json({key:hostKey,invite,...roomView(r,0)},201);
    }

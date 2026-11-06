@@ -7,7 +7,7 @@ Visitors can paste an Arena/text export for each player, or import a local text
 file. Names and explicit printing identifiers are resolved through Scryfall's
 collection endpoint in batches of at most 75; exact printing/name mismatches and
 unresolved rows stop loading. Main decks, sideboards, and commander sections are
-kept distinct. Only main-deck cards enter the current two-player game.
+kept distinct. Only main-deck cards enter the shuffled library; designated commanders begin in the command zone.
 
 Deck text is local to the browser. Saving is explicit, device-only, bounded to
 20 decks. Card metadata is cached locally for seven days, bounded to 500 cards.
@@ -91,21 +91,56 @@ general Magic rules engine, and match results are not win-rate estimates.
 
 ## Freeform scope
 
-Both hands are visible. Either side can draw, move cards among hand,
+Your hand is visible; the local opponent hand opens through an explicit button. Either side can draw, move cards among hand,
 battlefield, graveyard, exile and library bottom, tap/untap, turn multi-face cards
 over, and change life. The user applies rules and effects manually. This beta
 does not yet provide token creation, arbitrary counters, control changes,
-Commander rules, multiplayer, sideboarding, or a complete ability engine.
+four-player multiplayer, midgame sideboarding, or a complete ability engine.
 
 ## Remaining work
 
 Direct public deck URL import with provider-specific API support and text export
 fallback; selecting among all saved decks; drag/drop; supported keywords and
 more spell effects; targeted card-rule fixtures; match review explanations;
-format legality; best-of-three sideboarding. An arbitrary-deck automated mode
+expanded format validation; best-of-three sideboarding. An arbitrary-deck automated mode
 requires a substantially broader rules engine rather than guessed Oracle text.
 
 Tests: `node tests/deck-lab-match.test.mjs`; three full deterministic practice
 matches run through ordinary actions to a result, checking unique IDs and card
 conservation, alongside stack, mulligan, mana, combat and freeform fixtures.
 Local preview: `node scripts/mtg/preview-deck-lab.mjs`.
+
+## Standard and 1v1 Commander
+
+The format selector separates custom practice, Standard and 1v1 Commander.
+Standard checks at least 60 main cards, at most 15 sideboard cards, combined
+copy limits (including basic-land and Oracle copy exceptions), and Scryfall
+Standard legality. Sideboards stay outside the shuffled deck. Provider metadata
+can be cached for seven days; these checks are not event certification.
+
+Commander checks 100 cards including one or two designated commanders,
+singleton limits, color identity and provider Commander legality. Commander
+sections are recognized in exports; an exact commander-name field can designate
+a single matching card when the export lacks a section. Two-commander pairing
+eligibility requires manual review. This is 40-life one-on-one Commander
+practice, not Duel Commander or a four-player pod.
+
+Commander uses freeform mode locally and online. Commanders have stable physical
+IDs, stay outside the opening library, and retain their command-zone cast count
+through zone changes. The cast action places the commander on the public stack;
+resolve/counter actions and return-to-command-zone moves are explicit. The UI
+shows the printed cost plus two generic mana for each previous command-zone
+cast. Players pay costs, apply abilities, timing restrictions and replacement
+or state-based zone choices themselves. No complete Commander bot is claimed.
+
+Incoming commander combat damage is tracked separately for each opposing
+commander. Recording it does not also change life. A total of 21 prompts players
+to check the loss condition and relevant effects; the freeform table does not
+automatically end the game. Opening decisions must finish before manual actions.
+Online rooms keep the selected format, verify card IDs and sections server-side,
+and never expose opponents' hands, libraries or sideboard identities.
+
+Validation: `tests/deck-lab-formats.test.mjs` covers format checks, commander
+conservation, opening hands, tax persistence, per-commander damage and seat
+projection. The real SQLite room runtime test covers Commander cast/counter/zone
+return, 40 life, private hands and guest-seat normalization.

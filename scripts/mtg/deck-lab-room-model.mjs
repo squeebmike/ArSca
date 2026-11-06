@@ -6,21 +6,23 @@ export function roomView(room,seat){
  const state=room.state?structuredClone(room.state):null;
  if(state){
   // Do not transmit library identities to either seat, or the other hand to anyone.
-  state.players.forEach((p,i)=>{if(i!==seat||!room.players[seat].searching)p.library=p.library.map(()=>({hidden:true}));if(i!==seat)p.hand=p.hand.map(()=>({hidden:true}));});
-  if(seat===1){state.players.reverse();state.active=1-state.active;state.priority=1-state.priority;state.stack.forEach(t=>{t.controller=1-t.controller;if(t.target==='player0')t.target='player1';else if(t.target==='player1')t.target='player0';});if(state.result&&state.result.winner!==null)state.result.winner=1-state.result.winner;}
+  state.players.forEach((p,i)=>{if(i!==seat||!room.players[seat].searching)p.library=p.library.map(()=>({hidden:true}));if(i!==seat){p.hand=p.hand.map(()=>({hidden:true}));p.sideboard=(p.sideboard||[]).map(()=>({hidden:true}));}});
+  if(seat===1){state.players.reverse();state.active=1-state.active;state.priority=1-state.priority;(state.commanders||[]).forEach(c=>c.owner=1-c.owner);state.stack.forEach(t=>{t.controller=1-t.controller;if(t.target==='player0')t.target='player1';else if(t.target==='player1')t.target='player0';});if(state.result&&state.result.winner!==null)state.result.winner=1-state.result.winner;}
   state.mode=room.mode==='rules'?'remote-rules':'remote-table';
   state.librarySearch=!!room.players[seat].searching;
   state.log=state.log.map(t=>t.replace(/^You /,'Host ').replace(/^Opponent /,'Guest ').replace(/^(Turn \d+: )you /,'$1host ').replace(/^(Turn \d+: )opponent /,'$1guest '));
  }
- return {revision:room.revision,expiresAt:room.expiresAt,seat,mode:room.mode,names:seat===0?room.players.map(p=>p?.name||'Waiting for opponent'):room.players.map(p=>p?.name||'Waiting for opponent').reverse(),ready:room.players.map(p=>!!p?.cards),joined:!!room.players[1],state};
+ return {revision:room.revision,expiresAt:room.expiresAt,seat,mode:room.mode,format:room.format||'casual',names:seat===0?room.players.map(p=>p?.name||'Waiting for opponent'):room.players.map(p=>p?.name||'Waiting for opponent').reverse(),ready:room.players.map(p=>!!p?.cards),joined:!!room.players[1],state};
 }
 export function putRoomDeck(room,seat,cards,name,expected,random=secureRandom){
  if(room.revision!==expected)throw Error('The room changed. Sync and try again.');
  if(room.state)throw Error('A match is already in progress.');
- if(room.mode==='rules'&&cards.some(c=>roomEngine.support(c).kind==='manual'))throw Error('This deck has cards outside automated rules coverage. Create a freeform room for this deck.');
+ const report=roomEngine.validateDeck(cards,room.format||'casual');if(report.errors.length)throw Error(report.errors.join(' '));
+ if(room.format==='commander'&&room.mode==='rules')throw Error('Commander currently uses a freeform room.');
+ if(room.mode==='rules'&&cards.some(c=>(!c.deckSection||c.deckSection==='main')&&roomEngine.support(c).kind==='manual'))throw Error('This deck has cards outside automated rules coverage. Create a freeform room for this deck.');
  const next=structuredClone(room);next.players[seat]={...next.players[seat],name:String(name||'Player').slice(0,60),cards};next.revision++;
  if(next.players.every(p=>p?.cards)){
-  next.state=roomEngine.create(next.players.map(p=>p.cards),{mode:'manual',random});
+  next.state=roomEngine.create(next.players.map(p=>p.cards),{mode:'manual',random,format:room.format||'casual'});
   next.state.log.push('Private online match. Host plays first. '+(room.mode==='rules'?'Server checks the supported rules.':'Freeform: both players apply card effects and rules manually.'));
   // Remove the pre-shuffle lists once the physical cards are in match zones.
   next.players.forEach(p=>{p.cards=null;});
@@ -63,19 +65,19 @@ export async function boundedJson(message,max=250000){
 }
 function thinCard(c){
  const uri=u=>{try{const x=new URL(u);return x.protocol==='https:'&&x.hostname==='cards.scryfall.io'?x.href:'';}catch{return '';}};
- const fields=['id','name','type_line','mana_cost','cmc','oracle_text','power','toughness','layout'];const out=Object.fromEntries(fields.filter(k=>c[k]!==undefined).map(k=>[k,c[k]]));out.image_uris={normal:uri(c.image_uris?.normal)};out.scryfall_uri='https://scryfall.com/card/'+encodeURIComponent(c.set)+'/'+encodeURIComponent(c.collector_number);
+ const fields=['id','name','type_line','mana_cost','cmc','oracle_text','power','toughness','layout','color_identity','legalities','keywords'];const out=Object.fromEntries(fields.filter(k=>c[k]!==undefined).map(k=>[k,c[k]]));out.image_uris={normal:uri(c.image_uris?.normal)};out.scryfall_uri='https://scryfall.com/card/'+encodeURIComponent(c.set)+'/'+encodeURIComponent(c.collector_number);
  if(c.card_faces)out.card_faces=c.card_faces.map(f=>({name:f.name,oracle_text:f.oracle_text,image_uris:{normal:uri(f.image_uris?.normal)}}));return out;
 }
 export async function verifiedRoomDeck(rows,fetcher=fetch){
  if(!Array.isArray(rows)||!rows.length||rows.length>150)throw Error('Send 1–150 unique card printings.');
- const merged=new Map();for(const r of rows){if(!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(r?.id)||!Number.isInteger(r.quantity)||r.quantity<1||r.quantity>250)throw Error('Invalid card identifier or quantity.');merged.set(r.id,(merged.get(r.id)||0)+r.quantity);}
- const total=[...merged.values()].reduce((a,b)=>a+b,0);if(total<7||total>250)throw Error('Main deck must contain 7–250 cards.');
- const ids=[...merged.keys()],found=new Map();
+ const merged=new Map();for(const r of rows){if(!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(r?.id)||!Number.isInteger(r.quantity)||r.quantity<1||r.quantity>250||!['main','commander','sideboard'].includes(r.section||'main'))throw Error('Invalid card identifier, section or quantity.');const k=r.id+':'+(r.section||'main'),old=merged.get(k);merged.set(k,{id:r.id,section:r.section||'main',quantity:(old?.quantity||0)+r.quantity});}
+ const total=[...merged.values()].reduce((a,b)=>a+b.quantity,0);if(total<7||total>250)throw Error('Deck must contain 7–250 cards including the supplied zones.');
+ const ids=[...new Set([...merged.values()].map(r=>r.id))],found=new Map();
  for(let i=0;i<ids.length;i+=75){
   if(i)await new Promise(r=>setTimeout(r,150));
   const r=await fetcher('https://api.scryfall.com/cards/collection',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json','User-Agent':'TheManaPocket/1.0 (private deck playtesting)'},body:JSON.stringify({identifiers:ids.slice(i,i+75).map(id=>({id}))}),signal:AbortSignal.timeout(20000)});
-  if(!r.ok)throw Error('Card verification is unavailable. Try again later.');const data=await boundedJson(r,1500000);for(const c of data.data||[])if(merged.has(c.id)&&typeof c.name==='string')found.set(c.id,thinCard(c));
+  if(!r.ok)throw Error('Card verification is unavailable. Try again later.');const data=await boundedJson(r,1500000);for(const c of data.data||[])if(ids.includes(c.id)&&typeof c.name==='string')found.set(c.id,thinCard(c));
  }
  if(ids.some(id=>!found.has(id)))throw Error('Some cards could not be verified. Reload your deck and try again.');
- return ids.flatMap(id=>Array.from({length:merged.get(id)},()=>structuredClone(found.get(id))));
+ return [...merged.values()].flatMap(r=>Array.from({length:r.quantity},()=>({...structuredClone(found.get(r.id)),deckSection:r.section})));
 }

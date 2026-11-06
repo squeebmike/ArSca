@@ -4,14 +4,14 @@ export const onlineRoomClient=String.raw`
 let online=null,onlineBusy=false,pollTimer=null,onlineRequest=false;
 const roomStatus=t=>$('dl-room-status').textContent=t;
 const roomKey=()=>Array.from(crypto.getRandomValues(new Uint8Array(32)),v=>v.toString(16).padStart(2,'0')).join('');
-function rowsForRoom(){if(!decks[0]||decks[0].input!==$('dl-list-0').value)throw Error('Load your current deck first.');return decks[0].rows.map(c=>({id:c.id,quantity:c.quantity}));}
+function rowsForRoom(){if(!decks[0]||decks[0].input!==$('dl-list-0').value)throw Error('Load your current deck first.');return decks[0].rows.map(c=>({id:c.id,quantity:c.quantity,section:c.deckSection||'main'}));}
 function rememberRoom(){try{sessionStorage.setItem('mp-deck-room-active',JSON.stringify(online));localStorage.setItem('mp-deck-room-last',JSON.stringify(online));}catch{roomStatus('Room is connected, but browser storage is unavailable. Keep this tab open to retain your seat.');}}
 async function roomRequest(path,body,key=online?.key){
  const r=await fetch('/deck-lab/rooms'+path,{method:body?'POST':'GET',headers:{...(body?{'Content-Type':'application/json'}:{}),...(key?{Authorization:'Bearer '+key}:{})},body:body?JSON.stringify(body):undefined,cache:'no-store',signal:AbortSignal.timeout(35000)});
  const data=await r.json();if(!r.ok){const e=Error(data.error||'Room service unavailable.');e.status=r.status;throw e;}return data;
 }
 function displayRoom(data){
- if(!online||data.revision<online.revision)return;online.revision=data.revision;online.names=data.names;online.seat=data.seat;online.mode=data.mode;rememberRoom();
+ if(!online||data.revision<online.revision)return;online.revision=data.revision;online.names=data.names;online.seat=data.seat;online.mode=data.mode;$('dl-format').value=data.format||'casual';$('dl-format').disabled=true;updateFormatUi();rememberRoom();
  if(online.inviteLink){$('dl-invite-link').value=online.inviteLink;$('dl-invite-label').hidden=false;}
  $('dl-leave-room').hidden=false;$('dl-upload-room').hidden=!!data.state||!!data.ready?.[online.seat];$('deck-lab').classList.add('dl-online-connected');
  $('dl-name-0').value=data.names[0];$('dl-name-1').value=data.names[1];
@@ -28,7 +28,7 @@ async function syncRoom(force=false){
 function startPolling(){clearInterval(pollTimer);pollTimer=setInterval(()=>syncRoom(),2500);}
 const localAct=act;act=function(fn){
  if(!online)return localAct(fn);if(onlineBusy)return;let action;try{action=fn();if(!action?.type)throw Error('That local action is unavailable in an online room.');}catch(e){$('dl-feedback').textContent=e.message;return;}
- sendRoomAction(action);
+ return sendRoomAction(action);
 };
 async function sendRoomAction(action){
  if(!online||onlineBusy)return;onlineBusy=true;
@@ -42,7 +42,7 @@ for(const name of ['land','cast','pass','attack','block','discard','mulligan','k
 }
 $('dl-create-room').onclick=async()=>{
  if(online){roomStatus('Leave the current room before creating another.');return;}if(onlineBusy)return;onlineBusy=true;$('dl-create-room').disabled=true;roomStatus('Verifying your deck and creating a private room…');
- try{const data=await roomRequest('',{mode:$('dl-room-mode').value,name:$('dl-name-0').value,cards:rowsForRoom()},null);online={room:data.room,key:data.key,revision:data.revision,seat:0};const link=new URL('/deck-lab',location.origin);link.hash=new URLSearchParams({room:data.room,join:data.invite});online.inviteLink=link.href;$('dl-invite-link').value=link.href;$('dl-invite-label').hidden=false;displayRoom(data);startPolling();}
+ try{const data=await roomRequest('',{mode:$('dl-room-mode').value,format:selectedFormat(),name:$('dl-name-0').value,cards:rowsForRoom()},null);online={room:data.room,key:data.key,revision:data.revision,seat:0};const link=new URL('/deck-lab',location.origin);link.hash=new URLSearchParams({room:data.room,join:data.invite});online.inviteLink=link.href;$('dl-invite-link').value=link.href;$('dl-invite-label').hidden=false;displayRoom(data);startPolling();}
  catch(e){roomStatus(e.message);}finally{onlineBusy=false;$('dl-create-room').disabled=false;}
 };
 $('dl-upload-room').onclick=async()=>{
@@ -51,7 +51,7 @@ $('dl-upload-room').onclick=async()=>{
  catch(e){roomStatus(e.message);}finally{onlineBusy=false;}
 };
 $('dl-copy-invite').onclick=async()=>{try{await navigator.clipboard.writeText($('dl-invite-link').value);roomStatus('Guest link copied. Only send it to the person you want in the guest seat.');}catch{$('dl-invite-link').select();roomStatus('Select and copy the guest link above.');}};
-$('dl-leave-room').onclick=()=>{clearInterval(pollTimer);online=null;state=null;$('dl-match').hidden=true;$('deck-lab').classList.remove('dl-online-connected','dl-playing');$('dl-invite-label').hidden=true;$('dl-leave-room').hidden=true;$('dl-upload-room').hidden=true;$('dl-rematch').hidden=false;$('dl-undo').hidden=false;try{sessionStorage.removeItem('mp-deck-room-active');localStorage.removeItem('mp-deck-room-last');}catch{}roomStatus('Disconnected on this device. The room remains available until it expires.');};
+$('dl-leave-room').onclick=()=>{clearInterval(pollTimer);online=null;state=null;$('dl-format').disabled=false;$('dl-match').hidden=true;$('deck-lab').classList.remove('dl-online-connected','dl-playing');$('dl-invite-label').hidden=true;$('dl-leave-room').hidden=true;$('dl-upload-room').hidden=true;$('dl-rematch').hidden=false;$('dl-undo').hidden=false;try{sessionStorage.removeItem('mp-deck-room-active');localStorage.removeItem('mp-deck-room-last');}catch{}roomStatus('Disconnected on this device. The room remains available until it expires.');};
 const localStart=start;start=function(){if(online){roomStatus('Leave the online room before starting a local match.');return;}localStart();};$('dl-start').onclick=start;$('dl-rematch').onclick=start;
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncRoom(true);});
 (async()=>{

@@ -27,11 +27,35 @@ export function createDeckLabServerEngine(){
   return {entries,errors};
  }
  function shuffled(cards,random=Math.random){const out=cards.slice();for(let i=out.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[out[i],out[j]]=[out[j],out[i]];}return out;}
- function create(decks,{mode='manual',skill='regular',random=Math.random}={}){
+ function validateDeck(deck,format='casual'){
+  const errors=[],warnings=[],main=deck.filter(c=>!c.deckSection||c.deckSection==='main'),commanders=deck.filter(c=>c.deckSection==='commander'),side=deck.filter(c=>c.deckSection==='sideboard');
+  if(!['casual','standard','commander'].includes(format))errors.push('Unknown format.');
+  if(format==='casual')return {errors,warnings,main:main.length,commanders:commanders.length,sideboard:side.length};
+  const cards=format==='standard'?[...main,...side]:[...main,...commanders],counts=new Map();
+  if(format==='standard'){if(main.length<60)errors.push('Standard needs at least 60 main-deck cards.');if(side.length>15)errors.push('Standard allows at most 15 sideboard cards.');if(commanders.length)errors.push('Standard does not use a Commander section.');}
+  else{
+   if(main.length+commanders.length!==100)errors.push('Commander needs exactly 100 cards including the commander(s).');
+   if(commanders.length<1||commanders.length>2)errors.push('Choose one commander, or two commanders with a legal pairing.');
+   if(commanders.length===2)warnings.push('Two-commanders pairing eligibility needs manual verification.');
+   for(const c of commanders)if(!(/Legendary/.test(c.type_line)&&/Creature/.test(c.type_line))&&!/can be your commander/i.test(c.oracle_text||'')&&!(commanders.length===2&&/Legendary.*Background/.test(c.type_line)))errors.push(c.name+' is not recognized as an eligible commander.');
+   if(side.length)warnings.push('Commander sideboard entries are excluded from the match.');
+   const colors=new Set(commanders.flatMap(c=>c.color_identity||[]));
+   for(const c of cards){if(!Array.isArray(c.color_identity))warnings.push('Color identity unavailable for '+c.name+'.');else if(c.color_identity.some(x=>!colors.has(x)))errors.push(c.name+' is outside the commanders’ color identity.');}
+  }
+  for(const c of cards){counts.set(c.name,(counts.get(c.name)||0)+1);const legality=c.legalities?.[format];if(legality&&legality!=='legal')errors.push(c.name+' is '+legality+' in '+format+' according to the card provider.');else if(!legality)warnings.push('Provider legality unavailable for '+c.name+'.');}
+  for(const [name,count] of counts){const c=cards.find(c=>c.name===name);if(/\bBasic\b/.test(c.type_line))continue;let limit=format==='standard'?4:1;
+   if(/A deck can have any number of cards named/i.test(c.oracle_text||''))limit=Infinity;
+   const exception=/A deck can have up to (\w+) cards named/i.exec(c.oracle_text||'');if(exception){const n=Number(exception[1])||({seven:7,nine:9})[exception[1].toLowerCase()];if(n)limit=n;else warnings.push('Review the special copy limit for '+name+'.');}
+   if(count>limit)errors.push(name+' has '+count+' copies; this format allows '+limit+'.');
+  }
+  return {errors:[...new Set(errors)],warnings:[...new Set(warnings)],main:main.length,commanders:commanders.length,sideboard:side.length};
+ }
+ function create(decks,{mode='manual',skill='regular',random=Math.random,format='casual'}={}){
   if(!['manual','bot'].includes(mode)||!['learner','regular','practiced'].includes(skill))throw Error('Invalid match settings.');
-  const players=decks.map((deck,p)=>{if(deck.length<7)throw Error('Both decks need at least seven cards.');if(deck.length>250)throw Error('Deck exceeds 250 cards.');return {life:20,mulligans:0,kept:false,landPlayed:false,mana:{},hand:[],field:[],graveyard:[],exile:[],library:shuffled(deck.map((c,i)=>({...clone(c),quantity:null,id:p+'-'+i,owner:p,tapped:false,sick:true,damage:0,boost:0})),random)};});
+  if(format==='commander'&&mode==='bot')throw Error('Commander currently uses the freeform table; automated Commander abilities are not implemented.');
+  const players=decks.map((deck,p)=>{const report=validateDeck(deck,format);if(report.errors.length)throw Error((p?'Opponent: ':'Your deck: ')+report.errors.join(' '));if(report.main<7)throw Error('Both decks need at least seven main-deck cards.');if(deck.length>250)throw Error('Deck exceeds 250 cards.');const physical=deck.map((c,i)=>({...clone(c),quantity:null,id:p+'-'+i,owner:p,isCommander:format==='commander'&&c.deckSection==='commander',commandCasts:0,tapped:false,sick:true,damage:0,boost:0}));return {life:format==='commander'?40:20,mulligans:0,kept:false,landPlayed:false,mana:{},hand:[],field:[],graveyard:[],exile:[],commandZone:physical.filter(c=>c.isCommander),commanderDamage:{},sideboard:physical.filter(c=>c.deckSection==='sideboard'),library:shuffled(physical.filter(c=>!c.deckSection||c.deckSection==='main'),random)};});
   if(mode==='bot'&&players.some(p=>p.library.some(c=>support(c).kind==='manual')))throw Error('Automated mode requires supported cards in both decks. Use the freeform table for this list.');
-  const s={mode,skill,players,active:0,priority:0,passes:0,turn:1,phase:'opening',stack:[],attackers:[],blocks:{},log:[],result:null,decisions:0};
+  const s={mode,skill,format,players,commanders:players.flatMap(p=>p.commandZone.map(c=>({id:c.id,name:c.name,owner:c.owner}))),active:0,priority:0,passes:0,turn:1,phase:'opening',stack:[],attackers:[],blocks:{},log:[],result:null,decisions:0};
   for(let p=0;p<2;p++)for(let i=0;i<7;i++)draw(s,p);
   if(mode==='bot'){
    const p=players[1],landCount=()=>p.hand.filter(c=>support(c).kind==='land').length;
@@ -127,13 +151,16 @@ export function createDeckLabServerEngine(){
  }
  function manual(s,{player,from,to,id,kind,value}){
   if(s.mode!=='manual')throw Error('Freeform actions are only available at the freeform table.');
-  const p=s.players[player];if(!p)throw Error('Invalid player.');
+  const p=s.players[player];if(!p)throw Error('Invalid player.');if(s.phase==='opening')throw Error('Keep both opening hands before using table actions.');
+  if(kind==='commander-damage'){if(s.format!=='commander'||!s.commanders.some(c=>c.id===id)||!Number.isInteger(value)||Math.abs(value)>21)throw Error('Invalid commander damage entry.');const n=(p.commanderDamage[id]||0)+value;if(n<0)throw Error('Commander damage cannot be negative.');p.commanderDamage[id]=n;return;}
+  if(kind==='commander-cast'){if(s.format!=='commander')throw Error('This is not a Commander table.');const i=p.commandZone.findIndex(c=>c.id===id);if(i<0)throw Error('Commander is not in your command zone.');const c=p.commandZone.splice(i,1)[0];c.commandCasts++;s.stack.push({card:c,controller:player,target:null});return;}
+  if(kind==='commander-resolve'||kind==='commander-counter'){const i=s.stack.findIndex(t=>t.card.id===id&&t.card.isCommander&&t.controller===player);if(i<0)throw Error('Your commander is not on the stack.');const c=s.stack.splice(i,1)[0].card;c.sick=true;p[kind==='commander-resolve'?'field':'graveyard'].push(c);return;}
   if(kind==='life'){if(!Number.isFinite(value)||Math.abs(value)>100)throw Error('Invalid life change.');p.life+=value;return;}
   if(kind==='draw'){draw(s,player);return;}
-  if(!['hand','field','graveyard','exile','library'].includes(from))throw Error('Invalid source zone.');const i=p[from].findIndex(c=>c.id===id);if(i<0)throw Error('Card not found.');
+  if(!['hand','field','graveyard','exile','library','commandZone','sideboard'].includes(from))throw Error('Invalid source zone.');const i=p[from].findIndex(c=>c.id===id);if(i<0)throw Error('Card not found.');
   if(kind==='tap'){p[from][i].tapped=!p[from][i].tapped;return;}
   if(kind==='flip'){const c=p[from][i];if(!c.card_faces?.length)throw Error('No other face.');c.face=((c.face||0)+1)%c.card_faces.length;return;}
-  if(!['hand','field','graveyard','exile','library'].includes(to))throw Error('Invalid destination zone.');p[to].push(p[from].splice(i,1)[0]);
+  if(!['hand','field','graveyard','exile','library','commandZone','sideboard'].includes(to))throw Error('Invalid destination zone.');if(to==='commandZone'&&!p[from][i].isCommander)throw Error('Only a designated commander can enter the command zone.');p[to].push(p[from].splice(i,1)[0]);
  }
- return {support,parse,shuffled,create,mulligan,keep,payment,land,cast,pass,attack,block,discard,bot,manual,clone};
+ return {support,parse,shuffled,validateDeck,create,mulligan,keep,payment,land,cast,pass,attack,block,discard,bot,manual,clone};
 }
