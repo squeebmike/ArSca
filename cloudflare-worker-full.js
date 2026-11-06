@@ -13710,8 +13710,11 @@ async function routeRequest(request, env, ctx) {
         if (!list.length) return json({ ok: false, error: 'Nobody is on the new-arrivals list yet' }, 400);
         const settings = (await supabaseAdminFetch(env, `store_settings?store_id=eq.${s}&select=receipt_settings&limit=1`).catch(() => ({ data: [] }))).data?.[0]?.receipt_settings || {};
         const sent = [], failed = [];
+        // A copy to the store's own email (Settings: hintline@...) so you see what customers got.
+        const storeEmail = String(settings.email || '').trim();
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(storeEmail) && !list.some(c => String(c.email).toLowerCase() === storeEmail.toLowerCase())) list.push({ name: 'Store copy', email: storeEmail });
         for (const c of list) {
-          const mail = newArrivalsEmail(items, { storeName: settings.storeName || 'The Mana Pocket', site, location: settings.location || '', firstName: String(c.name || '').trim().split(/\s+/)[0] || '' });
+          const mail = newArrivalsEmail(items, { storeName: settings.storeName || 'The Mana Pocket', site, location: settings.location || '', firstName: c.name === 'Store copy' ? '' : (String(c.name || '').trim().split(/\s+/)[0] || '') });
           try { await sendEmail(env, c.email, mail.subject, mail.text, { html: mail.html }); sent.push(c.name || c.email); }
           catch (e) { failed.push((c.name || c.email) + ': ' + e.message); }
         }
