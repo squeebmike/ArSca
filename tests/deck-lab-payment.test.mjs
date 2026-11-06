@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {deckLabEngineSource} from '../scripts/mtg/deck-lab-match.mjs';
+const E=new Function(deckLabEngineSource+'return Engine;')();
+const land=(id,name)=>({id,name,type_line:'Basic Land',oracle_text:'',tapped:false});
+const p={field:[land('g1','Forest'),land('g2','Forest'),land('r1','Mountain')]};
+assert.deepEqual(E.payment(p,'{1}{G}'),['g1','g2']);
+assert.deepEqual(E.payment(p,'{1}{G}',['g2','r1']),['g2','r1'],'Player can preserve the first Forest');
+for(const ids of [['r1'],['g1','g1'],['g1','g2','r1'],['foreign'],['r1','foreign']])assert.equal(E.payment(p,'{1}{G}',ids),null);
+p.field[0].tapped=true;assert.equal(E.payment(p,'{G}',['g1']),null);
+assert.deepEqual(E.payment(p,'{0}',[]),[]);assert.equal(E.payment(p,'{U}',['g2']),null);
+const forest=land('forest','Forest'),bear={name:'Grizzly Bears',type_line:'Creature — Bear',oracle_text:'',mana_cost:'{1}{G}',power:'2',toughness:'2'};
+const s=E.create([Array(60).fill(forest),Array(60).fill(forest)],{mode:'bot'});s.phase='main1';s.priority=0;s.players[0].field=[land('g1','Forest'),land('g2','Forest'),land('r1','Mountain')];s.players[0].hand=[{...bear,id:'bear'}];
+const before=JSON.stringify(s);assert.throws(()=>E.cast(s,0,'bear',null,['r1']),/Not enough/);assert.equal(JSON.stringify(s),before,'Rejected payment is atomic');
+E.cast(s,0,'bear',null,['g2','r1']);assert(!s.players[0].field[0].tapped);assert(s.players[0].field[1].tapped);assert(s.players[0].field[2].tapped);assert.equal(s.stack[0].card.id,'bear');
+console.log('Mana payment: exact colors, chosen lands, wrong/foreign/tapped/duplicate rejection, zero cost and atomic casts passed');

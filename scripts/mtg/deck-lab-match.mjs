@@ -72,26 +72,29 @@ export const deckLabEngineSource=String.raw`const Engine=(()=>{
  function draw(s,p){const x=s.players[p];if(!x.library.length){if(s.players.length>2)eliminate(s,p,'Last player remaining');else s.result={winner:1-p,reason:'Tried to draw from an empty library'};return;}x.hand.push(x.library.shift());}
  function mulligan(s,p,random=Math.random){const x=s.players[p];if(s.phase!=='opening'||x.kept||x.mulligans>=7)throw Error('Cannot mulligan now.');x.library=shuffled([...x.hand,...x.library],random);x.hand=[];x.mulliganCount=(x.mulliganCount||0)+1;x.mulligans=s.players.length>2?Math.max(0,x.mulliganCount-1):x.mulliganCount;for(let i=0;i<7;i++)draw(s,p);log(s,(p?'Opponent':'You')+' mulligans to '+(7-x.mulligans)+'.');}
  function keep(s,p,bottom=[]){const x=s.players[p];if(s.phase!=='opening'||x.kept)throw Error('Cannot keep now.');if(new Set(bottom).size!==x.mulligans||bottom.length!==x.mulligans||bottom.some(id=>!x.hand.some(c=>c.id===id)))throw Error('Choose exactly '+x.mulligans+' card(s) to bottom.');for(const id of bottom)x.library.push(x.hand.splice(x.hand.findIndex(c=>c.id===id),1)[0]);x.kept=true;if(s.players.every(x=>x.kept)){s.phase='main1';s.priority=0;log(s,s.players.length>2?'Multiplayer: the starting player also draws. Apply beginning steps manually.':'You play first; skip your first draw. Precombat main phase.');}}
- function payment(player,cost){
-  const lands=player.field.filter(c=>support(c).kind==='land'&&!c.tapped),chosen=[];let generic=0;
+ function payment(player,cost,selected=null){
+  if(selected!==null&&(!Array.isArray(selected)||new Set(selected).size!==selected.length||selected.some(id=>typeof id!=='string')))return null;
+  const available=player.field.filter(c=>support(c).kind==='land'&&!c.tapped);
+  if(selected!==null&&selected.some(id=>!available.some(c=>c.id===id)))return null;
+  const lands=selected===null?available:selected.map(id=>available.find(c=>c.id===id)),chosen=[];let generic=0;
   for(const symbol of [...String(cost||'').matchAll(/\{([^}]+)\}/g)].map(m=>m[1])){
    if(/^\d+$/.test(symbol)){generic+=Number(symbol);continue;}
    if(!/^[WUBRG]$/.test(symbol))return null;
    const land=lands.find(c=>!chosen.includes(c.id)&&support(c).color===symbol);if(!land)return null;chosen.push(land.id);
   }
-  const spare=lands.filter(c=>!chosen.includes(c.id));if(spare.length<generic)return null;return [...chosen,...spare.slice(0,generic).map(c=>c.id)];
+  const spare=lands.filter(c=>!chosen.includes(c.id));if(spare.length<generic||selected!==null&&lands.length!==chosen.length+generic)return null;return [...chosen,...spare.slice(0,generic).map(c=>c.id)];
  }
  function check(s){
   for(const p of s.players)for(let i=p.field.length-1;i>=0;i--){const c=p.field[i];if(support(c).kind==='creature'&&c.damage>=Number(c.toughness)+c.boost){p.graveyard.push(p.field.splice(i,1)[0]);log(s,c.name+' dies.');}}
   if(s.players.every(p=>p.life<=0))s.result={winner:null,reason:'Both players at zero life'};else for(let i=0;i<2;i++)if(s.players[i].life<=0)s.result={winner:1-i,reason:'Life reached zero'};
  }
  function legalTarget(s,card,target){if(support(card).kind==='damage'&&['player0','player1'].includes(target))return true;return s.players.some(p=>p.field.some(c=>c.id===target&&support(c).kind==='creature'));}
- function cast(s,p,id,target){
+ function cast(s,p,id,target,selected=null){
   const x=s.players[p],c=x.hand.find(c=>c.id===id);if(!c||s.priority!==p||['opening','attack','block','discard'].includes(s.phase)||s.result)throw Error('You do not have priority.');
   const kind=support(c).kind;if(kind==='manual'||kind==='land')throw Error('This card is not an automated spell.');
   if(kind==='creature'&&(s.active!==p||!['main1','main2'].includes(s.phase)||s.stack.length))throw Error('Cast creatures in your main phase with an empty stack.');
   if(['damage','pump'].includes(kind)&&!legalTarget(s,c,target))throw Error('Choose a legal target.');
-  const pay=payment(x,c.mana_cost);if(!pay)throw Error('Not enough untapped lands of the required colors.');
+  const pay=payment(x,c.mana_cost,selected);if(!pay)throw Error('Not enough untapped lands of the required colors.');
   pay.forEach(id=>x.field.find(c=>c.id===id).tapped=true);x.hand.splice(x.hand.indexOf(c),1);s.stack.push({card:c,controller:p,target});s.passes=0;log(s,(p?'Opponent casts ':'You cast ')+c.name+'.');
  }
  function land(s,p,id){const x=s.players[p],c=x.hand.find(c=>c.id===id);if(s.result||s.priority!==p||s.active!==p||!['main1','main2'].includes(s.phase)||s.stack.length||x.landPlayed||!c||support(c).kind!=='land')throw Error('Land play is not legal now.');x.hand.splice(x.hand.indexOf(c),1);c.sick=false;x.field.push(c);x.landPlayed=true;log(s,(p?'Opponent plays ':'You play ')+c.name+'.');}

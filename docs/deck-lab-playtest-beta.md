@@ -51,7 +51,7 @@ actor ownership, turn legality, simultaneous conflicting writes and concession.
 
 The match opens in a viewport-sized battlefield with a centered fanned hand,
 separate land and permanent rows, a combat lane and a compact spell stack.
-Click a glowing playable card to play it with automatic land payment; use its
+Click a glowing playable spell to preview casting, choose legal targets, and review the highlighted lands. Auto-pay proposes lands; click your untapped lands to change that payment. Confirm payment to tap the chosen lands and put the spell on the stack, or cancel without spending mana. The server validates exact colors, ownership, and untapped status. Land plays remain one click. Use its
 magnifier to inspect it without casting. Damage and pump spells enter target
 selection and highlight legal creatures or players. Spell and blocker lines
 show exact physical targets. Attackers move into the combat lane; select an
