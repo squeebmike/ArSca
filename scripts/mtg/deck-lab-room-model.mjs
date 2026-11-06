@@ -78,7 +78,7 @@ export async function verifiedRoomDeck(rows,fetcher=fetch){
  for(let i=0;i<ids.length;i+=75){
   if(i)await new Promise(r=>setTimeout(r,150));
   const r=await fetcher('https://api.scryfall.com/cards/collection',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json','User-Agent':'TheManaPocket/1.0 (private deck playtesting)'},body:JSON.stringify({identifiers:ids.slice(i,i+75).map(id=>({id}))}),signal:AbortSignal.timeout(20000)});
-  if(!r.ok)throw Error('Card verification is unavailable. Try again later.');const data=await boundedJson(r,1500000);for(const c of data.data||[])if(ids.includes(c.id)&&typeof c.name==='string')found.set(c.id,thinCard(c));
+  if(!r.ok)throw Error('Card verification is unavailable (provider HTTP '+r.status+'). Try again later; your deck has not been submitted.');const data=await boundedJson(r,1500000);for(const c of data.data||[])if(ids.includes(c.id)&&typeof c.name==='string')found.set(c.id,thinCard(c));
  }
  if(ids.some(id=>!found.has(id)))throw Error('Some cards could not be verified. Reload your deck and try again.');
  return [...merged.values()].flatMap(r=>Array.from({length:r.quantity},()=>({...structuredClone(found.get(r.id)),deckSection:r.section})));
