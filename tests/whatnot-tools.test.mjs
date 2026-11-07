@@ -139,6 +139,9 @@ console.log('whatnot tools checks passed');
   // The receive screens offer the show picker; the dashboard keeps the setting.
   const focDash = (await import('node:fs')).readFileSync('scripts/foc-dashboard.js', 'utf8');
   assert.match(focDash, /setTimeout\(function\(\)\{offerWhatnotShowForReceived\(pickState\.labelItems\);\},400\);/);
+  // It must live inside the file's closure, where api() is (outside it the
+  // picker never opened after a slip receive, 2026-11-07).
+  assert.ok(focDash.indexOf('async function offerWhatnotShowForReceived') < focDash.lastIndexOf('})();'), 'offerWhatnotShowForReceived is inside the foc-dashboard closure');
   assert.match(focDash, /window\.openWhatnotShowPicker\(ids,/, 'the same show picker as Inventory');
   const app = (await import('node:fs')).readFileSync('scripts/dashboard-app.js', 'utf8');
   assert.match(app, /\['whatnotShowOnly', false, 'bool'\],/);

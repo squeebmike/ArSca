@@ -3670,9 +3670,9 @@ window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroup
 // workflow on the wall (select-all, per-checkbox, start/skip/cancel) --
 // that whole feature has been non-functional the same way.
 window.quickAddFocSkuToInventory=quickAddFocSkuToInventory;window.focEbayBulkCheckboxChanged=focEbayBulkCheckboxChanged;window.toggleFocEbayBulkSelectAll=toggleFocEbayBulkSelectAll;window.startFocEbayBulkListing=startFocEbayBulkListing;window.startFocNeedsListingBulk=startFocNeedsListingBulk;window.cancelFocEbayBulkListing=cancelFocEbayBulkListing;window.skipFocEbayBulkItem=skipFocEbayBulkItem;
-})();
-
-// AFTER RECEIVING (store, 2026-11-05): "when I scan the FOC slip and receive
+// AFTER RECEIVING (store, 2026-11-05; moved inside this closure 2026-11-07 --
+// outside it, api() was undefined, the error was swallowed and the Whatnot
+// show picker never opened): "when I scan the FOC slip and receive
 // them in, it should load as pre bid auctions in the show I select." The
 // shelf copies (not ones already held or sold) go into the chosen scheduled
 // Whatnot show as auctions -- 50% of the price or $4, whichever is more --
@@ -3690,3 +3690,4 @@ async function offerWhatnotShowForReceived(labelItems){
   window.openWhatnotShowPicker(ids,ids.length+' comic'+(ids.length===1?'':'s')+' just received (not the copies held or sold).',thenEmail);
 }
 window.offerWhatnotShowForReceived=offerWhatnotShowForReceived;
+})();
