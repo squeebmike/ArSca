@@ -28,4 +28,6 @@ assert.match(fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8'), /sc
 assert.match(w, /list\.push\(\{ name: 'Store copy', email: storeEmail \}\)/, 'a copy to the store email (hintline)');
 const shop = fs.readFileSync('scripts/product-shopping.mjs', 'utf8');
 assert.match(shop, /if\(typeof location!=='undefined'&&\/\[\?&\]buy=1\\b\/\.test\(location\.search\|\|''\)\)\{/, 'the item page adds it and opens the cart');
+assert.match(fs.readFileSync('dashboard.html', 'utf8'), /onclick="emailSelectedNewArrivals\(\)"[^>]*>EMAIL NEW ARRIVALS</, 'by hand from the Inventory bulk bar');
+assert.match(app, /function emailSelectedNewArrivals\(\)\{/);
 console.log('New arrivals email: list, covers, links, opt-out, no double sends passed');

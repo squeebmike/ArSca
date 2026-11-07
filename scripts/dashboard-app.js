@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.06.1-new-arrivals-email';
+const APP_VERSION = '2026.11.06.2-email-by-hand';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4650,6 +4650,13 @@ async function offerNewArrivalsEmail(ids){
   document.body.appendChild(m);
 }
 window.offerNewArrivalsEmail = offerNewArrivalsEmail;
+// Inventory bulk bar: the same email for books picked by hand (a slip received
+// before the pop-up existed, or books that came in another way).
+function emailSelectedNewArrivals(){
+  const ids = all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id);
+  if(!ids.length){ toast_dash('Select the books to email first'); return; }
+  offerNewArrivalsEmail(ids);
+}
 function addSelectedToWhatnotShowPicker(){
   openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id));
 }
