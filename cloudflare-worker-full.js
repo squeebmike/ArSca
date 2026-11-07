@@ -2780,13 +2780,17 @@ const WO_UI_SCRIPT_URL = 'https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@77a7
 // sitewide, served from Webflow's actual CDN host (not the raw S3 bucket
 // URL the Assets API returns, which isn't meant for direct browser use).
 const SITE_LOGO_URL = 'https://cdn.prod.website-files.com/65b15ee0228d06647ca7e4ce/6a7ce98ab3d4819b7565620e_the_mana_pocket_patch_1024x1024.png';
+// On-page logo: Webflow's 500px AVIF of the same patch. The 1024px PNG above
+// was 195 MB of Webflow bandwidth in a few weeks (store, 2026-11-07); it stays
+// only as the social-share image (og:image), where AVIF isn't supported.
+const SITE_LOGO_IMG = 'https://cdn.prod.website-files.com/65b15ee0228d06647ca7e4ce/6a7a2363da766fb28cde6a6d_the_mana_pocket_patch_1024-p-500.avif';
 function mtgSiteHeader() {
   const dropdown = (label, links) => `<div class="navbar6_menu-dropdown" data-mp-dropdown>` +
     `<button type="button" class="navbar6_dropdown-toggle" data-mp-dropdown-toggle>${label} <span class="mp-caret">▾</span></button>` +
     `<div class="navbar6_dropdown-list" data-mp-dropdown-list>${links.map(([href, text]) => `<a class="navbar6_dropdown-link" href="${href}">${text}</a>`).join('')}</div>` +
     `</div>`;
   return `<div id="navbarID" class="navbar6_component"><div class="navbar6_container">` +
-    `<a class="navbar6_logo-link" href="/"><img class="navbar6_logo" src="${SITE_LOGO_URL}" alt="The Mana Pocket" width="56" height="56"></a>` +
+    `<a class="navbar6_logo-link" href="/"><img class="navbar6_logo" src="${SITE_LOGO_IMG}" alt="The Mana Pocket" width="56" height="56"></a>` +
     `<nav class="navbar6_menu" id="mp-nav-menu"><div class="navbar6_menu-left">` +
     `<a class="navbar6_link" href="/">Home</a>` +
     dropdown('Shop', [
@@ -3462,7 +3466,7 @@ function renderSocialLinksPage() {
       .mp-links-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:12px 20px;margin-top:30px;font-size:13px}.mp-links-foot a{color:#d6c2eb}.mp-links button{display:block;margin:26px auto 0;border:1px solid #9475ab;border-radius:999px;background:#291b39;color:var(--ink);font:750 14px/1.3 Exo,system-ui,sans-serif;min-height:44px;padding:12px 22px;cursor:pointer}.mp-links-status{min-height:22px;text-align:center;font-size:13px;margin:8px 0 0;color:var(--lime)}
       @media(max-width:480px){.mp-links-hero{padding:22px 16px}.mp-links-hero img{width:108px;height:108px}.mp-links-card{padding:14px;gap:12px}.mp-links-card strong{font-size:18px}}
       @media(prefers-reduced-motion:reduce){.mp-links-card{transition:none}.mp-links-card:hover{transform:none}}
-    </style><main class="mp-links"><header class="mp-links-hero"><img src="${SITE_LOGO_URL}" width="132" height="132" alt="The Mana Pocket" fetchpriority="high"><p class="mp-links-kicker">Cards · Comics · Collectibles</p><h1>Find The Mana Pocket.</h1><p class="mp-links-intro">New cards. New comics. Same collecting problem.<br>Here's where to find us.</p></header>
+    </style><main class="mp-links"><header class="mp-links-hero"><img src="${SITE_LOGO_IMG}" width="132" height="132" alt="The Mana Pocket" fetchpriority="high"><p class="mp-links-kicker">Cards · Comics · Collectibles</p><h1>Find The Mana Pocket.</h1><p class="mp-links-intro">New cards. New comics. Same collecting problem.<br>Here's where to find us.</p></header>
     <section aria-labelledby="mp-links-social-title"><h2 id="mp-links-social-title">Follow the Pocket</h2><div class="mp-links-list">${profiles.map(p=>`<a class="mp-links-card" data-social-link="${mtgEscapeHtml(p.label)}" href="${mtgEscapeHtml(p.href)}" target="_blank" rel="noopener noreferrer"><span class="mp-links-mark" aria-hidden="true">${p.mark}</span><span class="mp-links-copy"><strong>${p.label}</strong><small>${p.detail}</small></span><span class="mp-links-arrow" aria-hidden="true">↗</span></a>`).join('')}</div></section>
     <section aria-labelledby="mp-links-shop-title" class="mp-links-shop"><h2 id="mp-links-shop-title">Grab something good</h2><div class="mp-links-list">${shortcuts.map(([href,label,detail])=>`<a class="mp-links-card" href="${href}"><span class="mp-links-copy"><strong>${label}</strong><small>${detail}</small></span><span class="mp-links-arrow" aria-hidden="true">→</span></a>`).join('')}</div></section>
     <button type="button" id="mp-copy-links" hidden>Copy this page link</button><p class="mp-links-status" id="mp-links-status" role="status"></p><nav class="mp-links-foot" aria-label="More from The Mana Pocket"><a href="/faq">Ordering &amp; shipping help</a><a href="/account">My Pocket</a><a href="/">Home</a></nav></main>

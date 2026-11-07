@@ -10,7 +10,8 @@ assert.equal(footballSets.length,8);
 assert.equal(footballSets.reduce((n,s)=>n+s.cards.length,0),2150);
 const xml=await(await get('/sitemap-football.xml')).text();
 const urls=[...xml.matchAll(/<loc>(.*?)<\/loc>/g)].map(m=>m[1]);
-assert.equal(urls.length,10744);assert.equal(new Set(urls).size,urls.length);
+// Card pages are listed only while stocked (catalog-index-policy); with no stock: hub, sets and section pages.
+assert.ok(urls.length>8&&urls.length<1000&&!urls.some(u=>u.includes('/cards/')),'no unstocked card pages: '+urls.length);assert.equal(new Set(urls).size,urls.length);
 const titles=new Set(),h1s=new Set();
 for(const set of footballSets){
  assert.deepEqual(footballChecklistPublicationProblems(set),[]);
@@ -27,9 +28,8 @@ for(const set of footballSets){
  assert.equal((await get(footballSetPath(set)+'?page=999')).status,404);
  for(const card of set.cards){
   assert.ok(card.player.trim());const path=footballCardPath(set,card);
-  assert.ok(urls.includes('https://www.themanapocket.com'+path));
   const res=await get(path);assert.equal(res.status,200);const body=await res.text();
-  assert.equal(output.canonicalPath,path);assert.ok(!output.robotsNoindex);assert.equal(output.jsonLd['@type'],'WebPage');assert.ok(!output.jsonLd.offers);
+  assert.equal(output.canonicalPath,path);assert.ok(output.robotsNoindex,'unstocked: live but noindex');assert.equal(output.jsonLd['@type'],'WebPage');assert.ok(!output.jsonLd.offers);
   assert.ok(body.includes('campid=5339046175')&&body.includes('rel="noopener sponsored"'));
   const h1=body.match(/<h1>(.*?)<\/h1>/)[1];assert.ok(!h1s.has(h1));h1s.add(h1);assert.ok(!titles.has(output.title));titles.add(output.title);
  }
@@ -37,7 +37,7 @@ for(const set of footballSets){
 const set=footballSets[0],card=set.cards[0];
 const exact={id:'exact',name:'Exact store copy',categorySlug:'sports-cards',year:set.year,set:set.displayName,player:card.player,cardNumber:card.cardNumber,subset:'Base',variant:'Base',quantity:1,price:5};
 stock=[exact,{...exact,id:'wrong',variant:'Gold'},{...exact,id:'sold',quantity:0},{...exact,id:'unpriced',price:0}];
-const body=await(await get(footballCardPath(set,card))).text();assert.ok(body.includes('/item/exact/'));assert.ok(body.includes('/item/wrong/')&&body.includes('Gold')&&body.includes('may include parallels'));for(const id of ['sold','unpriced'])assert.ok(!body.includes('/item/'+id+'/'));
+const body=await(await get(footballCardPath(set,card))).text();assert.ok(body.includes('/item/exact/'));assert.ok(body.includes('/item/wrong/')&&body.includes('Gold')&&body.includes('may include parallels'));for(const id of ['sold','unpriced'])assert.ok(!body.includes('/item/'+id+'/'));assert.ok(!output.robotsNoindex,'stocked: indexed');assert.ok((await(await get('/sitemap-football.xml')).text()).includes(footballCardPath(set,card)+'</loc>'),'stocked: back in the sitemap');
 await get(footballSetPath(set)+'?q=Kyler');assert.ok(output.robotsNoindex);assert.equal(output.canonicalPath,footballSetPath(set));
 assert.equal((await get('/football','HEAD')).status,200);assert.equal(await(await get('/football','HEAD')).text(),'');
 assert.equal(await get('/other'),null);
