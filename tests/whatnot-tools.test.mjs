@@ -77,7 +77,7 @@ assert.match(worker, /deps\.api\('POST', `\/shipments\/\$\{encodeURIComponent\(s
 assert.match(worker, /deps\.api\('POST', '\/shipments\/add_tracking_code', \{ order_item_ids: itemIds, tracking_code: trackingCode, carrier \}\)/);
 assert.match(worker, /report_type: 'seller_financial_report', start_date: start\.toISOString\(\), end_date: end\.toISOString\(\)/);
 assert.match(worker, /listingSettings: await whatnotListingSettings\(env, storeId\) \};\n  const out = \{ at: new Date\(\)\.toISOString\(\) \};/, 'listing sync knows the auto-title choice');
-const dash = fs.readFileSync('dashboard.html', 'utf8');
+const dash = fs.readFileSync('dashboard.html', 'utf8') + fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(dash, /onclick="setWhatnotModeSelected\('auction'\)"[^>]*>AUCTION</);
 assert.match(dash, /onclick="setWhatnotModeSelected\('bin'\)"[^>]*>BUY IT NOW</, 'Buy It Now brings auctions back to the shop');
 assert.match(dash, /createWhatnotLabel\('\$\{escHtml\(o\.shipment\.id\)\}'\)">CREATE LABEL</);
@@ -139,6 +139,9 @@ console.log('whatnot tools checks passed');
   // The receive screens offer the show picker; the dashboard keeps the setting.
   const focDash = (await import('node:fs')).readFileSync('scripts/foc-dashboard.js', 'utf8');
   assert.match(focDash, /setTimeout\(function\(\)\{offerWhatnotShowForReceived\(pickState\.labelItems\);\},400\);/);
+  // It must live inside the file's closure, where api() is (outside it the
+  // picker never opened after a slip receive, 2026-11-07).
+  assert.ok(focDash.indexOf('async function offerWhatnotShowForReceived') < focDash.lastIndexOf('})();'), 'offerWhatnotShowForReceived is inside the foc-dashboard closure');
   assert.match(focDash, /window\.openWhatnotShowPicker\(ids,/, 'the same show picker as Inventory');
   const app = (await import('node:fs')).readFileSync('scripts/dashboard-app.js', 'utf8');
   assert.match(app, /\['whatnotShowOnly', false, 'bool'\],/);
