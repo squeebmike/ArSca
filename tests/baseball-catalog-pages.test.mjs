@@ -3,18 +3,19 @@ import {handleBaseballCatalog,baseballSetPath,baseballCardPath} from '../scripts
 import {baseballSets} from '../scripts/topps/baseball-seed.mjs';
 import {baseballTeams} from '../scripts/baseball-team-pages.mjs';
 import {baseballPlayers} from '../scripts/baseball-player-pages.mjs';
-import {baseballSectionSitemapPaths,sectionsForSet} from '../scripts/baseball-section-pages.mjs';
+import {baseballSectionSitemapPaths,baseballSectionPagePaths,baseballSectionCardEntries,sectionsForSet} from '../scripts/baseball-section-pages.mjs';
 const escape=s=>String(s??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 let lastPage;
 const deps={escape,slug:s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,'-'),available:i=>i.quantity>0,listItems:async()=>[],shell:p=>{lastPage=p;return '<title>'+escape(p.title)+'</title><link rel="canonical" href="https://www.themanapocket.com'+p.canonicalPath+'">'+(p.robotsNoindex?'<meta name="robots" content="noindex,follow">':'')+'<script type="application/ld+json">'+JSON.stringify(p.jsonLd)+'</script>'+p.bodyHtml;}};
 const get=(path,env={},method='GET')=>handleBaseballCatalog(new Request('https://www.themanapocket.com'+path,{method}),env,new URL('https://www.themanapocket.com'+path),deps);
 assert.equal((await get('/baseball')).status,200);
 let res=await get('/sitemap-baseball.xml'),xml=await res.text();
-assert.match(xml,/<sitemapindex/);let combined='';
-for(const m of xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)){const child=await get(m[1]);assert.equal(child.status,200);const part=await child.text();assert.ok((part.match(/<url>/g)||[]).length<=40000);combined+=part;}xml=combined;
+assert.match(xml,/<urlset/);assert.ok(!xml.includes('/cards/'),'card pages are listed only while stocked (catalog-index-policy)');
+
 assert.equal((await get('/sitemap-baseball.xml?part=0')).status,404);assert.equal((await get('/sitemap-baseball.xml?part=99')).status,404);
-const paths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
-assert.equal(paths.length,3+baseballSets.length+baseballSets.reduce((n,s)=>n+s.cards.length,0)+baseballTeams(baseballSets).length+baseballPlayers(baseballSets).length+baseballSectionSitemapPaths(baseballSets).length);assert.equal(new Set(paths).size,paths.length);
+const sitemapPaths=[...xml.matchAll(/<loc>https:\/\/www.themanapocket.com([^<]+)<\/loc>/g)].map(m=>m[1]);
+assert.equal(sitemapPaths.length,3+baseballSets.length+baseballTeams(baseballSets).length+baseballPlayers(baseballSets).length+baseballSectionPagePaths(baseballSets).length);
+const paths=[...sitemapPaths,...baseballSets.flatMap(s=>s.cards.map(c=>baseballCardPath(s,c))),...baseballSectionCardEntries(baseballSets).map(e=>e.path)];assert.equal(new Set(paths).size,paths.length);
 const titles=new Set(),h1s=new Set();
 for(const set of baseballSets) {
  const identities=new Set(set.cards.map(c=>c.cardNumber+'|'+c.player));assert.equal(identities.size,set.cards.length);
@@ -29,7 +30,7 @@ for(const set of baseballSets) {
  for(const card of set.cards) {
   const path=baseballCardPath(set,card);assert.ok(paths.includes(path));
   res=await get(path);const body=await res.text();assert.equal(res.status,200);
-  assert.equal(lastPage.canonicalPath,path);assert.ok(!lastPage.robotsNoindex);
+  assert.equal(lastPage.canonicalPath,path);assert.ok(lastPage.robotsNoindex,'unstocked card pages stay live but noindex');
   assert.ok(!body.includes('"offers"'));assert.ok(!body.includes('partnernetwork')&&!body.includes('campid='));
   const h1=body.match(/<h1>(.*?)<\/h1>/)[1];assert.ok(!h1s.has(h1));h1s.add(h1);
   assert.ok(!titles.has(lastPage.title));titles.add(lastPage.title);

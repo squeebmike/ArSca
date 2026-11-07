@@ -7,13 +7,14 @@ import {sportsPlayerTeamSearch,sportsSearchSuggestions} from './sports-player-te
 import {sportsChecklistRedirect,sportsReleaseInformation} from './sports-checklist-ui.mjs';
 import {setPageHeader} from './collector-page-ui.mjs';
 import {catalogStoreCopyHtml} from './catalog-inventory.mjs';
+import {noindexUnstocked,stockedCardPaths} from './catalog-index-policy.mjs';
 import {baseballSets} from './topps/baseball-seed.mjs';
 import {checklistPublicationProblems,baseballChecklistInventoryMatches as baseballInventoryMatches,ebayChecklistSearch} from './topps/public-checklist-policy.mjs';
 import {baseballTeams,baseballTeamPath,baseballTeamLinks,handleBaseballTeam} from './baseball-team-pages.mjs';
 import {collectionToolsHtml} from './collection-tools.mjs';
 import {baseballOddsHtml} from './baseball-odds.mjs';
 import {baseballPlayers,baseballPlayerPath,handleBaseballPlayers} from './baseball-player-pages.mjs';
-import {sectionsForSet,baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
+import {baseballSectionCardEntries,baseballSectionPagePaths,sectionsForSet,baseballSectionSitemapPaths,baseballSectionsNav,handleBaseballSections} from './baseball-section-pages.mjs';
 const origin='https://www.themanapocket.com';
 // Generated publisher data is immutable for this deployment. Reuse its stable
 // array identity so derived reference indexes do not rebuild on each request.
@@ -29,7 +30,10 @@ export async function handleBaseballCatalog(request,env,url,deps) {
  const missing=()=>html({title:'Baseball checklist not found | The Mana Pocket',description:'Browse verified baseball checklists.',canonicalPath:url.pathname,robotsNoindex:true,bodyHtml:'<h1>Checklist page not found</h1><p><a href="/baseball">Browse baseball checklists</a></p>'},404);
  if(url.pathname==='/sports/checklists'){if(url.searchParams.has('suggest'))return new Response(request.method==='HEAD'?null:JSON.stringify({suggestions:sportsSearchSuggestions(url.searchParams.get('suggest'),url.searchParams.get('sport')||'')}),{headers:{'Content-Type':'application/json;charset=UTF-8','Cache-Control':'public,max-age=300','X-Robots-Tag':'noindex'}});const data=sportsPlayerTeamSearch(url,esc,{campaignId:env.EBAY_PARTNER_CAMPAIGN_ID});return data?html(data):missing();}
  if(url.pathname==='/sitemap-baseball.xml') {
-  const paths=['/baseball','/sports/checklists','/baseball/players',...baseballPlayers(sets).map(baseballPlayerPath),...teams.map(baseballTeamPath),...sets.flatMap(s=>[baseballSetPath(s),...s.cards.map(c=>baseballCardPath(s,c))]),...baseballSectionSitemapPaths(sets)];
+  // Card pages only while a copy is for sale (catalog-index-policy.mjs).
+  let items=null;try{items=await deps.listItems();}catch{}
+  const cardEntries=[...sets.flatMap(s=>s.cards.map(c=>({set:s,card:c,path:baseballCardPath(s,c)}))),...baseballSectionCardEntries(sets)];
+  const paths=['/baseball','/sports/checklists','/baseball/players',...baseballPlayers(sets).map(baseballPlayerPath),...teams.map(baseballTeamPath),...sets.map(baseballSetPath),...baseballSectionPagePaths(sets),...stockedCardPaths(cardEntries,items,deps.available)];
   const size=40000,parts=Math.ceil(paths.length/size),partText=url.searchParams.get('part');
   if(partText!==null&&(!/^[1-9]\d*$/.test(partText)||Number(partText)>parts))return new Response('Unknown sitemap part',{status:404});
   const index=parts>1&&partText===null;
@@ -63,7 +67,7 @@ export async function handleBaseballCatalog(request,env,url,deps) {
   const [stock,reference]=await Promise.all([stockHtml(card),sportsReferenceImage(env,deps.ctx,set,card,{...deps,archiveOnly:true})]);
   const name=card.player+' #'+card.cardNumber+' — '+set.displayName;
   const affiliate=ebayChecklistSearch(card,set,env.EBAY_PARTNER_CAMPAIGN_ID);
-  return html({title:name+' | The Mana Pocket',description:name+'. Base checklist entry, team details and matching store copies.',canonicalPath:baseballCardPath(set,card),jsonLd:{'@context':'https://schema.org','@type':'WebPage',name,description:'Reference checklist entry from the official Topps base checklist.',...(reference?.image?{image:reference.image}:{}),isPartOf:{'@type':'CollectionPage',name:set.displayName,url:origin+setPath},citation:set.sourceUrl},bodyHtml:crumbs+'<h1>'+esc(name)+'</h1><p>'+esc(card.printedRarity||card.section||'Base card')+(card.team?' · '+esc(card.team):'')+'</p><ul>'+card.subjects.map(s=>'<li>'+esc(s.name)+(s.team?' · '+esc(s.team):'')+(s.note?' · '+esc(s.note):'')+'</li>').join('')+'</ul>'+checklistCardNavigation(set,set.cards,card,esc)+'<p>This is a checklist reference. It does not mean we have this card in stock. Check any store listing for the actual copy, photos, condition and price.</p>'+relatedParallelLinks(set,card,esc,{reference,inventory:pageInventory,deps,campaignId:env.EBAY_PARTNER_CAMPAIGN_ID})+stock+(affiliate?sportsOfferSlotHtml(baseballCardPath(set,card),esc):'')+(affiliate?'<p><a href="'+esc(affiliate)+'" target="_blank" rel="noopener sponsored">Search eBay for this card</a></p><p>Affiliate link: The Mana Pocket may earn a commission if you buy through this link. Results may include different parallels, grades or lots; check the listing.</p>':'')+'<p><a href="'+esc(set.sourceUrl)+'">Publisher source</a> · <a href="'+setPath+'">Back to the base checklist</a></p>'});
+  return html({title:name+' | The Mana Pocket',description:name+'. Base checklist entry, team details and matching store copies.',canonicalPath:baseballCardPath(set,card),robotsNoindex:noindexUnstocked(pageInventory,card,set,deps.available),jsonLd:{'@context':'https://schema.org','@type':'WebPage',name,description:'Reference checklist entry from the official Topps base checklist.',...(reference?.image?{image:reference.image}:{}),isPartOf:{'@type':'CollectionPage',name:set.displayName,url:origin+setPath},citation:set.sourceUrl},bodyHtml:crumbs+'<h1>'+esc(name)+'</h1><p>'+esc(card.printedRarity||card.section||'Base card')+(card.team?' · '+esc(card.team):'')+'</p><ul>'+card.subjects.map(s=>'<li>'+esc(s.name)+(s.team?' · '+esc(s.team):'')+(s.note?' · '+esc(s.note):'')+'</li>').join('')+'</ul>'+checklistCardNavigation(set,set.cards,card,esc)+'<p>This is a checklist reference. It does not mean we have this card in stock. Check any store listing for the actual copy, photos, condition and price.</p>'+relatedParallelLinks(set,card,esc,{reference,inventory:pageInventory,deps,campaignId:env.EBAY_PARTNER_CAMPAIGN_ID})+stock+(affiliate?sportsOfferSlotHtml(baseballCardPath(set,card),esc):'')+(affiliate?'<p><a href="'+esc(affiliate)+'" target="_blank" rel="noopener sponsored">Search eBay for this card</a></p><p>Affiliate link: The Mana Pocket may earn a commission if you buy through this link. Results may include different parallels, grades or lots; check the listing.</p>':'')+'<p><a href="'+esc(set.sourceUrl)+'">Publisher source</a> · <a href="'+setPath+'">Back to the base checklist</a></p>'});
  }
  const query=(url.searchParams.get('q')||'').trim().slice(0,100),q=query.toLowerCase();
  const cards=set.cards.filter(c=>!q||[c.player,c.cardNumber,c.team,c.printedRarity,...c.subjects.map(s=>s.note||'')].join(' ').toLowerCase().includes(q));
