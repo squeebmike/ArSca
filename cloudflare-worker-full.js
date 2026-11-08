@@ -11023,15 +11023,22 @@ async function routeRequest(request, env, ctx) {
         const conditions = (policy.itemConditions || [])
           .map(c => ({ id: String(c.conditionId || ''), label: c.conditionDescription || '' }))
           .filter(c => c.id);
-        const descriptors = (policy.itemConditionDescriptors || [])
+        // eBay nests the descriptors under each condition (itemConditions[].
+        // conditionDescriptors, values as conditionDescriptorValueId/Name);
+        // the older flat shape is still read. Store, 2026-11-08: the nested
+        // shape was never read, so ungraded cards showed "Could not load
+        // eBay's required card-condition options".
+        const rawDescriptors = [...(policy.itemConditionDescriptors || []), ...(policy.itemConditions || []).flatMap(c => c.conditionDescriptors || [])];
+        const seenDescriptor = new Set();
+        const descriptors = rawDescriptors
           .map(d => ({
             id: String(d.conditionDescriptorId || ''),
             name: d.conditionDescriptorName || '',
             values: (d.conditionDescriptorValues || [])
-              .map(v => ({ value: String(v.value || ''), label: v.displayValue || v.value || '' }))
+              .map(v => ({ value: String(v.value || v.conditionDescriptorValueId || ''), label: v.displayValue || v.conditionDescriptorValueName || v.value || v.conditionDescriptorValueId || '' }))
               .filter(v => v.value),
           }))
-          .filter(d => d.id);
+          .filter(d => d.id && !seenDescriptor.has(d.id) && seenDescriptor.add(d.id));
         return json({ ok: true, categoryId, conditions, descriptors });
       } catch (e) {
         return json({ ok: false, error: 'Condition policy lookup failed: ' + e.message }, 502);
