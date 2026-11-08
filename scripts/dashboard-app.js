@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.08.1-nelko-labels';
+const APP_VERSION = '2026.11.08.2-pc-paste';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -30545,6 +30545,7 @@ async function lookupBarcodeProduct(){
   const pcProduct=!tcgProduct ? (parsePriceChartingProductInput(raw, tcgCat) || parsePriceChartingProductInput(hint, tcgCat)) : null;
   if(tcgProduct || pcProduct){
     const row=tcgProduct ? await resolveTcgplayerProductRow(tcgProduct, raw || hint) : priceChartingProductToQplRow(pcProduct, raw || hint);
+    if(!tcgProduct) await applyPastedPriceChartingUrl(row, pcProduct);
     qplMasterResults=[row];qplResults=[row];qplLastSearch=raw || hint;
     const cat=document.getElementById('qpl-cat');if(cat && row.is_sealed)cat.value='Sealed';
     document.querySelectorAll('.qpl-cat-pill').forEach(b=>b.classList.toggle('active',b.dataset.cat===(cat?.value||'')));
@@ -32707,6 +32708,26 @@ function parsePriceChartingProductInput(raw = '', selectedCategory = ''){
   };
 }
 
+// A pasted PriceCharting/SportsCardsPro product link -> the exact product's
+// name, set, photo and price, looked up from the page itself (no name search).
+async function applyPastedPriceChartingUrl(row, product){
+  try {
+    const pc = await resolveSportsPriceChartingUrl(product?.canonicalUrl);
+    if(!pc) return row;
+    row.pricecharting = { ...pc, savedExactLink:true };
+    row.name = pc.productName || row.name;
+    row.set = pc.consoleName || row.set;
+    row.market = Number(pc.prices?.ungraded || 0) || Number(pc.prices?.grade8 || 0);
+    row.imageUrl = pc.imageUrl || row.imageUrl || '';
+    row.productUrl = pc.url || row.productUrl || '';
+    row.providerUrl = pc.url || row.providerUrl || '';
+    row.priceSource = 'Saved exact PriceCharting link';
+  } catch(e) {
+    row.note = 'PriceCharting URL could not be resolved: ' + (e.message || e);
+  }
+  return row;
+}
+
 function priceChartingProductToQplRow(product = {}, query = ''){
   return {
     source:'pricecharting_url',
@@ -32921,18 +32942,10 @@ async function _runPriceLookupInner(){
     // price yet. Resolve the literal pasted page server-side (see
     // /pricing/pricecharting/resolve-url) -- no name search, no guessing --
     // so pasting the URL once gets the exact product, or a clear error.
-    if(!tcgProduct && priceChartingProduct && row.category === 'Sports Card'){
-      try {
-        const pc = await resolveSportsPriceChartingUrl(priceChartingProduct.canonicalUrl);
-        row.pricecharting = { ...pc, savedExactLink:true };
-        row.market = Number(pc.prices?.ungraded || 0);
-        row.imageUrl = pc.imageUrl || row.imageUrl || '';
-        row.productUrl = pc.url || row.productUrl || '';
-        row.providerUrl = pc.url || row.providerUrl || '';
-        row.priceSource = 'Saved exact PriceCharting link';
-      } catch(e) {
-        row.note = 'PriceCharting URL could not be resolved: ' + (e.message || e);
-      }
+    // Every category, not just sports (store, 2026-11-08: "copy and paste a
+    // pricecharting link for pokemon cards. Ie chinese").
+    if(!tcgProduct && priceChartingProduct){
+      await applyPastedPriceChartingUrl(row, priceChartingProduct);
     }
     if(!qplSearchStillActive(mySeq, searchPlan)) return;
     recordSearchPlanRoute(searchPlan, tcgProduct ? 'local:tcgplayer-product' : 'local:pricecharting-product-url', tcgProduct?.productId || priceChartingProduct?.canonicalUrl || combinedRaw, 1);
@@ -32948,8 +32961,8 @@ async function _runPriceLookupInner(){
     renderUniversalSearchExplain(searchPlan, qplResults.length ? qplResults : qplMasterResults);
     pushQuickLookupHistory(combinedRaw, row);
     setMtgOfflineBanner(
-      Number(row.market) > 0 ? 'External product URL resolved with a name-matched live price -- verify against the link before buying.' : 'External product URL resolved locally. No connected pricing source has this exact product indexed.',
-      Number(row.market) > 0 ? 'good' : 'warn'
+      row.pricecharting?.savedExactLink ? 'Exact PriceCharting product loaded from the pasted link.' : Number(row.market) > 0 ? 'External product URL resolved with a name-matched live price -- verify against the link before buying.' : 'External product URL resolved locally. No connected pricing source has this exact product indexed.',
+      row.pricecharting?.savedExactLink || Number(row.market) > 0 ? 'good' : 'warn'
     );
     return;
   }
