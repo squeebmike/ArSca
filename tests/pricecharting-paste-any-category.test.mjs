@@ -20,3 +20,9 @@ assert.match(app, /if\(\/pokemon\|pok\[eé\]mon\/\.test\(s\)\) return 'Pokemon T
 const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(w, /if \(url\.pathname === '\/pricing\/pricecharting\/resolve-url'\) \{/);
 console.log('Pasted PriceCharting links resolve for every category passed');
+// The result cards and the ADD buttons always read the same list: a filtered-
+// away exact match (the pasted Chinese Umbreon) used to render from the full
+// list while ADD TO BUY looked in the empty filtered one and did nothing.
+assert.doesNotMatch(app, /renderQuickLookupResults\(qplResults\.length \? qplResults : qplMasterResults\)/);
+assert.ok((app.match(/if\(!qplResults\.length\) qplResults = qplMasterResults\.slice\(\);/g) || []).length >= 5);
+console.log('Research result cards and ADD buttons share one list passed');

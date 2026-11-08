@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.08.3-ebay-card-details';
+const APP_VERSION = '2026.11.08.4-research-add-fix';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -30767,7 +30767,7 @@ async function handleCardsightCertBarcode(cert){
     qplMasterResults.unshift(row);
     qplLastSearch = '';
     qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || '');
-    renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+    if(!qplResults.length) qplResults = qplMasterResults.slice(); renderQuickLookupResults(qplResults);
     if(log){
       const line = document.createElement('div');
       line.textContent = '✓ ' + row.name + ' — PSA cert #' + cert + (row.market ? ' — $' + row.market.toFixed(2) : ' — no price found') + ' ';
@@ -31231,7 +31231,7 @@ async function runOwnCardIdentifyScan(img){
   }
   qplLastSearch = '';
   qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || '');
-  renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+  if(!qplResults.length) qplResults = qplMasterResults.slice(); renderQuickLookupResults(qplResults);
   setCardSightStatus(added ? (added + ' card' + (added > 1 ? 's' : '') + ' added to Research results below.') : 'Card read, but no catalog match was found.', added ? 'var(--g)' : 'var(--gold)');
 }
 
@@ -31279,7 +31279,7 @@ async function runOwnGradedIdentifyScan(img){
   }
   qplLastSearch = '';
   qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || '');
-  renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+  if(!qplResults.length) qplResults = qplMasterResults.slice(); renderQuickLookupResults(qplResults);
   setCardSightStatus(added ? (added + ' card' + (added > 1 ? 's' : '') + ' added to Research results below.') : 'Card read, but no catalog match was found.', added ? 'var(--g)' : 'var(--gold)');
 }
 
@@ -31369,7 +31369,7 @@ async function doCardSightScan(){
       }
       qplLastSearch = '';
       qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || '');
-      renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+      if(!qplResults.length) qplResults = qplMasterResults.slice(); renderQuickLookupResults(qplResults);
       setCardSightStatus(detections.length + ' card' + (detections.length > 1 ? 's' : '') + ' added to Research results below.', 'var(--g)');
     }
   } catch(e) {
@@ -32976,7 +32976,8 @@ async function _runPriceLookupInner(){
       if(sel) sel.value = 'Magic: The Gathering';
       document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === 'Magic: The Gathering'));
       qplResults = filterQplMasterResults(qplMasterResults, 'Magic: The Gathering');
-      renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+      if(!qplResults.length) qplResults = qplMasterResults.slice();
+      renderQuickLookupResults(qplResults);
       renderUniversalSearchExplain(searchPlan, qplResults.length ? qplResults : qplMasterResults);
       pushQuickLookupHistory(qplLastSearch, qplResults[0] || qplMasterResults[0]);
       setMtgOfflineBanner('TCGplayer MTG URL resolved through local MTG catalog + PriceCharting offline snapshot.', 'good');
@@ -33007,8 +33008,12 @@ async function _runPriceLookupInner(){
       if(sel) sel.value = 'Sealed';
       document.querySelectorAll('.qpl-cat-pill').forEach(b => b.classList.toggle('active', b.dataset.cat === 'Sealed'));
     }
+    // An exact pasted product link is never filtered away: the cards on screen
+    // and the ADD buttons read the same list (store, 2026-11-08: the pasted
+    // Chinese Umbreon showed, but ADD TO BUY found nothing at its index).
     qplResults = filterQplMasterResults(qplMasterResults, document.getElementById('qpl-cat')?.value || cat);
-    renderQuickLookupResults(qplResults.length ? qplResults : qplMasterResults);
+    if(!qplResults.length) qplResults = qplMasterResults.slice();
+    renderQuickLookupResults(qplResults);
     renderUniversalSearchExplain(searchPlan, qplResults.length ? qplResults : qplMasterResults);
     pushQuickLookupHistory(combinedRaw, row);
     setMtgOfflineBanner(
