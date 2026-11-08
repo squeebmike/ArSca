@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.07.2-catalog-index';
+const APP_VERSION = '2026.11.08.1-nelko-labels';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -45741,6 +45741,8 @@ function labelNameKeepNumber(name, max){
   return numbered[1].slice(0, Math.max(1, max - numbered[2].length - 2)).trimEnd() + '… ' + numbered[2];
 }
 async function printInventoryLabels(){
+  // The Nelko P21 prints from its phone app, not the print dialog: hand it the PNGs.
+  if(isNelkoLabelSize()) return downloadInventoryLabelPngs();
   if(!labelPrintBatch.length) return alert('Add at least one item to print');
   // The wrap layout's back face always uses QR (see isWrap below), which
   // depends on the separate local qrcode-generator.js, not JsBarcode --
@@ -46031,9 +46033,16 @@ function labelRenderOptions(){
   // The wrap back face is always QR, regardless of the dropdown -- see the
   // same override in printInventoryLabels for why.
   const codeStyle = isWrap ? 'qr' : (document.getElementById('label-print-code-style')?.value || 'qr');
+  // Nelko P21 (store, 2026-11-08: Dave's Bluetooth label maker): 14 mm
+  // tape printed from the Nelko phone app as an image -- QR on the left,
+  // price, name and condition beside it. Too small to wrap a toploader.
+  const nelko = NELKO_P21_SIZES[mode];
+  if(nelko) return { isRoll:true, isWrap:false, nelko:true, codeStyle:'qr', widthIn:nelko.lengthMm / 25.4, heightIn:nelko.tapeMm / 25.4, storeName:getVendorProfile().storeName || '' };
   const widthIn = isRoll ? 2 : 2.625;
   return { isRoll, isWrap, codeStyle, widthIn, heightIn:1, storeName:getVendorProfile().storeName || '' };
 }
+const NELKO_P21_SIZES = { 'nelko-14x40':{ tapeMm:14, lengthMm:40 }, 'nelko-14x50':{ tapeMm:14, lengthMm:50 } };
+const isNelkoLabelSize = () => !!NELKO_P21_SIZES[document.getElementById('label-print-size')?.value || ''];
 // Words onto at most maxLines lines within maxWidth; a cut last line ends
 // in "…", like the PC label's line clamp.
 function labelFitLines(ctx, text, maxWidth, maxLines, ellipsis = true){
@@ -46111,7 +46120,20 @@ async function renderInventoryLabelCanvas(b, opts = labelRenderOptions()){
     t.setLineDash([]);
   }
   const iW = W - border * 2, iH = H - border * 2;
-  if(isWrap){
+  if(opts.nelko){
+    // Nelko P21: square QR at the left, then price (big), name, condition.
+    const pad = 3, q = H - pad * 2;
+    codeBox = { x:pad, y:pad, w:q, h:q };
+    const left = pad + q + 4, contentW = W - left - pad;
+    t.fillStyle = '#000';
+    setFont(15);
+    drawLines([fdLabelPrice$(b.price)], left, pad, 15, 15, 'left');
+    setFont(7);
+    const nameLines = labelFitLines(t, labelNameKeepNumber(b.name, 40), contentW, 2);
+    drawLines(nameLines, left, pad + 17, 7, 7.6, 'left');
+    const foot = [b.condition, labelStockText(b)].filter(Boolean).join(' · ');
+    if(foot){ setFont(6); t.textAlign = 'left'; t.textBaseline = 'alphabetic'; t.fillText(labelEllipsize(t, String(foot).toUpperCase(), contentW), left, H - pad); }
+  } else if(isWrap){
     // .label.wrap .wrap-front { width:44%; padding:10px 8px 5px; gap:3px;
     //   border-right:2px dashed #000 }
     const frontW = iW * 0.44, fx = border, fy = border;
