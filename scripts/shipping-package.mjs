@@ -88,3 +88,27 @@ export function packageFor(d = {}, price = 0) {
   }
   return { kind, ...base };
 }
+
+// A bundle ships as one parcel (store, 2026-11-08: "more than one book for
+// sale bundled. And shipping weights etc update?"): the biggest member's
+// package with everyone's contents inside, stacked. members: [{ data, price }].
+// Flat things stack thin; boxes add their own height.
+const STACK_IN = { pwe: 0.05, bubble: 0.1, pack: 0.25, comic: 0.2, slab: 0.5 };
+export function bundlePackage(members = []) {
+  const pkgs = members.map(m => packageFor(m?.data || m || {}, Number(m?.price) || 0));
+  if (!pkgs.length) return null;
+  const vol = p => p.length * p.width * p.height;
+  const biggest = pkgs.reduce((a, b) => (vol(b) > vol(a) ? b : a));
+  const contentsOz = pkgs.reduce((n, p) => n + p.contentsOz, 0);
+  const packing = Math.max(0, biggest.weightOz - biggest.contentsOz);
+  const extra = pkgs.filter(p => p !== biggest).reduce((n, p) => n + (STACK_IN[p.kind] ?? p.height), 0);
+  const height = Math.ceil((biggest.height + extra) * 4) / 4;
+  // Thin mailers grow into a box once the stack is thick.
+  const box = height > 3 && ['pwe', 'bubble', 'pack', 'slab'].includes(biggest.kind) ? PACKAGES.box : null;
+  return {
+    kind: 'custom', name: 'Bundle (' + pkgs.length + ' items)',
+    weightOz: Math.ceil(contentsOz + Math.max(packing, box ? box.weightOz - box.contentsOz : 0)),
+    length: box ? box.length : biggest.length, width: box ? box.width : biggest.width, height: box ? Math.max(height, box.height) : height,
+    contentsOz: Math.round(contentsOz * 10) / 10,
+  };
+}

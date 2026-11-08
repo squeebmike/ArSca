@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.08.4-research-add-fix';
+const APP_VERSION = '2026.11.08.5-whatnot-bundles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -15133,6 +15133,9 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // live on each member row it was built from.
   ['isBundle',false,'bool'], ['bundleMemberIds',[],'array'], ['bundleMemberNames',[],'array'],
   ['bundleMemberValueTotal',0,'num'], ['bundledIntoId',''], ['bundledIntoName',''],
+  // A typed ship weight (oz) and box size ("L x W x H" in) -- a bundle's
+  // one-parcel weight (bundleShippingFields) -- beat the shipping chart.
+  ['shipWeightOz',0,'num'], ['shipDims',''],
   // Booster-box-to-packs (breakBoosterBox) -- the mirror-image of bundles:
   // brokenFromBox* fields live on each pack row it was split out of,
   // brokenIntoPack* fields live on the archived source box row.
@@ -27440,7 +27443,7 @@ function computeBundleCandidates(items, opts={}){
   const maxGroups = opts.maxGroups || 20;
   const sellable = (items || []).filter(inventoryItemIsSellable).filter(i => !i.isBundle);
   const groups = [];
-  const addGroupsFromKey = (keyFn, type) => {
+  const addGroupsFromKey = (keyFn, type, min = minGroupSize) => {
     const byKey = new Map();
     sellable.forEach(i => {
       const key = keyFn(i);
@@ -27449,9 +27452,15 @@ function computeBundleCandidates(items, opts={}){
       byKey.get(key).push(i);
     });
     byKey.forEach((groupItems, key) => {
-      if(groupItems.length >= minGroupSize) groups.push({ type, key, category:groupItems[0].category, items:groupItems });
+      if(groupItems.length >= min) groups.push({ type, key, category:groupItems[0].category, items:groupItems, min });
     });
   };
+  // Comics (store, 2026-11-08: "connecting covers or runs"): connecting
+  // covers of one issue, every cover of one issue, then a run of issues.
+  const comic = i => qplCategoryKey(i.category) === 'comic' ? bundleComicIdentity(i) : null;
+  addGroupsFromKey(i => { const c = comic(i); return c && c.connecting && c.issue ? `${i.category}||${c.series} #${c.issue}` : null; }, 'connecting', 2);
+  addGroupsFromKey(i => { const c = comic(i); return c && c.issue ? `${i.category}||${c.series} #${c.issue}` : null; }, 'issue', 2);
+  addGroupsFromKey(i => { const c = comic(i); return c ? `${i.category}||${c.series}` : null; }, 'run', 3);
   // Most-specific grouping first (player, then team, then set) so the
   // de-dupe pass below prefers the tightest, most relevant lot for an
   // item instead of always falling back to its broadest "same set" group.
@@ -27461,10 +27470,12 @@ function computeBundleCandidates(items, opts={}){
   const claimed = new Set();
   const deduped = [];
   groups.forEach(g => {
-    const unclaimed = g.items.filter(i => !claimed.has(i.id));
-    if(unclaimed.length >= minGroupSize){
+    let unclaimed = g.items.filter(i => !claimed.has(i.id));
+    // A run needs different issues, not copies of one.
+    if(g.type === 'run' && new Set(unclaimed.map(i => bundleComicIdentity(i)?.issue)).size < 3) unclaimed = [];
+    if(unclaimed.length >= (g.min || minGroupSize)){
       unclaimed.forEach(i => claimed.add(i.id));
-      deduped.push({ ...g, items:unclaimed, label:g.key.split('||')[1] || g.key });
+      deduped.push({ ...g, items:unclaimed, label:(g.key.split('||')[1] || g.key).replace(/\b[a-z]/g, c => ['connecting','issue','run'].includes(g.type) ? c.toUpperCase() : c) });
     }
   });
   return deduped
@@ -27501,7 +27512,17 @@ function openBundleBrainModal(){
 function closeBundleBrainModal(){
   document.getElementById('bundle-brain-modal')?.classList.remove('on');
 }
-const BUNDLE_BRAIN_TYPE_LABEL = { set:'SAME SET', team:'SAME TEAM', player:'SAME PLAYER' };
+const BUNDLE_BRAIN_TYPE_LABEL = { set:'SAME SET', team:'SAME TEAM', player:'SAME PLAYER', connecting:'CONNECTING COVERS', issue:'ALL COVERS · ONE ISSUE', run:'ISSUE RUN' };
+// A comic's series and issue from what the item says ("ABSOLUTE BATMAN #25
+// CVR H ... LEFT CONNECTING ..." -> absolute batman / 25 / connecting).
+function bundleComicIdentity(i = {}){
+  const name = String(i.name || '').replace(/\s+--\s+.*$/, '');
+  const m = name.match(/^(.*?)\s*#\s*(\d+(?:\.\d+)?)/);
+  const series = String(i.comicMetadata?.series || (m ? m[1] : '') || '').replace(/\(\d{4}\)/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  const issue = String(i.comicMetadata?.issueNumber ?? i.issue ?? (m ? m[2] : '') ?? '').trim();
+  if(!series) return null;
+  return { series, issue, connecting:/\bconnect(?:ing|s)?\b|\binterlock/i.test([i.name, i.variant].join(' ')) };
+}
 function renderBundleBrainModal(){
   const inner = document.getElementById('bundle-brain-inner');
   if(!inner) return;
@@ -27529,7 +27550,7 @@ function createBundleFromCandidate(idx){
   bundleDraftIds = new Set(g.items.map(i => i.id));
   closeBundleBrainModal();
   openBundleBuilderModal();
-  const typeName = { set:'Lot', team:'Team Lot', player:'Player Lot' };
+  const typeName = { set:'Lot', team:'Team Lot', player:'Player Lot', connecting:'Connecting Covers', issue:'All Covers', run:'Run' };
   const nameEl = document.getElementById('bb-name');
   const priceEl = document.getElementById('bb-price');
   if(nameEl) nameEl.value = `${g.label} ${typeName[g.type] || 'Lot'} (${g.items.length})`;
@@ -27646,13 +27667,23 @@ async function confirmCreateBundle(){
   const items = [...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean);
   if(items.length < 2) return toast_dash('Select at least 2 items to bundle');
   try {
-    await createInventoryBundle(items, name, price);
+    const containerId = await createInventoryBundle(items, name, price);
     closeBundleBuilderModal();
     clearBundleDraft();
     toast_dash('Bundle created: ' + name);
+    // Straight into a Whatnot show if wanted (closing the picker skips it).
+    if(containerId && typeof window.openWhatnotShowPicker === 'function') window.openWhatnotShowPicker([containerId], 'Bundle: ' + name + ' (' + items.length + ' items). Its Whatnot listing lists every item; the items themselves come off Whatnot.');
   } catch(e) { toast_dash('Could not create bundle: ' + e.message); }
 }
 
+// One parcel for the whole bundle: its packed weight and box size from the
+// shipping chart (scripts/shipping-package.mjs), saved as the bundle's own
+// typed weight so Whatnot, eBay and the website quote all use it.
+async function bundleShippingFields(items){
+  const chart = await import(new URL('scripts/shipping-package.mjs', document.baseURI).href).catch(() => null);
+  const pkg = chart?.bundlePackage?.(items.map(i => ({ data:i, price:Number(inventoryListPrice(i) || i.price || 0) })));
+  return pkg ? { shipWeightOz:pkg.weightOz, shipDims:`${pkg.length} x ${pkg.width} x ${pkg.height}` } : {};
+}
 async function createInventoryBundle(items, name, price){
   const categories = [...new Set(items.map(i => i.category).filter(Boolean))];
   const category = categories.length === 1 ? categories[0] : 'Bundle';
@@ -27660,8 +27691,9 @@ async function createInventoryBundle(items, name, price){
   const valueTotal = items.reduce((a,i) => a + Number(inventoryListPrice(i) || i.price || i.market || 0), 0);
   const thumbSource = items.find(i => i.thumbnail || i.imageUrl);
   const comicMetadata = buildBundleComicMetadata(items);
+  const ship = await bundleShippingFields(items);
   const containerUpdates = {
-    name, category, price, market:price, qty:1, cost:totalCost,
+    name, category, price, market:price, qty:1, cost:totalCost, ...ship,
     productType:'bundle', isBundle:true,
     bundleMemberIds: items.map(i => i.id),
     bundleMemberNames: items.map(i => i.name),
@@ -27694,6 +27726,7 @@ async function createInventoryBundle(items, name, price){
   }
   logOpsEvent('inventory_bundle_created', 'Created bundle: ' + name, { containerId, memberIds:items.map(i => i.id), price });
   renderAll();
+  return containerId;
 }
 
 // Store report: a bundle created before collectBundleMemberPhotos/
@@ -27713,8 +27746,10 @@ async function refreshBundleInfo(containerId){
   if(!members.length) return toast_dash('Could not find this bundle\'s member items to refresh from');
   const photos = collectBundleMemberPhotos(members);
   const comicMetadata = buildBundleComicMetadata(members);
+  const ship = await bundleShippingFields(members);
   try {
-    await updateBuiltInInventoryItem(container, { photos, ...(comicMetadata ? { comicMetadata } : {}) });
+    await updateBuiltInInventoryItem(container, { photos, ...ship, ...(comicMetadata ? { comicMetadata } : {}) });
+    Object.assign(container, ship);
     container.photos = photos;
     if(comicMetadata) container.comicMetadata = comicMetadata;
     toast_dash('Bundle photos and comic info refreshed from its ' + members.length + ' member item(s)');
