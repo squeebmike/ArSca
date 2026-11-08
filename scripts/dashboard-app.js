@@ -32746,9 +32746,20 @@ function parsePriceChartingProductInput(raw = '', selectedCategory = ''){
 
 // A pasted PriceCharting/SportsCardsPro product link -> the exact product's
 // name, set, photo and price, looked up from the page itself (no name search).
+// Backup when the page lookup fails: PriceCharting's catalog search, taking
+// only the product whose own link is exactly the pasted one.
+async function priceChartingProductByExactLink(product){
+  const path = u => { try { return new URL(u).pathname.replace(/\/+$/,'').toLowerCase(); } catch { return ''; } };
+  const want = path(product?.canonicalUrl);
+  if(!want) return null;
+  const q = [product.name, product.set].filter(Boolean).join(' ');
+  const res = await storeWorkerFetch('/pricing/pricecharting/search?' + new URLSearchParams({ q }), { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  return (data.products || []).find(p => path(p.url) === want) || null;
+}
 async function applyPastedPriceChartingUrl(row, product){
   try {
-    const pc = await resolveSportsPriceChartingUrl(product?.canonicalUrl);
+    const pc = await resolveSportsPriceChartingUrl(product?.canonicalUrl).catch(async e => (await priceChartingProductByExactLink(product).catch(() => null)) || Promise.reject(e));
     if(!pc) return row;
     row.pricecharting = { ...pc, savedExactLink:true };
     row.name = pc.productName || row.name;
@@ -32765,7 +32776,11 @@ async function applyPastedPriceChartingUrl(row, product){
 }
 
 function priceChartingProductToQplRow(product = {}, query = ''){
+  // PriceCharting names non-English sets "Pokemon Chinese ...", "Pokemon Japanese ...".
+  const language = (String(product.consoleSlug || product.set || '').match(/\b(chinese|japanese|korean|german|french|italian|spanish|portuguese)\b/i) || [])[1];
+  const lang = language ? language[0].toUpperCase() + language.slice(1).toLowerCase() : '';
   return {
+    ...(lang ? { language:lang, selectedLanguage:lang } : {}),
     source:'pricecharting_url',
     name:product.name || query || 'PriceCharting Product',
     category:product.category || 'Collectibles',

@@ -11,6 +11,10 @@ assert.match(app, /async function applyPastedPriceChartingUrl\(row, product\)\{[
 assert.match(app, /row\.market = Number\(pc\.prices\?\.ungraded \|\| 0\) \|\| Number\(pc\.prices\?\.grade8 \|\| 0\);/);
 // Selecting it never swaps the exact link for an English TCGplayer search match.
 assert.match(app, /qplResultCategoryKey\(r\) === 'pokemon' && !r\.pricecharting\?\.savedExactLink && r\.source !== 'pricecharting_url' &&/);
+// If the page lookup fails, the catalog search is used, but only for the exact same link.
+assert.match(app, /async function priceChartingProductByExactLink\(product\)\{/);
+assert.match(app, /\.find\(p => path\(p\.url\) === want\) \|\| null;/);
+assert.match(app, /\.\.\.\(lang \? \{ language:lang, selectedLanguage:lang \} : \{\}\),/);
 // Chinese Pokemon sets are PriceCharting "pokemon-chinese-..." consoles: Pokemon TCG.
 assert.match(app, /if\(\/pokemon\|pok\[eé\]mon\/\.test\(s\)\) return 'Pokemon TCG';/);
 const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
