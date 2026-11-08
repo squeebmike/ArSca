@@ -9,6 +9,8 @@ assert.match(app, /if\(!tcgProduct && priceChartingProduct\)\{\n\s*await applyPa
 assert.match(app, /if\(!tcgProduct\) await applyPastedPriceChartingUrl\(row, pcProduct\);/, 'the barcode/link box too');
 assert.match(app, /async function applyPastedPriceChartingUrl\(row, product\)\{[\s\S]{0,400}resolveSportsPriceChartingUrl\(product\?\.canonicalUrl\)/);
 assert.match(app, /row\.market = Number\(pc\.prices\?\.ungraded \|\| 0\) \|\| Number\(pc\.prices\?\.grade8 \|\| 0\);/);
+// Selecting it never swaps the exact link for an English TCGplayer search match.
+assert.match(app, /qplResultCategoryKey\(r\) === 'pokemon' && !r\.pricecharting\?\.savedExactLink && r\.source !== 'pricecharting_url' &&/);
 // Chinese Pokemon sets are PriceCharting "pokemon-chinese-..." consoles: Pokemon TCG.
 assert.match(app, /if\(\/pokemon\|pok\[eé\]mon\/\.test\(s\)\) return 'Pokemon TCG';/);
 const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');

@@ -39984,7 +39984,10 @@ async function refreshResearchPrice(idx){
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
   if(r?.source==='metron_series'){await chooseMetronComicSeries(idx);return;}
-  if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
+  // A pasted PriceCharting link is already the exact product (Chinese and
+  // other non-English cards included): never swap it for an English
+  // TCGplayer search match (store, 2026-11-08: "It won't let me add it").
+  if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pricecharting?.savedExactLink && r.source !== 'pricecharting_url' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
     // Show loading state on the SELECT button
     const selectBtn = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .qpl-select-btn`);
     if(selectBtn) { selectBtn.textContent = 'LOADING...'; selectBtn.disabled = true; }
