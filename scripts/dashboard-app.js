@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.08.2-pc-paste';
+const APP_VERSION = '2026.11.08.3-ebay-card-details';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -22145,6 +22145,13 @@ function applyLiveEbayConditionDescriptors(prefix, descriptors){
   }
 }
 
+const EBAY_UNGRADED_CARD_CONDITIONS = [{ value:'400010', label:'Near mint or better' }, { value:'400011', label:'Excellent' }, { value:'400012', label:'Very good' }, { value:'400013', label:'Poor' }];
+// The item's own condition (NM, Excellent, LP...) -> the matching card-condition value.
+function ebayUngradedCardConditionFor(condition, values = EBAY_UNGRADED_CARD_CONDITIONS){
+  const c = String(condition || '').toLowerCase();
+  const want = /poor|heav|damag|\bhp\b|\bdmg\b/.test(c) ? /poor/ : /very good|moderate|\bmp\b|\bvg\b/.test(c) ? /very good/ : /excellent|light|\blp\b|\bex\b/.test(c) ? /excellent/ : /near mint|mint/;
+  return (values.find(v => want.test(String(v.label).toLowerCase())) || values[0] || {}).value || '';
+}
 let ebayConditionPolicyCache = {};
 async function fetchEbayConditionPolicies(categoryId){
   const key = String(categoryId);
@@ -22232,9 +22239,11 @@ async function refreshEbayConditionUi(prefix, item, preferredConditionId){
     `;
   } else {
     const condDesc = policy?.descriptors?.find(d => d.id === '40001' || /card condition/i.test(d.name||''));
-    extra.innerHTML = condDesc?.values?.length
-      ? `<div style="margin-top:2px"><label style="font-size:8px;color:var(--dim)">CARD CONDITION</label><select id="${prefix}-cardcond-code" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px">${condDesc.values.map(v=>`<option value="${escHtml(v.value)}">${escHtml(v.label)}</option>`).join('')}</select></div>`
-      : `<div style="color:var(--red)">Could not load eBay's required card-condition options for this category. Check the eBay connection above, then reopen this listing before submitting.</div>`;
+    // eBay's fixed ungraded Card Condition values (descriptor 40001) when the
+    // live list can't be read, so an ungraded card can still be listed.
+    const values = condDesc?.values?.length ? condDesc.values : EBAY_UNGRADED_CARD_CONDITIONS;
+    const pick = ebayUngradedCardConditionFor(item.condition || item.selectedCondition, values);
+    extra.innerHTML = `<div style="margin-top:2px"><label style="font-size:8px;color:var(--dim)">CARD CONDITION</label><select id="${prefix}-cardcond-code" style="width:100%;margin-top:2px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px;border-radius:6px">${values.map(v=>`<option value="${escHtml(v.value)}" ${v.value===pick?'selected':''}>${escHtml(v.label)}</option>`).join('')}</select></div>`;
   }
 }
 
@@ -22467,7 +22476,32 @@ function resolveEbayShippingLineBase(cat, isComic, isSealed, isGraded, catId){
   return 'Carefully packed to prevent movement and damage in transit. Ships within 1 business day with tracking.';
 }
 
+// Sports-card details the eBay listing reads, filled in from what the item
+// already says (store, 2026-11-08: a SportsCardsPro scan of "Brian Dawkins
+// #VI-BD" listed as Sport: Baseball, Parallel: "Football Cards", no player or
+// year). SportsCardsPro/PriceCharting set names start with the sport --
+// "Football Cards 2026 Topps Flagship Victory Ink" -- and that leading
+// "Football Cards" is the sport, not part of the set or a parallel.
+const EBAY_SPORT_WORDS = [['Football',/\b(?:football|nfl)\b/i],['Baseball',/\b(?:baseball|mlb)\b/i],['Basketball',/\b(?:basketball|nba|wnba)\b/i],['Hockey',/\b(?:hockey|nhl)\b/i],['Soccer',/\b(?:soccer|mls|premier league)\b/i],['Racing',/\b(?:racing|nascar|formula 1|f1)\b/i],['Wrestling',/\b(?:wrestling|wwe|aew)\b/i],['UFC',/\b(?:ufc|mma)\b/i]];
+const EBAY_SPORT_CARDS_PREFIX = /^(?:football|baseball|basketball|hockey|soccer|racing|wrestling|ufc)\s+cards\b\s*/i;
+function ebaySportsCardDetails(item = {}){
+  const set = String(item.set || '').trim(), variant = String(item.variant || '').trim();
+  const isSports = /sport/i.test(String(item.category || '')) || EBAY_SPORT_CARDS_PREFIX.test(set);
+  if(!isSports) return item;
+  const clue = [set, variant, item.pocketScoutQuery, item.name].join(' ');
+  const sport = item.sport || (EBAY_SPORT_WORDS.find(([, re]) => re.test(clue)) || [])[0] || '';
+  const cleanSet = set.replace(EBAY_SPORT_CARDS_PREFIX, '').trim();
+  const year = item.year || (cleanSet.match(/\b((?:19|20)\d{2})(?:[-\/]\d{2})?\b/) || [])[1] || '';
+  const brandFrom = t => /\b(?:topps|bowman)\b/i.test(t) ? 'Topps' : /\b(?:panini|donruss|prizm|optic|select|mosaic|contenders)\b/i.test(t) ? 'Panini' : /\bupper deck\b/i.test(t) ? 'Upper Deck' : /\bleaf\b/i.test(t) ? 'Leaf' : /\bfleer\b/i.test(t) ? 'Fleer' : '';
+  const player = item.player || item.characterOrSubject || (String(item.name || '').match(/^(.+?)\s+#\s*[a-z0-9-]+\s*$/i) || [])[1] || '';
+  return { ...item, sport, year: String(year), player,
+    manufacturer: item.manufacturer || item.brand || brandFrom(cleanSet + ' ' + item.name),
+    set: cleanSet || set,
+    // "Football Cards" / "Cards" is the sport bucket, never a parallel.
+    variant: /^(?:(?:football|baseball|basketball|hockey|soccer|racing|wrestling|ufc)\s+)?cards?$/i.test(variant) ? '' : variant };
+}
 function computeEbayListingFields(item){
+  item = ebaySportsCardDetails(item);
   const condLabelMap = {
     '05cbd3bb538b65343a8f40c0fbe31282':'Near Mint',
     '80fd49b88449644f4d07b359e1605285':'Lightly Played',
@@ -22529,7 +22563,7 @@ function computeEbayListingFields(item){
   // Team was never in the title at all -- a real, heavily-searched sports
   // card keyword ("Mike Trout Angels", "Lakers Kobe") that only ever
   // reached the aspects/description, never the #1 search-ranking field.
-  const title = [item.year && !lowerName.includes(String(item.year)) ? item.year : null,isComic ? withRatioWord(item.name) : item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,(item.card_number || item.issue) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
+  const title = [item.year && !lowerName.includes(String(item.year)) && !String(item.set || '').includes(String(item.year)) ? item.year : null,isComic ? withRatioWord(item.name) : item.name,!isComic && item.team && !lowerName.includes(String(item.team).toLowerCase()) ? item.team : null,item.set && !lowerName.includes(String(item.set).toLowerCase()) ? item.set : null,item.variant && !lowerName.includes(String(item.variant).toLowerCase()) ? item.variant : null,item.sport && !(String(item.set || '')+' '+lowerName).toLowerCase().includes(String(item.sport).toLowerCase()) ? item.sport : null,(item.card_number || item.issue) && !lowerName.includes('#'+String(item.card_number || item.issue).toLowerCase()) ? '#'+(item.card_number || item.issue) : null,isComic && item.publisher && !lowerName.includes(String(item.publisher).toLowerCase()) ? item.publisher : null,isGraded?[item.grader,item.grade].filter(Boolean).join(' '):null,item.isRookie?'RC':null,item.is_auto&&!lowerName.includes('auto')?'Auto':null,item.is_patch&&!lowerName.includes('patch')&&!lowerName.includes('relic')?'Patch':null]
     .filter(Boolean).join(' ').replace(/\s+/g,' ').substring(0,80);
   // Never listed under the item's floor -- under it, the sale loses money
   // after eBay fees (see computeAutoFloor).
@@ -22784,8 +22818,10 @@ async function generateAiEbayDescriptionForModal(id){
 }
 
 async function openEbayFromDash(id){
-  const item=all.find(i=>i.id===id);
-  if(!item){ toast_dash('Could not find that inventory item'); return; }
+  const found=all.find(i=>i.id===id);
+  if(!found){ toast_dash('Could not find that inventory item'); return; }
+  // A display copy: missing sport/year/player/brand filled in from the set name.
+  const item=ebaySportsCardDetails(found);
   const isManaging = !!(item.ebayListingId && item.ebayOfferId && item.ebaySku);
   toast_dash(isManaging ? 'Loading current eBay listing...' : 'Opening eBay listing form...');
   const esc = v => String(v||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -22882,7 +22918,7 @@ async function openEbayFromDash(id){
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">CUSTOM CATEGORY ID${catId===''?' (required -- CATEGORY above is Other)':''}</label><input id="dash-eb-category-id" value="${catId}" placeholder="e.g. 1305 -- exact eBay category ID" oninput="ebayCategoryIdInputChanged(this);debounceDashboardEbayAspects('${id}')" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:${catId===''?'var(--gold)':'var(--text)'};padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PRODUCT TYPE</label><select id="dash-eb-product-type" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px"><option value="single" ${!isSealed?'selected':''}>Single card/item</option><option value="sealed" ${isSealed?'selected':''}>Sealed box/pack</option><option value="lot">Lot</option><option value="comic">Comic</option></select></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">BRAND / MANUFACTURER</label><input id="dash-eb-mfr" value="${esc(aspectVal('Manufacturer', inferManufacturer))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
-          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">SPORT / LEAGUE</label><input id="dash-eb-sport" value="${esc(aspectVal('Sport', item.sport || (cat==='Sports'?'Baseball':'')))}" placeholder="Baseball, Basketball, NFL, MLB..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
+          <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">SPORT / LEAGUE</label><input id="dash-eb-sport" value="${esc(aspectVal('Sport', item.sport || ''))}" placeholder="Baseball, Basketball, NFL, MLB..." style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">PLAYER / ATHLETE</label><input id="dash-eb-player" value="${esc(aspectVal('Player/Athlete', item.player || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">TEAM</label><input id="dash-eb-team" value="${esc(aspectVal('Team', item.team || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
           <div><label style="font-family:monospace;font-size:8px;color:var(--dim)">YEAR / SEASON</label><input id="dash-eb-year" value="${esc(aspectVal('Year', item.year || ''))}" style="width:100%;margin-top:3px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:6px;box-sizing:border-box"></div>
@@ -32710,9 +32746,20 @@ function parsePriceChartingProductInput(raw = '', selectedCategory = ''){
 
 // A pasted PriceCharting/SportsCardsPro product link -> the exact product's
 // name, set, photo and price, looked up from the page itself (no name search).
+// Backup when the page lookup fails: PriceCharting's catalog search, taking
+// only the product whose own link is exactly the pasted one.
+async function priceChartingProductByExactLink(product){
+  const path = u => { try { return new URL(u).pathname.replace(/\/+$/,'').toLowerCase(); } catch { return ''; } };
+  const want = path(product?.canonicalUrl);
+  if(!want) return null;
+  const q = [product.name, product.set].filter(Boolean).join(' ');
+  const res = await storeWorkerFetch('/pricing/pricecharting/search?' + new URLSearchParams({ q }), { cache:'no-store' });
+  const data = await res.json().catch(() => ({}));
+  return (data.products || []).find(p => path(p.url) === want) || null;
+}
 async function applyPastedPriceChartingUrl(row, product){
   try {
-    const pc = await resolveSportsPriceChartingUrl(product?.canonicalUrl);
+    const pc = await resolveSportsPriceChartingUrl(product?.canonicalUrl).catch(async e => (await priceChartingProductByExactLink(product).catch(() => null)) || Promise.reject(e));
     if(!pc) return row;
     row.pricecharting = { ...pc, savedExactLink:true };
     row.name = pc.productName || row.name;
@@ -32729,7 +32776,11 @@ async function applyPastedPriceChartingUrl(row, product){
 }
 
 function priceChartingProductToQplRow(product = {}, query = ''){
+  // PriceCharting names non-English sets "Pokemon Chinese ...", "Pokemon Japanese ...".
+  const language = (String(product.consoleSlug || product.set || '').match(/\b(chinese|japanese|korean|german|french|italian|spanish|portuguese)\b/i) || [])[1];
+  const lang = language ? language[0].toUpperCase() + language.slice(1).toLowerCase() : '';
   return {
+    ...(lang ? { language:lang, selectedLanguage:lang } : {}),
     source:'pricecharting_url',
     name:product.name || query || 'PriceCharting Product',
     category:product.category || 'Collectibles',
@@ -39948,7 +39999,10 @@ async function refreshResearchPrice(idx){
 async function selectQuickLookupResult(idx){
   let r = qplResults[idx];
   if(r?.source==='metron_series'){await chooseMetronComicSeries(idx);return;}
-  if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
+  // A pasted PriceCharting link is already the exact product (Chinese and
+  // other non-English cards included): never swap it for an English
+  // TCGplayer search match (store, 2026-11-08: "It won't let me add it").
+  if(r && qplResultCategoryKey(r) === 'pokemon' && !r.pricecharting?.savedExactLink && r.source !== 'pricecharting_url' && !r.pokemonPriceTracker?.lookupDebug?.exactHydrated && navigator.onLine && !pokemonPriceTrackerQuotaBlocked()) {
     // Show loading state on the SELECT button
     const selectBtn = document.querySelector(`.qpl-hero-card[data-qpl-idx="${idx}"] .qpl-select-btn`);
     if(selectBtn) { selectBtn.textContent = 'LOADING...'; selectBtn.disabled = true; }
