@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.09.9-pc-lookup-cap';
+const APP_VERSION = '2026.11.09.10-staff-byterider';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -49636,7 +49636,8 @@ async function mountDashByteRider(){
   const br = m.createByteRider(host, { mode:'badge' });
   let line = 0;
   close.onclick = e => { e.stopPropagation(); try { localStorage.setItem('byterider-dash-hidden', '1'); } catch(_) {} br.destroy(); wrap.remove(); window.byteRiderDash = null; };
-  host.onclick = () => { br.wake(); br.play('smug', { text:BYTE_DASH_LINES[line++ % BYTE_DASH_LINES.length] }); };
+  // A tap opens his staff chat (he answers from the store's data); the line plays too.
+  host.onclick = () => { br.wake(); br.play('smug', { text:BYTE_DASH_LINES[line++ % BYTE_DASH_LINES.length] }); openStaffByteRider(); };
   const today = new Date().toDateString();
   let greeted = ''; try { greeted = localStorage.getItem('byterider-dash-hello') || ''; } catch(_) {}
   if(greeted !== today){
@@ -49650,6 +49651,57 @@ async function mountDashByteRider(){
     sale: total => { const t = Number(total) || 0; br.play(t >= 100 ? 'jackpot' : 'happy', { text:(t >= 100 ? 'BIG HIT! ' : 'KA-CHING! ') + '$' + t.toFixed(2) }); },
   };
 }
+// Staff ByteRider (Worker /staff/byterider/ask, owner/admin only): ask him
+// about sales by channel, profit, stale stock, FOC preorders, shows, the cash
+// bag, expenses or any item. He looks it up; he can't change anything.
+const staffByteRiderChat = [];
+function openStaffByteRider(){
+  let box = document.getElementById('byterider-staff');
+  if(box){ box.style.display = box.style.display === 'none' ? 'flex' : 'none'; box.querySelector('input')?.focus(); return; }
+  box = document.createElement('div');
+  box.id = 'byterider-staff';
+  box.style.cssText = 'position:fixed;left:12px;bottom:96px;z-index:3600;width:min(380px,calc(100vw - 24px));max-height:min(560px,calc(100vh - 120px));display:flex;flex-direction:column;background:#0b0612;color:#fff6d8;border:2px solid #ff4fd8;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.5);font:14px/1.4 system-ui,sans-serif';
+  const head = document.createElement('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-bottom:1px solid #3a2550;font-weight:700';
+  head.textContent = '🤖 ASK BYTERIDER (staff)';
+  const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.title = 'Close';
+  x.style.cssText = 'background:none;border:0;color:#fff6d8;font-size:20px;cursor:pointer;padding:0 4px';
+  x.onclick = () => { box.style.display = 'none'; };
+  head.append(x);
+  const log = document.createElement('div');
+  log.style.cssText = 'flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px';
+  const say = (text, who) => { const b = document.createElement('div'); b.style.cssText = 'white-space:pre-wrap;padding:7px 9px;border-radius:9px;max-width:92%;' + (who === 'me' ? 'align-self:flex-end;background:#2c1a44' : 'align-self:flex-start;background:#17304a'); b.textContent = text; log.append(b); log.scrollTop = log.scrollHeight; return b; };
+  say('Yo! Ask me about sales by channel, profit, stale stock, FOC preorders, shows, the cash bag, expenses, or any item. Try: "What sold best this week?"', 'him');
+  const form = document.createElement('form');
+  form.style.cssText = 'display:flex;gap:6px;padding:8px;border-top:1px solid #3a2550';
+  const input = document.createElement('input'); input.type = 'text'; input.maxLength = 600; input.placeholder = 'Ask ByteRider…';
+  input.style.cssText = 'flex:1;min-width:0;padding:8px;border-radius:8px;border:1px solid #3a2550;background:#140c20;color:#fff6d8;font-size:16px';
+  const send = document.createElement('button'); send.type = 'submit'; send.textContent = 'ASK';
+  send.style.cssText = 'padding:8px 12px;border-radius:8px;border:0;background:#ff4fd8;color:#0b0612;font-weight:700;cursor:pointer';
+  form.append(input, send);
+  let busy = false;
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const q = input.value.trim();
+    if(!q || busy) return;
+    busy = true; send.disabled = true; input.value = '';
+    say(q, 'me');
+    const wait = say('…looking it up', 'him');
+    try {
+      const res = await storeWorkerFetch('/staff/byterider/ask', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ question:q, history:staffByteRiderChat.slice(-8) }) });
+      const d = await res.json().catch(() => ({}));
+      if(!res.ok || !d.ok) throw new Error(d.error || ('HTTP ' + res.status));
+      wait.textContent = d.answer;
+      staffByteRiderChat.push({ role:'user', content:q }, { role:'assistant', content:d.answer });
+      window.byteRiderDash?.play('talking', { text:'DATA ACQUIRED.' });
+    } catch(err) { wait.textContent = '⚠ ' + (err.message || err); }
+    busy = false; send.disabled = false; input.focus();
+  };
+  box.append(head, log, form);
+  document.body.append(box);
+  input.focus();
+}
+window.openStaffByteRider = openStaffByteRider;
 // Bring him back after hiding him: localStorage.removeItem('byterider-dash-hidden') or the Live Studio checkbox.
 function showDashByteRider(on){ try { localStorage.setItem('byterider-dash-hidden', on ? '0' : '1'); } catch(_) {} if(on) mountDashByteRider(); else document.querySelector('#byterider-dash button')?.click(); }
 if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(mountDashByteRider, 1500)); else setTimeout(mountDashByteRider, 1500);

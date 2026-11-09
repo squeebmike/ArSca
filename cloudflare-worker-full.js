@@ -83,6 +83,7 @@ import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
 import { handlePokemonCatalog, pokemonCardPath } from './scripts/pokemon-catalog-pages.mjs';
 import { sportsByCode, pokemonBySlash } from './scripts/byterider-lookup.mjs';
+import { runStaffAsk, STAFF_LIMITS as BYTERIDER_STAFF_LIMITS, STAFF_MONTHLY_CAP_USD as BYTERIDER_STAFF_CAP_USD } from './scripts/byterider-staff.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { handleFootballCatalog } from './scripts/football-catalog-pages.mjs';
 import { handleSecretLairPages } from './scripts/secret-lair-pages.mjs';
@@ -17075,6 +17076,46 @@ async function routeRequest(request, env, ctx) {
         const facts = String(parsed.data?.facts || '').replace(/\r/g, '').slice(0, 6000).trim();
         if (facts) await env.LBA_KV.put('byterider-facts:' + storeId, facts); else await env.LBA_KV.delete('byterider-facts:' + storeId);
         return json({ ok: true, facts: facts || BYTERIDER_DEFAULT_FACTS });
+      }
+    }
+    // Staff ByteRider (dashboard, owner/admin only): answers from the store's
+    // own data through the read-only byterider_staff_data lookup. Its own
+    // monthly spend cap, separate from the website's.
+    if (url.pathname === '/staff/byterider/ask' && request.method === 'POST') {
+      const parsed = await readJsonWithLimit(request, 32768);
+      if (parsed.error) return parsed.error;
+      const storeId = requestStoreId(request, url, parsed.data);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      if (!env.ANTHROPIC_API_KEY) return json({ ok: false, error: 'ByteRider needs the Anthropic key in Cloudflare.' }, 503);
+      const now = new Date(), month = now.toISOString().slice(0, 7);
+      const userKey = `byterider-staff:user:${auth.user?.id || 'x'}:${now.toISOString().slice(0, 13)}`;
+      const spendKey = 'byterider-staff-spend:' + month, cap = Number(env.BYTERIDER_STAFF_MONTHLY_USD) > 0 ? Number(env.BYTERIDER_STAFF_MONTHLY_USD) : BYTERIDER_STAFF_CAP_USD;
+      const [count, spend] = await Promise.all([env.LBA_KV.get(userKey).then(n => Number(n) || 0), env.LBA_KV.get(spendKey, 'json').catch(() => null)]);
+      if (count >= BYTERIDER_STAFF_LIMITS.perUserHour) return json({ ok: false, error: 'Cooling my circuits -- try again in a bit.' }, 429);
+      if ((spend?.usd || 0) >= cap) return json({ ok: false, error: `This month's ByteRider budget ($${cap}) is used up.` }, 429);
+      await env.LBA_KV.put(userKey, String(count + 1), { expirationTtl: 3700 });
+      let total = spend;
+      try {
+        const out = await runStaffAsk({ question: parsed.data?.question, history: parsed.data?.history, today: now.toISOString().slice(0, 10) }, {
+          data: async (tool, args) => (await supabaseAdminFetch(env, 'rpc/byterider_staff_data', { method: 'POST', body: JSON.stringify({ p_store: storeId, p_tool: tool, p_args: args || {} }) })).data,
+          claude: async body => {
+            const ask = model => fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+              body: JSON.stringify({ model, max_tokens: 700, temperature: 0.2, ...body }) });
+            let res = await ask('claude-haiku-5-5');
+            if (!res.ok && [400, 403, 404].includes(res.status)) res = await ask('claude-haiku-4-5-20251001');
+            const d = await res.json().catch(() => null);
+            if (!res.ok) throw new Error('model ' + res.status + ' ' + String(d?.error?.message || '').slice(0, 120));
+            total = byteriderAddSpend(total, d?.model || 'claude-haiku-5-5', d?.usage);
+            return d;
+          },
+        });
+        await env.LBA_KV.put(spendKey, JSON.stringify(total || {}), { expirationTtl: 62 * 86400 }).catch(() => {});
+        return json({ ...out, spend: { usd: total?.usd || 0, capUsd: cap } }, out.ok ? 200 : 400);
+      } catch (e) {
+        if (total) await env.LBA_KV.put(spendKey, JSON.stringify(total), { expirationTtl: 62 * 86400 }).catch(() => {});
+        console.warn('Staff ByteRider failed:', e.message);
+        return json({ ok: false, error: 'My circuits glitched: ' + String(e.message).slice(0, 120) }, 502);
       }
     }
     // The public Pokémon Set Guide's set list and set cards (no sign-in).
