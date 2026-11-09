@@ -37,11 +37,14 @@ export function pickPcProduct(products = [], set = {}, card = {}) {
 export const PC_DAILY_LOOKUPS = 120;
 // fetchPc(path, params) -> parsed JSON (the coordinated, rate-limited PriceCharting API).
 // note: { pc } -- why there's no photo (shown with an empty reference, for support).
-export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now(), note = {} } = {}) {
+// cachedOnly: crawlers read what's saved but never spend a lookup (2026-11-09:
+// the day's 120 were gone by 11:30 UTC).
+export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now(), note = {}, cachedOnly = false } = {}) {
   if (!fetchPc || !card?.cardNumber || !card?.player) { note.pc = 'skipped'; return null; }
-  const key = 'pc-sports-ref-v2:' + set.id + ':' + card.id;
+  const key = 'pc-sports-ref-v3:' + set.id + ':' + card.id;
   const cached = kv ? await kv.get(key, 'json').catch(() => null) : null;
   if (cached) { note.pc = cached.miss ? 'cached-miss:' + (cached.why || '') : 'cached'; return cached.miss ? null : cached; }
+  if (cachedOnly) { note.pc = 'cached-only'; return null; }
   // The website shares PriceCharting with the store's own price sync: card
   // pages get at most PC_DAILY_LOOKUPS new lookups a day, and none for two
   // hours after PriceCharting says "too many requests" (2026-11-09).
@@ -52,11 +55,18 @@ export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now
     if (used >= PC_DAILY_LOOKUPS) { note.pc = 'daily-limit'; return null; }
     await kv.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 }).catch(() => {});
   }
-  const q = [card.player, '#' + card.cardNumber, set.year, String(set.displayName || '').replace(/\b(baseball|football|basketball|hockey)\b/gi, '').replace(/\b\d{4}\b/, '').trim()].filter(Boolean).join(' ');
+  // PriceCharting's search is fuzzy: an accent ("Rodríguez") or the "#"
+  // brought back Funko POPs and comics (2026-11-09). Plain words search
+  // better; if that finds no exact card, one more try with just the player
+  // and the number.
+  const plain = v => fold(v).replace(/[^a-z0-9/-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const q = plain([card.player, card.cardNumber, set.year, String(set.displayName || '').replace(/\b(baseball|football|basketball|hockey)\b/gi, '').replace(/\b\d{4}\b/, '')].join(' '));
+  const q2 = plain(card.player + ' ' + card.cardNumber);
   let ref = null, why = '';
   try {
-    const list = (await fetchPc('/api/products', { q }))?.products || [];
-    const found = pickPcProduct(list, set, card);
+    let list = (await fetchPc('/api/products', { q }))?.products || [];
+    let found = pickPcProduct(list, set, card);
+    if (!found && q2 !== q) { const more = (await fetchPc('/api/products', { q: q2 }))?.products || []; found = pickPcProduct(more, set, card); if (!found) list = [...list, ...more]; }
     why = found ? '' : list.length ? 'no-exact-match:' + list.slice(0, 3).map(p => String(p['product-name'] || '') + ' / ' + String(p['console-name'] || '')).join(' | ').slice(0, 300) : 'no-results';
     if (found) {
       const full = await fetchPc('/api/product', { id: String(found.id) }).catch(() => found) || found;

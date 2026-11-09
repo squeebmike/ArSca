@@ -29,14 +29,27 @@ assert.deepEqual(ref, {
   url: 'https://www.sportscardspro.com/game/baseball-cards-2024-topps-big-league-baseball-autograph/julio-rodriguez-bla-jr',
   referencePrices: { ungraded: 53.5, grade9: 70, currency: 'USD', capturedAt: '2026-11-09T06:00:00.000Z' }, source: 'PriceCharting / SportsCardsPro', referenceOnly: true,
 });
-assert.match(calls[0][1].q, /^Julio Rodríguez #BLA-JR 2024 Topps Big League$/);
+assert.equal(calls[0][1].q, 'julio rodriguez bla-jr 2024 topps big league', 'plain words: no accent, no #');
+// No exact card in the first search: one more with just the player and number.
+{
+  const qs = [];
+  const r2 = await pcSportsReference(set, { ...card, id: 'retry' }, { kv, now, fetchPc: async (path, params) => { if (path === '/api/products') { qs.push(params.q); return { products: qs.length === 1 ? [{ id: 9, 'product-name': 'Julio Rodriguez #111', 'console-name': 'Funko POP MLB' }] : products }; } return products[1]; } });
+  assert.deepEqual(qs, ['julio rodriguez bla-jr 2024 topps big league', 'julio rodriguez bla-jr']);
+  assert.equal(r2?.productId, '102');
+}
+// Crawlers: what's saved only, never a new lookup.
+{
+  let n = 0; const nb = {};
+  assert.equal(await pcSportsReference(set, { ...card, id: 'bot' }, { kv, now, fetchPc: async () => (n++, { products }), note: nb, cachedOnly: true }), null);
+  assert.deepEqual([n, nb.pc], [0, 'cached-only']);
+}
 await pcSportsReference(set, card, { kv, fetchPc, now });
 assert.equal(calls.length, 2, 'second view is cached: no more API calls');
 // A miss is cached too (a day), so a card PriceCharting lacks isn't searched on every view.
 const missCalls = [];
 assert.equal(await pcSportsReference(set, { ...card, id: 'other' }, { kv, fetchPc: async p => (missCalls.push(p), { products: [] }) }), null);
 assert.equal(await pcSportsReference(set, { ...card, id: 'other' }, { kv, fetchPc: async p => (missCalls.push(p), { products: [] }) }), null);
-assert.equal(missCalls.length, 1);
+assert.equal(missCalls.length, 2, "two searches the first time, then cached");
 
 // In the card page's photo request: used when nothing stored matches; never for stored-only reads.
 const env = { LBA_KV: kv };
@@ -45,7 +58,7 @@ assert.equal(viaPage?.productId, '102');
 assert.equal(await sportsReferenceImage(env, null, set, { ...card, id: 'stored-only' }, { fetchPc, archiveOnly: true }), null);
 // Shares PriceCharting with the store's price sync: a daily cap, and a 2-hour stop after a 429.
 {
-  const st = new Map(), k = { get: async key => (st.has(key) ? (/^pc-sports-ref-v2/.test(key) ? JSON.parse(st.get(key)) : st.get(key)) : null), put: async (key, v) => st.set(key, v) };
+  const st = new Map(), k = { get: async key => (st.has(key) ? (/^pc-sports-ref-v3/.test(key) ? JSON.parse(st.get(key)) : st.get(key)) : null), put: async (key, v) => st.set(key, v) };
   const note = {};
   assert.equal(await pcSportsReference(set, { ...card, id: 'p1' }, { kv: k, fetchPc: async () => { throw new Error('PriceCharting 503 Price provider temporarily paused (PriceCharting HTTP 429)'); }, note }), null);
   assert.match(note.pc, /^error:.*429/);
