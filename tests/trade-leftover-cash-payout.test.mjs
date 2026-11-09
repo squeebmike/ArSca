@@ -38,10 +38,12 @@ assert.match(finalize.slice(0, 1200), /const trade = \(bundle\.tradeTenders \|\|
 // And recorded in the Cash Bag (or the cashier is told to when none is open).
 {
   const moves = [], toasts = [];
-  const load = drawerState => new Function('drawerState', 'saveDrawer', 'renderDrawer', 'makeUuid', 'getActiveStoreId', 'getCurrentUserId', 'MoneyLedgerService', 'enqueueSync', 'toast_dash',
+  const shared = [];
+  const load = drawerState => new Function('drawerState', 'saveDrawer', 'renderDrawer', 'makeUuid', 'getActiveStoreId', 'getCurrentUserId', 'MoneyLedgerService', 'enqueueSync', 'toast_dash', 'payoutToSharedBagWithToast',
     extractFn('payTradeInLeftoverAsCash') + '\nreturn payTradeInLeftoverAsCash;')(
     drawerState, () => {}, () => {}, p => p + '-x', () => 'store-1', () => 'staff',
-    () => ({ writeDrawerMovement:async m => { moves.push(m); } }), () => {}, m => toasts.push(m));
+    () => ({ writeDrawerMovement:async m => { moves.push(m); } }), () => {}, m => toasts.push(m),
+    (amount, type, note) => { shared.push([amount, type, note]); toasts.push('Pay the customer $' + amount.toFixed(2) + ' cash -- no Cash Bag is open'); });
   const bag = { id:'drawer-1', expectedCash:629, log:[] };
   load(bag)(52.5, { customerName:'Walk-in trade BFBU' });
   assert.equal(bag.expectedCash, 576.5, 'the bag now expects $629 - $52.50');
@@ -51,6 +53,8 @@ assert.match(finalize.slice(0, 1200), /const trade = \(bundle\.tradeTenders \|\|
   assert.match(toasts[0], /Pay the customer \$52\.50 cash/);
   load(null)(10, {});
   assert.match(toasts[1], /no Cash Bag is open/, 'with no bag open the cashier is still told to pay it');
+  // Not in a bag on this device: handed to the store's open bag (opened on another device).
+  assert.deepEqual(shared[0], [10, 'trade_in_cash_payout', 'Trade-in leftover payout']);
   load(bag)(0, {});
   assert.equal(toasts.length, 2, 'no leftover, nothing to pay');
 }
