@@ -16924,6 +16924,33 @@ async function routeRequest(request, env, ctx) {
     // Ask ByteRider_97 on the website (scripts/byterider-ask.mjs). Public:
     // 20 questions an hour per visitor, 800 a day in all, short answers on
     // a small model, from the store facts and what's in stock only.
+    // POST /public/byterider/voice { text } -- his answer spoken (Workers AI
+    // text-to-speech, free daily allowance; the site falls back to the
+    // browser's own voice when this is off or busy). Short text only, per-IP
+    // and daily caps, MP3 back.
+    if (url.pathname === '/public/byterider/voice' && request.method === 'POST') {
+      if (!env.AI || !env.LBA_KV) return json({ ok: false, error: 'voice off' }, 503);
+      const parsed = await readJsonWithLimit(request, 4096);
+      if (parsed.error) return parsed.error;
+      const text = String(parsed.data?.text || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 500);
+      if (!text) return json({ ok: false, error: 'nothing to say' }, 400);
+      const day = new Date().toISOString().slice(0, 10), hour = new Date().toISOString().slice(0, 13);
+      const who = (await sha256Hex(new TextEncoder().encode(String(request.headers.get('CF-Connecting-IP') || 'x') + ':' + day))).slice(0, 24);
+      const ipKey = `byterider-voice:ip:${who}:${hour}`, dayKey = `byterider-voice:day:${day}`;
+      const [ipCount, dayCount] = await Promise.all([env.LBA_KV.get(ipKey), env.LBA_KV.get(dayKey)]).then(v => v.map(n => Number(n) || 0));
+      if (ipCount >= 40 || dayCount >= 1500) return json({ ok: false, error: 'voice resting' }, 429);
+      await Promise.all([env.LBA_KV.put(ipKey, String(ipCount + 1), { expirationTtl: 3700 }), env.LBA_KV.put(dayKey, String(dayCount + 1), { expirationTtl: 2 * 86400 })]);
+      try {
+        const out = await env.AI.run('@cf/myshell-ai/melotts', { prompt: text, lang: 'en' });
+        const b64 = typeof out?.audio === 'string' ? out.audio : '';
+        if (!b64) return json({ ok: false, error: 'no audio' }, 502);
+        const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+        return new Response(bin, { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } });
+      } catch (e) {
+        console.warn('ByteRider voice:', e.message);
+        return json({ ok: false, error: 'voice unavailable' }, 502);
+      }
+    }
     if (url.pathname === '/public/byterider/ask' && request.method === 'POST') {
       if (!env.ANTHROPIC_API_KEY || !env.LBA_KV) return json({ ok: false, error: 'ByteRider is offline right now.' }, 503);
       const parsed = await readJsonWithLimit(request, 8192);
@@ -16944,7 +16971,29 @@ async function routeRequest(request, env, ctx) {
           // A shop-list hiccup never stops him answering.
           items: async () => (await fetchAllListableStorefrontItemsCached(env, ctx).catch(e => { console.warn('ByteRider items:', e.message); return []; })).filter(i => isStorefrontItemAvailable(i))
             .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
-          facts: async () => (await env.LBA_KV.get('byterider-facts:' + ITEM_DETAIL_STORE_ID)) || BYTERIDER_DEFAULT_FACTS,
+          // The store's own facts, plus its phone, email and area from the dashboard's store settings.
+          facts: async () => {
+            const facts = (await env.LBA_KV.get('byterider-facts:' + ITEM_DETAIL_STORE_ID)) || BYTERIDER_DEFAULT_FACTS;
+            let contact = await env.LBA_KV.get('byterider-contact-v1').catch(() => null);
+            if (contact === null) {
+              const { data } = await supabaseAdminFetch(env, `store_settings?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&select=receipt_settings&limit=1`).catch(() => ({}));
+              const rs = data?.[0]?.receipt_settings || {};
+              contact = [rs.phone && 'Phone/text: ' + String(rs.phone).slice(0, 30), rs.email && 'Email: ' + String(rs.email).slice(0, 80), (rs.address || rs.location) && 'Based in: ' + String(rs.address || rs.location).slice(0, 120)].filter(Boolean).join('. ');
+              await env.LBA_KV.put('byterider-contact-v1', contact, { expirationTtl: 6 * 3600 }).catch(() => {});
+            }
+            return contact ? facts + '\n' + contact + '.' : facts;
+          },
+          // A signed-in shopper's own loyalty points and store credit (their session only).
+          account: async () => {
+            if (!/^Bearer\s+\S+/i.test(request.headers.get('Authorization') || '')) return null;
+            const auth = await requireAuthenticatedUser(request, env).catch(() => ({ error: true }));
+            if (auth?.error || !auth?.user?.id) return null;
+            const s = encodeURIComponent(ITEM_DETAIL_STORE_ID);
+            let { data } = await supabaseAdminFetch(env, `customers?store_id=eq.${s}&linked_user_id=eq.${encodeURIComponent(auth.user.id)}&select=loyalty_points_balance,trade_credit_balance&limit=1`).catch(() => ({}));
+            if (!data?.length && auth.user.email && auth.user.email_confirmed_at) ({ data } = await supabaseAdminFetch(env, `customers?store_id=eq.${s}&email=eq.${encodeURIComponent(String(auth.user.email).toLowerCase())}&select=loyalty_points_balance,trade_credit_balance&limit=1`).catch(() => ({})));
+            const c = data?.[0];
+            return c ? { points: Math.max(0, Math.floor(Number(c.loyalty_points_balance) || 0)), credit: Math.max(0, Number(c.trade_credit_balance) || 0) } : { points: 0, credit: 0 };
+          },
           // Stock counts ("how many", cheapest, most expensive) over every in-stock listing.
           allItems: async () => (await fetchAllListableStorefrontItemsCached(env, ctx).catch(() => [])).filter(i => isStorefrontItemAvailable(i))
             .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
@@ -16960,17 +17009,21 @@ async function routeRequest(request, env, ctx) {
           // Comics open for preorder (main covers), kept an hour so a busy
           // chat doesn't re-read the catalog.
           upcoming: async () => {
-            const cached = await env.LBA_KV.get('byterider-upcoming-v4', 'json').catch(() => null);
+            const cached = await env.LBA_KV.get('byterider-upcoming-v5', 'json').catch(() => null);
             if (cached) return cached;
             const today = new Date(Date.now() - 21 * 86400000).toISOString().slice(0, 10);
             // The last three weeks' releases and every comic open for preorder (main covers only -- variants of
             // the same issue are one suggestion), read at most every 6 hours.
-            const { data } = await supabaseAdminFetch(env, `comic_skus?store_id=eq.${ITEM_DETAIL_STORE_ID}&customer_enabled=eq.true&is_incentive=eq.false&on_sale_date=gte.${today}&select=title,on_sale_date,publisher,writer,cover_artist,interior_artist,customer_price_cents,msrp_cents&order=on_sale_date.asc&limit=6000`);
+            const { data } = await supabaseAdminFetch(env, `comic_skus?store_id=eq.${ITEM_DETAIL_STORE_ID}&customer_enabled=eq.true&is_incentive=eq.false&on_sale_date=gte.${today}&select=id,title,description,on_sale_date,publisher,writer,cover_artist,interior_artist,customer_price_cents,msrp_cents&order=on_sale_date.asc&limit=6000`);
             const mains = new Map();
             for (const r of data || []) { const k = String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').trim().toLowerCase(); const main = /\b(?:cvr|cover)\s+a\b/i.test(r.title || '') || !/\b(?:cvr|cover|var|variant)\b/i.test(r.title || ''); const covers = [...new Set([...(mains.get(k)?.covers || []), r.cover_artist].filter(Boolean))]; if (!mains.has(k) || (main && !mains.get(k).main)) mains.set(k, { ...r, main, covers }); else mains.get(k).covers = covers; }
             const list = [...mains.values()].map(r => ({ title: r.title, onSale: r.on_sale_date, publisher: r.publisher || '', writer: r.writer || '', artist: r.cover_artist || '', interior: r.interior_artist || '', covers: r.covers || [],
-              price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100, url: '/comics/search?q=' + encodeURIComponent(String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').slice(0, 80)) }));
-            await env.LBA_KV.put('byterider-upcoming-v4', JSON.stringify(list), { expirationTtl: 6 * 3600 }).catch(() => {});
+              price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100,
+              // Not out yet: its preorder page; out: the comic search. Plus the synopsis and an email alert.
+              url: r.id && r.on_sale_date > new Date().toISOString().slice(0, 10) ? '/preorder/' + encodeURIComponent(r.id) : '/comics/search?q=' + encodeURIComponent(String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').slice(0, 80)),
+              about: String(r.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300),
+              alertUrl: '/book-alerts?book=' + encodeURIComponent(String(r.title || '').replace(/\s+(?:cvr|cover|var|variant)\b.*$/i, '').replace(/\s*#.*$/, '').trim().slice(0, 120)) }));
+            await env.LBA_KV.put('byterider-upcoming-v5', JSON.stringify(list), { expirationTtl: 6 * 3600 }).catch(() => {});
             return list;
           },
           // Card shows and live streams from the Webflow Events list (the

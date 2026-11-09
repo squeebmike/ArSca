@@ -10,7 +10,9 @@ const items = [
 ];
 assert.deepEqual(keywords('Do you have any Charizard?'), ['charizard']);
 const m = matchItems(items, 'got any charizard in stock?');
-assert.deepEqual(m, [{ name: 'Charizard ex', set: 'Obsidian Flames', price: 38.05, url: '/item/1/charizard-ex', details: '', about: '', added: '' }], 'public fields only (no cost)');
+assert.deepEqual(m.map(({ cart, ...rest }) => rest), [{ name: 'Charizard ex', set: 'Obsidian Flames', price: 38.05, url: '/item/1/charizard-ex', details: '', about: '', added: '' }], 'public fields only (no cost)');
+// The cart data is the item page's own public cart data (no cost).
+assert.deepEqual(Object.keys(m[0].cart).sort(), ['available', 'category', 'id', 'image', 'name', 'price']);
 assert.deepEqual(matchItems(items, 'do you ship?'), [], 'no product words, no matches');
 assert.equal(matchItems(items, 'pikachu')[0].price, null, 'no made-up price');
 
@@ -45,7 +47,8 @@ assert.match(worker, /requireStoreUser\(request, env, storeId, \['owner','admin'
 const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
 assert.match(site, /export const ASK_URL = WORKER \+ '\/public\/byterider\/ask'/);
 assert.doesNotMatch(site.slice(site.indexOf('function buildChat')), /innerHTML/, 'the chat never reads text as HTML');
-assert.match(site, /if \(!\/\^\\\/\/\.test\(it\.url \|\| ''\) && !\/\^https:\\\/\\\/\/\.test\(it\.url \|\| ''\)\) continue;/, 'only site or https links');
+assert.ok(site.includes("const okUrl = u => /^\\/(?!\\/)/.test(u || '') || /^https:\\/\\//.test(u || '');"), 'only site or https links');
+assert.ok(site.includes('if (!okUrl(it.url)) continue;'));
 const controls = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
 assert.match(controls, /id="mana-br-facts"/); assert.match(controls, /storeWorkerFetch\('\/byterider\/facts\?store_id='/);
 // Suggestions: category + budget, no name needed.
@@ -103,7 +106,9 @@ assert.deepEqual(cardNames('How does the stack work in Magic?', true), []);
 }
 const siteSrc = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
 assert.match(siteSrc, /localStorage\.getItem\('mp-foc-session-v1'\)/); assert.match(siteSrc, /name: signedInFirstName\(\)/);
-assert.doesNotMatch(siteSrc, /access_token/, 'the sign-in token is never read or sent');
+// The sign-in goes to the store's own server only for a points/credit question.
+assert.ok(siteSrc.includes("const token = /\\b(points?|rewards?|loyalty|store credit|credit|balance)\\b/i.test(q) ? safe("), 'the sign-in token is sent only for points questions');
+assert.equal((siteSrc.match(/access_token/g) || []).length, 1);
 console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
 // Hidden with ×, he waits as a small tab that brings him back.
 {
@@ -124,8 +129,8 @@ console.log('Ask ByteRider: facts + in-stock only, limits, safe chat');
   assert.match(site, /if \(!touchScreen\(\)\) setTimeout\(\(\) => input\.focus\(\), 50\);/, 'no keyboard pop on open (phones)');
   assert.match(site, /busy = false; if \(!touchScreen\(\)\) input\.focus\(\);/, 'no keyboard pop after an answer (phones)');
   const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-  assert.match(w, /byterider-upcoming-v4', JSON\.stringify\(list\), \{ expirationTtl: 6 \* 3600 \}/, 'preorders read at most every 6 hours');
-  assert.match(w, /on_sale_date=gte\.\$\{today\}&select=title,on_sale_date,publisher,writer,cover_artist,interior_artist,customer_price_cents,msrp_cents&order=on_sale_date\.asc&limit=6000/, 'all preorders');
+  assert.match(w, /byterider-upcoming-v5', JSON\.stringify\(list\), \{ expirationTtl: 6 \* 3600 \}/, 'preorders read at most every 6 hours');
+  assert.match(w, /on_sale_date=gte\.\$\{today\}&select=id,title,description,on_sale_date,publisher,writer,cover_artist,interior_artist,customer_price_cents,msrp_cents&order=on_sale_date\.asc&limit=6000/, 'all preorders');
 }
 // He sets the theme: only when none is picked, from the site's own list.
 {
