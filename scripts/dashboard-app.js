@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.09.1-stripe-fees';
+const APP_VERSION = '2026.11.09.2-shared-cash-bag';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -10277,9 +10277,52 @@ function redeemStoreCredit(id, amount){
 // (see payCustomerForBuySession's trade_credit branch, which never banks
 // trade-in value for a later visit) gets paid out in cash from the bag
 // right now -- same drawer-movement mechanics as a normal cash buy payout.
+// The store's single open Cash Bag in the cloud, for a device that hasn't
+// joined one (store, 2026-11-08: four cash sales and a trade's cash back on
+// the other login never reached the show's bag). Only a bag opened in the
+// last 16 hours, and only when exactly one is open -- or the one for this
+// device's show -- so a stale or ambiguous bag is never picked.
+let sharedOpenBag = null;
+async function refreshSharedOpenBag(){
+  if(drawerState || getAccountContext().isDemo){ sharedOpenBag = null; return null; }
+  const sb = getSupabaseClient(); if(!sb) return sharedOpenBag;
+  const since = new Date(Date.now() - 16 * 3600 * 1000).toISOString();
+  const { data, error } = await sb.from('pos_drawer_sessions').select('id,show_session_id,register_name,expected_cash,opened_at').eq('store_id', getActiveStoreId()).eq('status', 'open').gte('opened_at', since).order('opened_at', { ascending:false }).limit(10);
+  if(error) return sharedOpenBag;
+  const show = getShowMode();
+  sharedOpenBag = (show && (data || []).find(b => b.show_session_id === show.id)) || ((data || []).length === 1 ? data[0] : null);
+  return sharedOpenBag;
+}
+setTimeout(() => { refreshSharedOpenBag().catch(() => {}); setInterval(() => { if(document.visibilityState === 'visible') refreshSharedOpenBag().catch(() => {}); }, 60000); }, 4000);
+// A cash payout on a device that hasn't joined a Cash Bag goes to the
+// store's open Cash Bag in the cloud -- the one opened on another device or
+// login (store, 2026-11-08: a trade's $50 cash back wasn't recorded because
+// the show's bag was opened on the other login). Picks the bag for the
+// current show, else the only open one; several open bags and none for this
+// show is ambiguous, so nothing is guessed. Devices in that bag pick the
+// movement up on their next refresh (joinCashBag merges cloud movements).
+async function recordPayoutToSharedOpenBag(amount, movementType, note){
+  if(!(amount > 0) || getAccountContext().isDemo) return null;
+  const sb = getSupabaseClient(); if(!sb) return null;
+  const bag = await refreshSharedOpenBag();
+  if(!bag) return null;
+  const movement = { id:makeUuid('move'), drawer_session_id:bag.id, store_id:getActiveStoreId(), sale_id:null, movement_type:movementType, amount:-amount, note, created_by:getCurrentUserId(), created_at:new Date().toISOString() };
+  try { await MoneyLedgerService().writeDrawerMovement(movement); }
+  catch(e) { enqueueSync('drawer-movement', 'Queued payout: ' + note, movement, e.message); }
+  const upd = await sb.from('pos_drawer_sessions').update({ expected_cash:Math.round((Number(bag.expected_cash || 0) - amount) * 100) / 100 }).eq('id', bag.id);
+  if(upd?.error) console.warn('[DRAWER] Shared bag expected-cash update deferred; the movement is recorded', upd.error.message);
+  return bag;
+}
+function payoutToSharedBagWithToast(amount, movementType, note, what){
+  recordPayoutToSharedOpenBag(amount, movementType, note).then(bag => {
+    toast_dash(bag
+      ? 'Pay the customer $' + amount.toFixed(2) + ' cash ' + what + '. Recorded in the open Cash Bag' + (bag.register_name ? ' (' + bag.register_name + ')' : '') + '.'
+      : 'Pay the customer $' + amount.toFixed(2) + ' cash ' + what + ' -- no Cash Bag is open, so record it when you start one', 8000);
+  }).catch(() => toast_dash('Pay the customer $' + amount.toFixed(2) + ' cash ' + what + ' -- could not reach the Cash Bag; record it in the bag by hand', 8000));
+}
 function payTradeInLeftoverAsCash(amount, tenderLine){
   if(!(amount > 0)) return;
-  if(!drawerState){ toast_dash('Pay the customer $' + amount.toFixed(2) + ' cash for the rest of their trade-in -- no Cash Bag is open, so record it when you start one', 8000); return; }
+  if(!drawerState){ payoutToSharedBagWithToast(amount, 'trade_in_cash_payout', 'Trade-in leftover payout' + (tenderLine?.customerName ? ': ' + tenderLine.customerName : ''), 'for the rest of their trade-in'); return; }
   toast_dash('Pay the customer $' + amount.toFixed(2) + ' cash -- the rest of their trade-in. Recorded in the Cash Bag.', 8000);
   const payoutNote = 'Trade-in leftover payout' + (tenderLine?.customerName ? ': ' + tenderLine.customerName : '');
   const movementId = makeUuid('move'), movementAt = new Date().toISOString();
@@ -41747,6 +41790,9 @@ function payCustomerForBuySession(method){
       created_at:movementAt
     };
     MoneyLedgerService().writeDrawerMovement(movement).catch(e => enqueueSync('drawer-movement', 'Queued cash buy payout: ' + payoutNote, movement, e.message));
+  } else if(normalizeTenderType(session.paymentType) === 'cash' && Number(session.cashOfferTotal || 0) > 0) {
+    // No Cash Bag joined on this device: the payout goes to the open one.
+    payoutToSharedBagWithToast(Number(session.cashOfferTotal || 0), 'cash_buy_payout', 'Customer buy payout' + (session.customerName ? ': ' + session.customerName : '') + (session.buySessionId ? ' (' + session.buySessionId + ')' : ''), 'for their buy');
   } else if(normalizeTenderType(session.paymentType) === 'trade_credit') {
     // Trade-in value applies only to a purchase made THIS same visit -- it
     // is never written to the persisted store-credit ledger, so there is
@@ -43610,8 +43656,10 @@ function createLockedCheckoutSnapshot(cartData){
   return Object.freeze({
     id:makeUuid('checkout'),
     store_id:getActiveStoreId(),
-    show_session_id:getShowSessionId(getShowMode()),
-    drawer_session_id:drawerState?.id || null,
+    // Not in a Cash Bag on this device: the store's one open bag (opened on
+    // another device or login) gets this sale, cash and all, and its show.
+    show_session_id:getShowSessionId(getShowMode()) || (!drawerState && sharedOpenBag ? sharedOpenBag.show_session_id || null : null),
+    drawer_session_id:drawerState?.id || sharedOpenBag?.id || null,
     register_id:REGISTER_ID,
     lines:discountedItems.map(customerSafeLine),
     subtotal,
