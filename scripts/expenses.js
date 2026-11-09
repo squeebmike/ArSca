@@ -42,10 +42,26 @@ function isMissingTable(error){ var t = String((error && (error.code + ' ' + err
 
 // The month's money, from its completed sales (each line's profit already
 // has the item's cost and the fees taken out) and its cost entries.
+// Card payments are Stripe (store, 2026-11-09): in-person 2.7% + 5c each.
+// Venmo is a personal account (no fee). Points spent are a discount, not
+// money that came in.
+var STRIPE_CARD_RATE = 0.027, STRIPE_CARD_FIXED = 0.05;
+function paymentDeductions(sale){
+  var card = 0, points = 0;
+  (sale.pos_payments || []).forEach(function(p){
+    if(/fail|void|refund|cancel/i.test(String(p.status || ''))) return;
+    var m = String(p.method || '').toLowerCase(), amt = Number(p.amount || 0);
+    if(!(amt > 0)) return;
+    if(m === 'card' || m === 'stripe' || m === 'credit_card') card += amt * STRIPE_CARD_RATE + STRIPE_CARD_FIXED;
+    else if(/loyalty|points/.test(m)) points += amt;
+  });
+  return { card:card, points:points };
+}
 function monthMoney(sales, entries){
-  var gross = 0, profit = 0, itemCost = 0;
+  var gross = 0, profit = 0, itemCost = 0, cardFees = 0, pointsUsed = 0;
   (sales || []).forEach(function(sale){
     gross += Number(sale.total || 0);
+    var d = paymentDeductions(sale); cardFees += d.card; pointsUsed += d.points;
     (sale.pos_sale_lines || []).forEach(function(line){
       var revenue = Number(line.adjusted_price || 0); // same reading as computeSalesFromLedgerSince
       var cost = Number(line.cost_basis || 0);
@@ -59,9 +75,12 @@ function monthMoney(sales, entries){
     if(e.kind === 'inventory') inventory += amt;
     else { expenses += amt; byCategory[e.category || 'Other'] = (byCategory[e.category || 'Other'] || 0) + amt; }
   });
+  // Stripe's card fee and points spent come off both profit and what came in.
+  profit -= cardFees + pointsUsed;
   var afterFees = profit + itemCost; // what the sales actually brought in, after fees
   return {
     gross:round2(gross), profit:round2(profit), itemCost:round2(itemCost), afterFees:round2(afterFees),
+    cardFees:round2(cardFees), pointsUsed:round2(pointsUsed),
     expenses:round2(expenses), inventory:round2(inventory),
     netProfit:round2(profit - expenses), cashFlow:round2(afterFees - expenses - inventory),
     byCategory:Object.keys(byCategory).map(function(k){ return { category:k, amount:round2(byCategory[k]) }; }).sort(function(a, b){ return b.amount - a.amount; }),
@@ -71,7 +90,7 @@ function monthMoney(sales, entries){
 async function loadSales(client, store, range){
   var out = [];
   for(var from = 0; from < 20000; from += 1000){
-    var res = await client.from('pos_sales').select('id,total,completed_at,show_session_id,pos_sale_lines(title,category,quantity,adjusted_price,cost_basis,profit)')
+    var res = await client.from('pos_sales').select('id,total,completed_at,show_session_id,pos_sale_lines(title,category,quantity,adjusted_price,cost_basis,profit),pos_payments(method,amount,status)')
       .eq('store_id', store).in('status', ['completed','succeeded'])
       .gte('completed_at', range.from.toISOString()).lt('completed_at', range.to.toISOString())
       .order('completed_at', { ascending:true }).range(from, from + 999);
@@ -292,6 +311,7 @@ function render(){
       '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text)">' +
         line('Sales', usd(m.gross)) +
         line('Profit on what sold <span style="color:var(--dim)">(item cost &amp; fees already out)</span>', usd(m.profit)) +
+        (m.cardFees || m.pointsUsed ? '<div style="color:var(--dim);margin:-2px 0 4px">already out of that: ' + [m.cardFees ? 'Stripe card fees ' + usd(m.cardFees) : '', m.pointsUsed ? 'points used ' + usd(m.pointsUsed) : ''].filter(Boolean).join(' · ') + '</div>' : '') +
         line('Expenses', '-' + usd(m.expenses)) +
         line('NET PROFIT', usd(m.netProfit), { top:true, color:m.netProfit >= 0 ? 'var(--g)' : 'var(--red)' }) +
         '<div style="height:8px"></div>' +

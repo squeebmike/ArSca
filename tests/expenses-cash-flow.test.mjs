@@ -71,6 +71,22 @@ const flush = () => new Promise(r => setTimeout(r, 0));
   assert.deepEqual(JSON.parse(JSON.stringify(m.byCategory)), [{ category:'Show / table fees', amount:150 }, { category:'Supplies', amount:50 }]);
 }
 
+// Stripe card fees (2.7% + 5c) and points spent come off; cash and personal
+// Venmo don't (store, 2026-11-09: "Does cash flow account for venmo stripe").
+{
+  const { ctx } = makeCtx();
+  const m = ctx.expensesMonthMoney([
+    { total:267, pos_sale_lines:[{ adjusted_price:267, cost_basis:127.06, profit:139.94 }], pos_payments:[{ method:'card', amount:260.96, status:'confirmed' }, { method:'loyalty_redeem', amount:6.04, status:'confirmed' }] },
+    { total:300, pos_sale_lines:[{ adjusted_price:300, cost_basis:200, profit:100 }], pos_payments:[{ method:'venmo', amount:300, status:'confirmed' }] },
+    { total:55, pos_sale_lines:[{ adjusted_price:55, cost_basis:40, profit:15 }], pos_payments:[{ method:'cash', amount:55 }] },
+  ], []);
+  assert.equal(m.cardFees, 7.1, '260.96 x 2.7% + 5c');
+  assert.equal(m.pointsUsed, 6.04);
+  assert.equal(m.profit, 241.8, '254.94 - 7.10 - 6.04');
+  assert.equal(m.afterFees, 608.86);
+  assert.equal(m.gross, 622, 'sales stay the full totals');
+}
+
 // The panel: loads the month, shows both numbers, adds and deletes.
 {
   const { ctx, elements, inserted, deleted } = makeCtx();
