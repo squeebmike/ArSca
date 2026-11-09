@@ -98,13 +98,18 @@ export function whatnotDesired(row, item, { autoTitles = true } = {}) {
   const categoryId = whatnotCategoryId(item);
   const status = String(d.lifecycle || d.status || row.status || 'in_stock').toLowerCase();
   const wanted = d.sellOnWhatnot === true;
-  const sellable = wanted && !['sold', 'archived', 'deleted', 'presale'].includes(status) && !item.awaitingReceipt && !item.dropship;
+  // 'bundled': the item now sells only inside its bundle (store, 2026-11-08),
+  // so its own Whatnot listing goes to 0 and it can't sell twice.
+  const sellable = wanted && !['sold', 'archived', 'deleted', 'presale', 'bundled', 'returned', 'lost_damaged', 'sold_pending_pickup', 'sold_pending_shipment'].includes(status) && !item.awaitingReceipt && !item.dropship;
   const qty = sellable ? Math.max(0, Math.min(9999, Math.floor(Number(d.quantity ?? d.qty ?? 1) || 0))) : 0;
   // Whatnot takes whole dollars only ("amount must be a whole number of
   // USD", 2026-11-03): rounded UP so nothing sells under the dashboard price
   // ($4.99 -> $5). The dashboard keeps its own price.
   const price = Math.ceil(Math.round((Number(item.price) || 0) * 100) / 100 - 1e-9);
   const details = [item.set, item.year, item.cardNumber ? '#' + item.cardNumber : '', item.variant, item.condition].filter(Boolean).join(' · ');
+  // A bundle lists exactly what's in it (Whatnot: buyers see the contents).
+  const members = d.isBundle === true && Array.isArray(d.bundleMemberNames) ? d.bundleMemberNames.filter(Boolean) : [];
+  const contents = members.length ? 'Includes ' + members.length + ' items:\n' + members.map(n => '- ' + String(n).replace(/\s+--\s+.*$/, '')).join('\n') : '';
   return {
     wanted,
     qty,
@@ -113,7 +118,7 @@ export function whatnotDesired(row, item, { autoTitles = true } = {}) {
     showOnly: d.whatnotShowOnly === true,
     title: (autoTitles ? whatnotTitle(item, d) : String(item.name || 'Item')).slice(0, 200),
     // Whatnot won't publish without a description.
-    description: [details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
+    description: [contents, details, item.description].filter(Boolean).join('\n\n').slice(0, 4000) || String(item.name || 'Item').slice(0, 4000),
     categoryId,
     attributes: categoryId ? whatnotAttributes(item, d, categoryId) : [],
     // How it ships: the package for what it is (custom weight: no saved profile).

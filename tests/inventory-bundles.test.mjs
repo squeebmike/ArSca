@@ -54,7 +54,8 @@ assert.match(dashboard, /async function refreshBundleInfo\(containerId\)\{/, 'mi
   assert.match(fn, /if\(!container \|\| !container\.isBundle\) return;/, 'must refuse to run on a non-bundle item');
   assert.match(fn, /const photos = collectBundleMemberPhotos\(members\);/, 'must recompute photos from the bundle\'s current members');
   assert.match(fn, /const comicMetadata = buildBundleComicMetadata\(members\);/, 'must recompute comicMetadata from the bundle\'s current members');
-  assert.match(fn, /await updateBuiltInInventoryItem\(container, \{ photos, \.\.\.\(comicMetadata \? \{ comicMetadata \} : \{\}\) \}\);/, 'must save the refreshed fields onto the existing container, not create a new row or touch name/price/member links');
+  // ...ship: the bundle's one-parcel weight/size, recomputed from the same members.
+  assert.match(fn, /await updateBuiltInInventoryItem\(container, \{ photos, \.\.\.ship, \.\.\.\(comicMetadata \? \{ comicMetadata \} : \{\}\) \}\);/, 'must save the refreshed fields onto the existing container, not create a new row or touch name/price/member links');
 }
 assert.match(dashboard, /onclick="refreshBundleInfo\('\$\{id\}'\);closeInvRowMenu\(\)" title="Re-pulls photos and comic info from this bundle's current member items, without dissolving it">🔄 Refresh Bundle Photos\/Info<\/button>/,
   'row menu must offer Refresh Bundle Photos/Info alongside Dissolve Bundle for an in-stock bundle container');
