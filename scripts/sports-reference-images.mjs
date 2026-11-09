@@ -1,4 +1,6 @@
 import {safeReferenceImage,matchReferenceImage,referenceIdentityMatches,referenceNeedsFinish} from './reference-match.mjs';
+import {coordinatedPriceFetch} from './reference-price-refresh.mjs';
+import {pcSportsReference} from './pc-sports-reference.mjs';
 export {safeReferenceImage,matchReferenceImage};
 import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {referenceImageSeeds} from './topps/reference-image-seeds.mjs';
@@ -39,6 +41,13 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
   }
  }
  if(unavailable&&deps.requireArchiveRead)throw Object.assign(new Error('Stored references temporarily unavailable'),{code:'REFERENCE_ARCHIVE_UNAVAILABLE'});
+ // Not in the set's own provider list (inserts and autographs have their
+ // own): PriceCharting's API, one exact card only. Only for the page's own
+ // photo request -- never a stored-only read or a grid preview.
+ if(!deps.archiveOnly&&!deps.requireArchiveRead&&env.LBA_KV&&!savedReferenceImage(set,card)){
+  const pc=await pcSportsReference(set,card,{kv:env.LBA_KV,fetchPc:deps.fetchPc||(async(path,params)=>{const r=await coordinatedPriceFetch(env,path,params);if(!r.ok)throw Error('PriceCharting '+r.status);return r.json();})}).catch(()=>null);
+  if(pc)return pc;
+ }
  // An archived collection's holds also govern legacy source-page fallbacks.
  // An unchecked or rejected photo must not reappear from that older cache.
  if(archived)return null;

@@ -46,6 +46,7 @@ on:
       - tests/sports-card-finder.test.mjs
       - scripts/sports-parallels.mjs
       - scripts/sports-reference-images.mjs
+      - scripts/pc-sports-reference.mjs
       - scripts/topps/reference-image-seeds.mjs
       - scripts/topps/remaining-parallel-programs.mjs
       - scripts/topps/bowman-prospect-sections.mjs
