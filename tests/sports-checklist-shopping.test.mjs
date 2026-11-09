@@ -146,7 +146,7 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  assert.match(target.textContent,/Reference photo unavailable/);
  const referenceOnlyUrl=new URL(url);referenceOnlyUrl.searchParams.set('reference','3');
  const referenceOnly=await handleBaseballCatalog(new Request(referenceOnlyUrl),e,referenceOnlyUrl,d);
- assert.deepEqual(await referenceOnly.json(),{reference:null});assert.equal(searches,1,'reference-only lookup never starts an eBay search');
+ assert.equal((await referenceOnly.json()).reference,null);assert.equal(searches,1,'reference-only lookup never starts an eBay search');
  assert.equal(document.querySelector('summary a'),null,'main card image keeps its expand/collapse action');
  // A provider-wide 429 must pause other cards too, not just this cache key.
  const paused=new Map([['sports-reference-provider-paused','1']]);let rejectedSearches=0;

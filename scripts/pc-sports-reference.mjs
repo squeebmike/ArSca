@@ -35,15 +35,18 @@ export function pickPcProduct(products = [], set = {}, card = {}) {
 }
 
 // fetchPc(path, params) -> parsed JSON (the coordinated, rate-limited PriceCharting API).
-export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now() } = {}) {
-  if (!fetchPc || !card?.cardNumber || !card?.player) return null;
-  const key = 'pc-sports-ref-v1:' + set.id + ':' + card.id;
+// note: { pc } -- why there's no photo (shown with an empty reference, for support).
+export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now(), note = {} } = {}) {
+  if (!fetchPc || !card?.cardNumber || !card?.player) { note.pc = 'skipped'; return null; }
+  const key = 'pc-sports-ref-v2:' + set.id + ':' + card.id;
   const cached = kv ? await kv.get(key, 'json').catch(() => null) : null;
-  if (cached) return cached.miss ? null : cached;
+  if (cached) { note.pc = cached.miss ? 'cached-miss:' + (cached.why || '') : 'cached'; return cached.miss ? null : cached; }
   const q = [card.player, '#' + card.cardNumber, set.year, String(set.displayName || '').replace(/\b(baseball|football|basketball|hockey)\b/gi, '').replace(/\b\d{4}\b/, '').trim()].filter(Boolean).join(' ');
-  let ref = null;
+  let ref = null, why = '';
   try {
-    const found = pickPcProduct((await fetchPc('/api/products', { q }))?.products || [], set, card);
+    const list = (await fetchPc('/api/products', { q }))?.products || [];
+    const found = pickPcProduct(list, set, card);
+    why = found ? '' : list.length ? 'no-exact-match:' + list.slice(0, 3).map(p => String(p['product-name'] || '') + ' / ' + String(p['console-name'] || '')).join(' | ').slice(0, 300) : 'no-results';
     if (found) {
       const full = await fetchPc('/api/product', { id: String(found.id) }).catch(() => found) || found;
       const raw = full['image-url'] || full.image || '';
@@ -54,7 +57,9 @@ export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now
         referencePrices: apiReferencePrices(full, now), source: 'PriceCharting / SportsCardsPro', referenceOnly: true,
       };
     }
-  } catch { return null; }
-  if (kv) await kv.put(key, JSON.stringify(ref || { miss: true }), { expirationTtl: ref ? 7 * 86400 : 86400 }).catch(() => {});
+  } catch (e) { note.pc = 'error:' + String(e?.message || e).slice(0, 120); return null; }
+  note.pc = ref ? 'found' : why;
+  // A miss is kept 6 hours (a card PriceCharting adds later shows up soon).
+  if (kv) await kv.put(key, JSON.stringify(ref || { miss: true, why }), { expirationTtl: ref ? 7 * 86400 : 6 * 3600 }).catch(() => {});
   return ref;
 }
