@@ -61,7 +61,30 @@ function buildChat(corner, onAsk, onTyping) {
   Object.assign(input.style, { flex: '1', minWidth: '0', padding: '8px 10px', borderRadius: '8px', border: '2px solid #4a2a7a', background: '#0b0612', color: '#fff', font: 'inherit' });
   const send = document.createElement('button'); send.type = 'submit'; send.textContent = 'ASK';
   Object.assign(send.style, { padding: '8px 12px', borderRadius: '8px', border: 0, background: '#b4ff3a', color: '#0b0612', fontWeight: '800', cursor: 'pointer' });
-  form.append(input, send);
+  // Talk instead of typing (store, 2026-11-09: "I also want to talk to
+  // ByteRider. Mic support so I don't have to type"): the browser's own
+  // speech-to-text, where it has one (Chrome, Edge, Safari). A spoken
+  // question gets its answer read aloud too.
+  const Speech = typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
+  let spoke = false;
+  const mic = document.createElement('button'); mic.type = 'button'; mic.textContent = '🎤'; mic.title = 'Talk to ByteRider'; mic.setAttribute('aria-label', 'Talk to ByteRider');
+  Object.assign(mic.style, { padding: '8px 10px', borderRadius: '8px', border: '2px solid #4a2a7a', background: '#160a2b', color: '#fff', cursor: 'pointer', display: Speech ? '' : 'none' });
+  let listening = null;
+  mic.onclick = () => {
+    if (!Speech) return;
+    if (listening) { listening.stop(); return; }
+    window.speechSynthesis?.cancel?.();
+    const rec = new Speech(); listening = rec;
+    rec.lang = navigator.language || 'en-US'; rec.interimResults = true; rec.maxAlternatives = 1;
+    mic.textContent = '⏺'; mic.style.background = '#b4ff3a'; input.placeholder = 'Listening…';
+    let heard = '';
+    rec.onresult = e => { heard = [...e.results].map(r => r[0].transcript).join(' ').trim(); input.value = heard; };
+    rec.onerror = () => {};
+    rec.onend = () => { listening = null; mic.textContent = '🎤'; mic.style.background = '#160a2b'; input.placeholder = 'Ask me anything…'; if (heard) { spoke = true; ask(heard); } };
+    try { rec.start(); } catch { rec.onend(); }
+  };
+  const speak = text => { try { const synth = window.speechSynthesis; if (!synth || !text) return; synth.cancel(); const u = new SpeechSynthesisUtterance(String(text).slice(0, 600)); u.rate = 1.05; u.pitch = 1.2; synth.speak(u); } catch {} };
+  form.append(mic, input, send);
   box.append(head, log, form);
   const ask = q => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
   const chipButton = q => { const c = document.createElement('button'); c.type = 'button'; c.textContent = q;
@@ -105,7 +128,8 @@ function buildChat(corner, onAsk, onTyping) {
     const wait = document.createElement('div'); wait.className = 'br-typing'; wait.setAttribute('aria-label', 'ByteRider is typing');
     for (let i = 0; i < 3; i++) wait.append(document.createElement('i'));
     log.append(wait); log.scrollTop = log.scrollHeight;
-    try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items);
+    const voice = spoke; spoke = false;
+    try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items); if (voice) speak(r.text);
       showFollowUps(r.followUps); b.scrollIntoView?.({ block: 'start' }); }
     catch { wait.remove(); bubble('My circuits glitched. Try again!', 'br'); }
     busy = false; if (!touchScreen()) input.focus();
