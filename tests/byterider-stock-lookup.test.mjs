@@ -40,7 +40,7 @@ let prompt = '';
 const out = await askByteRider({ question: 'how many BLA-JR do you have?' }, { items: async () => items, allItems: async () => items, facts: async () => 'facts', lookup: async nums => sportsByCode(nums.codes, ''), claude: async sys => (prompt = sys, { text: 'ok' }) });
 assert.match(prompt, /STOCK COUNT/);
 assert.match(prompt, /- 1 listing, 1 copy in stock/);
-assert.match(prompt, /CHECKLIST CARDS[\s\S]*BLA-JR: Julio Rodríguez -- 2024 Topps Big League Baseball/);
+assert.match(prompt, /CHECKLIST CARDS[\s\S]*BLA-JR: Julio Rodríguez \[L1\] -- 2024 Topps Big League Baseball/);
 assert.match(out.items[0].url, /^\/baseball\/checklists\/2024-topps-big-league-baseball\//);
 
 // Worker wiring and the mic.
@@ -51,5 +51,5 @@ assert.match(fs.readFileSync('scripts/public-pokemon-sets.mjs', 'utf8'), /if \(!
 const site = fs.readFileSync('scripts/byterider-site.mjs', 'utf8');
 assert.match(site, /const Speech = typeof window !== 'undefined' && \(window\.SpeechRecognition \|\| window\.webkitSpeechRecognition\);/);
 assert.match(site, /form\.append\(mic, input, send\);/);
-assert.match(site, /if \(voice\) speak\(r\.text\);/);
+assert.ok(site.includes('if (voice) speak(plainSaid(r.text));'));
 console.log('ByteRider stock counts, card-number checklist lookup and mic passed');

@@ -26,6 +26,23 @@ const safe = fn => { try { return fn(); } catch { return null; } };
 // answers a POST to /public/... with 405.
 const WORKER = 'https://still-resonance-4f87.swarnerauto.workers.dev';
 export const ASK_URL = WORKER + '/public/byterider/ask';
+export const VOICE_URL = WORKER + '/public/byterider/voice';
+// His answer without the in-sentence link marks (for speaking and his speech bubble).
+// The website's own cart (wo-ui.js's WO), if it's on this page. Returns how many were added.
+export function addToSiteCart(list = []) {
+  const cart = typeof window !== 'undefined' ? window.WO : null;
+  if (!cart || typeof cart.addToCart !== 'function' || typeof cart.getCart !== 'function') return 0;
+  let added = 0;
+  for (const d of list) {
+    if (!d?.id || !(Number(d.price) > 0)) continue;
+    const have = (cart.getCart().find(l => l.id === d.id) || {}).qty || 0;
+    if (have >= (Number(d.available) || 1)) continue;
+    try { cart.addToCart(d, null); added++; } catch {}
+  }
+  if (added && typeof cart.openCart === 'function') setTimeout(() => { try { cart.openCart(); } catch {} }, 400);
+  return added;
+}
+export const plainSaid = t => String(t || '').replace(/\{\{L\d{1,2}\|([^{}|]{1,80})\}\}/g, '$1');
 // The visitor's first name, from their own website sign-in (account.js keeps
 // the session here). Read in their browser only; nothing but the first name
 // is ever sent, and only with their own question.
@@ -83,23 +100,65 @@ function buildChat(corner, onAsk, onTyping) {
     rec.onend = () => { listening = null; mic.textContent = '🎤'; mic.style.background = '#160a2b'; input.placeholder = 'Ask me anything…'; if (heard) { spoke = true; ask(heard); } };
     try { rec.start(); } catch { rec.onend(); }
   };
-  const speak = text => { try { const synth = window.speechSynthesis; if (!synth || !text) return; synth.cancel(); const u = new SpeechSynthesisUtterance(String(text).slice(0, 600)); u.rate = 1.05; u.pitch = 1.2; synth.speak(u); } catch {} };
+  // His voice: the store's server voice played through an "arcade cabinet
+  // speaker" (pitched up, a little crunchy, mid-range), else the browser's
+  // own voice tuned fast and high.
+  const browserSpeak = text => { try { const synth = window.speechSynthesis; if (!synth || !text) return; synth.cancel(); const u = new SpeechSynthesisUtterance(String(text).slice(0, 600)); u.rate = 1.15; u.pitch = 1.45; synth.speak(u); } catch {} };
+  let playing = null;
+  const speak = async text => {
+    if (!text) return;
+    try { playing?.stop?.(); } catch {}
+    try {
+      const res = await fetch(VOICE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: String(text).slice(0, 500) }) });
+      if (!res.ok || !/audio/.test(res.headers.get('Content-Type') || '')) throw new Error('no voice');
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) throw new Error('no audio');
+      const ctx = speak.ctx || (speak.ctx = new AC());
+      if (ctx.state === 'suspended') await ctx.resume();
+      const buf = await ctx.decodeAudioData(await res.arrayBuffer());
+      const src = ctx.createBufferSource(); src.buffer = buf; src.playbackRate.value = 1.12; // a touch faster and higher: mascot energy
+      const band = ctx.createBiquadFilter(); band.type = 'peaking'; band.frequency.value = 2200; band.Q.value = 0.9; band.gain.value = 7; // cabinet-speaker bite
+      const low = ctx.createBiquadFilter(); low.type = 'highpass'; low.frequency.value = 180;
+      const crunch = ctx.createWaveShaper(); const curve = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; curve[i] = Math.tanh(2.2 * x); } crunch.curve = curve;
+      const gain = ctx.createGain(); gain.gain.value = 0.85;
+      src.connect(low); low.connect(band); band.connect(crunch); crunch.connect(gain); gain.connect(ctx.destination);
+      src.start(); playing = src;
+    } catch { browserSpeak(text); }
+  };
   form.append(mic, input, send);
   box.append(head, log, form);
   const ask = q => { input.value = q; form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event('submit')); };
   const chipButton = q => { const c = document.createElement('button'); c.type = 'button'; c.textContent = q;
     Object.assign(c.style, { padding: '5px 8px', borderRadius: '999px', border: '1px solid #b4ff3a88', background: 'transparent', color: '#eaffd6', font: '12px system-ui, sans-serif', cursor: 'pointer' });
     c.onclick = () => ask(q); return c; };
-  const bubble = (text, who, items = []) => {
+  const okUrl = u => /^\/(?!\/)/.test(u || '') || /^https:\/\//.test(u || '');
+  const bubble = (text, who, items = [], inline = {}) => {
     const b = document.createElement('div');
     Object.assign(b.style, { alignSelf: who === 'you' ? 'flex-end' : 'flex-start', maxWidth: '88%', padding: '8px 10px', borderRadius: '10px',
       background: who === 'you' ? '#3a1d66' : '#0b0612', border: who === 'you' ? '0' : '1px solid #b4ff3a55', whiteSpace: 'pre-wrap', wordBreak: 'break-word' });
-    b.textContent = text;
+    // Links inside his sentence ({{L3|words}}), built as DOM nodes -- never HTML.
+    const re = /\{\{L(\d{1,2})\|([^{}|]{1,80})\}\}/g; let last = 0, m;
+    const said = String(text || '');
+    while ((m = re.exec(said))) {
+      if (m.index > last) b.append(document.createTextNode(said.slice(last, m.index)));
+      const u = inline?.[m[1]];
+      if (okUrl(u)) { const a = document.createElement('a'); a.href = u; a.textContent = m[2]; Object.assign(a.style, { color: '#b4ff3a', textDecoration: 'underline' }); b.append(a); }
+      else b.append(document.createTextNode(m[2]));
+      last = re.lastIndex;
+    }
+    if (last < said.length) b.append(document.createTextNode(said.slice(last)));
     for (const it of items) {
-      if (!/^\//.test(it.url || '') && !/^https:\/\//.test(it.url || '')) continue;
+      if (!okUrl(it.url)) continue;
+      const row = document.createElement('div'); Object.assign(row.style, { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', flexWrap: 'wrap' });
       const a = document.createElement('a'); a.href = it.url; a.textContent = '▸ ' + it.name + (it.price ? ' — $' + Number(it.price).toFixed(2) : '');
-      Object.assign(a.style, { display: 'block', marginTop: '6px', color: '#b4ff3a', textDecoration: 'underline' });
-      b.append(a);
+      Object.assign(a.style, { color: '#b4ff3a', textDecoration: 'underline' });
+      row.append(a);
+      // In stock: straight into the cart (the item page adds it and opens the cart).
+      if (okUrl(it.cart)) { const c = document.createElement('a'); c.href = it.cart; c.textContent = '＋ CART';
+        Object.assign(c.style, { padding: '2px 8px', borderRadius: '6px', background: '#b4ff3a', color: '#0b0612', fontWeight: '800', fontSize: '11px', textDecoration: 'none' });
+        // The site's cart is on this page: add it here, no page change.
+        c.onclick = e => { if (it.cartData && addToSiteCart([it.cartData])) { e.preventDefault(); c.textContent = '✓ IN CART'; } };
+        row.append(c); }
+      b.append(row);
     }
     log.append(b); log.scrollTop = log.scrollHeight;
     return b;
@@ -129,7 +188,7 @@ function buildChat(corner, onAsk, onTyping) {
     for (let i = 0; i < 3; i++) wait.append(document.createElement('i'));
     log.append(wait); log.scrollTop = log.scrollHeight;
     const voice = spoke; spoke = false;
-    try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items); if (voice) speak(r.text);
+    try { const r = await onAsk(q); wait.remove(); const b = bubble(r.text, 'br', r.items, r.inline); if (r.cartAdds?.length && !addToSiteCart(r.cartAdds) && r.items?.[0]?.cart) { const go = r.items.find(i => i.cartData && r.cartAdds.some(c => c.id === i.cartData.id)); if (go?.cart) location.href = go.cart; } if (voice) speak(plainSaid(r.text));
       showFollowUps(r.followUps); b.scrollIntoView?.({ block: 'start' }); }
     catch { wait.remove(); bubble('My circuits glitched. Try again!', 'br'); }
     busy = false; if (!touchScreen()) input.focus();
@@ -201,13 +260,17 @@ export function mountSiteByteRider(opts = {}) {
     const thinker = setInterval(() => br.play(THINK[++step % THINK.length], { ms: 1300 }), 1300);
     let d = {};
     try {
-      const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname, name: signedInFirstName() }) });
+      // Their own sign-in goes to the store's server ONLY for a points/credit
+      // question (like the account page), so he can tell them their balance.
+      const token = /\b(points?|rewards?|loyalty|store credit|credit|balance)\b/i.test(q) ? safe(() => JSON.parse(localStorage.getItem('mp-foc-session-v1') || 'null'))?.access_token || '' : '';
+      const res = await fetch(ASK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) }, body: JSON.stringify({ question: q, history: history.slice(-6), page: location.pathname, name: signedInFirstName() }) });
       d = await res.json().catch(() => ({}));
     } finally { clearInterval(thinker); br.play('idle'); } // drop the thinking faces still waiting
     const text = d.ok ? String(d.answer || '') : String(d.error || 'Hmm, try that again?');
-    history.push({ role: 'user', content: q }, { role: 'assistant', content: text });
-    br.play(d.ok ? 'talking' : 'sad', { text: text.length > 90 ? text.slice(0, 88) + '…' : text });
-    return { text, items: d.ok ? d.items || [] : [], followUps: d.ok ? d.followUps || [] : [] };
+    history.push({ role: 'user', content: q }, { role: 'assistant', content: plainSaid(text) });
+    const plain = plainSaid(text);
+    br.play(d.ok ? 'talking' : 'sad', { text: plain.length > 90 ? plain.slice(0, 88) + '…' : plain });
+    return { text, inline: d.ok ? d.inline || {} : {}, cartAdds: d.ok ? d.cartAdds || [] : [], items: d.ok ? d.items || [] : [], followUps: d.ok ? d.followUps || [] : [] };
   }, () => { if (['idle', 'sleeping'].includes(br.machine.current.state)) { br.wake(); br.play('suspicious', { ms: 1600 }); } });
   document.body.append(chat.box);
   chat.x.onclick = () => chat.close();

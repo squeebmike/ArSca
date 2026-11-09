@@ -45,7 +45,7 @@ export async function sportsReferenceImage(env,ctx,set,card,deps={}){
  // own): PriceCharting's API, one exact card only. Only for the page's own
  // photo request -- never a stored-only read or a grid preview.
  if(!deps.archiveOnly&&!deps.requireArchiveRead&&env.LBA_KV&&!savedReferenceImage(set,card)){
-  const pc=await pcSportsReference(set,card,{kv:env.LBA_KV,fetchPc:deps.fetchPc||(async(path,params)=>{const r=await coordinatedPriceFetch(env,path,params);if(!r.ok)throw Error('PriceCharting '+r.status);return r.json();})}).catch(()=>null);
+  const pc=await pcSportsReference(set,card,{kv:env.LBA_KV,note:deps.lookupNote||{},fetchPc:deps.fetchPc||(async(path,params)=>{const r=await coordinatedPriceFetch(env,path,params);if(!r.ok){const e=await r.json().catch(()=>({}));throw Error('PriceCharting '+r.status+(e.error?' '+e.error:''));}return r.json();})}).catch(()=>null);
   if(pc)return pc;
  }
  // An archived collection's holds also govern legacy source-page fallbacks.
