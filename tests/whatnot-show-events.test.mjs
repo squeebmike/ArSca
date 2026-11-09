@@ -14,7 +14,10 @@ assert.equal(f['end-date-time'], '2026-11-15T04:00:00.000Z', 'two hours');
 assert.equal(f['location-or-platform'], 'Whatnot');
 assert.equal(f['show-on-homepage'], true);
 assert.equal(f['watch-or-details-url'], 'https://www.whatnot.com/user/themanapocket', 'the profile when Whatnot gives no show link');
-assert.equal(whatnotShowEventFields({ ...show, url: 'https://www.whatnot.com/live/abc' })['watch-or-details-url'], 'https://www.whatnot.com/live/abc');
+// The API's dashboard edit link becomes the public live page.
+assert.equal(whatnotShowEventFields({ id: 'b5b3ca85-cb59-40a2-ba07-419784dc8a5e', title: 'x', scheduled_start_at: '2026-11-11T19:00:00Z', url: 'https://www.whatnot.com/dashboard/lives/edit/b5b3ca85-cb59-40a2-ba07-419784dc8a5e' })['watch-or-details-url'], 'https://www.whatnot.com/live/b5b3ca85-cb59-40a2-ba07-419784dc8a5e');
+assert.equal(whatnotShowEventFields({ id: '6278bfce-01ef-4b97-810f-57eceaf89cbd', title: 'x', scheduled_start_at: '2026-11-10T19:20:00Z' })['watch-or-details-url'], 'https://www.whatnot.com/live/6278bfce-01ef-4b97-810f-57eceaf89cbd', 'a UUID show id is enough');
+assert.equal(whatnotShowEventFields({ ...show, url: 'https://www.whatnot.com/dashboard/other' })['watch-or-details-url'], 'https://www.whatnot.com/user/themanapocket', 'never a dashboard link');
 assert.equal(whatnotShowEventFields({ ...show, url: 'https://evil.example/x' })['watch-or-details-url'], 'https://www.whatnot.com/user/themanapocket', 'only whatnot.com links');
 assert.match(f.description, /Sunday Pokemon \+ Comics/);
 

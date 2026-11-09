@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.09.4-byterider-stock';
+const APP_VERSION = '2026.11.09.6-buy-import';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42139,6 +42139,47 @@ function renderBuySessionPanel(){
     <textarea id="buy-session-notes" placeholder="Session notes / override reasons" onchange="updateBuySessionField('notes', this.value)" style="width:100%;min-height:38px;margin-top:6px;background:var(--surf);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px;font-size:10px;font-family:monospace;box-sizing:border-box">${escHtml(session?.notes || '')}</textarea>
   </div>`;
 }
+
+// PriceCharting's photo scanner puts the cards in a collection; its CSV
+// export (or a Collectr export) comes into this buy offer, one line per
+// copy, priced at the export's own guide value (store, 2026-11-09).
+async function importCollectionToBuyList(file){
+  if(!file) return;
+  if(file.size > 2 * 1024 * 1024) return toast_dash('That file is too big (2 MB max)');
+  const mod = await import(new URL('scripts/pricecharting-buy-import.mjs', document.baseURI).href).catch(() => null);
+  if(!mod) return toast_dash('Could not load the importer -- refresh and try again');
+  const { format, items, skipped } = mod.importRows(await file.text());
+  if(!items.length) return toast_dash(format ? 'No cards found in that export' : 'Not a PriceCharting or Collectr export (CSV)');
+  const copies = items.reduce((n, i) => n + i.quantity, 0);
+  if(copies > 1000) return toast_dash(copies + ' copies is too many for one offer -- split the export (1,000 max)');
+  const total = items.reduce((n, i) => n + i.market * i.quantity, 0);
+  if(!confirm(`Add ${copies} card${copies === 1 ? '' : 's'} from this ${format} export to the buy offer?\nGuide value ${fd$(total)}.`)) return;
+  const session = getActiveBuySession();
+  const stamp = Date.now();
+  let n = 0;
+  for(const it of items){
+    for(let c = 0; c < it.quantity; c++){
+      const priced = it.market > 0;
+      buyList.push({
+        id:'bl_import_' + stamp + '_' + (n++) + '_' + Math.random().toString(36).slice(2, 5),
+        name:it.name, set:it.set, category:normalizeQuickCategory(it.category), card_number:it.card_number,
+        condition:it.condition, selectedCondition:it.condition, selectedLanguage:it.language || 'English',
+        grade:it.grade, grader:it.grader, cert_number:it.cert_number,
+        market:it.market, referenceMarketPrice:it.market, priceUsed:it.market, resolvedPrice:it.market,
+        priceLabel:priced ? it.source : 'Needs Manual Review', priceSource:priced ? it.source : 'Needs Review', pricingSource:priced ? it.source : 'Needs Review',
+        needsReview:!priced, sourceProductId:it.pricechartingProductId, pricechartingProductId:it.pricechartingProductId, providerUrl:it.providerUrl,
+        notes:it.notes, buySessionId:session?.buySessionId || '', storeId:getActiveStoreId(), status:'offered',
+        quantity:1, sourceQuantity:it.quantity, quantityCopyIndex:c + 1, manualMarketOverride:false, manualOfferOverride:false,
+      });
+    }
+  }
+  saveBuyList();
+  logOpsEvent('buy_items_imported', 'Imported ' + copies + ' cards from a ' + format + ' export', { buySessionId:session?.buySessionId || '', copies, rows:items.length, skipped, guideTotal:Math.round(total * 100) / 100 });
+  renderBuyList();
+  setTimeout(renderBuyList, 75);
+  toast_dash('Added ' + copies + ' card' + (copies === 1 ? '' : 's') + ' from the ' + format + ' export' + (skipped ? ' (' + skipped + ' blank rows skipped)' : ''));
+}
+window.importCollectionToBuyList = importCollectionToBuyList;
 
 function addBuyListItem(){
   const name = document.getElementById('bl-input').value.trim();

@@ -20,7 +20,12 @@ export const whatnotEventSlug = id => ('whatnot-' + String(id || '').toLowerCase
 export function whatnotShowEventFields(show = {}) {
   const start = new Date(Date.parse(show.scheduled_start_at || ''));
   const title = String(show.title || '').trim() || 'Live on Whatnot';
-  const url = [show.url, show.web_url, show.share_url, show.permalink].find(u => /^https:\/\/(www\.)?whatnot\.com\//i.test(String(u || ''))) || WHATNOT_PROFILE_URL;
+  // The seller API's show "url" is the seller dashboard's edit page
+  // (/dashboard/lives/edit/<id>), which shoppers can't open (store,
+  // 2026-11-09): the public page is /live/<id>.
+  const found = [show.url, show.web_url, show.share_url, show.permalink].map(u => String(u || '')).find(u => /^https:\/\/(www\.)?whatnot\.com\//i.test(u)) || '';
+  const liveId = (found.match(/\/(?:dashboard\/lives\/edit|live)\/([0-9a-f-]{36})/i) || [])[1] || (/^[0-9a-f-]{36}$/i.test(String(show.id || '')) ? show.id : '');
+  const url = liveId ? 'https://www.whatnot.com/live/' + liveId.toLowerCase() : (found && !/\/dashboard\//i.test(found) ? found : WHATNOT_PROFILE_URL);
   const about = String(show.description || '').trim();
   return {
     name: title.slice(0, 256),
