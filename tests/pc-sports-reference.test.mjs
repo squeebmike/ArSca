@@ -43,4 +43,18 @@ const env = { LBA_KV: kv };
 const viaPage = await sportsReferenceImage(env, null, set, { ...card, id: 'page' }, { fetchPc });
 assert.equal(viaPage?.productId, '102');
 assert.equal(await sportsReferenceImage(env, null, set, { ...card, id: 'stored-only' }, { fetchPc, archiveOnly: true }), null);
+// Shares PriceCharting with the store's price sync: a daily cap, and a 2-hour stop after a 429.
+{
+  const st = new Map(), k = { get: async key => (st.has(key) ? (/^pc-sports-ref-v2/.test(key) ? JSON.parse(st.get(key)) : st.get(key)) : null), put: async (key, v) => st.set(key, v) };
+  const note = {};
+  assert.equal(await pcSportsReference(set, { ...card, id: 'p1' }, { kv: k, fetchPc: async () => { throw new Error('PriceCharting 503 Price provider temporarily paused (PriceCharting HTTP 429)'); }, note }), null);
+  assert.match(note.pc, /^error:.*429/);
+  assert.equal(st.get('pc-sports-ref-paused'), '1');
+  let calls = 0; const n2 = {};
+  assert.equal(await pcSportsReference(set, { ...card, id: 'p2' }, { kv: k, fetchPc: async () => (calls++, { products }), note: n2 }), null);
+  assert.deepEqual([calls, n2.pc], [0, 'paused'], 'no calls while paused');
+  st.delete('pc-sports-ref-paused'); st.set('pc-sports-ref-calls:' + new Date().toISOString().slice(0, 10), '120'); const n3 = {};
+  assert.equal(await pcSportsReference(set, { ...card, id: 'p3' }, { kv: k, fetchPc: async () => (calls++, { products }), note: n3 }), null);
+  assert.deepEqual([calls, n3.pc], [0, 'daily-limit']);
+}
 console.log('Sports card photo + PriceCharting price from the PriceCharting API passed');
