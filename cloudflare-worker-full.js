@@ -54,6 +54,7 @@ import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scr
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
+import { syncWhatnotShowEvents } from './scripts/whatnot-show-events.mjs';
 import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText , upcomingWhatnotShows, SHOW_ONLY_START, auctionRuleFrom } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
@@ -13736,6 +13737,15 @@ async function routeRequest(request, env, ctx) {
     }
     // GET /whatnot/shows/upcoming -- every scheduled show still to come (the
     // show picker after receiving FOC comics).
+    // POST /whatnot/show-events/sync -- put scheduled Whatnot shows on the homepage now.
+    if (url.pathname === '/whatnot/show-events/sync' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      try { return json({ ok: true, ...(await runWhatnotShowEventsSync(env, { force: true })) }); }
+      catch (e) { return json({ ok: false, error: e.message }, 502); }
+    }
     if (url.pathname === '/whatnot/shows/upcoming' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
@@ -19621,7 +19631,7 @@ export default {
     if (event?.cron === WHATNOT_SYNC_CRON) {
       const at = new Date(event.scheduledTime || Date.now());
       const sixHourRun = at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0;
-      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx), runScheduledWebOrderNotify(env), runWhatnotDuplicateCleanup(env, ctx)]);
+      await Promise.allSettled([runScheduledWhatnotSync(env, ctx), runWhatnotShowEventsSync(env), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx), runScheduledWebOrderNotify(env), runWhatnotDuplicateCleanup(env, ctx)]);
       return;
     }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env), runScheduledFocEbayCheck(env, ctx)]);
@@ -20342,6 +20352,33 @@ async function runScheduledWhatnotSync(env, ctx) {
   try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env), { limit: 100 }); }
   catch (e) { console.error('Whatnot sync failed:', e.message); }
 }
+// Scheduled Whatnot shows onto the homepage's Pocket Events (see
+// scripts/whatnot-show-events.mjs). Hourly from the 10-minute Whatnot run,
+// and right away when Whatnot says a show was scheduled or changed.
+async function runWhatnotShowEventsSync(env, { force = false } = {}) {
+  if (!env.WHATNOT_API_KEY || !env.WEBFLOW_TOKEN || !env.LBA_KV) return { skipped: 'not connected' };
+  const gate = 'whatnot-show-events:last-run';
+  if (!force) {
+    const last = Number(await env.LBA_KV.get(gate)) || 0;
+    if (Date.now() - last < 55 * 60 * 1000) return { skipped: 'ran recently' };
+  }
+  await env.LBA_KV.put(gate, String(Date.now()));
+  const headers = { Authorization: 'Bearer ' + env.WEBFLOW_TOKEN, accept: 'application/json', 'Content-Type': 'application/json' };
+  const wf = async (path, init = {}) => {
+    const r = await fetch(`${WEBFLOW_BASE}/collections/${WF_EVENTS}${path}`, { ...init, headers });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error('Webflow ' + r.status + ': ' + String(data?.message || '').slice(0, 200));
+    return data;
+  };
+  const result = await syncWhatnotShowEvents({
+    shows: () => upcomingWhatnotShows(whatnotClient(env)),
+    listItems: async () => { const out = []; for (let offset = 0; offset < 1000; offset += 100) { const d = await wf(`/items?limit=100&offset=${offset}`); out.push(...(d.items || [])); if ((d.items || []).length < 100) break; } return out; },
+    createLive: fieldData => wf('/items/live', { method: 'POST', body: JSON.stringify({ isArchived: false, isDraft: false, fieldData }) }),
+    updateLive: (id, fieldData) => wf(`/items/${encodeURIComponent(id)}/live`, { method: 'PATCH', body: JSON.stringify({ isArchived: false, isDraft: false, fieldData }) }),
+  });
+  if (result.created || result.updated || result.hidden || result.errors.length) console.log('Whatnot show events', JSON.stringify(result));
+  return result;
+}
 // A Whatnot event, after the webhook route has checked and kept it.
 async function handleWhatnotEventRecord(env, ctx, record) {
   const type = String(record?.type || ''), data = record?.body?.data || {};
@@ -20355,6 +20392,7 @@ async function handleWhatnotEventRecord(env, ctx, record) {
     if (type.startsWith('shipments.')) console.log('Whatnot shipments', JSON.stringify(await syncWhatnotShipments(deps, { pages: 1 })));
     const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
     if (showId) console.log('Whatnot show', JSON.stringify(await refreshWhatnotShow(String(showId), deps)));
+    if (showId) await runWhatnotShowEventsSync(env, { force: true }).catch(e => console.error('Whatnot show events:', e.message));
   } catch (e) { console.error('Whatnot event not handled yet (the 10-minute run retries):', e.message); }
 }
 // A cancelled or failed Whatnot order: its sales are voided and the stock
