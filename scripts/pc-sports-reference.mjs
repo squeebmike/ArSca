@@ -34,6 +34,7 @@ export function pickPcProduct(products = [], set = {}, card = {}) {
   return ids.length === 1 ? hits[0] : null;
 }
 
+export const PC_DAILY_LOOKUPS = 120;
 // fetchPc(path, params) -> parsed JSON (the coordinated, rate-limited PriceCharting API).
 // note: { pc } -- why there's no photo (shown with an empty reference, for support).
 export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now(), note = {} } = {}) {
@@ -41,6 +42,16 @@ export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now
   const key = 'pc-sports-ref-v2:' + set.id + ':' + card.id;
   const cached = kv ? await kv.get(key, 'json').catch(() => null) : null;
   if (cached) { note.pc = cached.miss ? 'cached-miss:' + (cached.why || '') : 'cached'; return cached.miss ? null : cached; }
+  // The website shares PriceCharting with the store's own price sync: card
+  // pages get at most PC_DAILY_LOOKUPS new lookups a day, and none for two
+  // hours after PriceCharting says "too many requests" (2026-11-09).
+  if (kv) {
+    if (await kv.get('pc-sports-ref-paused').catch(() => null)) { note.pc = 'paused'; return null; }
+    const dayKey = 'pc-sports-ref-calls:' + new Date(now).toISOString().slice(0, 10);
+    const used = Number(await kv.get(dayKey).catch(() => 0)) || 0;
+    if (used >= PC_DAILY_LOOKUPS) { note.pc = 'daily-limit'; return null; }
+    await kv.put(dayKey, String(used + 1), { expirationTtl: 2 * 86400 }).catch(() => {});
+  }
   const q = [card.player, '#' + card.cardNumber, set.year, String(set.displayName || '').replace(/\b(baseball|football|basketball|hockey)\b/gi, '').replace(/\b\d{4}\b/, '').trim()].filter(Boolean).join(' ');
   let ref = null, why = '';
   try {
@@ -57,7 +68,11 @@ export async function pcSportsReference(set, card, { kv, fetchPc, now = Date.now
         referencePrices: apiReferencePrices(full, now), source: 'PriceCharting / SportsCardsPro', referenceOnly: true,
       };
     }
-  } catch (e) { note.pc = 'error:' + String(e?.message || e).slice(0, 120); return null; }
+  } catch (e) {
+    note.pc = 'error:' + String(e?.message || e).slice(0, 120);
+    if (kv && /429|paused/i.test(String(e?.message || ''))) await kv.put('pc-sports-ref-paused', '1', { expirationTtl: 2 * 3600 }).catch(() => {});
+    return null;
+  }
   note.pc = ref ? 'found' : why;
   // A miss is kept 6 hours (a card PriceCharting adds later shows up soon).
   if (kv) await kv.put(key, JSON.stringify(ref || { miss: true, why }), { expirationTtl: ref ? 7 * 86400 : 6 * 3600 }).catch(() => {});
