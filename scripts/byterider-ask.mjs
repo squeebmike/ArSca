@@ -77,14 +77,18 @@ export function matchEvents(events = [], q, max = 6) {
     .map(e => ({ title: cleanText(e.title, 120), date: cleanText(e.date, 10), start: cleanText(e.start, 30), kind: cleanText(e.kicker, 40), where: cleanText(e.location, 160), url: cleanText(/^https:\/\//.test(e.href || '') ? e.href : e.mapsUrl, 300), about: cleanText(e.copy, 160) }));
 }
 export function cleanText(s, n) { return String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n); }
+// "Rodríguez" and "rodriguez" are the same word.
+export const fold = v => String(v || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
 export function keywords(q) {
-  return [...new Set(String(q || '').toLowerCase().replace(/[^a-z0-9#/ ]+/g, ' ').split(/\s+/).filter(w => w.length >= 2 && !STOP.has(w)))].slice(0, 8);
+  return [...new Set(fold(q).toLowerCase().replace(/[^a-z0-9#/ ]+/g, ' ').split(/\s+/).filter(w => w.length >= 2 && !STOP.has(w)))].slice(0, 8);
 }
 // The in-stock items a question is about (public fields only); for "suggest
 // something" with no name in it, the best fits for its category and budget.
 const SITE_Q = /\b(log ?in|sign ?in|sign ?up|password|theme|account|profile|my pocket|shipping|ship|order status|refund|return policy|hours|open|address|email)\b/i;
 // Whole words (with a plain plural) in the item's public fields.
 const wordHit = (hay, w) => { w = w.replace(/[^a-z0-9#/]/g, ''); if (w.length > 3) w = w.replace(/s$/, ''); return !!w && new RegExp('(^|[^a-z0-9])' + w + '(e?s)?($|[^a-z0-9])').test(hay); };
+// An item's public words, accent-free, for matching.
+const itemHay = item => fold([item.name, item.set, item.subset, item.category, item.game, item.sport, item.player, item.team, item.year, item.cardNumber, item.setCode, item.publisher, item.series, item.brand, item.variant, item.treatment, item.rarity, item.finish, item.gradingCompany, item.signedBy, item.language, ...credits(item)].filter(Boolean).join(' ')).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
 export function matchItems(items = [], q, max = LIMITS.items) {
   q = storeless(q);
   if (ORDER_Q.test(q) && !wantsSuggestion(q)) return [];
@@ -106,10 +110,41 @@ export function matchItems(items = [], q, max = LIMITS.items) {
   }
   items = pool;
   return items.map(item => {
-    const hay = [item.name, item.set, item.subset, item.category, item.game, item.sport, item.player, item.team, item.year, item.cardNumber, item.setCode, item.publisher, item.series, item.brand, item.variant, item.treatment, item.rarity, item.finish, item.gradingCompany, item.signedBy, item.language, ...credits(item)].filter(Boolean).join(' ').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+    const hay = itemHay(item);
     const hits = words.filter(w => wordHit(hay, w)).length;
     return { item, score: hits / words.length + (hits === words.length ? 1 : 0) };
-  }).filter(x => x.score >= 0.5).sort((a, b) => b.score - a.score).slice(0, max).map(({ item }) => publicItem(item));
+  }).filter(x => x.score >= 0.5).sort((a, b) => b.score - a.score || priceOrder(q)(a.item, b.item)).slice(0, max).map(({ item }) => publicItem(item));
+}
+// "Cheapest" lists low to high, "most expensive" high to low.
+const wantsCheap = q => /\b(cheapest|lowest|least expensive|cheap|budget)\b/i.test(q);
+const wantsPricey = q => /\b(most expensive|priciest|highest|best|top|biggest|rarest)\b/i.test(q);
+const priceOrder = q => wantsCheap(q) ? (a, b) => Number(a.price || 0) - Number(b.price || 0) : wantsPricey(q) ? (a, b) => Number(b.price || 0) - Number(a.price || 0) : () => 0;
+
+// Stock questions (store, 2026-11-09: "how many cards are in stock, how many
+// Julio Rodriguez you have, the cheapest, the most expensive, any blank
+// covers, connecting covers, foils"): counted over EVERY in-stock listing
+// that fits, not just the few shown.
+export const wantsStats = q => /\b(how many|how much stock|count|cheapest|lowest|least expensive|most expensive|priciest|highest priced|in stock|do (?:you|y'?all) (?:have|carry|sell|got)|got any|any)\b/i.test(q);
+export function inventoryStats(items = [], q) {
+  q = storeless(q);
+  const budget = budgetOf(q);
+  const cat = CATEGORY_WORDS.find(([ask]) => ask.test(q))?.[1];
+  const pool = items.filter(i => (!budget || (Number(i.price) > 0 && Number(i.price) <= budget)) && (!cat || cat.test([i.category, i.game, i.sport].filter(Boolean).join(' '))));
+  const words = keywords(q).filter(w => !/^\d+$/.test(w) && !/^(pok[eé]mon|magic|mtg|commander|sports?|baseball|basketball|football|hockey|soccer|comics?|manga|supplies|cards?|yu-?gi-?oh|lorcana|video|games?|sealed|graded|cheapest|lowest|expensive|priciest|highest|least|most|stock|many|count|much|covers?|cvrs?|variants?|vars?|editions?|books?|issues?)$/.test(w));
+  const hits = words.length ? pool.filter(item => { const hay = itemHay(item); return words.filter(w => wordHit(hay, w)).length / words.length >= (words.length > 2 ? 0.67 : 1); }) : pool;
+  if (!hits.length) return { listings: 0, copies: 0, words };
+  const priced = hits.filter(i => Number(i.price) > 0).sort((a, b) => Number(a.price) - Number(b.price));
+  const brief = i => i && ({ name: cleanText(i.name, 90), price: Math.round(Number(i.price) * 100) / 100, url: cleanText(i.url, 200) });
+  return { listings: hits.length, copies: hits.reduce((n, i) => n + Math.max(1, Math.floor(Number(i.quantity ?? i.qty ?? 1)) || 1), 0), cheapest: brief(priced[0]), priciest: brief(priced[priced.length - 1]), words, category: cat ? String(q.match(CATEGORY_WORDS.find(([ask]) => ask.test(q))[0])?.[0] || '') : '' };
+}
+
+// Card numbers in a question: a sports code ("BLA-JR", "BCP-12") or a
+// trading card number over its set size ("143/142").
+export function cardNumbersIn(q = '') {
+  const codes = [], slashes = [];
+  for (const m of String(q).matchAll(/(?:^|[^A-Za-z0-9-])([A-Za-z]{1,5}\d{0,2}-[A-Za-z0-9]{1,4})(?![A-Za-z0-9-])/g)) codes.push(m[1].toUpperCase());
+  for (const m of String(q).matchAll(/\b(\d{1,3}[a-z]?)\s*\/\s*(\d{1,3})\b/gi)) slashes.push({ number: m[1], total: m[2] });
+  return { codes: [...new Set(codes)].slice(0, 3), slashes: slashes.slice(0, 2) };
 }
 // A comic's creators from its public listing (writers, artists, covers).
 const credits = item => { const c = item.comic || {}; return [c.seriesName, c.publisher, ...(c.writers || []), ...(c.artists || []), ...(c.coverArtists || [])].filter(Boolean).map(String); };
@@ -182,12 +217,12 @@ export function followUps(q = '', { items = [], comics = [], rules = [] } = {}) 
   if (!out.length) out.push('What preorders are coming up?', 'Suggest a gift', 'Magic rules question');
   return [...new Set(out)].slice(0, 3);
 }
-export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], rules = [], cards = [], name = '', today = '', events = [] } = {}) {
+export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], rules = [], cards = [], name = '', today = '', events = [], stats = null, checklist = [] } = {}) {
   return [
     ...(today ? [`TODAY is ${today}. Use it for "yesterday", "this week" and "next week".`] : []),
     "You are ByteRider_97, The Mana Pocket's mascot: a cheerful 1997 arcade computer who lives on the store's website. Talk like a friendly retro game character -- short, upbeat, a little nerdy.",
     'Answer in 1 to 4 short sentences (80 words at most), plain text, no markdown -- except a Magic rules explanation, which may take up to 6 short numbered steps (150 words).',
-    'Store facts -- prices, stock, release dates, show dates, policies, hours -- come ONLY from STORE FACTS, SITE HELP, IN-STOCK MATCHES, COMICS and SHOWS AND LIVE STREAMS below. Never make them up. If those do not answer it, say you are not sure and point to /faq or hintline@themanapocket.com.',
+    'Store facts -- prices, stock, release dates, show dates, policies, hours -- come ONLY from STORE FACTS, SITE HELP, IN-STOCK MATCHES, STOCK COUNT, CHECKLIST CARDS, COMICS and SHOWS AND LIVE STREAMS below. Never make them up. If those do not answer it, say you are not sure and point to /faq or hintline@themanapocket.com.',
     'You may use general fan knowledge to suggest what to read or collect (characters, series, creators), but only suggest items that are in the lists below when you name something to buy.',
     'For Magic rules you are the store\'s rules helper: explain step by step using the OFFICIAL RULES excerpts and the CARDS (current Oracle text and official rulings) below; cite rule numbers (like 117.3b) only from those excerpts. Never invent card text or rulings -- if a card is not listed, say you need its exact name (they can type it like [[Lightning Bolt]]). For a tournament ruling or a very tricky stack, suggest the MTG Judge at /mtg-judge. You are not an official judge.',
     ...(name ? [`The visitor is signed in as ${name}. Greet or use their first name now and then, naturally (not every message).`] : []),
@@ -199,6 +234,8 @@ export function systemPrompt(facts = DEFAULT_FACTS, items = [], { comics = [], r
     '', 'STORE FACTS:', facts || DEFAULT_FACTS,
     '', 'SITE HELP:', SITE_HELP,
     '', 'IN-STOCK MATCHES (live, in stock now; details are from the listing):', items.length ? items.map(i => `- ${i.name}${i.set ? ' (' + i.set + ')' : ''}${i.price ? ' $' + i.price.toFixed(2) : ''}${i.details ? ' -- ' + i.details : ''}${i.added ? ', added ' + i.added : ''}${i.about ? '. ' + i.about : ''}`).join('\n') : '(none for this question)',
+    ...(stats ? ['', 'STOCK COUNT (every in-stock listing that fits the question' + (stats.words?.length ? ': ' + stats.words.join(' ') : '') + '):', stats.listings ? `- ${stats.listings} listing${stats.listings === 1 ? '' : 's'}, ${stats.copies} cop${stats.copies === 1 ? 'y' : 'ies'} in stock` + (stats.cheapest ? `\n- Cheapest: ${stats.cheapest.name} $${stats.cheapest.price.toFixed(2)}` : '') + (stats.priciest && stats.priciest.name !== stats.cheapest?.name ? `\n- Most expensive: ${stats.priciest.name} $${stats.priciest.price.toFixed(2)}` : '') : '- None in stock right now.'] : []),
+    ...(checklist.length ? ['', 'CHECKLIST CARDS (the card number the visitor typed, from the store\'s checklist pages; a reference price is not a store price, and it does not mean the store has one -- say so if it is not in IN-STOCK MATCHES):', checklist.map(c => `- ${c.number}: ${c.name} -- ${c.set}${c.section ? ', ' + c.section : ''}${c.price ? ', reference market about $' + c.price.toFixed(2) : ''}`).join('\n')] : []),
     ...(comics.length ? ['', 'COMICS (with on-sale dates; dates after TODAY are open for preorder, earlier ones are already out):', comics.map(c => `- ${c.title} -- on sale ${c.onSale}${c.publisher ? ', ' + c.publisher : ''}${c.writer ? ', written by ' + c.writer : ''}${c.interior ? ', art by ' + c.interior : ''}${c.artist ? ', cover ' + c.artist : ''}${(c.covers || []).filter(a => a !== c.artist).length ? ', variant covers by ' + c.covers.filter(a => a !== c.artist).join(', ') : ''}${c.price ? ', $' + c.price.toFixed(2) : ''}`).join('\n')] : []),
     ...(events.length ? ['', 'SHOWS AND LIVE STREAMS (the store\'s own schedule; times are Pacific unless noted):', events.map(e => `- ${e.date}: ${e.title} -- ${e.kind}${e.where ? ', ' + e.where : ''}${e.about ? '. ' + e.about : ''}`).join('\n')] : []),
     ...(rules.length ? ['', 'OFFICIAL RULES (Magic Comprehensive Rules excerpts):', rules.map(r => `${r.id} ${r.text}`).join('\n')] : []),
@@ -223,6 +260,9 @@ export async function askByteRider(input = {}, deps) {
   if (deps.card && ruleQ) for (const n of cardNames(question, true)) { const c = await deps.card(n).catch(() => null); if (c) cards.push({ name: cleanText(c.name, 80), url: cleanText(c.url, 200), faces: (c.faces || []).slice(0, 2).map(f => ({ name: cleanText(f.name, 80), manaCost: cleanText(f.manaCost, 40), type: cleanText(f.type, 80), text: cleanText(f.text, 700) })), rulings: (c.rulings || []).slice(0, 3).map(r => cleanText(r.comment || r, 240)) }); }
   const rules = deps.rules && ruleQ ? (await deps.rules(question, cards).catch(() => [])).slice(0, LIMITS.rules).map(r => ({ id: cleanText(r.id, 12), text: cleanText(r.text, 420) })) : [];
   const events = deps.events ? matchEvents(await deps.events().catch(() => []), question) : [];
+  const stats = wantsStats(question) && deps.allItems ? inventoryStats(await deps.allItems().catch(() => []), question) : null;
+  const nums = cardNumbersIn(question);
+  const checklist = deps.lookup && (nums.codes.length || nums.slashes.length) ? ((await deps.lookup(nums, question).catch(() => [])) || []).slice(0, 4).map(c => ({ number: cleanText(c.number, 20), name: cleanText(c.name, 90), set: cleanText(c.set, 90), section: cleanText(c.section, 60), price: Number(c.price) > 0 ? Math.round(Number(c.price) * 100) / 100 : 0, url: cleanText(c.url, 220) })) : [];
   const name = visitorName(input.name);
   const history = cleanHistory(input.history);
   // Alternating turns, ending with the visitor's question.
@@ -231,9 +271,9 @@ export async function askByteRider(input = {}, deps) {
   while (messages.length && messages[0].role !== 'user') messages.shift();
   if (messages.length && messages[messages.length - 1].role === 'user') messages.pop();
   messages.push({ role: 'user', content: question });
-  const answer = cleanText(plainAnswer(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules, cards, name, events, today: input.today || new Date().toISOString().slice(0, 10) }), messages, { long: rules.length > 0 })), 900);
+  const answer = cleanText(plainAnswer(await deps.claude(systemPrompt(await deps.facts(), items, { comics, rules, cards, name, events, stats, checklist, today: input.today || new Date().toISOString().slice(0, 10) }), messages, { long: rules.length > 0 })), 900);
   // Links under the answer: items, then comics, then the MTG Judge.
-  const links = [...items.filter(i => i.url), ...comics.filter(c => c.url).map(c => ({ name: c.title + ' (' + c.onSale + ')', price: c.price, url: c.url }))].slice(0, 4);
+  const links = [...checklist.filter(c => c.url).map(c => ({ name: c.name + ' (' + c.number + ' checklist)', price: c.price || null, url: c.url })), ...items.filter(i => i.url), ...comics.filter(c => c.url).map(c => ({ name: c.title + ' (' + c.onSale + ')', price: c.price, url: c.url }))].slice(0, 4);
   for (const e of events.slice(0, 2)) if (e.url) links.push({ name: e.title + ' (' + e.date + ')', price: null, url: e.url });
   for (const c of cards) if (/^https:\/\/scryfall\.com\//.test(c.url)) links.push({ name: c.name + ' (card text)', price: null, url: c.url });
   if (rules.length) links.push({ name: 'Ask the MTG Judge', price: null, url: '/mtg-judge' });

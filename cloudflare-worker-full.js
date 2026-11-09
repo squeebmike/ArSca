@@ -81,7 +81,8 @@ import { trackSharedServiceUsage } from './scripts/shared-service-usage.mjs';
 import { lookupNeedsLogin } from './scripts/lookup-auth.mjs';
 import { handlePublicPokemonRequest } from './scripts/public-pokemon-sets.mjs';
 import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml, marketplaceDisclosureHtml, catalogShoppingIndex } from './scripts/catalog-inventory.mjs';
-import { handlePokemonCatalog } from './scripts/pokemon-catalog-pages.mjs';
+import { handlePokemonCatalog, pokemonCardPath } from './scripts/pokemon-catalog-pages.mjs';
+import { sportsByCode, pokemonBySlash } from './scripts/byterider-lookup.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { handleFootballCatalog } from './scripts/football-catalog-pages.mjs';
 import { handleSecretLairPages } from './scripts/secret-lair-pages.mjs';
@@ -16944,6 +16945,18 @@ async function routeRequest(request, env, ctx) {
           items: async () => (await fetchAllListableStorefrontItemsCached(env, ctx).catch(e => { console.warn('ByteRider items:', e.message); return []; })).filter(i => isStorefrontItemAvailable(i))
             .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
           facts: async () => (await env.LBA_KV.get('byterider-facts:' + ITEM_DETAIL_STORE_ID)) || BYTERIDER_DEFAULT_FACTS,
+          // Stock counts ("how many", cheapest, most expensive) over every in-stock listing.
+          allItems: async () => (await fetchAllListableStorefrontItemsCached(env, ctx).catch(() => [])).filter(i => isStorefrontItemAvailable(i))
+            .map(i => ({ ...i, url: i.linkUrl || '/item/' + encodeURIComponent(i.id) + '/' + itemDetailSlug(i) })),
+          // A typed card number ("BLA-JR", "143/142") to its checklist page.
+          lookup: async (nums, q) => [
+            ...sportsByCode(nums.codes, q),
+            ...(nums.slashes.length ? await pokemonBySlash(nums.slashes, q, {
+              sets: (await loadPokemonSets(env, Date.now(), { refresh: false }).catch(() => ({ data: [] }))).data || [],
+              cardsFor: async set => (await loadPokemonSetCards(env, set, Date.now(), { refresh: false, cacheOnly: true })).data || [],
+              cardPath: (set, card) => pokemonCardPath(set, card, mtgSlugify),
+            }) : []),
+          ],
           // Comics open for preorder (main covers), kept an hour so a busy
           // chat doesn't re-read the catalog.
           upcoming: async () => {

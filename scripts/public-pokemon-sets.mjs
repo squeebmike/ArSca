@@ -90,8 +90,10 @@ async function upstream(env, path, params) {
 
 // Fresh cache, else the provider, else a stale cache, else the error.
 // refresh:false (a crawler) never spends credits when any copy is saved.
-async function cached(env, key, freshMs, load, now, usable=()=>true, { refresh = true } = {}) {
+// cacheOnly: only what's saved, never the provider (ByteRider's card lookup).
+async function cached(env, key, freshMs, load, now, usable=()=>true, { refresh = true, cacheOnly = false } = {}) {
   const hit = await readCache(env.LBA_KV, key);
+  if (!hit && cacheOnly) return { data: [], cache: 'none', complete:false };
   if (hit && usable(hit) && now - Number(hit.cachedAt || 0) < freshMs) return { data: hit.data, cache: 'hit', complete:true };
   if (hit && !refresh) return { data: hit.data, cache: 'stale', complete:usable(hit) };
   try {
