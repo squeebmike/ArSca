@@ -38,7 +38,7 @@ export class ManaLiveStudio extends DurableObject {
     return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null };
   }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], serverNow:Date.now() };
   }
   // A follow / share / bookmark the host tapped in fills the flask.
   dungeonTap(kind) {
@@ -170,6 +170,15 @@ export class ManaLiveStudio extends DurableObject {
     s.effect = makeEffect(kind,s.settings,Date.now(),extra);
     this.write(s);
     this.broadcast({type:'effect', effect:s.effect, serverNow:Date.now()});
+    return this.publicState(s);
+  }
+  // The store's in-stock item photos for the shed's walls and the props in
+  // front (2026-11-11: "I don't see my items in the shed as we walk by").
+  setPics(list) {
+    const s = this.read();
+    s.pics = validateStage({ now: null, next: (Array.isArray(list) ? list : []).slice(0, 24) }).next.filter(x => x.image).map(x => ({ title: x.title, image: x.image }));
+    this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);
   }
   // Now playing / next up, from the dashboard.

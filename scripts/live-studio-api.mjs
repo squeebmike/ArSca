@@ -17,7 +17,7 @@ export async function handleLiveStudio(request,env,deps,url) {
   }
   if (request.method!=='POST') return deps.json({ok:false,error:'Not found'},404);
   // A prepped show's whole lineup (up to 60) fits.
-  const parsed=await deps.readJsonWithLimit(request,url.pathname==='/live-studio/stage'?65536:8192);
+  const parsed=await deps.readJsonWithLimit(request,['/live-studio/stage','/live-studio/pics'].includes(url.pathname)?65536:8192);
   if (parsed.error) return parsed.error;
   const body=parsed.data || {};
   try {
@@ -30,6 +30,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/overlay-link') return deps.json({ok:true,...await room.rotateOverlay()});
     if (url.pathname==='/live-studio/revoke') return deps.json(await room.revokeOverlay());
     if (url.pathname==='/live-studio/stage') return deps.json({ok:true,...await room.setStage(body.stage)});
+    if (url.pathname==='/live-studio/pics') return deps.json({ok:true,...await room.setPics(body.pics)});
     // The Shed Dungeon: a follow / share / bookmark tapped in, or a fix.
     if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await room.dungeonTap(String(body.kind||''))});
     if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true})});

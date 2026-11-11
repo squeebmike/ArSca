@@ -34,7 +34,99 @@ const PALETTES = {
   'BURNT-OUT SHED': { a: [60, 44, 36], b: [44, 32, 26], gap: [14, 8, 6], floor: [40, 32, 28], ceil: [16, 10, 8], fog: [16, 6, 2] },
   'THE SHED BENEATH THE SHED': { a: [70, 40, 90], b: [54, 30, 70], gap: [16, 6, 24], floor: [34, 22, 44], ceil: [12, 6, 18], fog: [10, 2, 16] },
 };
-export const layoutFor = floor => LAYOUTS[(Math.max(1, floor) - 1) % LAYOUTS.length];
+// Store, 2026-11-11: "the sheds need to vary". Every floor gets its own
+// layout, made from the floor number (a fixed seed -- the same floor is
+// always the same shed, nothing random on stream): a winding hall with wide
+// stretches and side rooms, two rummaging spots and the boss room at the end.
+// The three hand-made layouts are the fallback.
+const PEEK_POOL = [
+  { tex: 3, label: 'DIGGING THROUGH THE LONG BOXES…' }, { tex: 8, label: 'FLIPPING THE BINDER PAGES…' }, { tex: 6, label: 'CHECKING THE SLAB WALL…' },
+  { tex: 2, label: 'PICKING A PACK OFF THE PEGBOARD…' }, { tex: 4, label: 'SEARCHING THE BACK ISSUE RACK…' }, { tex: 7, label: 'READING THE FLYERS ON THE CORKBOARD…' },
+];
+const seeded = seed => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+export function generateLayout(floor) {
+  const N = 16, lo = 2, hi = 13;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const rnd = seeded(floor * 7919 + 101 + attempt * 31), used = new Set(), key = (x, y) => x + ',' + y;
+    const corners = [[2, 13], [13, 13], [2, 2], [13, 2]];
+    let [x, y] = corners[(floor - 1) % 4]; const route = [[x, y]]; used.add(key(x, y));
+    let horiz = rnd() < 0.5, ok = true;
+    const segs = 4 + Math.floor(rnd() * 3);
+    for (let i = 0; i < segs && ok; i++) {
+      let placed = false;
+      for (const sign of rnd() < 0.5 ? [1, -1] : [-1, 1]) {
+        const len = 4 + Math.floor(rnd() * 5), nx = horiz ? x + sign * len : x, ny = horiz ? y : y + sign * len;
+        if (nx < lo || nx > hi || ny < lo || ny > hi) continue;
+        const cells = []; let clear = true;
+        for (let k = 1; k <= len; k++) { const cx = horiz ? x + sign * k : x, cy = horiz ? y : y + sign * k; if (used.has(key(cx, cy)) || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => used.has(key(cx + dx, cy + dy)) && !(cx + dx === x && cy + dy === y) && k === 1 ? false : used.has(key(cx + dx, cy + dy)) && k > 1)) { clear = false; break; } cells.push([cx, cy]); }
+        if (!clear) continue;
+        cells.forEach(([cx, cy]) => used.add(key(cx, cy))); x = nx; y = ny; route.push([x, y]); placed = true; break;
+      }
+      if (!placed) ok = i >= 4;
+      if (!placed) break;
+      horiz = !horiz;
+    }
+    if (!ok || route.length < 5) continue;
+    // The boss room: 3 x 2 past the end of the hall, inside the walls.
+    const [ex, ey] = route[route.length - 1], [px, py] = route[route.length - 2];
+    const dx = Math.sign(ex - px), dy = Math.sign(ey - py);
+    const boss = dx ? [Math.max(1, Math.min(N - 4, dx > 0 ? ex + 1 : ex - 3)), Math.max(1, Math.min(N - 3, ey - 1)), 3, 2] : [Math.max(1, Math.min(N - 4, ex - 1)), Math.max(1, Math.min(N - 3, dy > 0 ? ey + 1 : ey - 2)), 3, 2];
+    if (boss[0] < 1 || boss[1] < 1 || boss[0] + boss[2] > N - 1 || boss[1] + boss[3] > N - 1) continue;
+    const L = { route, boss, peeks: [], rooms: [] };
+    // Two rummaging spots: a cell beside the hall, about a third and two thirds in.
+    const picks = [PEEK_POOL[floor % 6], PEEK_POOL[(floor + 3) % 6]];
+    for (const [j, at] of [[0, 0.3], [1, 0.64]]) {
+      const pose = poseAt(L, at), cx = Math.floor(pose.x), cy = Math.floor(pose.y), side = j ? -1 : 1;
+      const sx = Math.round(-Math.sin(pose.ang)) * side, sy = Math.round(Math.cos(pose.ang)) * side;
+      const cell = [cx + sx, cy + sy];
+      if (cell[0] < 1 || cell[1] < 1 || cell[0] > N - 2 || cell[1] > N - 2 || used.has(key(...cell))) continue;
+      L.peeks.push({ at, cell, ...picks[j] });
+    }
+    if (L.peeks.length < 2) continue;
+    // A wide stretch (a room) on one leg of the hall.
+    const r = route[1 + Math.floor(rnd() * (route.length - 2))];
+    L.rooms.push([Math.max(1, r[0] - 1), Math.max(1, r[1] - 1), 3, 3]);
+    return L;
+  }
+  return LAYOUTS[(Math.max(1, floor) - 1) % LAYOUTS.length];
+}
+const layoutCache = new Map();
+// Each shed's floor and ceiling (2026-11-11: "PS1 graphics"): textured and
+// lit, not a flat fade. f: planks / concrete / wet / carpet / dirt / scorched /
+// stone; c: rafters / tin / tarp / drop tiles.
+const SURFACES = {
+  'GARDEN SHED': { f: 'planks', c: 'rafters' }, 'RUSTY TOOL SHED': { f: 'concrete', c: 'tin' }, 'FLOODED SHED': { f: 'wet', c: 'tarp' },
+  'HAUNTED POTTING SHED': { f: 'dirt', c: 'rafters' }, 'RACCOON-INFESTED SHED': { f: 'carpet', c: 'drop' }, 'BURNT-OUT SHED': { f: 'scorched', c: 'tin' },
+  'THE SHED BENEATH THE SHED': { f: 'stone', c: 'drop' },
+};
+function surfaceTex(kind) {
+  const n = (x, y, k) => ((x * 73856093) ^ (y * 19349663) ^ (k * 83492791)) >>> 0;
+  const noise = (x, y, k, a) => ((n(x, y, k) % 1000) / 1000 - 0.5) * a;
+  return tex(px => {
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+      let c;
+      if (kind === 'planks') { const b = (y >> 3) % 2; c = b ? [96, 64, 40] : [110, 74, 46]; if ((y & 7) === 7) c = [40, 26, 14]; if ((x + (y >> 3) * 11) % 32 === 0) c = [50, 32, 18]; }
+      else if (kind === 'concrete') { c = [104, 104, 100]; if ((x === 15 || y === 15)) c = [70, 70, 68]; }
+      else if (kind === 'wet') { c = [70, 84, 86]; const d = Math.hypot(x - 20, y - 12); if (d < 7) c = [60, 110, 140]; if (d < 5) c = [90, 150, 180]; }
+      else if (kind === 'carpet') { c = ((x >> 2) + (y >> 2)) % 2 ? [120, 34, 40] : [100, 26, 34]; if (Math.hypot(x - 9, y - 22) < 4) c = [70, 50, 30]; }
+      else if (kind === 'dirt') c = [78, 60, 40];
+      else if (kind === 'scorched') { c = [52, 40, 34]; if ((x * y) % 13 === 0) c = [22, 16, 14]; }
+      else if (kind === 'stone') { const bx = (x + ((y >> 3) % 2) * 8) & 15, by = y & 7; c = bx === 0 || by === 0 ? [30, 24, 40] : [70, 62, 84]; }
+      else if (kind === 'rafters') { c = [34, 26, 20]; if ((x & 15) < 4) c = [92, 62, 38]; if ((x & 15) === 3) c = [50, 32, 20]; }
+      else if (kind === 'tin') { c = (x >> 1) % 2 ? [92, 96, 104] : [70, 74, 80]; if ((x * 3 + y) % 29 === 0) c = [130, 74, 40]; }
+      else if (kind === 'tarp') { c = [40, 70, 130]; if ((x + y) % 11 === 0) c = [30, 54, 104]; }
+      else { c = [170, 166, 150]; if ((x & 15) === 0 || (y & 15) === 0) c = [96, 94, 86]; if (Math.hypot(x - 22, y - 9) < 3) c = [140, 120, 70]; }
+      const k = noise(x, y, kind.length, 18);
+      px(x, y, [c[0] + k, c[1] + k, c[2] + k]);
+    }
+  });
+}
+// Bare bulbs hanging over the hall (warm light pools), every few cells along it.
+function bulbsFor(layout) { const out = []; for (let t = 0.08; t < 1; t += 0.17) { const p = poseAt(layout, t); out.push([p.x, p.y]); } return out; }
+// PS1-style color: a 4 x 4 ordered dither, then 5 bits per channel.
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+export const layoutFor = floor => { const f = Math.max(1, Math.floor(floor) || 1); if (!layoutCache.has(f)) layoutCache.set(f, generateLayout(f)); return layoutCache.get(f); };
 
 // The grid: everything wall (1..5 = texture) except the route, the peek
 // cells and the boss room. Wall textures follow a fixed pattern.
@@ -48,6 +140,7 @@ export function buildMap(floor, fork = '') {
   const [bx, by, bw, bh] = L.boss;
   for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) open(x, y);
   for (const p of L.peeks) open(...p.cell);
+  for (const [rx, ry, rw, rh] of L.rooms || []) for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) open(x, y);
   // Textures on a fixed pattern: duct-taped boards (1), booster pegboard (2),
   // long-box shelves (3), the comic rack (4), the slab wall (6), the flyer
   // corkboard (7), binder pages (8); each peek looks at its own; the boss room is 5.
@@ -61,7 +154,7 @@ export function buildMap(floor, fork = '') {
   // the store's own item photos (1000 + n*10 + the wall's own texture, which
   // shows when there are no photos).
   let n = 0;
-  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 10 + grid[y][x];
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 10 + grid[y][x];
   return { grid, layout: L };
 }
 
@@ -77,7 +170,11 @@ export function poseAt(layout, t) {
       const f = Math.min(1, d / segs[i]), [ax, ay] = pts[i], [bx, by] = pts[i + 1];
       let ang = Math.atan2(by - ay, bx - ax);
       // Start turning toward the next stretch in the last 0.8 of a cell.
-      if (i + 1 < segs.length && segs[i] - d < 0.8) { const next = Math.atan2(pts[i + 2][1] - by, pts[i + 2][0] - bx); let diff = next - ang; while (diff > Math.PI) diff -= 2 * Math.PI; while (diff < -Math.PI) diff += 2 * Math.PI; ang += diff * (1 - (segs[i] - d) / 0.8) * 0.5; }
+      // Turns ease across the corner (half before, half after), so the view
+      // never snaps and never stares into the corner wall.
+      const wrap = v => { while (v > Math.PI) v -= 2 * Math.PI; while (v < -Math.PI) v += 2 * Math.PI; return v; };
+      if (i + 1 < segs.length && segs[i] - d < 0.8) { const next = Math.atan2(pts[i + 2][1] - by, pts[i + 2][0] - bx); ang += wrap(next - ang) * (1 - (segs[i] - d) / 0.8) * 0.5; }
+      else if (i > 0 && d < 0.8) { const prev = Math.atan2(ay - pts[i - 1][1], ax - pts[i - 1][0]); ang += wrap(prev - ang) * (1 - d / 0.8) * 0.5; }
       return { x: ax + (bx - ax) * f, y: ay + (by - ay) * f, ang };
     }
     d -= segs[i];
@@ -202,7 +299,7 @@ export function loadPicture(src) {
 export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let pics = [];
+  let pics = [], surf = null, bulbs = [], tick = 0;
   let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
   let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false;
   const listeners = { peek: () => {} };
@@ -216,6 +313,7 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
     const forkChanged = (next.fork || '') !== (state.fork || '');
     state = { ...state, ...next };
     if (forkChanged && !floorChanged) map = buildMap(state.floor, state.fork || '');
+    if (floorChanged) { surf = { f: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).f), c: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).c) }; bulbs = bulbsFor(layoutFor(state.floor)); }
     if (floorChanged) { map = buildMap(state.floor, state.fork || ''); textures = makeTextures(PALETTES[state.shed] || PALETTES['GARDEN SHED']); props = propsFor(map.layout, state.floor); shown = 0; done = new Set(); }
     target = state.phase === 'boss' ? 1 : Math.max(0, Math.min(1, state.pct / 100));
     if (floorChanged) shown = target;
@@ -240,14 +338,27 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
     draw();
   }
   function draw() {
-    const pose = poseAt(map.layout, shown), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
+    // The eye sits a little behind the walker (when there's room), so the view looks down the hall, not into the wall.
+    const raw = poseAt(map.layout, shown), bx0 = raw.x - Math.cos(raw.ang) * 0.45, by0 = raw.y - Math.sin(raw.ang) * 0.45;
+    const pose = map.grid[Math.floor(by0)]?.[Math.floor(bx0)] === 0 ? { ...raw, x: bx0, y: by0 } : raw, ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
     const pal = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5);
     const boss = state.phase === 'boss';
-    // Ceiling and floor: dark at the far end, lit by the flashlight up close.
+    // Floor and ceiling, textured (floor casting): each row is a distance;
+    // lit by the flashlight and the bulbs, fading into the shed's fog.
+    const bulbLight = (wx, wy) => { let l = 0; for (const [bx, by] of bulbs) { const d2 = (wx - bx) ** 2 + (wy - by) ** 2; l += 0.9 / (1 + d2 * 1.6); } return l; };
+    const rx0 = dirX - planeX, ry0 = dirY - planeY, rx1 = dirX + planeX, ry1 = dirY + planeY, posZ = 0.5 * VH;
     for (let y = 0; y < VH; y++) {
-      const far = y < horizon ? (horizon - y) / horizon : (y - horizon) / (VH - horizon), base = y < horizon ? pal.ceil : pal.floor, k = 0.35 + 0.95 * far;
-      for (let x = 0; x < VW; x++) { const i = (y * VW + x) * 4, dither = ((x + y) & 1) * 4; data[i] = base[0] * k + dither; data[i + 1] = base[1] * k + dither; data[i + 2] = base[2] * k + dither; data[i + 3] = 255; }
+      const floorRow = y > horizon, p = floorRow ? y - horizon : horizon - y;
+      if (p <= 0 || !surf) { for (let x = 0; x < VW; x++) { const i = (y * VW + x) * 4; data[i] = pal.fog[0]; data[i + 1] = pal.fog[1]; data[i + 2] = pal.fog[2]; data[i + 3] = 255; } continue; }
+      const rowDist = posZ / p, stepX = rowDist * (rx1 - rx0) / VW, stepY = rowDist * (ry1 - ry0) / VW, t = floorRow ? surf.f : surf.c;
+      let fx = pose.x + rowDist * rx0, fy = pose.y + rowDist * ry0;
+      const base = Math.min(1, 1.7 / (1 + rowDist * 0.5)) * batt * (floorRow ? 1 : 0.7);
+      for (let x = 0; x < VW; x++, fx += stepX, fy += stepY) {
+        const tx = (Math.floor(fx * T) % T + T) % T, ty = (Math.floor(fy * T) % T + T) % T, ti = (ty * T + tx) * 3, i = (y * VW + x) * 4;
+        const l = Math.min(1.25, base * (1 - Math.abs(2 * x / VW - 1) * 0.3) + bulbLight(fx, fy) * 0.55), fog = Math.max(0, Math.min(1, l));
+        data[i] = t[ti] * l * 1 + pal.fog[0] * (1 - fog); data[i + 1] = t[ti + 1] * l * 0.96 + pal.fog[1] * (1 - fog); data[i + 2] = t[ti + 2] * l * 0.88 + pal.fog[2] * (1 - fog); data[i + 3] = 255;
+      }
     }
     // Walls: one ray per column (DDA).
     for (let x = 0; x < VW; x++) {
@@ -267,7 +378,7 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
       let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
       const t = pic || textures[cell >= 1000 ? cell % 10 : cell] || textures[1];
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
-      const light = Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt);
+      const light = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4);
       for (let y = top; y <= bot; y++) {
         const ty = Math.min(th - 1, Math.floor((y - horizon + (h >> 1)) * th / h)), ti = (ty * tw + tx) * 3, i = (y * VW + x) * 4;
         data[i] = t[ti] * light + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light + pal.fog[2] * (1 - light);
@@ -297,6 +408,20 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
     });
     // A boss up: the room flushes red.
     if (boss) for (let i = 0; i < data.length; i += 4) data[i] = Math.min(255, data[i] * 1.18 + 10);
+    // The bulbs themselves: little glowing dots up in the rafters.
+    for (const [bx, by] of bulbs) {
+      const rx = bx - pose.x, ry = by - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
+      if (tY <= 0.2) continue;
+      const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon - Math.floor(VH / tY * 0.42), r = Math.max(1, Math.floor(3 / tY));
+      if (sx < 0 || sx >= VW || tY > zbuf[sx]) continue;
+      for (let yy = sy - r; yy <= sy + r; yy++) for (let xx = sx - r; xx <= sx + r; xx++) { if (xx < 0 || yy < 0 || xx >= VW || yy >= VH || (xx - sx) ** 2 + (yy - sy) ** 2 > r * r) continue; const i = (yy * VW + xx) * 4; data[i] = 255; data[i + 1] = 236; data[i + 2] = 170; }
+    }
+    // PS1 color: ordered dither, 5 bits per channel, a little texture shimmer while walking.
+    tick++;
+    for (let y = 0, i = 0; y < VH; y++) for (let x = 0; x < VW; x++, i += 4) {
+      const d = (BAYER[(y & 3) * 4 + (x & 3)] - 7.5) * 1.9;
+      data[i] = Math.max(0, Math.min(255, data[i] + d)) & 0xF8; data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + d)) & 0xF8; data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + d)) & 0xF8;
+    }
     ctx.putImageData(img, 0, 0);
   }
   return {

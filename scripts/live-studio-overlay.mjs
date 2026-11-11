@@ -136,7 +136,8 @@ function batteryNow(d){const last=Math.max(Number(stats.lastSaleAt)||0,Number(d?
 // Item photos for the crawl's walls: NEXT UP's photos through the Worker (CORS).
 let fpPicKey='';
 function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
-function loadPictures(){if(!fp||!fpLib)return;const urls=[stage.now,...(stage.next||[])].filter(x=>x&&x.image).map(x=>x.image).slice(0,12),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list));}
+let shedPics=[];
+function loadPictures(){if(!fp||!fpLib)return;const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list));}
 let fpLib=null,peekPct=-1,peekFloor=0;
 function paintCrawl(d,center){
   // The window over the top camera only when CRAWL WINDOW is on; otherwise the
@@ -170,8 +171,11 @@ function paintCrawl(d,center){
 // stacks, dollar bins, card boxes, figures -- and the floor's chests when the
 // walk reaches one (open once it's opened). They grow and slide out to the
 // sides like you're walking past them.
-const FG_KINDS=['comics','dollarbin','cardbox','figure','pizza','bucket','comics','cardbox'];
-let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0;
+const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic','bucket','cardbox'];
+// The store's own items pass by in front too, in top loaders (2026-11-11).
+let fgImgs=[];
+function loadFgPics(){const urls=[...new Set([...shedPics,...(stage.next||[])].filter(x=>x&&x.image).map(x=>x.image))].slice(0,12);fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
+let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0,fgIdx=0;
 function paintForeground(d,center){
   const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
   el.classList.toggle('mana-hidden',!on);if(!on)return;
@@ -183,7 +187,10 @@ function paintForeground(d,center){
 function fgSide(cv,phase,kind,side,open){
   // phase 0..1: far and small near the middle -> close, big, sliding off the edge.
   const k=cv.getContext('2d');k.imageSmoothingEnabled=false;
-  fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
+  const im=kind==='pic'?fgImgs[(fgIdx++>>4)%Math.max(1,fgImgs.length)]:null;
+  if(kind==='pic'&&!(im&&im.complete&&im.naturalWidth))kind='comics';
+  if(kind==='pic'){k.clearRect(0,0,160,160);const w=96,h=134,x0=32,y0=160-h;k.fillStyle='#e8f0f8';k.fillRect(x0-6,y0-6,w+12,h+6);k.imageSmoothingEnabled=true;const sc=Math.min(w/im.naturalWidth,h/im.naturalHeight),iw=im.naturalWidth*sc,ih=im.naturalHeight*sc;try{k.drawImage(im,x0+(w-iw)/2,y0+(h-ih)/2,iw,ih);}catch{}k.fillStyle='#ffffff55';k.fillRect(x0-6,y0-6,10,h+6);}
+  else fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
   const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60),y=-phase*6;
   cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));
   cv.style.filter=`drop-shadow(8px 10px 0 #000a) brightness(${0.75+phase*0.35})`;
@@ -209,7 +216,13 @@ function revealItem(e){
   $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'$1 START!');
   $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'$1 START!':(it.price?'VALUE '+usd(it.price):'');
   img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
-  el.style.top=Math.max(0,settings.y-610)+'px';
+  // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
+  // shows shut, the lid pops open in a burst of light, the item rises out of
+  // it spinning and hangs there -- YOU GOT IT!
+  const isChest=e.kind==='chest',cv=$('mana-reveal-chest');el.classList.toggle('chest-mode',isChest);
+  if(isChest){$('mana-reveal-label').textContent='YOU GOT IT!';$('mana-reveal-price').textContent=(e.chestText&&e.chestText!=='$1 START!'?e.chestText+' · ':'')+'$1 START!';
+    const k=cv.getContext('2d');k.imageSmoothingEnabled=false;if(fpLib){fpLib.drawSprite(k,'chest',10);clearTimeout(revealItem.lid);revealItem.lid=setTimeout(()=>fpLib.drawSprite(k,'chestopen',10),650);}}
+  el.style.top=Math.max(0,settings.y-(isChest?700:610))+'px';
   el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
   clearTimeout(revealItem.t);revealItem.t=setTimeout(()=>el.classList.add('mana-hidden'),7600);
 }
@@ -436,6 +449,7 @@ function connect() {
   socket.onmessage=ev=>{try {const m=JSON.parse(ev.data);offset=m.serverNow-Date.now();retry=0;
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();}
+    if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
     if(m.stats)paintStats(m.stats,m.type==='effect'||m.type==='stats');
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};
   socket.onclose=ev=>{if(ev.code===1008)return;setTimeout(connect,Math.min(30000,1000*2**Math.min(retry++,5)));};
@@ -463,4 +477,4 @@ setInterval(()=>{
 apply(settings);draw();connect();
 // Local editor preview only; same-origin parent can show settings without network access.
 if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.origin!==location.origin)return;
-  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
+  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});

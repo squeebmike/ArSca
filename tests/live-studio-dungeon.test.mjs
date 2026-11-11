@@ -193,7 +193,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const floor of [1, 2, 3, 4]) {
     const { grid, layout } = buildMap(floor);
     assert.deepEqual(buildMap(floor).grid, grid, 'the same floor is always the same shed');
-    assert.equal(layoutFor(floor + 3), layout, 'three layouts, in turn');
+    assert.notDeepEqual(layoutFor(floor + 1).route, layout.route, 'every floor its own shed');
     for (let t = 0; t <= 1.0001; t += 0.05) { const p = poseAt(layout, t); assert.equal(grid[Math.floor(p.y)][Math.floor(p.x)], 0, 'the walk stays in the open: floor ' + floor + ' t ' + t.toFixed(2)); }
     for (const pk of layout.peeks) assert.equal(grid[pk.cell[1]][pk.cell[0]], 0);
     const [bx, by] = layout.boss; assert.equal(grid[by][bx], 0);
@@ -257,7 +257,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const k of ['export function loadPicture(src)', "im.crossOrigin = 'anonymous'", 'setPictures(list)', 'batt = 0.25 + 0.75']) assert.ok(fp.includes(k), k);
   // The green screen is the crawl now.
   const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
-  assert.ok(bg.includes("fpm.createShedCrawl(canvas, { w: 180, h: 320, fov: 0.5 })"));
+  assert.ok(bg.includes("fp = fpm.createShedCrawl(canvas, { w: 180, h: Math.round(180 * h / 1080), fov: 0.66 });"));
   assert.ok(bg.includes("painted = demo || params.get('painted') === '1'"));
   // The image route only serves the inventory's own image hosts.
   const w = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
@@ -304,5 +304,34 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(controls.includes("if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});"), 'never overwrites settings being typed');
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes('pickVote(index, who = \'\')') && api.includes("room.pickVote(Number(body.index),String(body.who||''))"));
+}
+// 2026-11-11: "the sheds need to vary and look better. PS1 graphics. I don't
+// see my items in the shed as we walk by."
+{
+  const fp = await import('../scripts/shed-crawl-fp.mjs');
+  for (let f = 1; f <= 40; f++) {
+    const L = fp.layoutFor(f), { grid } = fp.buildMap(f);
+    assert.deepEqual(fp.generateLayout(f), L, 'the same floor is always the same shed (seeded, not random)');
+    for (let t = 0; t <= 1.0001; t += 0.02) { const p = fp.poseAt(L, t); assert.equal(grid[Math.floor(p.y)][Math.floor(p.x)], 0, 'floor ' + f + ' walk stays in the open'); }
+    assert.equal(L.peeks.length, 2);
+  }
+  assert.ok(new Set([1, 2, 3, 4, 5, 6, 7, 8].map(f => JSON.stringify(fp.layoutFor(f).route))).size >= 7, 'the floors differ');
+  const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  for (const k of ["'GARDEN SHED': { f: 'planks', c: 'rafters' }", 'function bulbsFor(layout)', 'const BAYER = [', '& 0xF8', 'rowDist = posZ / p']) assert.ok(src.includes(k), k);
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes('setPics(list) {') && room.includes('pics:state.pics || []') && api.includes("/live-studio/pics"));
+  assert.ok(controls.includes("sendShedPics(d.pics).catch(()=>{});"), 'connecting sends the in-stock photos');
+  const ov4 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), bg4 = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
+  assert.ok(ov4.includes("if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}") && bg4.includes('if (Array.isArray(m.pics)) shedPics = m.pics;'));
+  assert.ok(ov4.includes("const FG_KINDS=['comics','pic',"), 'items pass by in front, in top loaders');
+}
+// 2026-11-11: "we need comics and stuff too" and "the chest opens and the item spins".
+{
+  assert.ok(controls.includes("if(/suppl|bcw|accessor/i.test(cat+' '+(i.vendor||'')))continue;"), 'supplies stay out of the shed');
+  assert.ok(controls.includes('const l=lists[k%lists.length]'), 'every category takes turns on the walls');
+  const ov5 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html5 = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8'), css5 = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
+  assert.ok(html5.includes('<canvas id="mana-reveal-chest" width="160" height="160" aria-hidden="true"></canvas>') && html5.includes('<div class="mana-reveal-rays" aria-hidden="true"></div>'));
+  assert.ok(ov5.includes("fpLib.drawSprite(k,'chest',10);") && ov5.includes("fpLib.drawSprite(k,'chestopen',10)"), 'the chest shows shut, then pops open');
+  assert.match(css5, /@keyframes mana-item-rise\{0%\{transform:translateY\(330px\) scale\(\.18\)/);
 }
 console.log('live-studio-dungeon: ok');
