@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon } from './live-studio-dungeon.mjs';
+import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById } from './live-studio-dungeon.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
 // boss appearing, which beats a show unlock, which beats the sale itself.
@@ -34,7 +34,7 @@ export class ManaLiveStudio extends DurableObject {
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
   publicStats(state) {
-    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0) };
+    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), vote: state.vote || null };
   }
   publicState(state = this.read()) {
     return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, serverNow:Date.now() };
@@ -68,6 +68,40 @@ export class ManaLiveStudio extends DurableObject {
     if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast(fx ? { type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now } : { type:'stats', stats:this.publicStats(s), serverNow:now });
+    return this.publicState(s);
+  }
+  // CHAT PICKS (2026-11-11): the overlay shows numbered choices, chat types a
+  // number in Whatnot's chat, and the host taps the winner. Doors, the hero's
+  // weapon, or which of the next items comes up first. Nothing is drawn.
+  openVote(kind) {
+    const s = this.read(), now = Date.now();
+    let options;
+    if (kind === 'weapon') options = WEAPONS.map(w => ({ id: w.id, label: w.icon + ' ' + w.name }));
+    else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
+    else if (kind === 'door') { if (!s.dungeon.doors?.length) throw new Error('Vote: no doors are open right now'); options = s.dungeon.doors.map(id => { const r = roomById(id); return { id, label: r.icon + ' ' + r.name }; }); }
+    else throw new Error('Invalid vote');
+    s.vote = { kind, options, at: now };
+    this.write(s);
+    this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:now });
+    return this.publicState(s);
+  }
+  pickVote(index) {
+    const s = this.read(), now = Date.now(), v = s.vote;
+    if (!v) throw new Error('Vote: nothing is open');
+    const opt = v.options[index];
+    if (!Number.isInteger(index) || !opt) throw new Error('Invalid vote choice');
+    if (v.kind === 'weapon') s.dungeon = adjustDungeon(s.dungeon, { weapon: opt.id }, now);
+    else if (v.kind === 'door') s.dungeon = adjustDungeon(s.dungeon, { door: index }, now);
+    else if (v.kind === 'next') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) s.stage = { ...s.stage, next: [item, ...next] }; }
+    s.vote = null;
+    s.effect = makeEffect('mascot', s.settings, now, { mascotState: 'happy', say: 'CHAT PICKED: ' + opt.label.replace(/^\S+\s/, '') });
+    this.write(s);
+    this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), stage:s.stage, serverNow:now });
+    return this.publicState(s);
+  }
+  closeVote() {
+    const s = this.read(); s.vote = null; this.write(s);
+    this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:Date.now() });
     return this.publicState(s);
   }
   snapshot() { return this.publicState(); }

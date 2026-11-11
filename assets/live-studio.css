@@ -282,3 +282,42 @@ body.mana-center #mana-sign-hits b{font-size:64px}
 /* ByteRider's big face stays behind the center stage (still over everything else). */
 body.mana-center #byterider{z-index:2}
 body.mana-center #mana-sign{z-index:3}
+
+/* ── THE CRAWL (2026-11-11): a torch-lit hallway; the hero walks to the boss door ── */
+#mana-crawl{position:absolute;left:40px;width:1000px;height:230px;z-index:3;pointer-events:none;overflow:hidden;border:6px solid var(--ink);border-radius:20px 20px 0 0;border-bottom:0;
+  background:linear-gradient(180deg,#0a0614 0%,#1c1230 55%,#120a20 100%);box-shadow:0 0 30px #7b3cff66}
+.mana-crawl-wall{position:absolute;inset:0 0 56px;opacity:.9;background:
+  linear-gradient(#0000 0 0) ,
+  repeating-linear-gradient(0deg,#2a1d44 0 3px,transparent 3px 46px),
+  repeating-linear-gradient(90deg,#2a1d44 0 3px,transparent 3px 92px),
+  linear-gradient(180deg,#3a2a5c,#241739)}
+.mana-crawl-floor{position:absolute;left:0;right:0;bottom:0;height:56px;background:repeating-linear-gradient(90deg,#3b2a20 0 60px,#2e2018 60px 120px);border-top:5px solid var(--ink);background-position:0 0}
+#mana-crawl.walking .mana-crawl-floor{animation:mana-floor-scroll .6s linear infinite}
+#mana-crawl-torches i{position:absolute;top:44px;width:16px;height:38px;background:linear-gradient(#6b4a2a,#3a2614);border:3px solid var(--ink)}
+#mana-crawl-torches i::before{content:"";position:absolute;left:-10px;top:-38px;width:30px;height:38px;border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 70%,#fff6b0,#ffb000 45%,#ff4a1a 75%,transparent 80%);filter:drop-shadow(0 0 16px #ffb000);animation:mana-flicker .35s ease-in-out infinite alternate}
+#mana-crawl-torches i::after{content:"";position:absolute;left:-60px;top:-70px;width:140px;height:140px;border-radius:50%;background:radial-gradient(#ffb00033,transparent 70%)}
+#mana-crawl-door{position:absolute;right:26px;bottom:56px;width:120px;height:150px;border:6px solid var(--ink);border-bottom:0;border-radius:60px 60px 0 0;background:linear-gradient(180deg,#3d0a19,#160308);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 24px #000}
+#mana-crawl-door b{font-size:56px;color:#ff2a4f;opacity:.35;text-shadow:0 0 10px #ff2a4f}
+#mana-crawl.near #mana-crawl-door{box-shadow:inset 0 0 24px #000,0 0 40px #ff2a4f;animation:mana-door-pulse .7s ease-in-out infinite alternate}
+#mana-crawl.near #mana-crawl-door b{opacity:1}
+#mana-hero{position:absolute;bottom:52px;left:calc(30px + (var(--hero,0) * 7.6px));width:128px;height:128px;image-rendering:pixelated;transition:left 1.4s linear;filter:drop-shadow(4px 4px 0 #000a)}
+#mana-crawl.walking #mana-hero{animation:mana-hero-bob .36s steps(2) infinite}
+#mana-crawl.boss #mana-crawl-door{background:radial-gradient(ellipse at 50% 80%,#ff2a4f,#3d0a19 70%);box-shadow:inset 0 0 24px #000,0 0 60px #ff2a4f}
+#mana-crawl.boss #mana-crawl-door b{display:none}
+#mana-crawl.boss{box-shadow:0 0 40px #ff2a4f88}
+#mana-crawl-weapon{position:absolute;left:18px;top:12px;font:400 18px 'Press Start 2P',monospace;color:var(--yel);text-shadow:3px 3px 0 var(--ink)}
+body.mana-center #mana-sign{border-radius:0 0 24px 24px}
+/* CHAT PICKS banner */
+#mana-vote{position:absolute;left:140px;width:800px;z-index:7;pointer-events:none;background:#160a2bf2;border:7px solid var(--ink);border-radius:22px;box-shadow:8px 8px 0 var(--ink),0 0 0 4px #ffe14a inset,0 0 40px #ffe14a88;padding:12px 24px 14px;text-align:center;animation:mana-stamp .45s cubic-bezier(.2,2,.4,1)}
+.mana-vote-head{font-family:'Luckiest Guy',Bangers,sans-serif;font-size:56px;color:var(--yel);-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 #6f1fac;animation:mana-vote-blink 1s steps(2) infinite}
+#mana-vote-title{font-family:Bangers,sans-serif;font-size:34px;letter-spacing:2px;color:#fff;text-shadow:3px 3px 0 var(--ink)}
+#mana-vote-list{list-style:none;margin:10px 0 4px;padding:0;display:grid;gap:8px}
+#mana-vote-list li{display:flex;align-items:center;gap:16px;background:#2a1650;border:4px solid var(--ink);border-radius:14px;padding:6px 14px;font:400 22px 'Press Start 2P',monospace;color:#fff;text-align:left}
+#mana-vote-list b{display:inline-flex;align-items:center;justify-content:center;min-width:52px;height:52px;border-radius:50%;background:var(--lime);color:var(--ink);font:400 30px 'Luckiest Guy',Bangers,sans-serif;border:4px solid var(--ink)}
+.mana-vote-foot{font:400 14px 'Press Start 2P',monospace;color:#b4ff3a;margin-top:6px}
+@keyframes mana-floor-scroll{to{background-position:-120px 0}}
+@keyframes mana-flicker{to{transform:scale(1.08,.92) translateY(2px);filter:drop-shadow(0 0 22px #ffb000)}}
+@keyframes mana-door-pulse{to{box-shadow:inset 0 0 24px #000,0 0 70px #ff2a4f}}
+@keyframes mana-hero-bob{50%{transform:translateY(-6px)}}
+@keyframes mana-vote-blink{50%{color:#fff}}
+@media(prefers-reduced-motion:reduce){#mana-crawl-torches i::before,#mana-crawl.walking .mana-crawl-floor,#mana-crawl.walking #mana-hero,.mana-vote-head,#mana-crawl.near #mana-crawl-door{animation:none}}

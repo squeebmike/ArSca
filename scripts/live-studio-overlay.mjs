@@ -2,6 +2,10 @@ import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats,
 import {bossById, drawBoss} from './live-studio-bosses.mjs';
 import {createByteRider} from './byterider.mjs';
 import {roomById} from './live-studio-dungeon.mjs';
+// The hero who crawls the hallway: an original 16x16 pixel knight (ByteRider green visor).
+const HERO=['......aaaa......','.....abbbba.....','....abbbbbba....','....abggggba....','....abgkkgba....','....abbbbbba....','.....abbbba.....','...aaccccccaa...','..acccddddccca..','..acc.dddd.cca..','..aa..dddd..aa..','......cc.cc.....','......cc.cc.....','.....aaa.aaa....','................','................'];
+const HERO_COLORS={a:'#0b0612',b:'#9aa3b5',c:'#6f1fac',d:'#d9b23a',g:'#b4ff3a',k:'#0b0612'};
+function drawHero(canvas,frame){const c=canvas.getContext('2d');c.clearRect(0,0,32,32);HERO.forEach((row,y)=>[...row].forEach((ch,x)=>{if(ch==='.')return;let yy=y;if(frame&&y>=11)yy+=(x<8?-1:1)*(y>=13?1:0);c.fillStyle=HERO_COLORS[ch];c.fillRect(x*2,yy*2,2,2);}));}
 const $=id=>document.getElementById(id);
 const sign=$('mana-sign'), text=$('mana-message'), effectEl=$('mana-effect'), coins=$('mana-coins');
 const hud=$('mana-hud'), boss=$('mana-boss'), card=$('mana-card'), queue=$('mana-queue');
@@ -60,7 +64,7 @@ function apply(s) {
   const qx=settings.cardX+400<=760?settings.cardX+400:Math.max(0,settings.cardX), qy=settings.cardX+400<=760?settings.cardY+70:Math.max(0,settings.cardY-230);
   place(queue,qx,qy);
   // Center stage: the boss stands just above the sign's mana bar.
-  $('mana-arena').style.top=Math.max(0,settings.y-330)+'px';
+  $('mana-arena').style.top=Math.max(0,settings.y-330)+'px';$('mana-crawl').style.top=Math.max(0,settings.y-230)+'px';
   // Bursts are centered on the sign.
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
@@ -78,7 +82,7 @@ function paintStats(next,fromSale) {
   if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // The boss bar's boss stomps in when the flask fills.
   const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase)bossView?.enter();lastPhase=phase;
-  paintDungeon(d);
+  paintDungeon(d);paintVote();
   $('mana-boss-name').textContent=b.name;
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
   const fill=$('mana-boss-fill');fill.style.width=Math.max(0,Math.min(100,b.pct??100))+'%';fill.classList.toggle('low',(b.pct??100)<=25);
@@ -92,7 +96,7 @@ function paintStats(next,fromSale) {
     if(d&&!b.show){const m=document.createElement('b');m.textContent='+'+usd(stats.gross-before);$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);}
     if(b.show){
       boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');bossView?.hit();
-      const dmg=document.createElement('b');dmg.textContent='-'+usd(stats.gross-before);$('mana-boss-hits').append(dmg);setTimeout(()=>dmg.remove(),1500);
+      const dmg=document.createElement('b');const wpn=d?.weapon;dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')+'-'+usd(stats.gross-before);$('mana-boss-hits').append(dmg);setTimeout(()=>dmg.remove(),1500);
     }
   }
   shownGross=stats.gross;
@@ -108,6 +112,7 @@ function paintDungeon(d){
   if(center&&boss.parentElement!==arena)arena.append(boss);
   else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
   arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));
+  paintCrawl(d,center);
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
@@ -118,6 +123,35 @@ function paintDungeon(d){
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
+}
+// THE CRAWL (2026-11-11: "it needs to feel more like crawling through the
+// dungeon"): a torch-lit hallway over the sign. The hero walks toward the
+// boss door as mana fills; the door glows when the boss is near.
+let heroFrame=0,heroWalkUntil=0,lastHeroPct=-1;
+for(let i=0;i<5;i++){const t=document.createElement('i');t.style.left=(8+i*21)+'%';t.style.animationDelay=-(i*0.37)+'s';$('mana-crawl-torches')?.append(t);}
+setInterval(()=>{const h=$('mana-hero');if(!h)return;const walking=Date.now()<heroWalkUntil;$('mana-crawl').classList.toggle('walking',walking);if(walking){heroFrame^=1;drawHero(h,heroFrame);}},180);
+function paintCrawl(d,center){
+  // In a boss fight the door stands open and the hero waits at it.
+  const el=$('mana-crawl');const show=!!d&&center;el.classList.toggle('mana-hidden',!show);el.classList.toggle('boss',!!d&&d.phase==='boss');
+  if(!show){lastHeroPct=-1;return;}
+  const pct=d.phase==='boss'?18:Math.max(0,Math.min(100,d.pct));
+  if(lastHeroPct>=0&&pct>lastHeroPct)heroWalkUntil=Date.now()+1600;
+  if(lastHeroPct<0)drawHero($('mana-hero'),0);
+  lastHeroPct=pct;
+  el.style.setProperty('--hero',String(pct));
+  el.classList.toggle('near',pct>=75);
+  const w=d.weapon;$('mana-crawl-weapon').textContent=w?w.icon+' '+w.name:'';
+}
+// CHAT PICKS: the numbered choices chat votes on (the host taps the winner).
+// An open door vote shows on its own.
+function paintVote(){
+  const v=stats.vote,d=dg(),el=$('mana-vote');
+  const doors=!v&&d&&d.doors?{kind:'door',options:d.doors.map(r=>({label:r.icon+' '+r.name}))}:null,show=v||doors;
+  el.classList.toggle('mana-hidden',!show||settings.visible===false);
+  if(!show)return;
+  $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':'PICK A DOOR';
+  $('mana-vote-list').replaceChildren(...show.options.map((o,i)=>{const li=document.createElement('li');const n=document.createElement('b');n.textContent=String(i+1);li.append(n,document.createTextNode(o.label));return li;}));
+  el.style.top=Math.max(0,settings.y-330)+'px';
 }
 // The map (floors this week, the next one dark), the doors chat is voting
 // on, and the relic shelf.

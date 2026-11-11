@@ -11,7 +11,7 @@ export default {async fetch(req,env){
  const u=new URL(req.url), room=env.ROOM.getByName(u.searchParams.get('store')||'one');
  if(u.pathname==='/socket')return room.fetch(req);
  const b=req.method==='POST'?await req.json():{};
- const result=u.pathname==='/link'?await room.rotateOverlay():u.pathname==='/revoke'?await room.revokeOverlay():u.pathname==='/effect'?await room.trigger(b.kind):u.pathname==='/settings'?await room.update(b.settings,b.revision):u.pathname==='/event'?await room.receiveWhatnot(b.id,b.event):u.pathname==='/stage'?await room.setStage(b.stage):u.pathname==='/sync'?await room.syncStats(b.orders):u.pathname==='/reset'?await room.resetStats():await room.snapshot();
+ const result=u.pathname==='/link'?await room.rotateOverlay():u.pathname==='/revoke'?await room.revokeOverlay():u.pathname==='/effect'?await room.trigger(b.kind):u.pathname==='/settings'?await room.update(b.settings,b.revision):u.pathname==='/event'?await room.receiveWhatnot(b.id,b.event):u.pathname==='/stage'?await room.setStage(b.stage):u.pathname==='/sync'?await room.syncStats(b.orders):u.pathname==='/reset'?await room.resetStats():u.pathname==='/vote-open'?await room.openVote(b.kind):u.pathname==='/vote-pick'?await room.pickVote(b.index):await room.snapshot();
  return Response.json(result);
 }};`,resolveDir:process.cwd(),sourcefile:'runtime-harness.mjs'},bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers'],write:false});
 const options={workers:[{name:'studio-test',modules:true,script:result.outputFiles[0].text,compatibilityDate:'2026-08-20',durableObjects:{ROOM:{className:'ManaLiveStudio',useSQLite:true}}}]};
@@ -55,6 +55,11 @@ try {
  const viewer=await socket();msg=message(viewer);viewer.send(JSON.stringify({token:link.token}));await msg;
  closed=close(viewer);await call('/revoke');assert.equal((await closed).code,1008);
  const revoked=await socket();closed=close(revoked);revoked.send(JSON.stringify({token:link.token}));assert.equal((await closed).code,1008);
+ // Chat picks (2026-11-11): the weapon vote shows, the host taps the winner.
+ let voted=await call('/vote-open',{kind:'weapon'});assert.equal(voted.stats.vote.options.length,4);
+ voted=await call('/vote-pick',{index:2});assert.equal(voted.stats.vote,null);assert.equal(voted.stats.dungeon.weapon.id,'chicken');assert.match(voted.effect.say,/CHAT PICKED: RUBBER CHICKEN/);
+ await call('/stage',{stage:{now:{title:'A'},next:[{title:'B'},{title:'C'}]}});
+ await call('/vote-open',{kind:'next'});assert.deepEqual((await call('/vote-pick',{index:1})).stage.next.map(n=>n.title),['C','B'],'chat\'s pick comes up next');
  // A new show going live on Whatnot: the studio follows it on its own (2026-11-11).
  const nextShow='9b2f6c1e-4d3a-4f8b-a1c2-3d4e5f6a7b8c';
  await call('/event',{id:'event-next',event:{...event,timestamp:new Date().toISOString(),data:{show_id:nextShow}}});

@@ -22,6 +22,9 @@
   <p id="mana-dungeon-status" class="mana-score">Floor 1</p>
   <div class="mana-row" id="mana-taps"><button type="button" data-tap="follow" data-key="F">+ FOLLOW <kbd>F</kbd></button><button type="button" data-tap="share" data-key="Y">+ SHARE <kbd>Y</kbd></button><button type="button" data-tap="bookmark" data-key="B">+ BOOKMARK <kbd>B</kbd></button></div>
   <div class="mana-row" id="mana-doors-pick"></div>
+  <div class="mana-row" id="mana-vote-open"><button type="button" data-vote="weapon">CHAT VOTE: HERO'S WEAPON</button><button type="button" data-vote="next">CHAT VOTE: WHAT'S NEXT</button><button type="button" data-vote="door">CHAT VOTE: DOOR</button></div>
+  <div class="mana-row" id="mana-vote-pick"></div>
+  <small>Chat types a number in Whatnot's chat; tap the winner. Nothing is random.</small>
   <small>Whatnot doesn't send follows, shares or bookmarks -- tap them in as they pop up in the app. Sales fill the flask on their own.</small>
   <div class="mana-row"><input id="mana-add-mana" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="mana-add-mana-go">+ MANA</button><input id="mana-set-floor" type="number" min="1" max="99" placeholder="Floor"><button type="button" id="mana-set-floor-go">SET FLOOR</button><button type="button" id="mana-reset-week">RESET WEEK</button></div>
   ${box('dungeonOn','Dungeon on: the sign is the mana flask (sales, follows, shares and bookmarks fill it)')}
@@ -93,6 +96,10 @@
   // The dungeon's status line: floor, mana, stars, the week's reset.
   function paintDungeon(){
     const d=stats?.dungeon,el=host.querySelector('#mana-dungeon-status'),pick=host.querySelector('#mana-doors-pick');pick.replaceChildren();
+    // An open chat vote: one button per choice, and CLOSE.
+    const vp=host.querySelector('#mana-vote-pick');vp.replaceChildren();
+    if(stats?.vote){stats.vote.options.forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.textContent='WINNER '+(i+1)+': '+o.label;b.onclick=()=>run(async()=>{const x=await api('vote-pick',{index:i});took(x);if(x.effect)preview(x.effect);status.textContent='Chat picked '+o.label+'.';});vp.append(b);});
+      const c=document.createElement('button');c.type='button';c.textContent='CLOSE VOTE';c.onclick=()=>run(async()=>{took(await api('vote-close',{}));});vp.append(c);}
     if(!d){el.textContent='Connect to see the floor.';return;}
     // Chat's vote: one button per door.
     if(d.doors)d.doors.forEach((r,i)=>{const b=document.createElement('button');b.type='button';b.textContent='DOOR '+(i+1)+': '+r.icon+' '+r.name;
@@ -125,6 +132,7 @@
     void run(async()=>{const d=await api('dungeon-tap',{kind});took(d);preview(d.effect);status.textContent='+ '+kind;});};
   host.querySelector('#mana-add-mana-go').onclick=()=>run(async()=>{const v=Number(host.querySelector('#mana-add-mana').value);if(!(v>0))throw Error('Type the $ amount first');const d=await api('dungeon-adjust',{mana:v});took(d);if(d.effect)preview(d.effect);host.querySelector('#mana-add-mana').value='';status.textContent='Added '+usd(v)+' mana.';});
   host.querySelector('#mana-set-floor-go').onclick=()=>run(async()=>{const f=Number(host.querySelector('#mana-set-floor').value);if(!Number.isInteger(f)||f<1)throw Error('Type a floor number');if(!confirm('Jump to floor '+f+'? Its mana starts at 0.'))return;const d=await api('dungeon-adjust',{floor:f});took(d);status.textContent='Now on floor '+f+'.';});
+  host.querySelector('#mana-vote-open').onclick=e=>{const b=e.target.closest('[data-vote]');if(b)run(async()=>{const x=await api('vote-open',{kind:b.dataset.vote});took(x);status.textContent='Vote is on screen. Tap the winner below.';});};
   host.querySelector('#mana-reset-week').onclick=()=>run(async()=>{if(!confirm('Start the week over at floor 1 with no stars?'))return;const d=await api('dungeon-adjust',{resetWeek:true});took(d);status.textContent='Week reset: floor 1.';});
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
   // ByteRider_97: a reaction or a line, on stream (and in the preview).

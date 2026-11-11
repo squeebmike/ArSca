@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Mana Pocket Arcade V4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Luckiest+Guy&family=Press+Start+2P&display=swap">
-<link rel="stylesheet" href="assets/live-studio.css?v=21"><link rel="stylesheet" href="assets/byterider.css?v=20"></head>
+<link rel="stylesheet" href="assets/live-studio.css?v=22"><link rel="stylesheet" href="assets/byterider.css?v=20"></head>
 <body class="mana-overlay">
 <section id="mana-hud" class="mana-panel" aria-label="Show score board">
   <div class="mana-hud-row">
@@ -23,6 +23,8 @@
   <div id="mana-combo" aria-live="polite"></div>
 </section>
 <main id="mana-sign" class="mana-panel" aria-label="Mana Pocket arcade sign"><div class="mana-liquid" aria-hidden="true"></div><div class="mana-bubbles" aria-hidden="true"></div><div class="mana-title"><span id="mana-title-text">THE MANA POCKET</span><span id="mana-flask-meter"></span></div><div id="mana-cbar-sub"></div><div id="mana-sign-hits" aria-hidden="true"></div><div class="mana-track"><span id="mana-message"></span></div></main>
+<section id="mana-crawl" class="mana-hidden" aria-label="The dungeon hallway"><div class="mana-crawl-wall" aria-hidden="true"></div><div id="mana-crawl-torches" aria-hidden="true"></div><div class="mana-crawl-floor" aria-hidden="true"></div><div id="mana-crawl-door" aria-hidden="true"><b>☠</b></div><canvas id="mana-hero" width="32" height="32" aria-hidden="true"></canvas><div id="mana-crawl-weapon"></div></section>
+<section id="mana-vote" class="mana-hidden" aria-live="polite"><div class="mana-vote-head">CHAT PICKS!</div><div id="mana-vote-title"></div><ol id="mana-vote-list"></ol><div class="mana-vote-foot">TYPE THE NUMBER IN CHAT</div></section>
 <section id="mana-arena" class="mana-hidden" aria-label="Boss"></section>
 <section id="mana-card" class="mana-panel" aria-label="Now playing">
   <div class="mana-card-head">NOW PLAYING</div>
@@ -37,4 +39,4 @@
 <div id="mana-hype" aria-label="Hype meter"><b>HYPE</b><i></i><i></i><i></i><i></i><i></i></div>
 <div id="byterider" aria-label="ByteRider_97"></div>
 <div id="mana-connection" hidden></div>
-<script type="module" src="scripts/live-studio-overlay.mjs?v=21"></script></body></html>
+<script type="module" src="scripts/live-studio-overlay.mjs?v=22"></script></body></html>
