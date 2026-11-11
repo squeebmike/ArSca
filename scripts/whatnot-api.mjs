@@ -84,6 +84,7 @@ export async function handleWhatnotWebhook(request, env, deps) {
   // inventory and dedupes events itself.
   if (env.MANA_LIVE_STUDIO && body?.version === 'v2') {
     const handoff = Promise.resolve().then(() => env.MANA_LIVE_STUDIO.getByName(storeId).receiveWhatnot(id, body))
+      .then(r => r?.chestItem?.id && r.showId && deps.chestToWhatnot ? deps.chestToWhatnot(storeId, r.chestItem, r.showId) : null)
       .catch(e => console.warn('Live Studio did not get Whatnot event', id, e?.message || e));
     if (deps.background) deps.background(handoff); else await handoff;
   }

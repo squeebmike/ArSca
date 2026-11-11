@@ -258,13 +258,15 @@ export function drawSprite(ctx, kind, px = 10, shade = 1) {
 }
 
 // Where the props sit: fixed spots along each stretch of the route.
-function propsFor(layout, floor) {
-  const kinds = ['dollarbin', 'comics', 'bucket', 'cardbox', 'table', 'figure', 'pizza', 'eyes'], out = [];
+// 'pic' is one of the store's items in a top loader on a little stand.
+export function propsFor(layout, floor) {
+  const kinds = ['dollarbin', 'pic', 'comics', 'bucket', 'pic', 'cardbox', 'table', 'pic', 'figure', 'pizza', 'eyes'], out = []; let picN = 0;
   for (let i = 1; i < layout.route.length; i++) {
     const [x0, y0] = layout.route[i - 1], [x1, y1] = layout.route[i], n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 3));
     for (let k = 1; k <= n; k++) {
       const f = k / (n + 1), side = (i + k) % 2 ? 0.32 : -0.32, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
-      out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind: kinds[(i * 3 + k + floor) % kinds.length] });
+      const kind = kinds[(i * 3 + k + floor) % kinds.length];
+      out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, ...(kind === 'pic' ? { idx: picN++ } : {}) });
     }
   }
   // Three treasure chests along the way (chat's goals open them).
@@ -294,9 +296,16 @@ export function loadPicture(src) {
   });
 }
 
+// Where the eye is: a little behind the walker when there's room (so the view
+// looks down the hall). The overlay's props-in-front use the same pose.
+export function eyePose(layout, grid, t) {
+  const raw = poseAt(layout, t), bx = raw.x - Math.cos(raw.ang) * 0.45, by = raw.y - Math.sin(raw.ang) * 0.45;
+  return grid[Math.floor(by)]?.[Math.floor(bx)] === 0 ? { ...raw, x: bx, y: by } : raw;
+}
+
 // ── The renderer ──
 // w x h: 240 x 96 for the overlay window; tall (180 x 320) for the green-screen background.
-export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.66 } = {}) {
+export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
   let pics = [], surf = null, bulbs = [], tick = 0;
@@ -339,8 +348,7 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
   }
   function draw() {
     // The eye sits a little behind the walker (when there's room), so the view looks down the hall, not into the wall.
-    const raw = poseAt(map.layout, shown), bx0 = raw.x - Math.cos(raw.ang) * 0.45, by0 = raw.y - Math.sin(raw.ang) * 0.45;
-    const pose = map.grid[Math.floor(by0)]?.[Math.floor(bx0)] === 0 ? { ...raw, x: bx0, y: by0 } : raw, ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
+    const pose = eyePose(map.layout, map.grid, shown), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
     const pal = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5);
     const boss = state.phase === 'boss';
@@ -373,7 +381,7 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
       // Flip on the walls seen from the other side, so signs read the right way.
       const flip = (!side && rx < 0) || (side && ry > 0);
       // A photo wall: the store's item, framed; without photos, the wall's own texture.
-      const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 10) % pics.length] : null;
+      const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 10) % pics.length] || null : null;
       const tw = pic ? PIC_W : T, th = pic ? PIC_H : T;
       let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
       const t = pic || textures[cell >= 1000 ? cell % 10 : cell] || textures[1];
@@ -390,7 +398,9 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
       if (tY <= 0.15) return;
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : 0.55)));
+      // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
+      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= 1.6 && Math.abs(side) <= 1.05) return; }
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : s.kind === 'pic' ? 0.62 : 0.55)));
       const floorY = horizon + Math.floor(VH / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
       const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
@@ -399,7 +409,8 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
         for (let sy = Math.max(0, top); sy < Math.min(VH, top + size); sy++) {
           const v = (sy - top) / size; let col = null;
           if (s.kind === 'boss') { const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
-          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[kind][ch]; }
+          else if (s.kind === 'pic' && pics[s.idx % (pics.length || 1)]) { const pd = pics[s.idx % pics.length], uu = (u - 0.18) / 0.64; if (uu >= 0 && uu < 1) { if (v > 0.94) col = [60, 60, 66]; else { const pv = Math.min(0.999, v / 0.94), ti = (Math.floor(pv * PIC_H) * PIC_W + Math.floor(uu * PIC_W)) * 3; col = [pd[ti], pd[ti + 1], pd[ti + 2]]; } } }
+          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[kind][ch]; }
           if (!col) continue;
           const i = (sy * VW + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
@@ -427,7 +438,8 @@ export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.6
   return {
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The store's item photos for the walls (from loadPicture).
-    setPictures(list) { pics = (list || []).filter(Boolean).slice(0, 24); },
+    // Order kept (a photo that didn't load is a gap), so the overlay's items match.
+    setPictures(list) { pics = (list || []).slice(0, 24); },
     start() { if (!raf) raf = requestAnimationFrame(frame); },
     stop() { cancelAnimationFrame(raf); raf = 0; },
     // For tests: where the walker is.

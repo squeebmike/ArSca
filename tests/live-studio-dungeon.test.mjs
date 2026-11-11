@@ -284,7 +284,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const ov3 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
   assert.ok(html.includes('<div id="mana-fg" class="mana-hidden" aria-hidden="true">'));
   assert.ok(ov3.includes("paintCrawl(d,center);paintForeground(d,center);"));
-  assert.ok(ov3.includes("fgSide($('mana-fg-r'),ph,'chest',1,fgOpened.includes(near));"), 'the chest passes by in front, open once opened');
+  assert.ok(ov3.includes("p.kind==='chest'&&fgOpened.includes(p.idx)"), 'the chest passes by in front, open once opened');
 }
 // The setup preview shows the green-screen shed behind the top camera (2026-11-11).
 {
@@ -333,5 +333,36 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(html5.includes('<canvas id="mana-reveal-chest" width="160" height="160" aria-hidden="true"></canvas>') && html5.includes('<div class="mana-reveal-rays" aria-hidden="true"></div>'));
   assert.ok(ov5.includes("fpLib.drawSprite(k,'chest',10);") && ov5.includes("fpLib.drawSprite(k,'chestopen',10)"), 'the chest shows shut, then pops open');
   assert.match(css5, /@keyframes mana-item-rise\{0%\{transform:translateY\(330px\) scale\(\.18\)/);
+}
+// 2026-11-11: chests run their item -- NOW PLAYING at once and into the
+// Whatnot show as a $1 start -- and the remote connects on its own.
+{
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8'), w = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8'), wn = readFileSync(new URL('../scripts/whatnot-api.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; }"), 'the chest item is NOW PLAYING');
+  assert.ok(room.includes('return {ok:true, ...this.takeChest(s)};'));
+  assert.ok(api.includes('if (r?.chestItem?.id && r.showId && deps.chestToWhatnot)') && wn.includes('deps.chestToWhatnot ? deps.chestToWhatnot(storeId, r.chestItem, r.showId)'));
+  assert.ok(w.includes("{ starts: { [item.id]: 1 } });"), 'a $1 start in the show');
+  const { validateStage } = await import('../scripts/live-studio-model.mjs');
+  assert.equal(validateStage({ now: { title: 'X', id: '0f9dd4bc-42a7-487e-a972-2905d24513e9' }, next: [{ title: 'Y', id: 'bad' }] }).now.id, '0f9dd4bc-42a7-487e-a972-2905d24513e9');
+  assert.equal(validateStage({ now: null, next: [{ title: 'Y', id: 'bad' }] }).next[0].id, undefined);
+  assert.ok(controls.includes("let id=store();if(body && (!connectedStore || connectedStore!==id)){await connect();id=store();}"), 'a tap while disconnected connects first');
+  assert.ok(controls.includes('(function autoConnect(tries){'));
+}
+// 2026-11-11: props in front come FROM the hall as you pass them, panels are
+// see-through, and every studio script at least parses (a broken overlay once
+// slipped through).
+{
+  const { execFileSync } = await import('node:child_process');
+  for (const f of ['scripts/live-studio-overlay.mjs', 'scripts/shed-background.mjs', 'scripts/shed-crawl-fp.mjs', 'scripts/live-studio-controls.js', 'scripts/live-studio-room.mjs']) execFileSync(process.execPath, ['--check', new URL('../' + f, import.meta.url).pathname]);
+  const fp = await import('../scripts/shed-crawl-fp.mjs');
+  assert.ok(fp.propsFor(fp.layoutFor(1), 1).some(p => p.kind === 'pic' && Number.isInteger(p.idx)), 'the store\'s items stand in the hall');
+  const L = fp.layoutFor(1), g = fp.buildMap(1).grid, e0 = fp.eyePose(L, g, 0.3); assert.equal(g[Math.floor(e0.y)][Math.floor(e0.x)], 0);
+  const ov6 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
+  assert.ok(ov6.includes("const eye=fpLib.eyePose(fgCache.L,fgCache.grid,fgShown)") && ov6.includes('if(fwd<0.15||fwd>1.6||Math.abs(side)>1.05)continue;'), 'props in front are the hall\'s props, beside and just ahead');
+  const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  assert.ok(src.includes('if (fwd >= 0.15 && fwd <= 1.6 && Math.abs(side) <= 1.05) return;'), 'the hall hides what is passing in front');
+  assert.ok(src.includes('export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H'), 'the window crawl has its default size');
+  assert.equal(DEFAULT_STUDIO.panelAlpha, 70); assert.throws(() => validateSettings({ panelAlpha: 5 }), /Invalid panelAlpha/);
+  assert.match(readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8'), /rgb\(74 29 150\/var\(--pa,1\)\)/);
 }
 console.log('live-studio-dungeon: ok');

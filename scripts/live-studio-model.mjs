@@ -48,6 +48,7 @@ export const DEFAULT_STUDIO = Object.freeze({
   // Boss look: 'ps1' (store, 2026-11-04: "animated and PS1 graphics") or 'n64'.
   bossStyle: 'ps1',
   showCombo: true, showBuyerNames: false, attract: true,
+  panelAlpha: 70, // panel backgrounds' opacity (%): the score board, card, queue and map let the cameras show through
   // The Shed Dungeon (scripts/live-studio-dungeon.mjs): the sign is the mana flask.
   ...DUNGEON_DEFAULTS,
 });
@@ -86,7 +87,7 @@ export function validateSettings(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Settings required');
   const out = {};
   const limits = { x:[0,1080], y:[0,1920], width:[240,1080], height:[70,300], speed:[4,60], volume:[0,100], countdownSeconds:[3,15], jackpotAmount:[1,1000000],
-    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotFaceY:[250,1650], mascotScale:[40,150], mascotSayEvery:[10,600], ...DUNGEON_LIMITS };
+    hudY:[0,1700], bossGoal:[1,10000000], cardX:[0,700], cardY:[0,1560], bigArtY:[0,1400], mascotFaceY:[250,1650], mascotScale:[40,150], mascotSayEvery:[10,600], panelAlpha:[20,100], ...DUNGEON_LIMITS };
   for (const [key,value] of Object.entries(input)) {
     if (!(key in DEFAULT_STUDIO)) throw new Error('Unknown setting: ' + key);
     if (limits[key]) {
@@ -189,7 +190,7 @@ const cleanText = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').tri
 const cleanUrl = v => { const s = String(v || '').trim(); return /^https:\/\/[^\s"'<>]{1,600}$/.test(s) ? s : ''; };
 export function validateStage(input) {
   if (!input || typeof input !== 'object') throw new Error('Stage required');
-  const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price) } : null;
+  const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price), ...(/^[0-9a-f-]{36}$/i.test(String(v.id || '')) ? { id: String(v.id) } : {}) } : null;
   const now = item(input.now);
   const next = Array.isArray(input.next) ? input.next.slice(0, 60).map(item).filter(x => x && x.title) : [];
   for (const t of [now?.title, now?.detail, ...next.map(n => n.title)]) { const w = chanceWordIn(t); if (w) throw new Error(`"${w}" reads as a game of chance -- Whatnot doesn't allow those.`); }

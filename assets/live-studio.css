@@ -7,7 +7,7 @@
 .mana-panel {position:absolute;box-sizing:border-box;border:7px solid transparent;border-radius:26px;
   background:linear-gradient(180deg,#ffffff40,#ffffff08 34%,#0000 35%) padding-box,
     radial-gradient(circle,#ffffff12 1.4px,transparent 1.6px) 0 0/10px 10px padding-box,
-    linear-gradient(165deg,#4a1d96,#24094f 55%,#120427) padding-box,
+    linear-gradient(165deg,rgb(74 29 150/var(--pa,1)),rgb(36 9 79/var(--pa,1)) 55%,rgb(18 4 39/var(--pa,1))) padding-box,
     linear-gradient(180deg,#fff8c2,#ffc400 28%,#ff7a00 58%,#ffe066 82%,#b35900) border-box;
   box-shadow:0 9px 0 #3a1000,0 16px 28px #000b,inset 0 3px 0 #ffffff66,inset 0 -6px 0 #0007,0 0 30px #b026ff77}
 .mana-panel::after {content:"";position:absolute;inset:0;pointer-events:none;border-radius:19px;

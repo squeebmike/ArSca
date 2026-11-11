@@ -20,6 +20,10 @@ export async function handleLiveStudio(request,env,deps,url) {
   const parsed=await deps.readJsonWithLimit(request,['/live-studio/stage','/live-studio/pics'].includes(url.pathname)?65536:8192);
   if (parsed.error) return parsed.error;
   const body=parsed.data || {};
+  // A chest that opened: its item goes into the Whatnot show as a $1-start
+  // auction (the host still taps start in the app -- Whatnot doesn't let
+  // apps start an auction). Never holds up the reply.
+  const withChest = async r => { if (r?.chestItem?.id && r.showId && deps.chestToWhatnot) await deps.chestToWhatnot(storeId, r.chestItem, r.showId).then(x => { r.chestWhatnot = x; }).catch(e => { r.chestWhatnot = { error: String(e?.message || e).slice(0, 120) }; }); return r; };
   try {
     if (url.pathname==='/live-studio/settings') {
       const result=await room.update(body.settings,body.revision);
@@ -32,8 +36,8 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/stage') return deps.json({ok:true,...await room.setStage(body.stage)});
     if (url.pathname==='/live-studio/pics') return deps.json({ok:true,...await room.setPics(body.pics)});
     // The Shed Dungeon: a follow / share / bookmark tapped in, or a fix.
-    if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await room.dungeonTap(String(body.kind||''))});
-    if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true})});
+    if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await withChest(await room.dungeonTap(String(body.kind||'')))});
+    if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await withChest(await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true}))});
     // Chat picks: open a vote, tap the winner, or close it.
     if (url.pathname==='/live-studio/vote-open') return deps.json({ok:true,...await room.openVote(String(body.kind||''))});
     if (url.pathname==='/live-studio/vote-pick') return deps.json({ok:true,...await room.pickVote(Number(body.index),String(body.who||''))});
