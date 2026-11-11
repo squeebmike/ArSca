@@ -124,7 +124,6 @@ function surfaceTex(kind) {
 // Bare bulbs hanging over the hall (warm light pools), every few cells along it.
 function bulbsFor(layout) { const out = []; for (let t = 0.08; t < 1; t += 0.17) { const p = poseAt(layout, t); out.push([p.x, p.y]); } return out; }
 // PS1-style color: a 4 x 4 ordered dither, then 5 bits per channel.
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 export const layoutFor = floor => { const f = Math.max(1, Math.floor(floor) || 1); if (!layoutCache.has(f)) layoutCache.set(f, generateLayout(f)); return layoutCache.get(f); };
 
@@ -288,7 +287,7 @@ export function itemFor(p, kinds) {
 
 // The store's item photos, framed for the walls (48 x 64, a black frame and
 // a price-tag stripe). Images must allow CORS; the caller passes a proxied URL.
-export const PIC_W = 48, PIC_H = 64;
+export const PIC_W = 96, PIC_H = 128;
 export function loadPicture(src) {
   return new Promise(resolve => {
     if (!src || typeof Image === 'undefined') return resolve(null);
@@ -296,9 +295,9 @@ export function loadPicture(src) {
     im.onload = () => { try {
       const c = document.createElement('canvas'); c.width = PIC_W; c.height = PIC_H; const x = c.getContext('2d');
       x.fillStyle = '#111'; x.fillRect(0, 0, PIC_W, PIC_H);
-      const iw = PIC_W - 6, ih = PIC_H - 12, k = Math.min(iw / im.width, ih / im.height), w = im.width * k, h = im.height * k;
+      const iw = PIC_W - 6, ih = PIC_H - 14, k = Math.min(iw / im.width, ih / im.height), w = im.width * k, h = im.height * k;
       x.imageSmoothingEnabled = true; x.drawImage(im, 3 + (iw - w) / 2, 3 + (ih - h) / 2, w, h);
-      x.fillStyle = '#d23'; x.fillRect(3, PIC_H - 8, PIC_W - 6, 5);
+      x.fillStyle = '#d23'; x.fillRect(3, PIC_H - 9, PIC_W - 6, 6);
       const d = x.getImageData(0, 0, PIC_W, PIC_H).data, out = new Uint8ClampedArray(PIC_W * PIC_H * 3);
       for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { out[j] = d[i]; out[j + 1] = d[i + 1]; out[j + 2] = d[i + 2]; }
       resolve(out);
@@ -449,12 +448,10 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (sx < 0 || sx >= VW || tY > zbuf[sx]) continue;
       for (let yy = sy - r; yy <= sy + r; yy++) for (let xx = sx - r; xx <= sx + r; xx++) { if (xx < 0 || yy < 0 || xx >= VW || yy >= VH || (xx - sx) ** 2 + (yy - sy) ** 2 > r * r) continue; const i = (yy * VW + xx) * 4; data[i] = 255; data[i + 1] = 236; data[i + 2] = 170; }
     }
-    // PS1 color: ordered dither, 5 bits per channel, a little texture shimmer while walking.
+    // No dither (store, 2026-11-11: "the graphics need to not have that
+    // texture on them -- can't tell what they are"): clean colours, so the
+    // items on the walls read on camera.
     tick++;
-    for (let y = 0, i = 0; y < VH; y++) for (let x = 0; x < VW; x++, i += 4) {
-      const d = (BAYER[(y & 3) * 4 + (x & 3)] - 7.5) * 1.9;
-      data[i] = Math.max(0, Math.min(255, data[i] + d)) & 0xF8; data[i + 1] = Math.max(0, Math.min(255, data[i + 1] + d)) & 0xF8; data[i + 2] = Math.max(0, Math.min(255, data[i + 2] + d)) & 0xF8;
-    }
     ctx.putImageData(img, 0, 0);
   }
   return {
