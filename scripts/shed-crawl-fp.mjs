@@ -260,18 +260,30 @@ export function drawSprite(ctx, kind, px = 10, shade = 1) {
 // Where the props sit: fixed spots along each stretch of the route.
 // 'pic' is one of the store's items in a top loader on a little stand.
 export function propsFor(layout, floor) {
-  const kinds = ['dollarbin', 'pic', 'comics', 'bucket', 'pic', 'cardbox', 'table', 'pic', 'figure', 'pizza', 'eyes'], out = []; let picN = 0;
+  const kinds = ['dollarbin', 'pic', 'comics', 'table', 'bucket', 'pic', 'comics', 'cardbox', 'table', 'pic', 'figure', 'comics', 'pizza', 'eyes'], out = []; let picN = 0;
   for (let i = 1; i < layout.route.length; i++) {
-    const [x0, y0] = layout.route[i - 1], [x1, y1] = layout.route[i], n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 3));
+    const [x0, y0] = layout.route[i - 1], [x1, y1] = layout.route[i], n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 2.5));
     for (let k = 1; k <= n; k++) {
       const f = k / (n + 1), side = (i + k) % 2 ? 0.32 : -0.32, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
       const kind = kinds[(i * 3 + k + floor) % kinds.length];
-      out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, ...(kind === 'pic' ? { idx: picN++ } : {}) });
+      out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, idx: picN++ });
     }
   }
   // Three treasure chests along the way (chat's goals open them).
   for (const [k, t] of [[0, 0.16], [1, 0.47], [2, 0.8]]) { const p = poseAt(layout, t), side = k % 2 ? 0.34 : -0.34; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'chest', idx: k }); }
   return out;
+}
+
+// Which of the store's items a prop shows (2026-11-11: "a box of pokemon
+// cards on the table", "a few comics laid out"): an item stand shows any item,
+// a folding table shows a sealed one, a comic stack shows a real comic.
+// kinds[i] is 'comic' / 'sealed' / 'card' for photo i. Null: the plain sprite.
+export function itemFor(p, kinds) {
+  const n = kinds.length; if (!n) return null;
+  if (p.kind === 'pic') return { i: p.idx % n, how: kinds[p.idx % n] || 'card' };
+  const want = p.kind === 'table' ? 'sealed' : p.kind === 'comics' ? 'comic' : '';
+  const list = want ? kinds.map((k, i) => k === want ? i : -1).filter(i => i >= 0) : [];
+  return list.length ? { i: list[p.idx % list.length], how: want } : null;
 }
 
 // The store's item photos, framed for the walls (48 x 64, a black frame and
@@ -308,7 +320,7 @@ export function eyePose(layout, grid, t) {
 export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let pics = [], surf = null, bulbs = [], tick = 0;
+  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0;
   let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
   let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false;
   const listeners = { peek: () => {} };
@@ -400,7 +412,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (tY <= 0.15) return;
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
       if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= 1.6 && Math.abs(side) <= 1.05) return; }
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : s.kind === 'pic' ? 0.62 : 0.55)));
+      const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : 0.55)));
       const floorY = horizon + Math.floor(VH / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
       const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
@@ -409,7 +422,16 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         for (let sy = Math.max(0, top); sy < Math.min(VH, top + size); sy++) {
           const v = (sy - top) / size; let col = null;
           if (s.kind === 'boss') { const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
-          else if (s.kind === 'pic' && pics[s.idx % (pics.length || 1)]) { const pd = pics[s.idx % pics.length], uu = (u - 0.18) / 0.64; if (uu >= 0 && uu < 1) { if (v > 0.94) col = [60, 60, 66]; else { const pv = Math.min(0.999, v / 0.94), ti = (Math.floor(pv * PIC_H) * PIC_W + Math.floor(uu * PIC_W)) * 3; col = [pd[ti], pd[ti + 1], pd[ti + 2]]; } } }
+          else if (pd) {
+            // The store's item, by what it is: a comic leaning in the hall, a
+            // sealed box on a folding table, a card in a top loader on a stand.
+            const box = how === 'comic' ? [0.2, 0.8, 0.3, 1] : how === 'sealed' ? [0.16, 0.84, 0.12, 0.6] : [0.18, 0.82, 0, 0.94];
+            const uu = (u - box[0]) / (box[1] - box[0]), vv = (v - box[2]) / (box[3] - box[2]);
+            if (uu >= 0 && uu < 1 && vv >= 0 && vv < 1) { const ti = (Math.floor(Math.min(0.999, vv) * PIC_H) * PIC_W + Math.floor(uu * PIC_W)) * 3; col = [pd[ti], pd[ti + 1], pd[ti + 2]]; }
+            else if (how === 'sealed' && v >= 0.6 && v < 0.66 && u > 0.04 && u < 0.96) col = [120, 120, 126];
+            else if (how === 'sealed' && v >= 0.66 && (Math.abs(u - 0.12) < 0.03 || Math.abs(u - 0.88) < 0.03)) col = [70, 70, 76];
+            else if (how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
+          }
           else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[kind][ch]; }
           if (!col) continue;
           const i = (sy * VW + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
@@ -439,7 +461,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The store's item photos for the walls (from loadPicture).
     // Order kept (a photo that didn't load is a gap), so the overlay's items match.
-    setPictures(list) { pics = (list || []).slice(0, 24); },
+    setPictures(list, kinds = []) { pics = (list || []).slice(0, 24); picKinds = kinds.slice(0, pics.length); while (picKinds.length < pics.length) picKinds.push('card'); },
     start() { if (!raf) raf = requestAnimationFrame(frame); },
     stop() { cancelAnimationFrame(raf); raf = 0; },
     // For tests: where the walker is.

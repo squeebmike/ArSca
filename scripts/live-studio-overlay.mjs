@@ -128,7 +128,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=2').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -139,7 +139,9 @@ function batteryNow(d){const last=Math.max(Number(stats.lastSaleAt)||0,Number(d?
 let fpPicKey='';
 function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
 let shedPics=[];
-function loadPictures(){if(!fp||!fpLib)return;const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list));}
+function loadPictures(){if(!fp||!fpLib)return;const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;const kinds=urls.map(u=>picKind(u));Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list,kinds));}
+// What each photo is (comic / sealed / card), from the lineup or the shed photos.
+function picKind(u){return [stage.now,...(stage.next||[]),...shedPics].find(x=>x&&x.image===u)?.kind||'card';}
 let fpLib=null,peekPct=-1,peekFloor=0;
 function paintCrawl(d,center){
   // The window over the top camera only when CRAWL WINDOW is on; otherwise the
@@ -175,8 +177,8 @@ function paintCrawl(d,center){
 // sides like you're walking past them.
 const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic','bucket','cardbox'];
 // The store's own items pass by in front too, in top loaders (2026-11-11).
-let fgImgs=[];
-function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
+let fgImgs=[],fgUrls=[];
+function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgUrls=urls;fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
 let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0,fgIdx=0;
 function paintForeground(d,center){
   const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
@@ -189,9 +191,16 @@ function paintForeground(d,center){
 function fgSide(cv,phase,kind,side,open,idx=0){
   // phase 0..1: far and small near the middle -> close, big, sliding off the edge.
   const k=cv.getContext('2d');k.imageSmoothingEnabled=false;
-  const im=kind==='pic'&&fgImgs.length?fgImgs[idx%fgImgs.length]:null;
-  if(kind==='pic'&&!(im&&im.complete&&im.naturalWidth))kind='comics';
-  if(kind==='pic'){k.clearRect(0,0,160,160);const w=96,h=134,x0=32,y0=160-h;k.fillStyle='#e8f0f8';k.fillRect(x0-6,y0-6,w+12,h+6);k.imageSmoothingEnabled=true;const sc=Math.min(w/im.naturalWidth,h/im.naturalHeight),iw=im.naturalWidth*sc,ih=im.naturalHeight*sc;try{k.drawImage(im,x0+(w-iw)/2,y0+(h-ih)/2,iw,ih);}catch{}k.fillStyle='#ffffff55';k.fillRect(x0-6,y0-6,10,h+6);}
+  // The same item the hall shows for this prop (an item stand, a sealed box on the table, a comic).
+  const it=kind!=='chest'&&fpLib?fpLib.itemFor({kind,idx},fgUrls.map(picKind)):null,im=it?fgImgs[it.i]:null,how=it?.how||'card';
+  if(im&&im.complete&&im.naturalWidth)kind='pic';else if(kind==='pic')kind='comics';
+  if(kind==='pic'){k.clearRect(0,0,160,160);k.imageSmoothingEnabled=true;
+    // Same as in the hall: a comic leaning, a sealed box on a folding table, a card in a top loader.
+    const w=how==='sealed'?120:96,h=how==='sealed'?92:how==='comic'?118:134,x0=(160-w)/2,y0=how==='sealed'?160-h-40:160-h;
+    if(how==='card'){k.fillStyle='#e8f0f8';k.fillRect(x0-6,y0-6,w+12,h+6);}
+    if(how==='sealed'){k.fillStyle='#78787e';k.fillRect(8,160-40,144,8);k.fillStyle='#46464c';k.fillRect(16,160-32,8,32);k.fillRect(136,160-32,8,32);}
+    const sc=Math.min(w/im.naturalWidth,h/im.naturalHeight),iw=im.naturalWidth*sc,ih=im.naturalHeight*sc;try{k.drawImage(im,x0+(w-iw)/2,y0+(h-ih),iw,ih);}catch{}
+    if(how==='card'){k.fillStyle='#ffffff55';k.fillRect(x0-6,y0-6,10,h+6);}}
   else fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
   const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60),y=-phase*6;
   cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));

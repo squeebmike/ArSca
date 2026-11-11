@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 180 wide drawn 6x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=2'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
       let fp = null, topH = 0;
       const build = y => {
         const h = Math.max(300, Math.min(1920, Math.round(Number(y) || 850)));
@@ -220,7 +220,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), battery, fork: d.fork || '', hideNear: hideNear });
         if (bossId !== d.boss.character) { bossId = d.boss.character; void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
         const urls = [...new Set([stage.now, ...(stage.next || []), ...shedPics].filter(x => x && x.image).map(x => x.image))].slice(0, 24), key = urls.join('|');
-        if (key !== picKey) { picKey = key; Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list)); }
+        if (key !== picKey) { picKey = key; const all = [stage.now, ...(stage.next || []), ...shedPics], kinds = urls.map(u => all.find(x => x && x.image === u)?.kind || 'card'); Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list, kinds)); }
       };
       let hideNear = true;
       onState = m => { if (m.settings) hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };

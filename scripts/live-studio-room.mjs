@@ -180,7 +180,7 @@ export class ManaLiveStudio extends DurableObject {
   // front (2026-11-11: "I don't see my items in the shed as we walk by").
   setPics(list) {
     const s = this.read();
-    s.pics = validateStage({ now: null, next: (Array.isArray(list) ? list : []).slice(0, 24) }).next.filter(x => x.image).map(x => ({ title: x.title, image: x.image }));
+    s.pics = validateStage({ now: null, next: (Array.isArray(list) ? list : []).slice(0, 24) }).next.filter(x => x.image).map(x => ({ title: x.title, image: x.image, ...(x.kind ? { kind: x.kind } : {}) }));
     this.write(s);
     this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);

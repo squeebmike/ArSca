@@ -215,7 +215,9 @@
   function stageItem(i){
     const price=Number(i.market||i.marketPrice||i.salePrice||0)||0;
     const detail=[i.set,i.variant,i.grader&&i.grade?i.grader+' '+i.grade:'',i.condition].filter(Boolean).join(' · ');
-    return {title:String(i.name||'').slice(0,90),detail:detail.slice(0,90),image:https(i.thumbnail)||https(i.imageUrl)||https(i.photoDataUrl),price,...(i.source==='built_in'&&/^[0-9a-f-]{36}$/i.test(String(i.id||''))?{id:i.id}:{})};
+    // What it is, for how the shed shows it: comics lean in the hall, sealed sits on a table, cards stand in top loaders.
+    const what=String(i.category||'')+' '+String(i.name||''),kind=/comic/i.test(String(i.category||''))?'comic':(i.isSealed===true||/sealed|booster|box|bundle|\betb\b|tin|blister|collection|pack/i.test(what))?'sealed':'card';
+    return {title:String(i.name||'').slice(0,90),detail:detail.slice(0,90),image:https(i.thumbnail)||https(i.imageUrl)||https(i.photoDataUrl),price,kind,...(i.source==='built_in'&&/^[0-9a-f-]{36}$/i.test(String(i.id||''))?{id:i.id}:{})};
   }
   function paintStage(){
     const el=host.querySelector('#mana-stage');el.replaceChildren();
