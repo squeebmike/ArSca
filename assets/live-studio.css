@@ -346,3 +346,23 @@ body.mana-center #mana-crawl.bar{transform:translateY(342px)}
 #mana-effect.with-item .mana-burst{display:none}
 #mana-crawl.bar #mana-crawl-weapon,#mana-crawl.bar #mana-fp-chest,#mana-crawl.bar #mana-fp-batt{font-size:12px}
 #mana-crawl.bar #mana-fp-chest{top:auto;bottom:8px;left:16px;right:auto}
+
+/* THE SHOW REMOTE (2026-11-11: "we need an easier way to control it"): big buttons up top. */
+.mana-remote{border:2px solid #b4ff3a;border-radius:14px;padding:12px;margin:10px 0 14px;background:#0f0a1a}
+.mana-remote-status{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;margin-bottom:10px;font-size:14px}
+.mana-remote-status b{color:#c3ff80}
+.mana-remote-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mana-remote-grid button{min-height:58px;font-size:15px;font-weight:700;border-radius:12px;margin:0}
+.mana-remote-grid button.tap{background:#1f3a12;border-color:#b4ff3a}
+.mana-remote-grid button.vote{background:#3a1250;border-color:#d14bff}
+.mana-remote-pick:not(:empty){margin-top:10px}
+.mana-remote-pick #mana-vote-pick:not(:empty)::before{content:"TAP THE WINNER:";display:block;width:100%;font-weight:700;color:#ffe14a;margin-bottom:4px}
+.mana-remote-pick button{min-height:52px;font-size:15px;font-weight:700;background:#4a3a00;border-color:#ffe14a}
+.mana-all>summary{cursor:pointer;font-size:16px;font-weight:700;padding:12px;border:1px solid #9457d3;border-radius:12px;margin:6px 0;color:#c3ff80}
+@media(max-width:600px){.mana-remote-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* PROPS IN FRONT of the hosts (over the top camera's bottom corners). */
+#mana-fg{position:absolute;left:0;width:1080px;height:340px;z-index:4;pointer-events:none;overflow:hidden}
+#mana-fg canvas{position:absolute;bottom:0;width:240px;height:240px;image-rendering:pixelated;transform-origin:50% 100%;transition:none}
+#mana-fg-l{left:40px}
+#mana-fg-r{right:40px}

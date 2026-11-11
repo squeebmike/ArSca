@@ -65,6 +65,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   showMap: true,       // the dungeon map + relic shelf panel
   centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
+  foreground: true,    // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"

@@ -149,6 +149,17 @@ const SPRITE_COLORS = {
   chest: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 220, 60] },
   chestopen: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 250, 200], g: [255, 210, 40], d: [255, 250, 160] },
 };
+// One prop, drawn big and crisp on a 2D canvas (the overlay's props in front
+// of the hosts): kind is any SPRITES key; px is the size of one pixel.
+export const SPRITE_KINDS = Object.keys(SPRITES);
+export function drawSprite(ctx, kind, px = 10, shade = 1) {
+  const rows = SPRITES[kind], cols = SPRITE_COLORS[kind]; if (!rows) return false;
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  const top = (16 - rows.length) * px;
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { const c = cols[ch]; if (!c || ch === '.') return; ctx.fillStyle = `rgb(${c[0] * shade | 0},${c[1] * shade | 0},${c[2] * shade | 0})`; ctx.fillRect(x * px, top + y * px, px, px); }));
+  return true;
+}
+
 // Where the props sit: fixed spots along each stretch of the route.
 function propsFor(layout, floor) {
   const kinds = ['dollarbin', 'comics', 'bucket', 'cardbox', 'table', 'figure', 'pizza', 'eyes'], out = [];

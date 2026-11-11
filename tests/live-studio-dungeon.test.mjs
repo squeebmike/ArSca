@@ -268,4 +268,22 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.match(css, /@keyframes mana-reveal-spin\{to\{transform:rotateY\(360deg\)\}\}/);
   assert.match(controls, /data-vote="dig"/); assert.match(controls, /id="mana-trivia"/); assert.match(controls, /id="mana-floor-name-go"/);
 }
+// 2026-11-11: the SHOW REMOTE (big buttons up top, settings folded away) and
+// PROPS IN FRONT (shed junk and chests slide past in front of the hosts).
+{
+  assert.match(controls, /<section class="mana-remote" aria-label="Show remote">/);
+  assert.match(controls, /<details class="mana-all" id="mana-all"><summary>⚙ ALL SETTINGS/);
+  for (const t of ['#mana-taps [data-tap=follow]', '#mana-vote-open [data-vote=dig]', '#mana-trivia', '#mana-load']) assert.ok(controls.includes('data-click="' + t + '"'), t);
+  assert.ok(controls.indexOf('id="mana-vote-pick"') < controls.indexOf('<details class="mana-all"'), 'the winner buttons are in the remote');
+  assert.ok(controls.includes("host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(b)host.querySelector(b.dataset.click)?.click();};"));
+  assert.equal(DUNGEON_DEFAULTS.foreground, true);
+  const { drawSprite, SPRITE_KINDS } = await import('../scripts/shed-crawl-fp.mjs');
+  assert.ok(['comics', 'dollarbin', 'cardbox', 'chest', 'chestopen'].every(k => SPRITE_KINDS.includes(k)));
+  const calls = []; const ctx = { canvas: { width: 160, height: 160 }, clearRect() {}, fillRect: (...a) => calls.push(a), set fillStyle(v) {} };
+  assert.equal(drawSprite(ctx, 'chest', 10), true); assert.ok(calls.length > 20);
+  const ov3 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('<div id="mana-fg" class="mana-hidden" aria-hidden="true">'));
+  assert.ok(ov3.includes("paintCrawl(d,center);paintForeground(d,center);"));
+  assert.ok(ov3.includes("fgSide($('mana-fg-r'),ph,'chest',1,fgOpened.includes(near));"), 'the chest passes by in front, open once opened');
+}
 console.log('live-studio-dungeon: ok');

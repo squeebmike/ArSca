@@ -109,7 +109,7 @@ function paintDungeon(d){
   if(center&&boss.parentElement!==arena)arena.append(boss);
   else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
   arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));
-  paintCrawl(d,center);
+  paintCrawl(d,center);paintForeground(d,center);
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
@@ -164,6 +164,42 @@ function paintCrawl(d,center){
   const bars=Math.round(batt*5);$('mana-fp-batt').textContent='🔦 '+'▮'.repeat(bars)+'▯'.repeat(5-bars)+(batt<0.35?' FOLLOW/SHARE TO RECHARGE!':'');
   el.classList.toggle('lowbatt',batt<0.35);
 }
+// PROPS IN FRONT (2026-11-11: "some things in front of us ... some behind ...
+// make it pseudo 3D"): with the hallway on the green screen BEHIND the hosts,
+// big pixel props slide past IN FRONT of them as the crawl walks -- comic
+// stacks, dollar bins, card boxes, figures -- and the floor's chests when the
+// walk reaches one (open once it's opened). They grow and slide out to the
+// sides like you're walking past them.
+const FG_KINDS=['comics','dollarbin','cardbox','figure','pizza','bucket','comics','cardbox'];
+let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0;
+function paintForeground(d,center){
+  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
+  el.classList.toggle('mana-hidden',!on);if(!on)return;
+  const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
+  if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}
+  fgTarget=pct;fgOpened=d.opened||[];
+  el.style.top=Math.max(0,settings.y-62-350)+'px';
+}
+function fgSide(cv,phase,kind,side,open){
+  // phase 0..1: far and small near the middle -> close, big, sliding off the edge.
+  const k=cv.getContext('2d');k.imageSmoothingEnabled=false;
+  fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
+  const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60),y=-phase*6;
+  cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));
+  cv.style.filter=`drop-shadow(8px 10px 0 #000a) brightness(${0.75+phase*0.35})`;
+}
+function fgFrame(now){
+  requestAnimationFrame(fgFrame);
+  if(now-fgLast<50||$('mana-fg').classList.contains('mana-hidden'))return;const dt=Math.min(0.2,(now-(fgLast||now))/1000);fgLast=now;
+  if(fgShown<0)fgShown=fgTarget;if(fgShown<fgTarget)fgShown=Math.min(fgTarget,fgShown+dt*0.06);else fgShown=fgTarget;
+  // Three props per side per floor; the right side shows a chest when the walk is at one.
+  const at=[0.16,0.47,0.8],near=at.findIndex(a=>Math.abs(fgShown-a)<0.07);
+  const pl=(fgShown*3)%1,pr=(fgShown*3+0.5)%1,il=Math.floor(fgShown*3),ir=Math.floor(fgShown*3+0.5);
+  fgSide($('mana-fg-l'),pl,FG_KINDS[(il+fgFloor)%FG_KINDS.length],-1,false);
+  if(near>=0){const ph=Math.min(0.95,Math.max(0.05,0.5+(fgShown-at[near])/0.14));fgSide($('mana-fg-r'),ph,'chest',1,fgOpened.includes(near));}
+  else fgSide($('mana-fg-r'),pr,FG_KINDS[(ir+fgFloor+3)%FG_KINDS.length],1,false);
+}
+requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
 setInterval(()=>{const d=dg();if(d&&document.body.classList.contains('mana-center'))paintCrawl(d,true);},5000);
 // A revealed item (a chest, or where chat said to dig): its photo spins in 3D.
