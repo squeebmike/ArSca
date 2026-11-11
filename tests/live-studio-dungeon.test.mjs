@@ -362,7 +362,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes('if (fwd >= 0.15 && fwd <= 1.6 && Math.abs(side) <= 1.05) return;'), 'the hall hides what is passing in front');
   assert.ok(src.includes('export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H'), 'the window crawl has its default size');
-  assert.equal(DEFAULT_STUDIO.panelAlpha, 70); assert.throws(() => validateSettings({ panelAlpha: 5 }), /Invalid panelAlpha/);
+  assert.equal(DEFAULT_STUDIO.panelAlpha, 70); assert.throws(() => validateSettings({ panelAlpha: 101 }), /Invalid panelAlpha/); assert.ok(validateSettings({ panelAlpha: 0 }));
   assert.match(readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8'), /rgb\(74 29 150\/var\(--pa,1\)\)/);
 }
 console.log('live-studio-dungeon: ok');
@@ -393,4 +393,12 @@ console.log('live-studio-dungeon: ok');
   assert.equal(itemFor({ kind: 'table', idx: 0 }, ['card']), null, 'no sealed: the plain table');
   assert.equal(itemFor({ kind: 'bucket', idx: 0 }, kinds), null);
   assert.equal(itemFor({ kind: 'pic', idx: 0 }, []), null);
+}
+{
+  // Panel opacity shows the cameras through (the gold frame is a ring, not a fill),
+  // and CRAWL WINDOW on means no second crawl behind it on the green screen.
+  const css = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
+  assert.ok(css.includes('.mana-panel::before {') && css.includes('rgb(18 4 39/var(--pa,1))) padding-box;'));
+  const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
+  assert.ok(bg.includes("canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''"));
 }

@@ -47,7 +47,7 @@ const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'
 function apply(s) {
   settings={...DEFAULT_STUDIO,...s};
   // See-through panels (2026-11-11: "the score board etc. blocks a lot"): their backgrounds, not their text.
-  document.body.style.setProperty('--pa',String(Math.max(0.2,Math.min(1,(Number(settings.panelAlpha)||70)/100))));
+  document.body.style.setProperty('--pa',String(Math.max(0,Math.min(1,(Number.isFinite(Number(settings.panelAlpha))?Number(settings.panelAlpha):70)/100))));
   Object.assign(sign.style,{left:settings.x+'px',top:settings.y+'px',width:settings.width+'px',height:settings.height+'px'});
   sign.classList.toggle('mana-hidden',!settings.visible);
   sign.style.setProperty('--mana-speed',settings.speed+'s'); text.textContent=settings.message;
