@@ -180,8 +180,28 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const k of ["/live-studio/vote-open", "/live-studio/vote-pick", "/live-studio/vote-close"]) assert.ok(api.includes(k), k);
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
   assert.ok(html.includes('<section id="mana-crawl"') && html.includes('<section id="mana-vote"'));
-  assert.ok(ov.includes("if(lastHeroPct>=0&&pct>lastHeroPct)heroWalkUntil=Date.now()+1600;"), 'the hero walks when mana goes up');
+  assert.ok(ov.includes("fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase});"), 'the first-person crawl follows the floor and its mana');
+  assert.ok(html.includes('<canvas id="mana-fp" width="240" height="96" aria-hidden="true"></canvas>'));
   assert.ok(ov.includes("dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')"), 'hits show chat\'s weapon');
   assert.match(controls, /data-vote="weapon"/);
+}
+// THE SHED CRAWL, first person (2026-11-11): fixed layouts, the route and
+// rooms are walkable, the walk is the floor's mana, nothing random.
+{
+  const { buildMap, poseAt, layoutFor, VIEW_W, VIEW_H } = await import('../scripts/shed-crawl-fp.mjs');
+  assert.deepEqual([VIEW_W, VIEW_H], [240, 96]);
+  for (const floor of [1, 2, 3, 4]) {
+    const { grid, layout } = buildMap(floor);
+    assert.deepEqual(buildMap(floor).grid, grid, 'the same floor is always the same shed');
+    assert.equal(layoutFor(floor + 3), layout, 'three layouts, in turn');
+    for (let t = 0; t <= 1.0001; t += 0.05) { const p = poseAt(layout, t); assert.equal(grid[Math.floor(p.y)][Math.floor(p.x)], 0, 'the walk stays in the open: floor ' + floor + ' t ' + t.toFixed(2)); }
+    for (const pk of layout.peeks) assert.equal(grid[pk.cell[1]][pk.cell[0]], 0);
+    const [bx, by] = layout.boss; assert.equal(grid[by][bx], 0);
+    assert.ok(grid.every(row => row[0] && row[15]) && grid[0].every(Boolean) && grid[15].every(Boolean), 'walled in');
+  }
+  const L = layoutFor(1), a0 = poseAt(L, 0), a1 = poseAt(L, 0.5);
+  assert.ok(Math.hypot(a1.x - a0.x, a1.y - a0.y) > 1, 'mana walks you forward');
+  const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /Math\.random/, 'nothing random');
 }
 console.log('live-studio-dungeon: ok');
