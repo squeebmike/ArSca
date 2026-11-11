@@ -101,8 +101,8 @@ function paintStats(next,fromSale) {
 function paintDungeon(d){
   sign.classList.toggle('dungeon',!!d);sign.classList.toggle('boss',!!d&&d.phase==='boss');sign.classList.toggle('full',!!d&&d.phase==='floor'&&d.pct>=90);
   $('mana-dungeon').classList.toggle('mana-hidden',!d);
-  // CENTER STAGE (store, 2026-11-11: "mana bar in the center? bosses"): a big
-  // mana bar across the middle, and the floor's boss standing on top of it.
+  // CENTER STAGE (store, 2026-11-11: "mana bar in the center? bosses"): the
+  // bubbling mana sign, bigger, across the middle, the floor's boss on top of it.
   const center=!!d&&settings.centerStage!==false&&settings.visible!==false, arena=$('mana-arena');
   document.body.classList.toggle('mana-center',center);
   if(center&&boss.parentElement!==arena)arena.append(boss);
@@ -113,7 +113,6 @@ function paintDungeon(d){
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
   $('mana-title-text').textContent='FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
   $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
-  $('mana-cbar-text').textContent=d.phase==='boss'?d.boss.name+'  HP '+usd(d.boss.hp):'MANA '+usd(d.mana)+' / '+usd(d.goal);
   $('mana-cbar-sub').textContent=d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
   $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';

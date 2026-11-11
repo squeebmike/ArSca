@@ -155,11 +155,13 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8'), css = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
   assert.equal(DUNGEON_DEFAULTS.centerStage, true);
   assert.deepEqual(validateSettings({ centerStage: false }), { centerStage: false });
-  assert.ok(html.includes('<div id="mana-cbar" aria-hidden="true"><i id="mana-cbar-fill"></i><b id="mana-cbar-text"></b></div><div id="mana-cbar-sub"></div>'));
+  assert.ok(html.includes('<div id="mana-cbar-sub"></div>'));
+  assert.ok(html.includes('<div class="mana-liquid" aria-hidden="true"></div><div class="mana-bubbles" aria-hidden="true"></div>'), 'the bubbling mana stays');
   assert.ok(html.includes('<section id="mana-arena" class="mana-hidden" aria-label="Boss"></section>'));
   assert.ok(ov.includes("const center=!!d&&settings.centerStage!==false&&settings.visible!==false"));
   assert.ok(ov.includes("arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));"));
-  assert.match(css, /#mana-cbar-fill\{position:absolute;inset:0 auto 0 0;width:calc\(var\(--fill,0\) \* 1%\)/);
+  assert.doesNotMatch(css, /body\.mana-center \.mana-(liquid|bubbles)[^{]*\{[^}]*display:none/, 'center stage never hides the bubbling mana');
+  assert.match(css, /body\.mana-center #mana-sign\{left:40px!important;width:1000px!important;height:200px!important/);
   assert.match(css, /body\.mana-center #byterider\{z-index:2\}/);
 }
 console.log('live-studio-dungeon: ok');

@@ -252,25 +252,17 @@
 /* PS1 bosses: drawn small, shown big with hard pixels. */
 canvas.ps1 {image-rendering:pixelated;image-rendering:crisp-edges}
 
-/* ── CENTER STAGE (2026-11-11): the mana bar across the middle, the boss on top ── */
+/* ── CENTER STAGE (2026-11-11): the bubbling mana sign, bigger, across the middle ── */
+/* Store: "why you get rid of the bubbling mana bar?!" -- the liquid and bubbles stay; it's just bigger. */
 #mana-cbar,#mana-cbar-sub{display:none}
-body.mana-center #mana-sign{left:40px!important;width:1000px!important;height:auto!important;min-height:170px;padding:12px 26px 16px;box-sizing:border-box}
-body.mana-center .mana-liquid,body.mana-center .mana-bubbles,body.mana-center .mana-track,body.mana-center #mana-flask-meter{display:none!important}
-body.mana-center .mana-title{font-family:'Luckiest Guy',Bangers,sans-serif;font-size:46px;letter-spacing:2px;padding:2px 0 0;-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 #6f1fac}
-body.mana-center #mana-cbar{display:block;position:relative;height:72px;margin:10px 0 8px;border-radius:999px;border:6px solid var(--ink);overflow:hidden;
-  background:linear-gradient(180deg,#05010c,#24104a);box-shadow:inset 0 8px 14px #000c,0 0 0 3px #b4ff3a55,0 0 26px #7b3cffaa}
-#mana-cbar-fill{position:absolute;inset:0 auto 0 0;width:calc(var(--fill,0) * 1%);border-radius:999px;transition:width .9s cubic-bezier(.3,1.3,.5,1);
-  background:linear-gradient(180deg,#eaffc8 0%,#9dff4a 22%,#3fd34c 60%,#127a2c 100%);box-shadow:0 0 26px #8dff4a,inset 0 -6px 0 #0004}
-#mana-cbar-fill::before{content:"";position:absolute;inset:0;border-radius:inherit;background:repeating-linear-gradient(115deg,#ffffff38 0 14px,transparent 14px 36px);animation:mana-cbar-flow 1.1s linear infinite}
-#mana-cbar-fill::after{content:"";position:absolute;left:14px;right:14px;top:6px;height:28%;border-radius:999px;background:linear-gradient(#ffffffd0,#ffffff10)}
-#mana-cbar::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0 calc(10% - 4px),#05010ccc calc(10% - 4px) 10%)}
-#mana-cbar-text{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;font:400 24px 'Press Start 2P',monospace;color:#fff;letter-spacing:1px;text-shadow:3px 3px 0 var(--ink),-2px -2px 0 var(--ink)}
-body.mana-center #mana-cbar-sub{display:block;text-align:center;font-family:Bangers,sans-serif;font-size:30px;letter-spacing:2px;color:var(--yel);text-shadow:3px 3px 0 var(--ink)}
-body.mana-center #mana-sign.full #mana-cbar{animation:mana-cbar-ready .55s ease-in-out infinite alternate}
-body.mana-center #mana-sign.boss #mana-cbar-fill{background:linear-gradient(180deg,#ffd0d6 0%,#ff4a64 25%,#c4102e 65%,#5c0614 100%);box-shadow:0 0 30px #ff2a4f,inset 0 -6px 0 #0005}
-body.mana-center #mana-sign.boss #mana-cbar{box-shadow:inset 0 8px 14px #000c,0 0 0 3px #ff2a4f77,0 0 34px #ff2a4fcc}
-body.mana-center #mana-sign.boss .mana-title{color:#ff6b80;text-shadow:4px 4px 0 #3d0a19}
-body.mana-center #mana-sign-hits{right:60px;bottom:110px}
+body.mana-center #mana-sign{left:40px!important;width:1000px!important;height:200px!important;box-shadow:0 0 0 4px #b4ff3a44 inset,8px 8px 0 var(--ink),0 0 30px #7b3cff99}
+body.mana-center .mana-title{font-size:44px;padding:16px 0 0;letter-spacing:2px}
+body.mana-center #mana-flask-meter{font-size:24px;margin-left:18px}
+body.mana-center .mana-track{font-size:26px;margin-top:4px}
+body.mana-center #mana-cbar-sub{display:block;position:relative;text-align:center;font-family:Bangers,sans-serif;font-size:30px;letter-spacing:2px;color:var(--yel);text-shadow:3px 3px 0 var(--ink);margin-top:2px}
+body.mana-center .mana-bubbles i{width:22px;height:22px;border-width:3px}
+body.mana-center #mana-sign.boss .mana-title{color:#ff8fa0;text-shadow:4px 4px 0 #3d0a19}
+body.mana-center #mana-sign-hits{right:60px;bottom:30px}
 body.mana-center #mana-sign-hits b{font-size:64px}
 /* The boss, standing on the bar */
 #mana-arena{position:absolute;left:40px;width:1000px;height:330px;pointer-events:none;z-index:3}
@@ -285,10 +277,8 @@ body.mana-center #mana-sign-hits b{font-size:64px}
 #mana-arena #mana-boss.hit #mana-boss-sprite,#mana-arena #mana-boss.hit #mana-boss-3d{animation:mana-flash .45s steps(3)}
 #mana-arena #mana-boss-hits{right:auto;left:62%;top:40px}
 #mana-arena #mana-boss-hits b{font-size:84px}
-@keyframes mana-cbar-flow{to{background-position:72px 0}}
-@keyframes mana-cbar-ready{to{box-shadow:inset 0 8px 14px #000c,0 0 0 6px #b4ff3a,0 0 46px #b4ff3a}}
 @keyframes mana-arena-bob{to{transform:translateY(-12px)}}
-@media(prefers-reduced-motion:reduce){#mana-cbar-fill::before,#mana-arena #mana-boss-sprite,body.mana-center #mana-sign.full #mana-cbar{animation:none}}
+@media(prefers-reduced-motion:reduce){#mana-arena #mana-boss-sprite{animation:none}}
 /* ByteRider's big face stays behind the center stage (still over everything else). */
 body.mana-center #byterider{z-index:2}
 body.mana-center #mana-sign{z-index:3}
