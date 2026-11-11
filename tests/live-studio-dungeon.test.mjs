@@ -325,4 +325,13 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(ov4.includes("if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}") && bg4.includes('if (Array.isArray(m.pics)) shedPics = m.pics;'));
   assert.ok(ov4.includes("const FG_KINDS=['comics','pic',"), 'items pass by in front, in top loaders');
 }
+// 2026-11-11: "we need comics and stuff too" and "the chest opens and the item spins".
+{
+  assert.ok(controls.includes("if(/suppl|bcw|accessor/i.test(cat+' '+(i.vendor||'')))continue;"), 'supplies stay out of the shed');
+  assert.ok(controls.includes('const l=lists[k%lists.length]'), 'every category takes turns on the walls');
+  const ov5 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html5 = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8'), css5 = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
+  assert.ok(html5.includes('<canvas id="mana-reveal-chest" width="160" height="160" aria-hidden="true"></canvas>') && html5.includes('<div class="mana-reveal-rays" aria-hidden="true"></div>'));
+  assert.ok(ov5.includes("fpLib.drawSprite(k,'chest',10);") && ov5.includes("fpLib.drawSprite(k,'chestopen',10)"), 'the chest shows shut, then pops open');
+  assert.match(css5, /@keyframes mana-item-rise\{0%\{transform:translateY\(330px\) scale\(\.18\)/);
+}
 console.log('live-studio-dungeon: ok');

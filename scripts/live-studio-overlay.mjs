@@ -216,7 +216,13 @@ function revealItem(e){
   $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'$1 START!');
   $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'$1 START!':(it.price?'VALUE '+usd(it.price):'');
   img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
-  el.style.top=Math.max(0,settings.y-610)+'px';
+  // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
+  // shows shut, the lid pops open in a burst of light, the item rises out of
+  // it spinning and hangs there -- YOU GOT IT!
+  const isChest=e.kind==='chest',cv=$('mana-reveal-chest');el.classList.toggle('chest-mode',isChest);
+  if(isChest){$('mana-reveal-label').textContent='YOU GOT IT!';$('mana-reveal-price').textContent=(e.chestText&&e.chestText!=='$1 START!'?e.chestText+' · ':'')+'$1 START!';
+    const k=cv.getContext('2d');k.imageSmoothingEnabled=false;if(fpLib){fpLib.drawSprite(k,'chest',10);clearTimeout(revealItem.lid);revealItem.lid=setTimeout(()=>fpLib.drawSprite(k,'chestopen',10),650);}}
+  el.style.top=Math.max(0,settings.y-(isChest?700:610))+'px';
   el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
   clearTimeout(revealItem.t);revealItem.t=setTimeout(()=>el.classList.add('mana-hidden'),7600);
 }

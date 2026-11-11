@@ -222,9 +222,13 @@
   // ones with photos, a different set each day; sent when you connect.
   async function sendShedPics(current){
     const day=Math.floor(Date.now()/86400000);
-    const pool=inventory().filter(i=>i.status==='in_stock'&&(https(i.thumbnail)||https(i.imageUrl))).map(stageItem).filter(x=>x.image&&x.title).sort((a,b)=>(b.price||0)-(a.price||0)).slice(0,72);
-    if(!pool.length)return;
-    const pick=[];for(let k=0;k<Math.min(24,pool.length);k++)pick.push(pool[(day*7+k*3)%pool.length]);
+    // Comics, cards, sealed, collectibles -- every category takes turns (2026-11-11:
+    // "we need comics and stuff too"); supplies stay out of the shed.
+    const groups=new Map();
+    for(const i of inventory()){if(i.status!=='in_stock'||!(https(i.thumbnail)||https(i.imageUrl)))continue;const cat=String(i.category||'Other');if(/suppl|bcw|accessor/i.test(cat+' '+(i.vendor||'')))continue;const it=stageItem(i);if(!it.image||!it.title)continue;if(!groups.has(cat))groups.set(cat,[]);groups.get(cat).push(it);}
+    const lists=[...groups.values()].map(l=>l.sort((a,b)=>(b.price||0)-(a.price||0)).slice(0,30));
+    if(!lists.length)return;
+    const pick=[];for(let k=0;pick.length<24&&k<24*lists.length;k++){const l=lists[k%lists.length],n=Math.floor(k/lists.length);if(n<l.length)pick.push(l[(day*5+n*3)%l.length]);}
     const uniq=[...new Map(pick.map(p=>[p.image,p])).values()];
     if(JSON.stringify((current||[]).map(p=>p.image))===JSON.stringify(uniq.map(p=>p.image)))return;
     took(await api('pics',{pics:uniq}));
