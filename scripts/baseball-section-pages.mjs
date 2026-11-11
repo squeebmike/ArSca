@@ -133,7 +133,13 @@ export async function handleBaseballSections(request,env,url,deps,sets,html,miss
   if(request.method!=='GET')return new Response(null,{status:405,headers:{Allow:'GET'}});
   const card=chosenCard;
   if(!card)return new Response('Unknown card',{status:404});
-  try{const [listings,reference]=await Promise.all([sportsListings(env,deps.ctx,set,cardGroup,deps,{card,wait:true}),sportsReferenceImage(env,deps.ctx,set,card,deps)]);const listing=listings.find(l=>sportsListingMatches(l,card,set,cardGroup))||null;return Response.json({listing,reference},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
+  // One eBay search for the whole checklist section serves every card in it
+  // (2026-11-10: a search per card used up eBay's daily limit on one scroll).
+  // A card's own search runs only when someone opens or taps that card, never
+  // for checklist rows scrolling into view (auto=1).
+  try{const auto=url.searchParams.get('auto')==='1';const [section,reference]=await Promise.all([sportsListings(env,deps.ctx,set,cardGroup,deps,{wait:true}),sportsReferenceImage(env,deps.ctx,set,card,deps)]);let listing=section.find(l=>sportsListingMatches(l,card,set,cardGroup))||null;
+   if(!listing&&!auto)listing=(await sportsListings(env,deps.ctx,set,cardGroup,deps,{card,wait:true})).find(l=>sportsListingMatches(l,card,set,cardGroup))||null;
+   return Response.json({listing,reference,...(!listing&&auto?{more:true}:{})},{headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
   catch(error){const reference=await sportsReferenceImage(env,deps.ctx,set,card,deps);return Response.json({...(reference?{listing:null,reference}:{error:'Marketplace temporarily unavailable'}),...await sportsMarketplaceFailure(env,error)},{status:reference?200:503,headers:{'Cache-Control':'no-store','X-Robots-Tag':'noindex'}});}
  }
  const listings=activeGroup.aggregate||baseCard&&!parallelId?[]:await sportsListings(env,deps.ctx,set,activeGroup,deps,parallelId?{card:chosenCard}:{});

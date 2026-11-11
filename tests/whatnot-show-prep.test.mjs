@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { prepCandidates, startPriceFor, buildLineup, lineupTotals, lineupStage, itemPrice } from '../scripts/whatnot-show-prep.mjs';
+import { prepCandidates, startPriceFor, buildLineup, lineupTotals, lineupStage, itemPrice, breakEvenPrice, netAfterFees } from '../scripts/whatnot-show-prep.mjs';
 import { addItemsToWhatnotShow, returnUnsoldToShop, showWrapUp, UNSOLD_RETURN_WAIT_MS } from '../scripts/whatnot-sync.mjs';
 
 // Store, 2026-11-01: "build the show prep and all whatnot features" --
@@ -26,7 +26,21 @@ assert.deepEqual(prepCandidates(inv, { theme: 'spider-man', minPrice: 10 }).map(
 assert.deepEqual(prepCandidates(inv, { category: 'comic', excludeIds: ['a'] }).map(i => i.id).sort(), ['b', 'g', 'h']);
 
 // Starting bids: protect cost by default, never above the price, never under $1.
-assert.equal(startPriceFor(item('x', 40, { cost: 24.2 })), 25, 'starts at what it cost (rounded up)');
+assert.equal(startPriceFor(item('x', 40, { cost: 24.2 })), 28, 'starts at break-even after Whatnot fees (rounded up)');
+// Store, 2026-11-10: $4 starts lost money on $3.99 and $3.59 books.
+assert.equal(breakEvenPrice(3.99), 4.82);
+assert.equal(breakEvenPrice(3.59), 4.37);
+assert.equal(breakEvenPrice(2.49), 3.14);
+assert.equal(breakEvenPrice(0), 0, 'no cost known: no break-even');
+assert.equal(netAfterFees(4, 3.99), -0.73, 'matches what the sale recorded');
+assert.equal(netAfterFees(4, 3.59), -0.33);
+assert.equal(breakEvenPrice(3.99, { pct: 10, flat: 0 }), 4.44, 'the store\'s own fee settings');
+assert.ok(netAfterFees(breakEvenPrice(3.99), 3.99) >= 0);
+{
+  const t = lineupTotals([{ cost: 3.99, breakEven: 4.82, start: 4, price: 8 }, { cost: 2.49, breakEven: 3.13, start: 4, price: 5 }]);
+  assert.equal(t.belowBreakEven, 1);
+  assert.equal(t.underCost, 0, 'over cost but still losing money is what the new warning catches');
+}
 assert.equal(startPriceFor(item('x', 40)), 12, 'no cost known: 30% of price');
 assert.equal(startPriceFor(item('x', 40, { cost: 60 })), 40, 'never above its price');
 assert.equal(startPriceFor(item('x', 2)), 1, 'never under $1');
@@ -46,7 +60,7 @@ assert.equal(lineup[bigAt].price, 120);assert.ok(bigAt >= 5 && bigAt <= 7, 'the 
 assert.deepEqual([lineup.at(-1).role, lineup.at(-1).price], ['closer', 110]);
 const mains = lineup.filter(e => e.role === 'main').map(e => e.price);
 assert.ok(mains[0] > mains[1] && mains[1] < mains[2], 'higher, lower, higher: ' + mains);
-assert.ok(lineup.filter(e => e.role !== 'hook').every(e => e.start === Math.ceil(e.cost)), 'the rest protect their cost');
+assert.ok(lineup.filter(e => e.role !== 'hook').every(e => e.start === Math.min(Math.floor(e.price), Math.ceil(breakEvenPrice(e.cost))) && e.breakEven === breakEvenPrice(e.cost)), 'the rest start at break-even after fees');
 assert.equal(totals.count, 10);assert.equal(totals.underCost, 2, 'the two $1 openers start under cost');
 assert.equal(new Set(lineup.map(e => e.id)).size, 10, 'no item twice');
 assert.equal(buildLineup([], {}).lineup.length, 0);
