@@ -183,11 +183,11 @@ export function drawShed(x, { floor = 1, room = '', boss = false, t = 0 } = {}) 
 // the painted sheds; #demo=1 tours them.
 if (typeof document !== 'undefined' && document.getElementById('shed')) {
   const canvas = document.getElementById('shed'), params = new URLSearchParams(location.hash.slice(1));
-  const demo = params.get('demo') === '1', painted = demo || params.get('painted') === '1';
+  const demo = params.get('demo') === '1', painted = demo || params.get('painted') === '1', preview = params.get('preview') === '1';
   const token = params.get('token'), store = params.get('store'), endpoint = params.get('worker');
   let label = document.getElementById('shed-label');
   let view = { floor: Math.max(1, Number(params.get('shed')) || 1), room: params.get('room') || '', boss: params.get('boss') === '1' };
-  let onState = () => {};
+  let onState = () => {}, pending = null;
   if (painted) {
     const x = canvas.getContext('2d'), start = performance.now();
     const frame = now => {
@@ -216,6 +216,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       };
       onState = m => { if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; paint(); };
       setInterval(paint, 5000);
+      if (pending) onState(pending);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
       fp.start();
       window.shedCrawl = fp;
@@ -232,5 +233,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     socket.onmessage = ev => { try { const m = JSON.parse(ev.data); retry = 0; onState(m); } catch {} };
     socket.onclose = ev => { if (ev.code === 1008) return; setTimeout(connect, Math.min(30000, 1000 * 2 ** Math.min(retry++, 5))); };
   }
-  if (!demo) connect();
+  // Live Studio's preview: the dashboard sends the state (same page only), no socket.
+  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin || ev.data?.type !== 'mana-preview') return; pending = { stats: ev.data.stats, stage: ev.data.stage }; onState(pending); });
+  else if (!demo) connect();
 }
