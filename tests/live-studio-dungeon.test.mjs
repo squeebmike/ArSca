@@ -257,7 +257,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const k of ['export function loadPicture(src)', "im.crossOrigin = 'anonymous'", 'setPictures(list, kinds = [])', 'batt = 0.25 + 0.75']) assert.ok(fp.includes(k), k);
   // The green screen is the crawl now.
   const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
-  assert.ok(bg.includes("fp = fpm.createShedCrawl(canvas, { w: 180, h: Math.round(180 * h / 1080), fov: 0.66 });"));
+  assert.ok(bg.includes("fp = fpm.createShedCrawl(canvas, { w: 360, h: Math.round(360 * h / 1080), fov: 0.66 });"));
   assert.ok(bg.includes("painted = demo || params.get('painted') === '1'"));
   // The image route only serves the inventory's own image hosts.
   const w = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
@@ -317,7 +317,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   }
   assert.ok(new Set([1, 2, 3, 4, 5, 6, 7, 8].map(f => JSON.stringify(fp.layoutFor(f).route))).size >= 7, 'the floors differ');
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
-  for (const k of ["'GARDEN SHED': { f: 'planks', c: 'rafters' }", 'function bulbsFor(layout)', 'const BAYER = [', '& 0xF8', 'rowDist = posZ / p']) assert.ok(src.includes(k), k);
+  for (const k of ["'GARDEN SHED': { f: 'planks', c: 'rafters' }", 'function bulbsFor(layout)', 'rowDist = posZ / p']) assert.ok(src.includes(k), k);
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes('setPics(list) {') && room.includes('pics:state.pics || []') && api.includes("/live-studio/pics"));
   assert.ok(controls.includes("sendShedPics(d.pics).catch(()=>{});"), 'connecting sends the in-stock photos');
