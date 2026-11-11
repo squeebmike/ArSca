@@ -59,6 +59,8 @@ function apply(s) {
   // Next up beside the card, or above it when there's no room.
   const qx=settings.cardX+400<=760?settings.cardX+400:Math.max(0,settings.cardX), qy=settings.cardX+400<=760?settings.cardY+70:Math.max(0,settings.cardY-230);
   place(queue,qx,qy);
+  // Center stage: the boss stands just above the sign's mana bar.
+  $('mana-arena').style.top=Math.max(0,settings.y-330)+'px';
   // Bursts are centered on the sign.
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
@@ -99,11 +101,20 @@ function paintStats(next,fromSale) {
 function paintDungeon(d){
   sign.classList.toggle('dungeon',!!d);sign.classList.toggle('boss',!!d&&d.phase==='boss');sign.classList.toggle('full',!!d&&d.phase==='floor'&&d.pct>=90);
   $('mana-dungeon').classList.toggle('mana-hidden',!d);
+  // CENTER STAGE (store, 2026-11-11: "mana bar in the center? bosses"): a big
+  // mana bar across the middle, and the floor's boss standing on top of it.
+  const center=!!d&&settings.centerStage!==false&&settings.visible!==false, arena=$('mana-arena');
+  document.body.classList.toggle('mana-center',center);
+  if(center&&boss.parentElement!==arena)arena.append(boss);
+  else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
+  arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
   $('mana-title-text').textContent='FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
   $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
+  $('mana-cbar-text').textContent=d.phase==='boss'?d.boss.name+'  HP '+usd(d.boss.hp):'MANA '+usd(d.mana)+' / '+usd(d.goal);
+  $('mana-cbar-sub').textContent=d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
   $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');

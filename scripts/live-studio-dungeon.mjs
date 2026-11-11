@@ -53,6 +53,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   floorRewards: '',    // lines "3: Free giveaway in the Whatnot tool"
   roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
   showMap: true,       // the dungeon map + relic shelf panel
+  centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
 });
