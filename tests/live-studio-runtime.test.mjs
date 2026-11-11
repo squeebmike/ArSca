@@ -55,5 +55,13 @@ try {
  const viewer=await socket();msg=message(viewer);viewer.send(JSON.stringify({token:link.token}));await msg;
  closed=close(viewer);await call('/revoke');assert.equal((await closed).code,1008);
  const revoked=await socket();closed=close(revoked);revoked.send(JSON.stringify({token:link.token}));assert.equal((await closed).code,1008);
+ // A new show going live on Whatnot: the studio follows it on its own (2026-11-11).
+ const nextShow='9b2f6c1e-4d3a-4f8b-a1c2-3d4e5f6a7b8c';
+ await call('/event',{id:'event-next',event:{...event,timestamp:new Date().toISOString(),data:{show_id:nextShow}}});
+ let st=await call('/state');assert.equal(st.settings.showId,nextShow);assert.equal(st.stats.gross,0,'a new show starts its own totals');
+ const nextSale=sale('o9',12);await call('/event',{id:'sale-next',event:{...nextSale,data:{...nextSale.data,show_id:nextShow}}});
+ assert.equal((await call('/state')).stats.gross,12,'its sales count without anyone tapping USE LIVE');
+ await call('/event',{id:'event-other-seller',event:{...event,seller_id:'someone-else',timestamp:new Date().toISOString(),data:{show_id:'1b2f6c1e-4d3a-4f8b-a1c2-3d4e5f6a7b8c'}}});
+ assert.equal((await call('/state')).settings.showId,nextShow,'another seller\'s show is never followed');
  console.log('Real Durable Object / SQLite / WebSocket tests passed: auth, tenant isolation, settings, countdown reconnect, deduplication, ordering, read-only access and revocation');
 } finally {await mf.dispose();}

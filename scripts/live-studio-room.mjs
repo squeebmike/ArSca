@@ -130,6 +130,17 @@ export class ManaLiveStudio extends DurableObject {
     this.sql.exec('DELETE FROM seen WHERE expires < ?', now);
     if (this.sql.exec('SELECT id FROM seen WHERE id=?',id).toArray().length) return {duplicate:true};
     const s = this.read();
+    // Store, 2026-11-11: "do 1" -- the dungeon runs itself. When Whatnot says
+    // one of our shows went live, the studio follows that show (its sales,
+    // the flask, the boss) without anyone tapping USE LIVE first.
+    let followed = false;
+    if (event?.type === 'shows.started' && s.settings.automatic && event.version === 'v2' && (!s.settings.sellerId || event.seller_id === s.settings.sellerId)
+      && /^[0-9a-f-]{36}$/i.test(String(event.data?.show_id || '')) && event.data.show_id !== s.settings.showId) {
+      s.settings = { ...s.settings, showId: String(event.data.show_id) };
+      s.revision++;
+      s.stats = emptyStats(s.settings.showId);
+      followed = true;
+    }
     const isOrder = /^orders\./.test(String(event?.type || ''));
     // Orders count toward the show's totals even when they arrive late (a
     // webhook retry); only a fresh one plays an effect.
@@ -163,8 +174,9 @@ export class ManaLiveStudio extends DurableObject {
         s.effect=makeEffect(effect.kind,s.settings,now,effect);
         emitted=true;
       }
-      if (emitted || statsChanged) this.write(s);
+      if (emitted || statsChanged || followed) this.write(s);
     });
+    if (followed) this.broadcast({ type:'state', ...this.publicState(s) });
     if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage}:{}),serverNow:now});
     else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),serverNow:now});
     return {ok:true};
