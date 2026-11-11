@@ -254,7 +254,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const { buildMap } = await import('../scripts/shed-crawl-fp.mjs');
   assert.ok(buildMap(1).grid.flat().some(c => c >= 1000), 'racks and slab walls frame item photos');
   assert.notDeepEqual(buildMap(1, 'left').grid, buildMap(1, 'right').grid, 'the fork changes the shed');
-  for (const k of ['export function loadPicture(src)', "im.crossOrigin = 'anonymous'", 'setPictures(list)', 'batt = 0.25 + 0.75']) assert.ok(fp.includes(k), k);
+  for (const k of ['export function loadPicture(src)', "im.crossOrigin = 'anonymous'", 'setPictures(list, kinds = [])', 'batt = 0.25 + 0.75']) assert.ok(fp.includes(k), k);
   // The green screen is the crawl now.
   const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
   assert.ok(bg.includes("fp = fpm.createShedCrawl(canvas, { w: 180, h: Math.round(180 * h / 1080), fov: 0.66 });"));
@@ -366,3 +366,31 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.match(readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8'), /rgb\(74 29 150\/var\(--pa,1\)\)/);
 }
 console.log('live-studio-dungeon: ok');
+
+// 2026-11-11: the store's items show as what they are -- comics lean in the
+// hall, sealed sits on a folding table, cards stand in top loaders.
+{
+  const { validateStage } = await import('../scripts/live-studio-model.mjs');
+  const st = validateStage({ now: { title: 'Booster Box', image: 'https://x.test/a.jpg', kind: 'sealed' }, next: [{ title: 'X-Men 1', image: 'https://x.test/b.jpg', kind: 'comic' }, { title: 'Bad', kind: 'gun' }] });
+  assert.equal(st.now.kind, 'sealed');
+  assert.equal(st.next[0].kind, 'comic');
+  assert.equal(st.next[1].kind, undefined, 'only comic / sealed / card');
+  const fp = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  for (const k of ["how === 'comic'", "how === 'sealed'"]) assert.ok(fp.includes(k), k);
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
+  assert.ok(ov.includes('fp?.setPictures(list,kinds)') && ov.includes("how==='sealed'"));
+  const ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
+  assert.ok(ctl.includes("?'comic':") && ctl.includes("'sealed':'card'"));
+}
+{
+  // Tables show a sealed box, comic stacks a real comic, item stands any item.
+  const { itemFor } = await import('../scripts/shed-crawl-fp.mjs');
+  const kinds = ['card', 'sealed', 'comic', 'sealed'];
+  assert.deepEqual(itemFor({ kind: 'table', idx: 0 }, kinds), { i: 1, how: 'sealed' });
+  assert.deepEqual(itemFor({ kind: 'table', idx: 1 }, kinds), { i: 3, how: 'sealed' });
+  assert.deepEqual(itemFor({ kind: 'comics', idx: 5 }, kinds), { i: 2, how: 'comic' });
+  assert.deepEqual(itemFor({ kind: 'pic', idx: 4 }, kinds), { i: 0, how: 'card' });
+  assert.equal(itemFor({ kind: 'table', idx: 0 }, ['card']), null, 'no sealed: the plain table');
+  assert.equal(itemFor({ kind: 'bucket', idx: 0 }, kinds), null);
+  assert.equal(itemFor({ kind: 'pic', idx: 0 }, []), null);
+}
