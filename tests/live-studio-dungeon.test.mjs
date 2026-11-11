@@ -143,4 +143,11 @@ assert.throws(() => validateSettings({ roomRewards: 'vault: lottery ticket' }), 
 assert.match(api, /door:body\.door/);
 assert.match(overlay, /CHAT: PICK A DOOR!/);
 assert.match(controls, /'dungeon-adjust',\{door:i\}/);
+// 2026-11-11: the dungeon runs itself -- a show of ours going live on
+// Whatnot is followed automatically (full runtime check: live-studio-runtime).
+{
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("if (event?.type === 'shows.started' && s.settings.automatic && event.version === 'v2' && (!s.settings.sellerId || event.seller_id === s.settings.sellerId)"));
+  assert.ok(room.includes('s.stats = emptyStats(s.settings.showId);'));
+}
 console.log('live-studio-dungeon: ok');
