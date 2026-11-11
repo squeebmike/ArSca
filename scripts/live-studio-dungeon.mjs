@@ -39,6 +39,16 @@ export const RELICS = [
   { name: 'CRYSTAL TOPLOADER', icon: '💎' },
 ];
 export const relicFor = floor => RELICS[(Math.max(1, floor) - 1) % RELICS.length];
+// Chat picks the hero's weapon for the floor's boss (store, 2026-11-11: "let
+// the chat pick things"). Looks and sound only -- every weapon hits for the
+// sale's dollars; nothing is random.
+export const WEAPONS = [
+  { id: 'pricegun', name: 'PRICE GUN', icon: '🔫', hit: 'PEW!' },
+  { id: 'fireball', name: 'FIREBALL', icon: '🔥', hit: 'FWOOSH!' },
+  { id: 'chicken', name: 'RUBBER CHICKEN', icon: '🐔', hit: 'SQUAWK!' },
+  { id: 'longbox', name: 'LONG BOX SLAM', icon: '📦', hit: 'THWACK!' },
+];
+export const weaponById = id => WEAPONS.find(w => w.id === id) || null;
 
 // Settings (merged into DEFAULT_STUDIO).
 export const DUNGEON_DEFAULTS = Object.freeze({
@@ -53,6 +63,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   floorRewards: '',    // lines "3: Free giveaway in the Whatnot tool"
   roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
   showMap: true,       // the dungeon map + relic shelf panel
+  centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
 });
@@ -149,8 +160,13 @@ export function addTap(dIn, kind, s, now = Date.now()) {
   return { ...addMana({ ...w, taps }, amount, s, now), amount };
 }
 // The host's fixes: set the floor, or start the week over.
-export function adjustDungeon(dIn, { floor, resetWeek, door } = {}, now = Date.now()) {
+export function adjustDungeon(dIn, { floor, resetWeek, door, weapon } = {}, now = Date.now()) {
   const w = ensureWeek(dIn, now);
+  // The weapon chat picked for this floor.
+  if (weapon !== undefined) {
+    if (!weaponById(weapon)) throw new Error('Invalid weapon');
+    return { ...w, weapons: { ...(w.weapons || {}), [w.floor]: weapon }, lastAt: now };
+  }
   // The door chat voted for (0 or 1) sets this floor's room.
   if (door !== undefined) {
     if (!w.doors?.length) throw new Error('Invalid door: no doors are open right now');
@@ -188,6 +204,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     on: !!s.dungeonOn, week: d.week, resets: nextResetKey(now), floor: d.floor, shed: shedFor(d.floor), phase: d.phase,
     mana: d.mana, goal, pct: d.phase === 'boss' ? Math.round(d.bossHp / max * 1000) / 10 : Math.round(Math.min(1, d.mana / goal) * 1000) / 10,
     boss: { character: id, name: bossById(id).name, hp: d.phase === 'boss' ? d.bossHp : max, max, active: d.phase === 'boss' },
+    weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,

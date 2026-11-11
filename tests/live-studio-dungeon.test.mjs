@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ROOMS, RELICS, doorsFor, relicFor, parseRoomLines, weekKey, nextResetKey, ensureWeek, emptyDungeon, addMana, addTap, adjustDungeon, floorGoal, bossMax, publicDungeon, showUnlocksCrossed, parseLines, shedFor, SHEDS, DUNGEON_DEFAULTS } from '../scripts/live-studio-dungeon.mjs';
-import { DEFAULT_STUDIO, validateSettings, applyOrder, emptyStats, makeEffect } from '../scripts/live-studio-model.mjs';
+import { DEFAULT_STUDIO, validateSettings, applyOrder, emptyStats, makeEffect, chanceWordIn } from '../scripts/live-studio-model.mjs';
 
 const S = { ...DEFAULT_STUDIO };
 // Wed Nov 4 2026, noon Pacific = 20:00Z. Tue Nov 3 = last week.
@@ -149,5 +149,39 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes("if (event?.type === 'shows.started' && s.settings.automatic && event.version === 'v2' && (!s.settings.sellerId || event.seller_id === s.settings.sellerId)"));
   assert.ok(room.includes('s.stats = emptyStats(s.settings.showId);'));
+}
+// CENTER STAGE (2026-11-11): the big mana bar across the middle, the boss standing on it.
+{
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8'), css = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
+  assert.equal(DUNGEON_DEFAULTS.centerStage, true);
+  assert.deepEqual(validateSettings({ centerStage: false }), { centerStage: false });
+  assert.ok(html.includes('<div id="mana-cbar-sub"></div>'));
+  assert.ok(html.includes('<div class="mana-liquid" aria-hidden="true"></div><div class="mana-bubbles" aria-hidden="true"></div>'), 'the bubbling mana stays');
+  assert.ok(html.includes('<section id="mana-arena" class="mana-hidden" aria-label="Boss"></section>'));
+  assert.ok(ov.includes("const center=!!d&&settings.centerStage!==false&&settings.visible!==false"));
+  assert.ok(ov.includes("arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));"));
+  assert.doesNotMatch(css, /body\.mana-center \.mana-(liquid|bubbles)[^{]*\{[^}]*display:none/, 'center stage never hides the bubbling mana');
+  assert.match(css, /body\.mana-center #mana-sign\{left:40px!important;width:1000px!important;height:200px!important/);
+  assert.match(css, /body\.mana-center #byterider\{z-index:2\}/);
+}
+// THE CRAWL + CHAT PICKS (2026-11-11): a hallway the hero walks as mana fills;
+// chat votes on the weapon, what's next, or a door, and the host taps the winner.
+{
+  const { WEAPONS, weaponById } = await import('../scripts/live-studio-dungeon.mjs');
+  assert.deepEqual(WEAPONS.map(w => w.id), ['pricegun', 'fireball', 'chicken', 'longbox']);
+  let dd = emptyDungeon(weekKey(WED));
+  dd = adjustDungeon(dd, { weapon: 'chicken' }, WED);
+  assert.equal(publicDungeon(dd, { ...DEFAULT_STUDIO, dungeonOn: true }, 0, WED).weapon.name, 'RUBBER CHICKEN');
+  assert.throws(() => adjustDungeon(dd, { weapon: 'slot-machine' }, WED), /Invalid weapon/);
+  assert.equal(weaponById('nope'), null);
+  for (const w of WEAPONS) assert.ok(!chanceWordIn(w.name + ' ' + w.hit), 'no game-of-chance words');
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
+  for (const k of ["if (kind === 'weapon') options = WEAPONS.map", "else if (kind === 'next')", "else if (kind === 'door')", "s.vote = null;", "vote: state.vote || null"]) assert.ok(room.includes(k), k);
+  for (const k of ["/live-studio/vote-open", "/live-studio/vote-pick", "/live-studio/vote-close"]) assert.ok(api.includes(k), k);
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
+  assert.ok(html.includes('<section id="mana-crawl"') && html.includes('<section id="mana-vote"'));
+  assert.ok(ov.includes("if(lastHeroPct>=0&&pct>lastHeroPct)heroWalkUntil=Date.now()+1600;"), 'the hero walks when mana goes up');
+  assert.ok(ov.includes("dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')"), 'hits show chat\'s weapon');
+  assert.match(controls, /data-vote="weapon"/);
 }
 console.log('live-studio-dungeon: ok');
