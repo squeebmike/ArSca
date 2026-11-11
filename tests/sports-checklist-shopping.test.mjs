@@ -158,13 +158,13 @@ console.log('Mobile section navigation, 1,975 numbered football references, exac
  }
  assert.equal(rejectedSearches,1,'one rejected card pauses other photo searches for five minutes');
  // Recent seller photos survive a brief provider outage, but ended auctions
- // and listing data older than the six-hour display window never return.
+ // and listing data older than the 30-hour display window never return.
  const savedKey=[...memory.keys()].find(k=>k.startsWith('public-catalog:sports-checklist-listings-v15:'));
  const saved=memory.get(savedKey),recent={...data.listing,endTime:new Date(Date.now()+3600000).toISOString()};
  memory.set(savedKey,{at:Date.now()-4*3600000,items:[recent,{...recent,itemId:'ended',endTime:new Date(Date.now()-1000).toISOString()}]});
  memory.set('sports-ebay-photo-pause',{until:Date.now()+3600000});
  const retained=await sportsListings(e,null,s,g,d,{card:c,wait:true});assert.equal(retained.length,1);assert.equal(retained[0].itemId,recent.itemId);
- memory.set(savedKey,{...saved,at:Date.now()-6*3600000});
+ memory.set(savedKey,{...saved,at:Date.now()-31*3600000});
  await assert.rejects(sportsListings(e,null,s,g,d,{card:c,wait:true}),'expired listing data must not be served during an outage');
 }
 

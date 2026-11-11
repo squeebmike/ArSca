@@ -32,13 +32,26 @@ export function prepCandidates(items = [], { theme = '', category = '', minPrice
   });
 }
 
-// Starting bid. protect (default): at least what it cost, so an auction can't
-// sell under cost -- with no cost known, 30% of its price; dollar: $1 starts;
-// percent: that share of its price. Never above its price, never under $1.
-export const START_RULES = { protect: 'Protect cost (start at what it cost)', dollar: '$1 starts', percent: 'Percent of price' };
-export function startPriceFor(item, rule = 'protect', percent = 50) {
+// The least a sale can bring and not lose money after Whatnot's fees (8%
+// commission + 2.9% + 30c by default; the store's own fee settings win).
+// Store, 2026-11-10: $4 starts on $3.99 and $3.59 books lost 73c and 33c each.
+export const WHATNOT_FEE = { pct: 10.9, flat: 0.3 };
+export function breakEvenPrice(cost, fee = WHATNOT_FEE) {
+  const c = num(cost);
+  if (!(c > 0)) return 0;
+  const pct = num(fee?.pct ?? WHATNOT_FEE.pct), flat = num(fee?.flat ?? WHATNOT_FEE.flat);
+  return Math.ceil(((c + flat) / Math.max(0.5, 1 - pct / 100)) * 100) / 100;
+}
+// What a sale at this price keeps after cost and fees.
+export const netAfterFees = (price, cost, fee = WHATNOT_FEE) => Math.round((num(price) - num(price) * num(fee?.pct ?? WHATNOT_FEE.pct) / 100 - num(fee?.flat ?? WHATNOT_FEE.flat) - num(cost)) * 100) / 100;
+
+// Starting bid. protect (default): at least break-even after fees, so an
+// auction can't lose money -- with no cost known, 30% of its price; dollar:
+// $1 starts; percent: that share of its price. Never above its price, never under $1.
+export const START_RULES = { protect: 'Protect cost (start at break-even after fees)', dollar: '$1 starts', percent: 'Percent of price' };
+export function startPriceFor(item, rule = 'protect', percent = 50, fee = WHATNOT_FEE) {
   const price = itemPrice(item), cost = num(item.cost);
-  let start = rule === 'dollar' ? 1 : rule === 'percent' ? Math.round(price * num(percent) / 100) : cost > 0 ? Math.ceil(cost) : Math.round(price * 0.3);
+  let start = rule === 'dollar' ? 1 : rule === 'percent' ? Math.round(price * num(percent) / 100) : cost > 0 ? Math.ceil(breakEvenPrice(cost, fee)) : Math.round(price * 0.3);
   start = Math.max(1, start);
   return Math.max(1, Math.min(start, Math.floor(price) || 1));
 }
@@ -46,15 +59,15 @@ export function startPriceFor(item, rule = 'protect', percent = 50) {
 // The running order: cheap hooks first ($1 starts, to fill the room), then
 // higher and lower items taking turns, the biggest item about two-thirds in,
 // and the second biggest to close.
-export function buildLineup(candidates = [], { count = 20, rule = 'protect', percent = 50, hooks = 2 } = {}) {
+export function buildLineup(candidates = [], { count = 20, rule = 'protect', percent = 50, hooks = 2, fee = WHATNOT_FEE } = {}) {
   const n = Math.max(1, Math.min(60, Math.floor(num(count)) || 20));
   const byValue = candidates.slice().sort((a, b) => itemPrice(b) - itemPrice(a) || String(a.name).localeCompare(String(b.name)));
   const picked = byValue.slice(0, n);
   if (!picked.length) return { lineup: [], totals: { value: 0, cost: 0, starts: 0, count: 0 } };
   const entry = (i, role) => ({ id: i.id, title: String(i.name || ''), detail: [i.set, i.variant, i.grader && i.grade ? i.grader + ' ' + i.grade : ''].filter(Boolean).join(' · '),
     image: /^https:\/\//.test(String(i.thumbnail || i.imageUrl || '')) ? String(i.thumbnail || i.imageUrl) : '',
-    price: Math.round(itemPrice(i) * 100) / 100, cost: Math.round(num(i.cost) * 100) / 100,
-    start: role === 'hook' ? 1 : startPriceFor(i, rule, percent), role, sellOnWhatnot: i.sellOnWhatnot === true });
+    price: Math.round(itemPrice(i) * 100) / 100, cost: Math.round(num(i.cost) * 100) / 100, breakEven: breakEvenPrice(i.cost, fee),
+    start: role === 'hook' ? 1 : startPriceFor(i, rule, percent, fee), role, sellOnWhatnot: i.sellOnWhatnot === true });
   const big = picked[0], closer = picked.length > 2 ? picked[1] : null;
   const rest = picked.filter(i => i !== big && i !== closer);
   const nHooks = Math.max(0, Math.min(num(hooks), Math.max(0, rest.length - 1)));
@@ -71,7 +84,9 @@ export function buildLineup(candidates = [], { count = 20, rule = 'protect', per
 }
 export function lineupTotals(lineup = []) {
   const sum = k => Math.round(lineup.reduce((n, e) => n + num(e[k]), 0) * 100) / 100;
-  return { value: sum('price'), cost: sum('cost'), starts: sum('start'), count: lineup.length, underCost: lineup.filter(e => e.cost > 0 && e.start < e.cost).length };
+  return { value: sum('price'), cost: sum('cost'), starts: sum('start'), count: lineup.length, underCost: lineup.filter(e => e.cost > 0 && e.start < e.cost).length,
+    // Starts that lose money if the item sells at its opening bid.
+    belowBreakEven: lineup.filter(e => e.breakEven > 0 && e.start < e.breakEven).length };
 }
 // For Live Studio: NOW PLAYING is the first, the rest are NEXT.
 export function lineupStage(lineup = []) {

@@ -5936,7 +5936,7 @@ export class PublicEbayCache {
     const text=await request.text();if(text.length>2048)return new Response('Too large',{status:413});
     let input;try{input=JSON.parse(text);}catch{return new Response('Invalid request',{status:400});}
     if(!input.query||input.query.length>300||!/^\d{10}$/.test(input.campaignId)||!['','Auction','FixedPrice','AllPurchasable'].includes(input.listingType))return new Response('Invalid search',{status:400});
-    const now=Date.now(),freshMs=3*3600000,retainMs=(6*60-5)*60000;
+    const now=Date.now(),freshMs=24*3600000,retainMs=30*3600000;
     const saved=await this.ctx.storage.get('snapshot'),age=saved?now-saved.at:Infinity;
     const usable=age>=0&&age<retainMs&&Array.isArray(saved?.result?.listings);
     if(usable&&age<freshMs)return Response.json(saved.result);

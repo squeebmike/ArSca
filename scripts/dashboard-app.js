@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.09.10-staff-byterider';
+const APP_VERSION = '2026.11.10.1-ebay-calls-breakeven';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -481,8 +481,8 @@ function showAuthMode(mode, message){
   const storePick = document.getElementById('auth-store-wrap');
   const primary = document.getElementById('auth-primary-btn');
   const status = document.getElementById('auth-status');
-  if(title) title.textContent = mode === 'reset' ? 'RESET PASSWORD' : mode === 'update-password' ? 'UPDATE PASSWORD' : mode === 'no-access' ? 'NO STORE ACCESS' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'WALK-OFF LOGIN';
-  if(sub) sub.textContent = mode === 'update-password' ? 'Enter a new password for this Walk-Off account.' : mode === 'no-access' ? 'Your account is not attached to a store yet. Contact your store owner/admin for an invite.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
+  if(title) title.textContent = mode === 'reset' ? 'RESET PASSWORD' : mode === 'update-password' ? 'UPDATE PASSWORD' : mode === 'no-access' ? 'NO STORE ACCESS' : mode === 'invite' ? 'ACCEPT INVITE' : mode === 'picker' ? 'CHOOSE STORE' : 'STORE LOGIN';
+  if(sub) sub.textContent = mode === 'update-password' ? 'Enter a new password for this account.' : mode === 'no-access' ? 'Your account is not attached to a store yet. Contact your store owner/admin for an invite.' : mode === 'invite' ? 'You have a pending store invite. Accept it to join that workspace.' : mode === 'picker' ? 'Choose which store workspace to open.' : 'Real Supabase login. Store data is isolated by membership.';
   if(emailWrap) emailWrap.style.display = mode === 'update-password' || mode === 'no-access' || mode === 'picker' ? 'none' : '';
   if(pass) pass.style.display = mode === 'reset' || mode === 'no-access' || mode === 'picker' ? 'none' : '';
   const passInput = document.getElementById('auth-password');
@@ -49415,22 +49415,24 @@ async function suggestWhatnotLineup(){
   const m = await whatnotPrepModule();
   const v = id => document.getElementById(id)?.value;
   const cands = m.prepCandidates(all, { theme:v('wn-prep-theme'), category:v('wn-prep-cat'), minPrice:Number(v('wn-prep-min')) || 0 });
-  const built = m.buildLineup(cands, { count:Number(v('wn-prep-count')) || 20, rule:v('wn-prep-rule'), percent:Number(v('wn-prep-pct')) || 50, hooks:Number(v('wn-prep-hooks')) || 0 });
+  const built = m.buildLineup(cands, { count:Number(v('wn-prep-count')) || 20, rule:v('wn-prep-rule'), percent:Number(v('wn-prep-pct')) || 50, hooks:Number(v('wn-prep-hooks')) || 0, fee:whatnotPrepFee() });
   _showPrep.lineup = built.lineup;
   renderWhatnotLineup(cands.length);
 }
+// The store's Whatnot fee settings (Settings), for break-even starts.
+function whatnotPrepFee(){ const f = whatnotFeeSettings(); return { pct:Number(f.pct), flat:Number(f.flat) }; }
 function renderWhatnotLineup(found){
   const el = document.getElementById('wn-prep-list');
   if(!el || !_showPrep.mod) return;
   const L = _showPrep.lineup, t = _showPrep.mod.lineupTotals(L);
   const ROLE = { hook:['OPENER','var(--g)'], main:['',''], big:['BIG HIT','var(--gold)'], closer:['CLOSER','var(--gold)'] };
   if(!L.length){ el.innerHTML = '<div style="color:var(--gold)">Nothing in stock matches. Try fewer theme words or another category.</div>'; return; }
-  el.innerHTML = `<div style="color:var(--text)">${L.length} items${found != null ? ' (of ' + found + ' that match)' : ''} · worth ${fd$(t.value)} · cost ${fd$(t.cost)} · starting bids add up to ${fd$(t.starts)}${t.underCost ? ' · <span style="color:var(--gold)">' + t.underCost + ' start under cost</span>' : ''}</div>
+  el.innerHTML = `<div style="color:var(--text)">${L.length} items${found != null ? ' (of ' + found + ' that match)' : ''} · worth ${fd$(t.value)} · cost ${fd$(t.cost)} · starting bids add up to ${fd$(t.starts)}${t.underCost ? ' · <span style="color:var(--gold)">' + t.underCost + ' start under cost</span>' : ''}${t.belowBreakEven ? ' · <span style="color:var(--red)">' + t.belowBreakEven + ' start below break-even after Whatnot fees</span>' : ''}</div>
     <table style="width:100%;border-collapse:collapse;margin-top:6px">${L.map((e, i) => `<tr style="border-top:1px solid var(--border)">
       <td style="padding:4px;color:var(--dim)">${i + 1}</td>
       <td style="padding:4px;color:var(--text)">${escHtml(e.title)}${ROLE[e.role][0] ? ` <span style="color:${ROLE[e.role][1]};font-size:9px">${ROLE[e.role][0]}</span>` : ''}${e.sellOnWhatnot ? '' : ' <span style="font-size:9px" title="Gets SELL ON WHATNOT ticked when lined up">+WN</span>'}</td>
       <td style="padding:4px;white-space:nowrap">${fd$(e.price)}${e.cost ? ' <span style="font-size:9px">cost ' + fd$(e.cost) + '</span>' : ''}</td>
-      <td style="padding:4px;white-space:nowrap">start $<input type="number" min="1" value="${e.start}" style="width:60px" class="tsi" onchange="_showPrep.lineup[${i}].start=Math.max(1,Math.round(Number(this.value)||1));renderWhatnotLineup()"></td>
+      <td style="padding:4px;white-space:nowrap">start $<input type="number" min="1" value="${e.start}" style="width:60px${e.breakEven > 0 && e.start < e.breakEven ? ';border-color:var(--red);color:var(--red)' : ''}" class="tsi" onchange="_showPrep.lineup[${i}].start=Math.max(1,Math.round(Number(this.value)||1));renderWhatnotLineup()">${e.breakEven > 0 && e.start < e.breakEven ? `<div style="font-size:9px;color:var(--red)" title="After Whatnot's fees">loses ${fd$(-_showPrep.mod.netAfterFees(e.start, e.cost, whatnotPrepFee()))} at this start · needs ${fd$(e.breakEven)}</div>` : ''}</td>
       <td style="padding:4px;white-space:nowrap"><button class="hbtn" style="padding:2px 6px;margin:0" onclick="moveWhatnotLineup(${i},-1)">↑</button><button class="hbtn" style="padding:2px 6px;margin:0" onclick="moveWhatnotLineup(${i},1)">↓</button><button class="hbtn" style="padding:2px 6px;margin:0" onclick="_showPrep.lineup.splice(${i},1);renderWhatnotLineup()">✕</button></td></tr>`).join('')}</table>
     <button class="hbtn" style="width:100%;padding:12px;margin-top:10px;color:var(--gold)" onclick="lineUpWhatnotShow()">LINE IT UP${_showPrep.show ? ' IN "' + escHtml(_showPrep.show.title) + '"' : ''}</button>
     <div id="wn-prep-result"></div>
