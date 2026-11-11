@@ -223,7 +223,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (key !== picKey) { picKey = key; const all = [stage.now, ...(stage.next || []), ...shedPics], kinds = urls.map(u => all.find(x => x && x.image === u)?.kind || 'card'); Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list, kinds)); }
       };
       let hideNear = true;
-      onState = m => { if (m.settings) hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+      onState = m => { if (m.settings) { hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
       setInterval(paint, 5000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });

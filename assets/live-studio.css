@@ -7,9 +7,14 @@
 .mana-panel {position:absolute;box-sizing:border-box;border:7px solid transparent;border-radius:26px;
   background:linear-gradient(180deg,#ffffff40,#ffffff08 34%,#0000 35%) padding-box,
     radial-gradient(circle,#ffffff12 1.4px,transparent 1.6px) 0 0/10px 10px padding-box,
-    linear-gradient(165deg,rgb(74 29 150/var(--pa,1)),rgb(36 9 79/var(--pa,1)) 55%,rgb(18 4 39/var(--pa,1))) padding-box,
-    linear-gradient(180deg,#fff8c2,#ffc400 28%,#ff7a00 58%,#ffe066 82%,#b35900) border-box;
-  box-shadow:0 9px 0 #3a1000,0 16px 28px #000b,inset 0 3px 0 #ffffff66,inset 0 -6px 0 #0007,0 0 30px #b026ff77}
+    linear-gradient(165deg,rgb(74 29 150/var(--pa,1)),rgb(36 9 79/var(--pa,1)) 55%,rgb(18 4 39/var(--pa,1))) padding-box;
+  box-shadow:inset 0 3px 0 #ffffff66,inset 0 -6px 0 #0007}
+/* The gold frame is its own ring (not a fill behind the glass), so panel
+   opacity shows the cameras through, not gold. Its drop shadow sits on the ring too. */
+.mana-panel::before {content:"";position:absolute;inset:-7px;padding:7px;border-radius:26px;pointer-events:none;
+  background:linear-gradient(180deg,#fff8c2,#ffc400 28%,#ff7a00 58%,#ffe066 82%,#b35900);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  filter:drop-shadow(0 9px 0 #3a1000) drop-shadow(0 0 14px #b026ff77)}
 .mana-panel::after {content:"";position:absolute;inset:0;pointer-events:none;border-radius:19px;
   background:repeating-linear-gradient(0deg,#0000 0 3px,#00000018 3px 4px);mix-blend-mode:multiply}
 .mana-label {display:inline-block;font-size:12px;letter-spacing:1px;color:#e0fbff;margin-bottom:8px;padding:6px 12px 5px;border-radius:999px;
@@ -79,7 +84,7 @@
 /* The center sign: the store's bubbling mana (purple frame, green mana
    liquid, rising bubbles -- the original Live Studio sign), in the comic ink
    outline and lettering of the rest of the overlay. */
-#mana-sign {overflow:hidden;border-color:var(--ink);border-radius:24px;background:radial-gradient(circle,#ffffff14 1.4px,transparent 1.6px) 0 0/9px 9px,#160a2bee;
+#mana-sign {overflow:hidden;border-color:var(--ink);border-radius:24px;background:radial-gradient(circle,#ffffff14 1.4px,transparent 1.6px) 0 0/9px 9px,rgb(22 10 43/var(--pa,.93));
   box-shadow:0 0 0 4px #a855f7 inset,inset 0 0 26px #883bcb,8px 8px 0 var(--ink),0 0 18px #74fc79aa;color:#caffb3}
 #mana-sign::after {display:none}
 .mana-liquid {position:absolute;inset:45% -10% -45%;border-radius:40%;background:linear-gradient(0deg,#329b39,#b7ff42);opacity:.65;animation:mana-liquid 6s ease-in-out infinite alternate}
@@ -317,7 +322,7 @@ body.mana-center #mana-arena #mana-boss-sprite,body.mana-center #mana-arena #man
 #mana-fp-chest{position:absolute;right:16px;top:12px;z-index:2;font:400 16px 'Press Start 2P',monospace;color:#ffe14a;text-shadow:3px 3px 0 var(--ink)}
 
 /* Crawl on the green screen (2026-11-11): the overlay keeps a slim bar with the floor, chests and battery. */
-#mana-crawl.bar{height:62px!important;top:auto;background:#160a2bee;border-radius:18px 18px 0 0}
+#mana-crawl.bar{height:62px!important;top:auto;background:rgb(22 10 43/var(--pa,.93));border-radius:18px 18px 0 0}
 #mana-crawl.bar #mana-fp,#mana-crawl.bar #mana-fp-hand,#mana-crawl.bar::after{display:none}
 body.mana-center #mana-crawl.bar{transform:translateY(342px)}
 #mana-crawl.bar #mana-fp-peek{top:-74px;font-size:40px}
