@@ -38,7 +38,7 @@ export const layoutFor = floor => LAYOUTS[(Math.max(1, floor) - 1) % LAYOUTS.len
 
 // The grid: everything wall (1..5 = texture) except the route, the peek
 // cells and the boss room. Wall textures follow a fixed pattern.
-export function buildMap(floor) {
+export function buildMap(floor, fork = '') {
   const L = layoutFor(floor), N = 16, grid = Array.from({ length: N }, () => Array(N).fill(1));
   const open = (x, y) => { if (x > 0 && y > 0 && x < N - 1 && y < N - 1) grid[y][x] = 0; };
   for (let i = 1; i < L.route.length; i++) {
@@ -51,9 +51,17 @@ export function buildMap(floor) {
   // Textures on a fixed pattern: duct-taped boards (1), booster pegboard (2),
   // long-box shelves (3), the comic rack (4), the slab wall (6), the flyer
   // corkboard (7), binder pages (8); each peek looks at its own; the boss room is 5.
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = [1, 4, 2, 1, 3, 6, 1, 7, 8, 1, 4, 3][(x * 3 + y * 5 + floor) % 12];
+  // Chat's pick at the fork changes the shed: LEFT is the collector side
+  // (slabs, binders, racks), RIGHT the bargain side (long boxes, bins, packs).
+  const PATTERN = fork === 'left' ? [6, 8, 4, 6, 1, 8, 4, 6, 1, 8, 6, 4] : fork === 'right' ? [3, 1, 2, 3, 7, 1, 3, 2, 1, 3, 7, 2] : [1, 4, 2, 1, 3, 6, 1, 7, 8, 1, 4, 3];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = PATTERN[(x * 3 + y * 5 + floor) % 12];
   for (const p of L.peeks) { const [cx, cy] = p.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = p.tex; }
   for (let y = by - 1; y <= by + bh; y++) for (let x = bx - 1; x <= bx + bw; x++) if (grid[y]?.[x]) grid[y][x] = 5;
+  // Walls that face the walk and are racks or slab walls become frames for
+  // the store's own item photos (1000 + n*10 + the wall's own texture, which
+  // shows when there are no photos).
+  let n = 0;
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 10 + grid[y][x];
   return { grid, layout: L };
 }
 
@@ -156,11 +164,35 @@ function propsFor(layout, floor) {
   return out;
 }
 
+// The store's item photos, framed for the walls (48 x 64, a black frame and
+// a price-tag stripe). Images must allow CORS; the caller passes a proxied URL.
+export const PIC_W = 48, PIC_H = 64;
+export function loadPicture(src) {
+  return new Promise(resolve => {
+    if (!src || typeof Image === 'undefined') return resolve(null);
+    const im = new Image(); im.crossOrigin = 'anonymous'; im.decoding = 'async';
+    im.onload = () => { try {
+      const c = document.createElement('canvas'); c.width = PIC_W; c.height = PIC_H; const x = c.getContext('2d');
+      x.fillStyle = '#111'; x.fillRect(0, 0, PIC_W, PIC_H);
+      const iw = PIC_W - 6, ih = PIC_H - 12, k = Math.min(iw / im.width, ih / im.height), w = im.width * k, h = im.height * k;
+      x.imageSmoothingEnabled = true; x.drawImage(im, 3 + (iw - w) / 2, 3 + (ih - h) / 2, w, h);
+      x.fillStyle = '#d23'; x.fillRect(3, PIC_H - 8, PIC_W - 6, 5);
+      const d = x.getImageData(0, 0, PIC_W, PIC_H).data, out = new Uint8ClampedArray(PIC_W * PIC_H * 3);
+      for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { out[j] = d[i]; out[j + 1] = d[i + 1]; out[j + 2] = d[i + 2]; }
+      resolve(out);
+    } catch { resolve(null); } };
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+}
+
 // ── The renderer ──
-export function createShedCrawl(canvas, { scale = 4 } = {}) {
-  canvas.width = VIEW_W; canvas.height = VIEW_H;
-  const ctx = canvas.getContext('2d'), img = ctx.createImageData(VIEW_W, VIEW_H), zbuf = new Float32Array(VIEW_W);
-  let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
+// w x h: 240 x 96 for the overlay window; tall (180 x 320) for the green-screen background.
+export function createShedCrawl(canvas, { w: VW = VW, h: VH = VH, fov: FOV = 0.66 } = {}) {
+  canvas.width = VW; canvas.height = VH;
+  const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
+  let pics = [];
+  let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
   let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false;
   const listeners = { peek: () => {} };
   function setBoss(sourceCanvas) {
@@ -170,8 +202,10 @@ export function createShedCrawl(canvas, { scale = 4 } = {}) {
   }
   function set(next) {
     const floorChanged = first || next.floor !== state.floor || next.shed !== state.shed; first = false;
+    const forkChanged = (next.fork || '') !== (state.fork || '');
     state = { ...state, ...next };
-    if (floorChanged) { map = buildMap(state.floor); textures = makeTextures(PALETTES[state.shed] || PALETTES['GARDEN SHED']); props = propsFor(map.layout, state.floor); shown = 0; done = new Set(); }
+    if (forkChanged && !floorChanged) map = buildMap(state.floor, state.fork || '');
+    if (floorChanged) { map = buildMap(state.floor, state.fork || ''); textures = makeTextures(PALETTES[state.shed] || PALETTES['GARDEN SHED']); props = propsFor(map.layout, state.floor); shown = 0; done = new Set(); }
     target = state.phase === 'boss' ? 1 : Math.max(0, Math.min(1, state.pct / 100));
     if (floorChanged) shown = target;
   }
@@ -195,32 +229,36 @@ export function createShedCrawl(canvas, { scale = 4 } = {}) {
     draw();
   }
   function draw() {
-    const pose = poseAt(map.layout, shown), ang = pose.ang + look, fov = 0.66;
+    const pose = poseAt(map.layout, shown), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
-    const pal = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VIEW_H >> 1) + Math.round(Math.sin(bob) * 1.5);
+    const pal = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5);
     const boss = state.phase === 'boss';
     // Ceiling and floor: dark at the far end, lit by the flashlight up close.
-    for (let y = 0; y < VIEW_H; y++) {
-      const far = y < horizon ? (horizon - y) / horizon : (y - horizon) / (VIEW_H - horizon), base = y < horizon ? pal.ceil : pal.floor, k = 0.35 + 0.95 * far;
-      for (let x = 0; x < VIEW_W; x++) { const i = (y * VIEW_W + x) * 4, dither = ((x + y) & 1) * 4; data[i] = base[0] * k + dither; data[i + 1] = base[1] * k + dither; data[i + 2] = base[2] * k + dither; data[i + 3] = 255; }
+    for (let y = 0; y < VH; y++) {
+      const far = y < horizon ? (horizon - y) / horizon : (y - horizon) / (VH - horizon), base = y < horizon ? pal.ceil : pal.floor, k = 0.35 + 0.95 * far;
+      for (let x = 0; x < VW; x++) { const i = (y * VW + x) * 4, dither = ((x + y) & 1) * 4; data[i] = base[0] * k + dither; data[i + 1] = base[1] * k + dither; data[i + 2] = base[2] * k + dither; data[i + 3] = 255; }
     }
     // Walls: one ray per column (DDA).
-    for (let x = 0; x < VIEW_W; x++) {
-      const cam = 2 * x / VIEW_W - 1, rx = dirX + planeX * cam, ry = dirY + planeY * cam;
+    for (let x = 0; x < VW; x++) {
+      const cam = 2 * x / VW - 1, rx = dirX + planeX * cam, ry = dirY + planeY * cam;
       let mx = Math.floor(pose.x), my = Math.floor(pose.y);
       const ddx = Math.abs(1 / rx), ddy = Math.abs(1 / ry), sx = rx < 0 ? -1 : 1, sy = ry < 0 ? -1 : 1;
       let sdx = rx < 0 ? (pose.x - mx) * ddx : (mx + 1 - pose.x) * ddx, sdy = ry < 0 ? (pose.y - my) * ddy : (my + 1 - pose.y) * ddy, side = 0, cell = 0;
       for (let g = 0; g < 64 && !cell; g++) { if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; } cell = map.grid[my]?.[mx] ?? 1; }
       const dist = Math.max(0.05, side ? sdy - ddy : sdx - ddx); zbuf[x] = dist;
-      const h = Math.floor(VIEW_H / dist), top = Math.max(0, horizon - (h >> 1)), bot = Math.min(VIEW_H - 1, horizon + (h >> 1));
+      const h = Math.floor(VH / dist), top = Math.max(0, horizon - (h >> 1)), bot = Math.min(VH - 1, horizon + (h >> 1));
       let wx = side ? pose.x + dist * rx : pose.y + dist * ry; wx -= Math.floor(wx);
       // Flip on the walls seen from the other side, so signs read the right way.
-      let tx = Math.floor(wx * T); if ((!side && rx < 0) || (side && ry > 0)) tx = T - 1 - tx;
-      const t = textures[cell] || textures[1];
+      const flip = (!side && rx < 0) || (side && ry > 0);
+      // A photo wall: the store's item, framed; without photos, the wall's own texture.
+      const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 10) % pics.length] : null;
+      const tw = pic ? PIC_W : T, th = pic ? PIC_H : T;
+      let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
+      const t = pic || textures[cell >= 1000 ? cell % 10 : cell] || textures[1];
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
-      const light = Math.max(0.16, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1));
+      const light = Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt);
       for (let y = top; y <= bot; y++) {
-        const ty = Math.min(T - 1, Math.floor((y - horizon + (h >> 1)) * T / h)), ti = (ty * T + tx) * 3, i = (y * VIEW_W + x) * 4;
+        const ty = Math.min(th - 1, Math.floor((y - horizon + (h >> 1)) * th / h)), ti = (ty * tw + tx) * 3, i = (y * VW + x) * 4;
         data[i] = t[ti] * light + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light + pal.fog[2] * (1 - light);
       }
     }
@@ -230,18 +268,18 @@ export function createShedCrawl(canvas, { scale = 4 } = {}) {
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
       if (tY <= 0.15) return;
-      const scx = Math.floor((VIEW_W / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VIEW_H / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : 0.55)));
-      const floorY = horizon + Math.floor(VIEW_H / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
-      const light = Math.max(0.25, Math.min(1, 2 / (1 + tY * 0.42)));
-      for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VIEW_W, scx + (size >> 1)); sx++) {
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : 0.55)));
+      const floorY = horizon + Math.floor(VH / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
+      const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
+      for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
         if (tY > zbuf[sx]) continue;
         const u = (sx - (scx - (size >> 1))) / size;
-        for (let sy = Math.max(0, top); sy < Math.min(VIEW_H, top + size); sy++) {
+        for (let sy = Math.max(0, top); sy < Math.min(VH, top + size); sy++) {
           const v = (sy - top) / size; let col = null;
           if (s.kind === 'boss') { const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
           else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[kind][ch]; }
           if (!col) continue;
-          const i = (sy * VIEW_W + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
+          const i = (sy * VW + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
         }
       }
@@ -252,6 +290,8 @@ export function createShedCrawl(canvas, { scale = 4 } = {}) {
   }
   return {
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
+    // The store's item photos for the walls (from loadPicture).
+    setPictures(list) { pics = (list || []).filter(Boolean).slice(0, 24); },
     start() { if (!raf) raf = requestAnimationFrame(frame); },
     stop() { cancelAnimationFrame(raf); raf = 0; },
     // For tests: where the walker is.

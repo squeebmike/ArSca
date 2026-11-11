@@ -176,11 +176,11 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.equal(weaponById('nope'), null);
   for (const w of WEAPONS) assert.ok(!chanceWordIn(w.name + ' ' + w.hit), 'no game-of-chance words');
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
-  for (const k of ["if (kind === 'weapon') options = WEAPONS.map", "else if (kind === 'next')", "else if (kind === 'door')", "s.vote = null;", "vote: state.vote || null"]) assert.ok(room.includes(k), k);
+  for (const k of ["if (kind === 'weapon') options = WEAPONS.map", "else if (kind === 'next')", "else if (kind === 'door')", "s.vote = null;", "vote: state.vote ? { kind: state.vote.kind, question: state.vote.question"]) assert.ok(room.includes(k), k);
   for (const k of ["/live-studio/vote-open", "/live-studio/vote-pick", "/live-studio/vote-close"]) assert.ok(api.includes(k), k);
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
   assert.ok(html.includes('<section id="mana-crawl"') && html.includes('<section id="mana-vote"'));
-  assert.ok(ov.includes("fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:(d.chests||[]).map(c=>c.open)});"), 'the first-person crawl follows the floor and its mana');
+  assert.ok(ov.includes("fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),battery:batt,fork:d.fork||''});"), 'the first-person crawl follows the floor and its mana');
   assert.ok(html.includes('<canvas id="mana-fp" width="240" height="96" aria-hidden="true"></canvas>'));
   assert.ok(ov.includes("dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')"), 'hits show chat\'s weapon');
   assert.match(controls, /data-vote="weapon"/);
@@ -221,5 +221,51 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes("const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();"));
   assert.match(controls, /textarea name="chestGoals"/);
+}
+// 2026-11-11: green screen, item photos, chests on the path, FOUND IT!, the
+// fork, the battery, naming the floor and ByteRider trivia.
+{
+  const L = await import('../scripts/live-studio-dungeon.mjs');
+  const S = { ...DEFAULT_STUDIO, dungeonOn: true, manaFollow: 0, manaShare: 0, manaBookmark: 0, floorBase: 100, chestGoals: '3 follows: $1 start on a big book' };
+  assert.deepEqual(L.CHEST_AT, [0.16, 0.47, 0.8]);
+  let d = L.emptyDungeon(weekKey(WED));
+  d = L.addMana(d, 20, S, WED).dungeon;
+  assert.deepEqual(L.chestsToOpen(d, S).map(c => c.k), [], 'chest 1 has a chat goal: locked until 3 follows');
+  for (let i = 0; i < 3; i++) d = L.addTap(d, 'follow', S, WED).dungeon;
+  assert.deepEqual(L.chestsToOpen(d, S).map(c => c.k), [0], 'reached and the goal met: it opens');
+  d = L.openChest(d, 0, WED);
+  assert.deepEqual(L.chestsToOpen(d, S).map(c => c.k), [], 'once');
+  d = L.addMana(d, 30, S, WED).dungeon;
+  assert.deepEqual(L.chestsToOpen(d, S).map(c => c.k), [1], 'chest 2 has no goal: it opens when the crawl gets there');
+  assert.deepEqual(L.publicDungeon(L.openChest(d, 1, WED), S, 0, WED).opened, [0, 1]);
+  // The fork and the floor name.
+  d = L.adjustDungeon(d, { fork: 'left' }, WED); assert.equal(L.publicDungeon(d, S, 0, WED).fork, 'left');
+  assert.throws(() => L.adjustDungeon(d, { fork: 'up' }, WED), /Invalid fork/);
+  d = L.adjustDungeon(d, { name: '  the box   fort ' }, WED); assert.equal(L.publicDungeon(d, S, 0, WED).name, 'THE BOX FORT');
+  // Trivia: real questions, no chance words; the answer never goes to the overlay.
+  assert.ok(L.TRIVIA.length >= 15 && L.TRIVIA.every(t => t.q && t.a && !chanceWordIn(t.q + ' ' + t.a)));
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null"), 'the overlay gets the question, never the answer');
+  assert.ok(room.includes("return { ...this.publicState(s), triviaAnswer: s.vote.answer };"), 'the host sees the answer');
+  for (const k of ["else if (kind === 'dig')", "else if (kind === 'fork')", "openReachedChests(s, now)", "if (item) s.stage = { ...s.stage, next: [item, ...next] };"]) assert.ok(room.includes(k), k);
+  assert.ok(validateSettings({ triviaMana: 25, crawlWindow: true }));
+  // The 3D engine: any size, photo walls, battery, fork.
+  const fp = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  const { buildMap } = await import('../scripts/shed-crawl-fp.mjs');
+  assert.ok(buildMap(1).grid.flat().some(c => c >= 1000), 'racks and slab walls frame item photos');
+  assert.notDeepEqual(buildMap(1, 'left').grid, buildMap(1, 'right').grid, 'the fork changes the shed');
+  for (const k of ['export function loadPicture(src)', "im.crossOrigin = 'anonymous'", 'setPictures(list)', 'batt = 0.25 + 0.75']) assert.ok(fp.includes(k), k);
+  // The green screen is the crawl now.
+  const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
+  assert.ok(bg.includes("fpm.createShedCrawl(canvas, { w: 180, h: 320, fov: 0.5 })"));
+  assert.ok(bg.includes("painted = demo || params.get('painted') === '1'"));
+  // The image route only serves the inventory's own image hosts.
+  const w = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
+  assert.ok(w.includes("if (url.pathname === '/public/studio-img' && request.method === 'GET')") && w.includes("if (!okHost) return new Response('Host not allowed', { status: 403 });"));
+  // The overlay: the reveal spins the item; trivia in the banner.
+  const ov2 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), css = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
+  assert.ok(ov2.includes('react(e);revealItem(e);'));
+  assert.match(css, /@keyframes mana-reveal-spin\{to\{transform:rotateY\(360deg\)\}\}/);
+  assert.match(controls, /data-vote="dig"/); assert.match(controls, /id="mana-trivia"/); assert.match(controls, /id="mana-floor-name-go"/);
 }
 console.log('live-studio-dungeon: ok');

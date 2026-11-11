@@ -176,24 +176,52 @@ export function drawShed(x, { floor = 1, room = '', boss = false, t = 0 } = {}) 
 }
 
 // ── the page ────────────────────────────────────────────────────────────────
+// Store, 2026-11-11: "do green screen" -- by default this page is now the
+// first-person shed crawl (scripts/shed-crawl-fp.mjs), full screen behind the
+// top camera: it walks as the dungeon fills, the boss waits at the end, the
+// store's item photos hang on the racks and slab walls. #painted=1 brings back
+// the painted sheds; #demo=1 tours them.
 if (typeof document !== 'undefined' && document.getElementById('shed')) {
-  const canvas = document.getElementById('shed'), x = canvas.getContext('2d');
-  const params = new URLSearchParams(location.hash.slice(1));
-  // demo=1 tours every shed (and room) every few seconds; shed=N / room=id pin one.
-  const demo = params.get('demo') === '1';
-  let view = { floor: Math.max(1, Number(params.get('shed')) || 1), room: params.get('room') || '', boss: params.get('boss') === '1' };
-  let label = document.getElementById('shed-label');
-  const start = performance.now();
-  function frame(now) {
-    const t = (now - start) / 1000;
-    if (demo) { const k = Math.floor(t / 4); view = { floor: (k % SCENE_COUNT) + 1, room: ROOMS[k % ROOMS.length].id, boss: k % 3 === 2 }; }
-    drawShed(x, { ...view, t });
-    if (label) label.textContent = demo ? shedFor(view.floor) + ' + ' + ROOMS.find(r => r.id === view.room)?.name + (view.boss ? ' (BOSS)' : '') : '';
-    requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
-  // Live: the same read-only overlay link (#worker=…&store=…&token=…).
+  const canvas = document.getElementById('shed'), params = new URLSearchParams(location.hash.slice(1));
+  const demo = params.get('demo') === '1', painted = demo || params.get('painted') === '1';
   const token = params.get('token'), store = params.get('store'), endpoint = params.get('worker');
+  let label = document.getElementById('shed-label');
+  let view = { floor: Math.max(1, Number(params.get('shed')) || 1), room: params.get('room') || '', boss: params.get('boss') === '1' };
+  let onState = () => {};
+  if (painted) {
+    const x = canvas.getContext('2d'), start = performance.now();
+    const frame = now => {
+      const t = (now - start) / 1000;
+      if (demo) { const k = Math.floor(t / 4); view = { floor: (k % SCENE_COUNT) + 1, room: ROOMS[k % ROOMS.length].id, boss: k % 3 === 2 }; }
+      drawShed(x, { ...view, t });
+      if (label) label.textContent = demo ? shedFor(view.floor) + ' + ' + ROOMS.find(r => r.id === view.room)?.name + (view.boss ? ' (BOSS)' : '') : '';
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+    onState = m => { const d = m.stats?.dungeon; if (d) view = { floor: d.floor, room: d.room?.id || '', boss: d.phase === 'boss' }; };
+  } else {
+    // The crawl, tall: 180 x 320 drawn 6x (1080 x 1920).
+    Promise.all([import('./shed-crawl-fp.mjs'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
+      const fp = fpm.createShedCrawl(canvas, { w: 180, h: 320, fov: 0.5 });
+      const bossCanvas = document.createElement('canvas');
+      let stats = null, stage = { now: null, next: [] }, offset = 0, bossId = '', picKey = '';
+      const img = u => { try { return endpoint ? new URL(endpoint).origin + '/public/studio-img?u=' + encodeURIComponent(u) : u; } catch { return u; } };
+      const paint = () => {
+        const d = stats?.dungeon; if (!d) return;
+        const last = Math.max(Number(stats.lastSaleAt) || 0, Number(d.lastAt) || 0), battery = last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / (6 * 60000))) : 1;
+        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), battery, fork: d.fork || '' });
+        if (bossId !== d.boss.character) { bossId = d.boss.character; void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
+        const urls = [stage.now, ...(stage.next || [])].filter(x => x && x.image).map(x => x.image).slice(0, 12), key = urls.join('|');
+        if (key !== picKey) { picKey = key; Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list)); }
+      };
+      onState = m => { if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; paint(); };
+      setInterval(paint, 5000);
+      fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
+      fp.start();
+      window.shedCrawl = fp;
+    }).catch(e => console.warn('[shed] crawl off:', e?.message || e));
+  }
+  // Live: the same read-only overlay link (#worker=…&store=…&token=…).
   let retry = 0;
   function connect() {
     if (!endpoint || !store || !token) return;
@@ -201,7 +229,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'; url.pathname = '/live-studio/socket'; url.search = '?store_id=' + encodeURIComponent(store); url.hash = '';
     const socket = new WebSocket(url);
     socket.onopen = () => socket.send(JSON.stringify({ token }));
-    socket.onmessage = ev => { try { const m = JSON.parse(ev.data); retry = 0; const d = m.stats?.dungeon; if (d) view = { floor: d.floor, room: d.room?.id || '', boss: d.phase === 'boss' }; } catch {} };
+    socket.onmessage = ev => { try { const m = JSON.parse(ev.data); retry = 0; onState(m); } catch {} };
     socket.onclose = ev => { if (ev.code === 1008) return; setTimeout(connect, Math.min(30000, 1000 * 2 ** Math.min(retry++, 5))); };
   }
   if (!demo) connect();
