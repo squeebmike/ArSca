@@ -91,7 +91,7 @@ assert.equal(other.status, 403, 'another store (the pilot) cannot see it');
 
 // Wiring.
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.match(worker, /if \(url\.pathname === '\/whatnot\/webhook' && request\.method === 'POST'\) \{\s*return await handleWhatnotWebhook\(request, env, \{ json, onEvent: [^\n]*background: p => ctx\?\.waitUntil\?\.\(p\) \}\);/);
+assert.match(worker, /if \(url\.pathname === '\/whatnot\/webhook' && request\.method === 'POST'\) \{\s*return await handleWhatnotWebhook\(request, env, \{ json, onEvent: [^\n]*background: p => ctx\?\.waitUntil\?\.\(p\)[^\n]*\}\);/);
 assert.match(worker, /whatnot: !!env\.WHATNOT_API_KEY,/, '/health says whether the key is set');
 const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
 assert.match(app, /\{id:'whatnot',group:'online',feature:'whatnot',label:'Whatnot'/);

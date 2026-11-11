@@ -52,7 +52,7 @@ export class ManaLiveStudio extends DurableObject {
     s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), stage:s.stage, serverNow:now });
-    return this.publicState(s);
+    return { ...this.publicState(s), ...this.takeChest(s) };
   }
   // Manual: + $ mana (a sale off Whatnot), set the floor, or start the week over.
   dungeonAdjust(input = {}) {
@@ -72,7 +72,7 @@ export class ManaLiveStudio extends DurableObject {
     if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast(fx ? { type:'effect', effect:s.effect, stats:this.publicStats(s), stage:s.stage, serverNow:now } : { type:'stats', stats:this.publicStats(s), serverNow:now });
-    return this.publicState(s);
+    return { ...this.publicState(s), ...this.takeChest(s) };
   }
   // CHAT PICKS (2026-11-11): the overlay shows numbered choices, chat types a
   // number in Whatnot's chat, and the host taps the winner. Doors, the hero's
@@ -143,13 +143,17 @@ export class ManaLiveStudio extends DurableObject {
       const next = [...(s.stage.next || [])];
       let best = -1; next.forEach((n, i) => { if (best < 0 || (Number(n.price) || 0) > (Number(next[best].price) || 0)) best = i; });
       const [item] = best >= 0 ? next.splice(best, 1) : [];
-      if (item) s.stage = { ...s.stage, next: [item, ...next] };
+      // It runs now (store, 2026-11-11: "run that item automatically after it's
+      // revealed"): NOW PLAYING, and what was playing goes back to the front of NEXT UP.
+      if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; }
       // Nothing in it (no item in NEXT UP, no goal's reward): it opens quietly.
       if (!item && !c.goal) continue;
       fx = { kind: 'chest', chestText: c.goal?.text || '$1 START!', chestGoal: c.goal ? 'CHAT HIT ' + c.goal.n + ' ' + c.goal.kind.toUpperCase() + 'S' : 'CHEST ' + (c.k + 1) + ' OF 3', ...(item ? { item } : {}) };
     }
     return fx;
   }
+  // The chest item that just opened (once), for the Worker to add to the Whatnot show.
+  takeChest(s) { const it = this.chestItem; this.chestItem = null; return it ? { chestItem: it, showId: s.settings.showId || '' } : {}; }
   closeVote() {
     const s = this.read(); s.vote = null; this.write(s);
     this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:Date.now() });
@@ -275,7 +279,7 @@ export class ManaLiveStudio extends DurableObject {
     if (followed) this.broadcast({ type:'state', ...this.publicState(s) });
     if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage}:{}),serverNow:now});
     else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),serverNow:now});
-    return {ok:true};
+    return {ok:true, ...this.takeChest(s)};
   }
   async fetch(request) {
     if (request.headers.get('Upgrade')?.toLowerCase() !== 'websocket') return new Response('WebSocket required',{status:426});

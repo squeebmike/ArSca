@@ -13617,7 +13617,7 @@ async function routeRequest(request, env, ctx) {
     // Whatnot Seller API: events Whatnot sends, and their status for Settings
     // (scripts/whatnot-api.mjs).
     if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
-      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)), background: p => ctx?.waitUntil?.(p) });
+      return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)), background: p => ctx?.waitUntil?.(p), chestToWhatnot: (storeId, item, showId) => chestItemToWhatnotShow(env, ctx, storeId, item, showId) });
     }
     if (url.pathname.startsWith('/live-studio/')) {
       const whatnotFor = storeId => storeId === whatnotStoreId(env) && env.WHATNOT_API_KEY ? whatnotClient(env) : null;
@@ -13625,6 +13625,7 @@ async function routeRequest(request, env, ctx) {
         // The show's orders from the last day, for SYNC TOTALS.
         showOrders: async (storeId, showId) => { const api = whatnotFor(storeId); if (!api) throw new Error('Whatnot is not connected'); return whatnotShowOrders(api, showId, new Date(Date.now() - 86400000).toISOString()); },
         currentShow: async storeId => { const api = whatnotFor(storeId); if (!api) throw new Error('Whatnot is not connected'); return currentWhatnotShow(api); },
+        chestToWhatnot: (storeId, item, showId) => chestItemToWhatnotShow(env, ctx, storeId, item, showId),
       }, url);
     }
     if (url.pathname === '/whatnot/status' && request.method === 'GET') {
@@ -20365,6 +20366,20 @@ async function runScheduledPokemonServerSync(env) {
 // Every 10 minutes: checked items pushed to Whatnot (quantity and price),
 // and recent Whatnot orders recorded in case a webhook was missed.
 const WHATNOT_SYNC_CRON = '*/10 * * * *';
+// A treasure chest's item into the Whatnot show as a $1-start auction
+// (2026-11-11). Same path as SHOW PREP's LINE IT UP; only the store's own
+// inventory items set to sell on Whatnot can go in.
+async function chestItemToWhatnotShow(env, ctx, storeId, item, showId) {
+  if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return { error: 'Whatnot is not connected' };
+  if (!/^[0-9a-f-]{36}$/i.test(String(item?.id || '')) || !/^[0-9a-f-]{36}$/i.test(String(showId || ''))) return { error: 'No inventory item or show' };
+  const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
+  const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
+  const results = await addItemsToWhatnotShow([item.id], showId, { ...deps,
+    rows: async ids => (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [],
+    profileId: kind => profileIds[kind] || '',
+    saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { starts: { [item.id]: 1 } });
+  return results[0] || { error: 'Not added' };
+}
 function whatnotDeps(env, ctx, storeId) {
   return {
     storeId,

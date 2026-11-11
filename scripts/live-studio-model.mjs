@@ -189,7 +189,7 @@ const cleanText = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').tri
 const cleanUrl = v => { const s = String(v || '').trim(); return /^https:\/\/[^\s"'<>]{1,600}$/.test(s) ? s : ''; };
 export function validateStage(input) {
   if (!input || typeof input !== 'object') throw new Error('Stage required');
-  const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price) } : null;
+  const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price), ...(/^[0-9a-f-]{36}$/i.test(String(v.id || '')) ? { id: String(v.id) } : {}) } : null;
   const now = item(input.now);
   const next = Array.isArray(input.next) ? input.next.slice(0, 60).map(item).filter(x => x && x.title) : [];
   for (const t of [now?.title, now?.detail, ...next.map(n => n.title)]) { const w = chanceWordIn(t); if (w) throw new Error(`"${w}" reads as a game of chance -- Whatnot doesn't allow those.`); }

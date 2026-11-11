@@ -334,4 +334,18 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(ov5.includes("fpLib.drawSprite(k,'chest',10);") && ov5.includes("fpLib.drawSprite(k,'chestopen',10)"), 'the chest shows shut, then pops open');
   assert.match(css5, /@keyframes mana-item-rise\{0%\{transform:translateY\(330px\) scale\(\.18\)/);
 }
+// 2026-11-11: chests run their item -- NOW PLAYING at once and into the
+// Whatnot show as a $1 start -- and the remote connects on its own.
+{
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8'), w = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8'), wn = readFileSync(new URL('../scripts/whatnot-api.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; }"), 'the chest item is NOW PLAYING');
+  assert.ok(room.includes('return {ok:true, ...this.takeChest(s)};'));
+  assert.ok(api.includes('if (r?.chestItem?.id && r.showId && deps.chestToWhatnot)') && wn.includes('deps.chestToWhatnot ? deps.chestToWhatnot(storeId, r.chestItem, r.showId)'));
+  assert.ok(w.includes("{ starts: { [item.id]: 1 } });"), 'a $1 start in the show');
+  const { validateStage } = await import('../scripts/live-studio-model.mjs');
+  assert.equal(validateStage({ now: { title: 'X', id: '0f9dd4bc-42a7-487e-a972-2905d24513e9' }, next: [{ title: 'Y', id: 'bad' }] }).now.id, '0f9dd4bc-42a7-487e-a972-2905d24513e9');
+  assert.equal(validateStage({ now: null, next: [{ title: 'Y', id: 'bad' }] }).next[0].id, undefined);
+  assert.ok(controls.includes("let id=store();if(body && (!connectedStore || connectedStore!==id)){await connect();id=store();}"), 'a tap while disconnected connects first');
+  assert.ok(controls.includes('(function autoConnect(tries){'));
+}
 console.log('live-studio-dungeon: ok');

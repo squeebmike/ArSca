@@ -90,7 +90,7 @@ export function lineupTotals(lineup = []) {
 }
 // For Live Studio: NOW PLAYING is the first, the rest are NEXT.
 export function lineupStage(lineup = []) {
-  const item = e => ({ title: e.title, detail: e.detail || '', image: e.image || '', price: e.price || 0 });
+  const item = e => ({ title: e.title, detail: e.detail || '', image: e.image || '', price: e.price || 0, ...(e.id ? { id: e.id } : {}) });
   const [first, ...rest] = lineup;
   return { now: first ? item(first) : null, next: rest.map(item) };
 }

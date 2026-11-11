@@ -102,14 +102,17 @@
   function store(){return typeof getActiveStoreId==='function'?getActiveStoreId():'';}
   async function api(path,body){
     if(typeof storeWorkerFetch!=='function')throw Error('Dashboard is still loading');
-    const id=store();if(body && (!connectedStore || connectedStore!==id))throw Error('Store changed. Connect again before controlling the sign.');
+    // Not connected yet (a reload) or the dashboard switched stores: connect to
+    // the store that's open now first, then do what was tapped (2026-11-11:
+    // the remote said 'Store changed' and the buttons did nothing).
+    let id=store();if(body && (!connectedStore || connectedStore!==id)){await connect();id=store();}
     const res=await storeWorkerFetch('/live-studio/'+path+'?store_id='+encodeURIComponent(id),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});
     const d=await res.json();if(!res.ok||!d.ok)throw Error(d.conflict?'Settings changed in another controller. Reload before saving.':d.error||'Live Studio unavailable');
     if(store()!==id)throw Error('Store changed. Connect again.');return d;
   }
   const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
   function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}preview();}
-  function took(d){if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}preview();}
+  function took(d){if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}preview();}
   // The dungeon's status line: floor, mana, stars, the week's reset.
   function paintDungeon(){
     const d=stats?.dungeon,el=host.querySelector('#mana-dungeon-status'),pick=host.querySelector('#mana-doors-pick');pick.replaceChildren();
@@ -129,7 +132,10 @@
   // The green-screen shed sits behind the top camera in the preview too (2026-11-11).
   function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:demoStats||stats||undefined,effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
-  host.querySelector('#mana-load').onclick=()=>run(async()=>{const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{});loadFacts();});
+  async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{});loadFacts();return d;}
+  host.querySelector('#mana-load').onclick=()=>run(connect);
+  // Connect on its own once the dashboard is signed in.
+  (function autoConnect(tries){if(connectedStore)return;if(typeof storeWorkerFetch==='function'&&store()){connect().catch(()=>{if(tries<5)setTimeout(()=>autoConnect(tries+1),4000);});}else if(tries<20)setTimeout(()=>autoConnect(tries+1),1500);})(0);
   // What ByteRider knows on the website (Worker: /byterider/facts).
   const factsBox=host.querySelector('#mana-br-facts'),factsStatus=host.querySelector('#mana-br-facts-status');
   async function factsCall(body){const res=await storeWorkerFetch('/byterider/facts?store_id='+encodeURIComponent(store()),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Could not reach ByteRider');return d;}
@@ -209,7 +215,7 @@
   function stageItem(i){
     const price=Number(i.market||i.marketPrice||i.salePrice||0)||0;
     const detail=[i.set,i.variant,i.grader&&i.grade?i.grader+' '+i.grade:'',i.condition].filter(Boolean).join(' · ');
-    return {title:String(i.name||'').slice(0,90),detail:detail.slice(0,90),image:https(i.thumbnail)||https(i.imageUrl)||https(i.photoDataUrl),price};
+    return {title:String(i.name||'').slice(0,90),detail:detail.slice(0,90),image:https(i.thumbnail)||https(i.imageUrl)||https(i.photoDataUrl),price,...(i.source==='built_in'&&/^[0-9a-f-]{36}$/i.test(String(i.id||''))?{id:i.id}:{})};
   }
   function paintStage(){
     const el=host.querySelector('#mana-stage');el.replaceChildren();
