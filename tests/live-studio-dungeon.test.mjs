@@ -286,4 +286,11 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(ov3.includes("paintCrawl(d,center);paintForeground(d,center);"));
   assert.ok(ov3.includes("fgSide($('mana-fg-r'),ph,'chest',1,fgOpened.includes(near));"), 'the chest passes by in front, open once opened');
 }
+// The setup preview shows the green-screen shed behind the top camera (2026-11-11).
+{
+  assert.ok(controls.includes('<iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" src="shed-background.html#preview=1"></iframe>'));
+  assert.ok(controls.includes("host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);"));
+  const bg2 = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
+  assert.ok(bg2.includes("if (ev.source !== parent || ev.origin !== location.origin || ev.data?.type !== 'mana-preview') return;"), 'only its own dashboard can drive the preview');
+}
 console.log('live-studio-dungeon: ok');

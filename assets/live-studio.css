@@ -366,3 +366,7 @@ body.mana-center #mana-crawl.bar{transform:translateY(342px)}
 #mana-fg canvas{position:absolute;bottom:0;width:240px;height:240px;image-rendering:pixelated;transform-origin:50% 100%;transition:none}
 #mana-fg-l{left:40px}
 #mana-fg-r{right:40px}
+
+/* The green-screen shed behind the top camera in Live Studio's preview (under the overlay). */
+.mana-controls iframe.mana-preview-bg{z-index:0;clip-path:inset(0 0 56% 0);pointer-events:none}
+.mana-controls .mana-preview iframe:first-child{z-index:1}
