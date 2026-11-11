@@ -35,7 +35,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true})});
     // Chat picks: open a vote, tap the winner, or close it.
     if (url.pathname==='/live-studio/vote-open') return deps.json({ok:true,...await room.openVote(String(body.kind||''))});
-    if (url.pathname==='/live-studio/vote-pick') return deps.json({ok:true,...await room.pickVote(Number(body.index))});
+    if (url.pathname==='/live-studio/vote-pick') return deps.json({ok:true,...await room.pickVote(Number(body.index),String(body.who||''))});
     if (url.pathname==='/live-studio/vote-close') return deps.json({ok:true,...await room.closeVote()});
     if (url.pathname==='/live-studio/trivia') return deps.json({ok:true,...await room.askTrivia({question:String(body.question||''),answer:String(body.answer||'')})});
     if (url.pathname==='/live-studio/floor-name') return deps.json({ok:true,...await room.nameFloor(String(body.name||''))});

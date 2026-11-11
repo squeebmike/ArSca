@@ -92,7 +92,7 @@ export class ManaLiveStudio extends DurableObject {
     this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:now });
     return this.publicState(s);
   }
-  pickVote(index) {
+  pickVote(index, who = '') {
     const s = this.read(), now = Date.now(), v = s.vote;
     if (!v) throw new Error('Vote: nothing is open');
     const opt = v.options[index];
@@ -103,7 +103,7 @@ export class ManaLiveStudio extends DurableObject {
     else if (v.kind === 'fork') s.dungeon = adjustDungeon(s.dungeon, { fork: opt.id }, now);
     let fx = null;
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
-    if (v.kind === 'trivia') { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: this.triviaWho || '', mana: Number(s.settings.triviaMana) || 0 }); }
+    if (v.kind === 'trivia') { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
     s.effect = fx || makeEffect('mascot', s.settings, now, { mascotState: 'happy', say: 'CHAT PICKED: ' + opt.label.replace(/^\S+\s/, '') });
     this.write(s);
