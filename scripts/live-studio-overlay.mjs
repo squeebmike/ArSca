@@ -2,10 +2,6 @@ import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats,
 import {bossById, drawBoss} from './live-studio-bosses.mjs';
 import {createByteRider} from './byterider.mjs';
 import {roomById} from './live-studio-dungeon.mjs';
-// The hero who crawls the hallway: an original 16x16 pixel knight (ByteRider green visor).
-const HERO=['......aaaa......','.....abbbba.....','....abbbbbba....','....abggggba....','....abgkkgba....','....abbbbbba....','.....abbbba.....','...aaccccccaa...','..acccddddccca..','..acc.dddd.cca..','..aa..dddd..aa..','......cc.cc.....','......cc.cc.....','.....aaa.aaa....','................','................'];
-const HERO_COLORS={a:'#0b0612',b:'#9aa3b5',c:'#6f1fac',d:'#d9b23a',g:'#b4ff3a',k:'#0b0612'};
-function drawHero(canvas,frame){const c=canvas.getContext('2d');c.clearRect(0,0,32,32);HERO.forEach((row,y)=>[...row].forEach((ch,x)=>{if(ch==='.')return;let yy=y;if(frame&&y>=11)yy+=(x<8?-1:1)*(y>=13?1:0);c.fillStyle=HERO_COLORS[ch];c.fillRect(x*2,yy*2,2,2);}));}
 const $=id=>document.getElementById(id);
 const sign=$('mana-sign'), text=$('mana-message'), effectEl=$('mana-effect'), coins=$('mana-coins');
 const hud=$('mana-hud'), boss=$('mana-boss'), card=$('mana-card'), queue=$('mana-queue');
@@ -64,7 +60,7 @@ function apply(s) {
   const qx=settings.cardX+400<=760?settings.cardX+400:Math.max(0,settings.cardX), qy=settings.cardX+400<=760?settings.cardY+70:Math.max(0,settings.cardY-230);
   place(queue,qx,qy);
   // Center stage: the boss stands just above the sign's mana bar.
-  $('mana-arena').style.top=Math.max(0,settings.y-330)+'px';$('mana-crawl').style.top=Math.max(0,settings.y-230)+'px';
+  $('mana-arena').style.top=Math.max(0,settings.y-330)+'px';$('mana-crawl').style.top=Math.max(0,settings.y-404)+'px';
   // Bursts are centered on the sign.
   const cx=settings.x+settings.width/2, cy=settings.y+settings.height/2;
   Object.assign(effectEl.style,{left:Math.max(0,Math.min(1080-900,cx-450))+'px',top:Math.max(0,Math.min(1920-640,cy-320))+'px',width:'900px',height:'640px'});
@@ -96,6 +92,7 @@ function paintStats(next,fromSale) {
     if(d&&!b.show){const m=document.createElement('b');m.textContent='+'+usd(stats.gross-before);$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);}
     if(b.show){
       boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');bossView?.hit();
+      const cr=$('mana-crawl');cr.classList.remove('hit');void cr.offsetWidth;cr.classList.add('hit');
       const dmg=document.createElement('b');const wpn=d?.weapon;dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')+'-'+usd(stats.gross-before);$('mana-boss-hits').append(dmg);setTimeout(()=>dmg.remove(),1500);
     }
   }
@@ -124,23 +121,24 @@ function paintDungeon(d){
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
 }
-// THE CRAWL (2026-11-11: "it needs to feel more like crawling through the
-// dungeon"): a torch-lit hallway over the sign. The hero walks toward the
-// boss door as mana fills; the door glows when the boss is near.
-let heroFrame=0,heroWalkUntil=0,lastHeroPct=-1;
-for(let i=0;i<5;i++){const t=document.createElement('i');t.style.left=(8+i*21)+'%';t.style.animationDelay=-(i*0.37)+'s';$('mana-crawl-torches')?.append(t);}
-setInterval(()=>{const h=$('mana-hero');if(!h)return;const walking=Date.now()<heroWalkUntil;$('mana-crawl').classList.toggle('walking',walking);if(walking){heroFrame^=1;drawHero(h,heroFrame);}},180);
+// THE SHED CRAWL, first person (2026-11-11: "like doom visuals ... walking
+// through halls, rooms ... looking for and through shit"): scripts/shed-crawl-fp.mjs.
+// Mana walks you down the floor's hallways; it stops to rummage at fixed
+// spots; the boss waits in the last room. The weapon chat picked is in hand.
+let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
+import('./shed-crawl-fp.mjs').then(m=>{fp=m.createShedCrawl($('mana-fp'));
+  fp.onPeek(t=>{const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');});
+  fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 function paintCrawl(d,center){
-  // In a boss fight the door stands open and the hero waits at it.
-  const el=$('mana-crawl');const show=!!d&&center;el.classList.toggle('mana-hidden',!show);el.classList.toggle('boss',!!d&&d.phase==='boss');
-  if(!show){lastHeroPct=-1;return;}
-  const pct=d.phase==='boss'?18:Math.max(0,Math.min(100,d.pct));
-  if(lastHeroPct>=0&&pct>lastHeroPct)heroWalkUntil=Date.now()+1600;
-  if(lastHeroPct<0)drawHero($('mana-hero'),0);
-  lastHeroPct=pct;
-  el.style.setProperty('--hero',String(pct));
-  el.classList.toggle('near',pct>=75);
-  const w=d.weapon;$('mana-crawl-weapon').textContent=w?w.icon+' '+w.name:'';
+  const el=$('mana-crawl'),show=!!d&&center;el.classList.toggle('mana-hidden',!show);el.classList.toggle('boss',!!d&&d.phase==='boss');
+  if(!show){if(fpOn){fp?.stop();fpOn=false;}return;}
+  if(fp){
+    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase});
+    if(fpBoss!==d.boss.character){fpBoss=d.boss.character;void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
+    if(!fpOn){fp.start();fpOn=true;}
+  }
+  const w=d.weapon;$('mana-crawl-weapon').textContent=(w?w.icon+' '+w.name+'  ·  ':'')+'FLOOR '+d.floor+' · '+d.shed;
+  $('mana-fp-hand').textContent=w?w.icon:'🔦';
 }
 // CHAT PICKS: the numbered choices chat votes on (the host taps the winner).
 // An open door vote shows on its own.
@@ -159,7 +157,9 @@ let mapKey='';
 function paintMap(d){
   const el=$('mana-map');el.classList.toggle('mana-hidden',!d||settings.showMap===false);
   if(!d)return;
-  el.style.left=(Number(settings.mapX)||0)+'px';el.style.top=(Number(settings.mapY)||0)+'px';
+  // Center stage: the map moves under the sign, out of the crawl's way.
+  const centered=document.body.classList.contains('mana-center');
+  el.style.left=(centered?800:Number(settings.mapX)||0)+'px';el.style.top=(centered?settings.y+225:Number(settings.mapY)||0)+'px';
   const key=JSON.stringify([d.map,d.doors,d.relics]);if(key===mapKey)return;mapKey=key;
   const doors=$('mana-doors');doors.replaceChildren();
   if(d.doors){const b=document.createElement('b');b.textContent='CHAT: PICK A DOOR!';const row=document.createElement('div');
