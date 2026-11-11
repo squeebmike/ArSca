@@ -293,4 +293,16 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const bg2 = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
   assert.ok(bg2.includes("if (ev.source !== parent || ev.origin !== location.origin || ev.data?.type !== 'mana-preview') return;"), 'only its own dashboard can drive the preview');
 }
+// 2026-11-11: "still don't see items playing next ... nothing happens when I hit
+// the buttons ... can it use the names of users?" -- NOW PLAYING / NEXT UP is in
+// the remote, messages and errors show there, it refreshes while connected,
+// and trivia takes the winner's username.
+{
+  const remote = controls.slice(controls.indexOf('<section class="mana-remote"'), controls.indexOf('<details class="mana-all"'));
+  for (const id of ['id="mana-find"', 'id="mana-stage"', 'id="mana-next"', 'id="mana-remote-msg"', 'id="mana-trivia-who"', 'id="mana-doors-pick"', 'id="mana-vote-pick"']) assert.ok(remote.includes(id), id + ' is in the remote');
+  assert.ok(controls.includes("new MutationObserver(()=>{const m=host.querySelector('#mana-remote-msg');if(m)m.textContent=status.textContent;})"));
+  assert.ok(controls.includes("if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});"), 'never overwrites settings being typed');
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes('pickVote(index, who = \'\')') && api.includes("room.pickVote(Number(body.index),String(body.who||''))"));
+}
 console.log('live-studio-dungeon: ok');

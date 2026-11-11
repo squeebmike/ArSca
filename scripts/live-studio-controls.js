@@ -12,14 +12,21 @@
   host.innerHTML=`<h2>Mana Pocket • Live Studio</h2><p id="mana-status" role="status">Connect to load your live sign settings.</p><button id="mana-load">Connect / reload</button>
   <section class="mana-remote" aria-label="Show remote">
   <div class="mana-remote-status"><b id="mana-remote-floor">Tap CONNECT to start</b><span id="mana-remote-score"></span></div>
+  <p id="mana-remote-msg" class="mana-remote-msg" role="status"></p>
+  <div class="mana-remote-pick"><div class="mana-row" id="mana-doors-pick"></div><div class="mana-row" id="mana-vote-pick"></div><div class="mana-row mana-trivia-who" hidden><input id="mana-trivia-who" maxlength="30" placeholder="Who got it? (their username, optional)"></div></div>
   <div class="mana-remote-grid">
     <button type="button" data-click="#mana-load">🔌 CONNECT</button><button type="button" data-click="#mana-show">📺 USE LIVE SHOW</button><button type="button" data-click="#mana-trivia">❓ TRIVIA</button>
     <button type="button" class="tap" data-click="#mana-taps [data-tap=follow]">➕ FOLLOW</button><button type="button" class="tap" data-click="#mana-taps [data-tap=share]">➕ SHARE</button><button type="button" class="tap" data-click="#mana-taps [data-tap=bookmark]">➕ BOOKMARK</button>
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button>
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
   </div>
-  <div class="mana-remote-pick"><div class="mana-row" id="mana-doors-pick"></div><div class="mana-row" id="mana-vote-pick"></div></div>
-  <small>Chat votes in Whatnot's chat; the winner buttons show up right here. Everything else is in ALL SETTINGS below.</small>
+  <h3>Now playing &amp; next up</h3>
+  <small>What's on screen as NOW PLAYING and NEXT STAGE (and what goes in the chests). Show Prep's LINE IT UP fills it; or find items here.</small>
+  <div class="mana-row"><input id="mana-find" placeholder="Find an item in inventory to add…" autocomplete="off"></div>
+  <div id="mana-found" class="mana-found"></div>
+  <div id="mana-stage" class="mana-stage"></div>
+  <div class="mana-row"><button type="button" id="mana-next">NEXT ITEM ▶</button><button type="button" id="mana-stage-clear">CLEAR NOW PLAYING</button></div>
+  <small>Chat votes in Whatnot's chat; the winner buttons show up at the top of this box. Everything else is in ALL SETTINGS below.</small>
   </section>
   <details class="mana-all" id="mana-all"><summary>⚙ ALL SETTINGS — set these up before the show</summary>
   <form id="mana-form">
@@ -56,11 +63,6 @@
   <small class="mana-rules">Whatnot rules: make the reward something for <b>everyone watching</b> -- a $1 start on a grail, a box opened on stream, or a free giveaway in Whatnot's giveaway tool (free to enter). Not a prize only buyers can win, and nothing tied to how much someone spends. No wheels, spins, raffles or random pulls -- the overlay won't save words for those.</small>
   ${box('showBoss','Show the boss bar')}
   <label>Boss look<select name="bossStyle"><option value="ps1">PS1 (pixelated, wobbly, blows apart)</option><option value="n64">N64 (smooth and shiny)</option></select></label>
-  <h3>Now playing</h3>
-  <div class="mana-row"><input id="mana-find" placeholder="Find an item in inventory…" autocomplete="off"></div>
-  <div id="mana-found" class="mana-found"></div>
-  <div id="mana-stage" class="mana-stage"></div>
-  <div class="mana-row"><button type="button" id="mana-next">NEXT ITEM ▶</button><button type="button" id="mana-stage-clear">CLEAR NOW PLAYING</button></div>
   ${box('autoAdvance','When an auction sells, move to the next item lined up')}
   ${box('bigArt','BIG PHOTO: fill the bottom camera with the item\'s photo')}
   <div class="mana-grid">${num('bigArtY','Big photo top',0,1400)}</div>
@@ -113,11 +115,13 @@
     const d=stats?.dungeon,el=host.querySelector('#mana-dungeon-status'),pick=host.querySelector('#mana-doors-pick');pick.replaceChildren();
     // An open chat vote: one button per choice, and CLOSE.
     const vp=host.querySelector('#mana-vote-pick');vp.replaceChildren();
-    if(stats?.vote){stats.vote.options.forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.textContent='WINNER '+(i+1)+': '+o.label;b.onclick=()=>run(async()=>{const x=await api('vote-pick',{index:i});took(x);if(x.effect)preview(x.effect);status.textContent='Chat picked '+o.label+'.';});vp.append(b);});
+    if(stats?.vote){stats.vote.options.forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(stats.vote.kind==='trivia'?'':(i+1)+' → ')+o.label;b.onclick=()=>run(async()=>{const who=host.querySelector('#mana-trivia-who')?.value.trim()||'';const x=await api('vote-pick',{index:i,who});if(who)host.querySelector('#mana-trivia-who').value='';took(x);if(x.effect)preview(x.effect);status.textContent='Chat picked '+o.label+'.';});vp.append(b);});
       const c=document.createElement('button');c.type='button';c.textContent='CLOSE VOTE';c.onclick=()=>run(async()=>{took(await api('vote-close',{}));});vp.append(c);}
+    host.querySelector('.mana-trivia-who').hidden=stats?.vote?.kind!=='trivia';
+    host.querySelector('.mana-remote').classList.toggle('voting',!!(stats?.vote||d?.doors));
     if(!d){el.textContent='Connect to see the floor.';return;}
     // Chat's vote: one button per door.
-    if(d.doors)d.doors.forEach((r,i)=>{const b=document.createElement('button');b.type='button';b.textContent='DOOR '+(i+1)+': '+r.icon+' '+r.name;
+    if(d.doors)d.doors.forEach((r,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+' → '+r.icon+' '+r.name;
       b.onclick=()=>run(async()=>{const x=await api('dungeon-adjust',{door:i});took(x);if(x.effect)preview(x.effect);status.textContent='Chat picked '+r.name+'.';});pick.append(b);});
     el.textContent=(d.on?'':'(off) ')+'Floor '+d.floor+' · '+d.shed+(d.room?' · '+d.room.name:'')+' · '+(d.phase==='boss'?d.boss.name+' HP '+usd(d.boss.hp)+' / '+usd(d.boss.max):usd(d.mana)+' / '+usd(d.goal)+' mana')+' · ★ '+d.stars+' · relics '+(d.relics?.length||0)+(d.doors?' · DOOR VOTE OPEN':'')+(d.finale?' · FINALE':'')+' · resets Wed '+d.resets+(d.lastWeek?' · last week: floor '+d.lastWeek.floor+', ★ '+d.lastWeek.stars:'');
   }
@@ -151,6 +155,10 @@
   // The show remote's big buttons press the real ones (in ALL SETTINGS); its
   // status line mirrors the floor and score.
   host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(b)host.querySelector(b.dataset.click)?.click();};
+  new MutationObserver(()=>{const m=host.querySelector('#mana-remote-msg');if(m)m.textContent=status.textContent;}).observe(status,{childList:true,characterData:true,subtree:true});
+  // While connected, pick up what happened on stream (doors opening, chests,
+  // the floor) every 8 seconds, so the winner buttons are always current.
+  setInterval(()=>{if(!connectedStore||document.hidden||connectedStore!==store())return;api('state').then(d=>{if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});else{revision=d.revision;took(d);}}).catch(()=>{});},8000);
   setInterval(()=>{const f=host.querySelector('#mana-remote-floor'),sc=host.querySelector('#mana-remote-score');if(!f)return;const d=host.querySelector('#mana-dungeon-status')?.textContent||'';f.textContent=connectedStore?d:'Tap CONNECT to start';sc.textContent=connectedStore?host.querySelector('#mana-score')?.textContent||'':'';},1000);
   try{const all=host.querySelector('#mana-all');all.open=localStorage.getItem('mana-all-open')==='1';all.ontoggle=()=>{try{localStorage.setItem('mana-all-open',all.open?'1':'0');}catch(_){}};}catch(_){}
   host.querySelector('#mana-trivia').onclick=()=>run(async()=>{const q=host.querySelector('#mana-trivia-q').value.trim(),a=host.querySelector('#mana-trivia-a').value.trim();if(q&&!a)throw Error('Type the answer too');const x=await api('trivia',{question:q,answer:a});took(x);host.querySelector('#mana-trivia-q').value='';host.querySelector('#mana-trivia-a').value='';status.textContent='Trivia is on screen'+(x.stats?.vote?.question?': '+x.stats.vote.question:'')+(x.triviaAnswer?' (answer: '+x.triviaAnswer+')':'')+'. Tap CHAT GOT IT when someone does.';});
