@@ -1,10 +1,14 @@
 // THE SHED CRAWL, first person (store, 2026-11-11: "go through the dungeon
 // crawl like doom visuals ... walking through halls, rooms ... parts of the
-// shed, looking for and through shit"). A small raycaster, the classic
+// shed, looking for and through shit"; "all this has to be shitty shed
+// themed. Comic, card, collectibles... even like local card shop"). A small raycaster, the classic
 // early-90s way: a grid of walls, one ray per screen column, chunky pixels
-// blown up 4x. Everything here is original and drawn in code: board walls,
-// pegboard with tools, shelves of long boxes, paint cans, a mower, rakes,
-// cobwebs, a lawn gnome, raccoon eyes in the dark.
+// blown up 4x. A falling-apart shed someone turned into a card and comic
+// shop: duct-taped board walls, comic racks, slab walls, binder pages,
+// booster packs on pegboard, flyer corkboards, shelves of long boxes; dollar
+// bins, comic stacks, card boxes, pizza boxes, leak buckets, a folding table
+// with a playmat, boxed figures, raccoon eyes in the dark. All original,
+// drawn in code -- no real covers, logos or products.
 //
 // Nothing is random. Each floor has a fixed layout (three, in turn) and a
 // fixed route; how far along the route you are is the floor's mana. Sales
@@ -16,9 +20,9 @@ export const VIEW_W = 240, VIEW_H = 96;
 // Each: the route (cell centers), the side rooms to peek into while
 // searching (a cell beside the route), and the boss room's corner.
 const LAYOUTS = [
-  { route: [[2, 13], [2, 3], [8, 3], [8, 9], [13, 9], [13, 3]], boss: [12, 1, 3, 2], peeks: [{ at: 0.28, cell: [1, 8], label: 'SEARCHING THE LONG BOXES…' }, { at: 0.62, cell: [10, 10], label: 'DIGGING THROUGH THE PAINT CANS…' }] },
-  { route: [[13, 13], [3, 13], [3, 8], [12, 8], [12, 3], [4, 3]], boss: [1, 2, 3, 3], peeks: [{ at: 0.24, cell: [8, 14], label: 'RUMMAGING UNDER THE MOWER…' }, { at: 0.58, cell: [7, 9], label: 'CHECKING THE PEGBOARD…' }] },
-  { route: [[2, 2], [2, 12], [7, 12], [7, 6], [13, 6], [13, 12]], boss: [12, 13, 3, 2], peeks: [{ at: 0.3, cell: [1, 7], label: 'OPENING THE OLD TACKLE BOX…' }, { at: 0.66, cell: [10, 5], label: 'LOOKING BEHIND THE SEED BAGS…' }] },
+  { route: [[2, 13], [2, 3], [8, 3], [8, 9], [13, 9], [13, 3]], boss: [12, 1, 3, 2], peeks: [{ at: 0.28, cell: [1, 8], tex: 3, label: 'DIGGING THROUGH THE LONG BOXES…' }, { at: 0.62, cell: [10, 10], tex: 8, label: 'FLIPPING THE BINDER PAGES…' }] },
+  { route: [[13, 13], [3, 13], [3, 8], [12, 8], [12, 3], [4, 3]], boss: [1, 2, 3, 3], peeks: [{ at: 0.24, cell: [8, 14], tex: 6, label: 'CHECKING THE SLAB WALL…' }, { at: 0.58, cell: [7, 9], tex: 2, label: 'PICKING A PACK OFF THE PEGBOARD…' }] },
+  { route: [[2, 2], [2, 12], [7, 12], [7, 6], [13, 6], [13, 12]], boss: [12, 13, 3, 2], peeks: [{ at: 0.3, cell: [1, 7], tex: 4, label: 'SEARCHING THE BACK ISSUE RACK…' }, { at: 0.66, cell: [10, 5], tex: 7, label: 'READING THE FLYERS ON THE CORKBOARD…' }] },
 ];
 // Each shed's palette: boards, gaps, floor, ceiling, fog.
 const PALETTES = {
@@ -44,10 +48,11 @@ export function buildMap(floor) {
   const [bx, by, bw, bh] = L.boss;
   for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) open(x, y);
   for (const p of L.peeks) open(...p.cell);
-  // Textures: boards mostly; pegboard (2), long-box shelves (3) and seed
-  // bags (4) on a fixed pattern; the peeks are shelves; the boss room is 5.
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = [1, 1, 2, 1, 3, 1, 1, 4][(x * 3 + y * 5 + floor) % 8];
-  for (const p of L.peeks) { const [cx, cy] = p.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = 3; }
+  // Textures on a fixed pattern: duct-taped boards (1), booster pegboard (2),
+  // long-box shelves (3), the comic rack (4), the slab wall (6), the flyer
+  // corkboard (7), binder pages (8); each peek looks at its own; the boss room is 5.
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = [1, 4, 2, 1, 3, 6, 1, 7, 8, 1, 4, 3][(x * 3 + y * 5 + floor) % 12];
+  for (const p of L.peeks) { const [cx, cy] = p.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = p.tex; }
   for (let y = by - 1; y <= by + bh; y++) for (let x = bx - 1; x <= bx + bw; x++) if (grid[y]?.[x]) grid[y][x] = 5;
   return { grid, layout: L };
 }
@@ -76,40 +81,64 @@ export function poseAt(layout, t) {
 const T = 32;
 function tex(draw) { const c = new Uint8ClampedArray(T * T * 3); const px = (x, y, [r, g, b]) => { if (x < 0 || y < 0 || x >= T || y >= T) return; const i = (y * T + x) * 3; c[i] = r; c[i + 1] = g; c[i + 2] = b; }; draw(px); return c; }
 const fill = (px, x0, y0, w, h, col) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) px(x, y, col); };
+// A tiny 3x5 font for price stickers and flyers.
+const FONT = { '$': '011110010011110', '1': '010110010010111', '0': '111101101101111', 'F': '111100110100100', 'N': '101111111111101', 'M': '101111111101101', 'B': '110101111101110', 'U': '101101101101111', 'Y': '101101010010010', '2': '111001111100111', '5': '111100111001111', 'S': '111100111001111', 'A': '010101111101101', 'L': '100100100100111', 'E': '111100110100111', 'C': '111100100100111', 'G': '111100101101111', 'D': '110101101101110', 'R': '110101110101101', 'T': '111010010010010', 'P': '110101110100100', 'O': '111101101101111' };
+function text(px, x, y, str, col) { [...str].forEach((ch, k) => { const g = FONT[ch]; if (!g) return; for (let i = 0; i < 15; i++) if (g[i] === '1') px(x + k * 4 + (i % 3), y + Math.floor(i / 3), col); }); }
 function makeTextures(p) {
   const boards = px => { for (let x = 0; x < T; x++) for (let y = 0; y < T; y++) px(x, y, (x >> 3) % 2 ? p.a : p.b); for (let x = 7; x < T; x += 8) fill(px, x, 0, 1, T, p.gap); fill(px, 3, 6, 1, 1, [30, 30, 30]); fill(px, 19, 24, 1, 1, [30, 30, 30]); fill(px, 12, 15, 2, 2, p.gap); };
+  // A made-up comic cover: a color, a title band, a hero blob.
+  const cover = (px, x, y, c, i) => { fill(px, x, y, 7, 10, c); fill(px, x, y, 7, 2, [240, 230, 200]); fill(px, x + 1, y, 5, 1, [200, 30, 30]); fill(px, x + 2, y + 3 + (i % 2), 3, 4, [250 - i * 20, 220, 120 + i * 20]); fill(px, x + 3, y + 3, 1, 1, [20, 20, 20]); };
+  const COV = [[200, 40, 40], [40, 90, 190], [230, 170, 30], [60, 150, 70], [130, 50, 160], [20, 20, 20]];
   return {
-    1: tex(boards),
-    // Pegboard: holes, a hammer, a saw outline, a wrench.
-    2: tex(px => { fill(px, 0, 0, T, T, [150, 120, 84]); for (let y = 2; y < T; y += 4) for (let x = 2; x < T; x += 4) px(x, y, [70, 52, 34]); fill(px, 5, 6, 2, 14, [110, 70, 40]); fill(px, 3, 5, 6, 3, [90, 90, 96]); fill(px, 14, 8, 12, 5, [170, 174, 180]); fill(px, 24, 6, 3, 9, [92, 54, 30]); for (let i = 0; i < 6; i++) px(15 + i * 2, 13, [120, 124, 130]); fill(px, 12, 20, 2, 9, [140, 140, 150]); fill(px, 11, 19, 4, 2, [140, 140, 150]); fill(px, 20, 22, 8, 2, [200, 40, 40]); }),
-    // Shelves of comic long boxes.
-    3: tex(px => { boards(px); for (const sy of [9, 21]) { fill(px, 0, sy, T, 2, [60, 36, 18]); for (let x = 1; x < T - 6; x += 10) { fill(px, x, sy - 7, 8, 7, [214, 206, 186]); fill(px, x, sy - 7, 8, 1, [170, 160, 140]); fill(px, x + 2, sy - 4, 4, 1, [60, 60, 60]); } } fill(px, 0, 29, T, 2, [60, 36, 18]); fill(px, 4, 23, 6, 6, [180, 40, 40]); fill(px, 14, 24, 5, 5, [40, 90, 170]); }),
-    // Seed bags and a calendar.
-    4: tex(px => { boards(px); fill(px, 4, 16, 9, 14, [190, 160, 90]); fill(px, 6, 19, 5, 4, [70, 140, 60]); fill(px, 16, 18, 10, 12, [170, 140, 80]); fill(px, 19, 21, 4, 4, [200, 80, 60]); fill(px, 18, 3, 9, 10, [230, 226, 210]); fill(px, 18, 3, 9, 2, [190, 40, 40]); }),
+    // Board walls, a strip of duct tape and a taped-up "NO REFUNDS" style sign (blank).
+    1: tex(px => { boards(px); fill(px, 0, 4, T, 3, [150, 150, 158]); fill(px, 0, 4, T, 1, [180, 180, 188]); fill(px, 18, 14, 10, 8, [235, 230, 214]); fill(px, 19, 16, 8, 1, [40, 40, 40]); fill(px, 19, 18, 6, 1, [40, 40, 40]); fill(px, 17, 13, 3, 2, [150, 150, 158]); fill(px, 26, 13, 3, 2, [150, 150, 158]); }),
+    // Pegboard of booster packs (made-up foil packs) and a blister card.
+    2: tex(px => { fill(px, 0, 0, T, T, [150, 120, 84]); for (let y = 2; y < T; y += 4) for (let x = 2; x < T; x += 4) px(x, y, [70, 52, 34]); const FOIL = [[220, 40, 60], [40, 170, 220], [240, 190, 40], [150, 60, 210], [50, 190, 90], [230, 110, 30]]; for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) { const x = 1 + c * 8, y = 2 + r * 15, f = FOIL[(r * 4 + c) % 6]; fill(px, x + 2, y, 2, 1, [60, 60, 60]); fill(px, x, y + 1, 6, 11, f); fill(px, x, y + 1, 6, 1, [255, 255, 255]); fill(px, x + 1, y + 4, 4, 4, [255, 255, 255].map((v, i) => (v + f[i]) >> 1)); fill(px, x, y + 11, 6, 1, [255, 255, 255]); } }),
+    // Shelves of comic long boxes, hand-written labels.
+    3: tex(px => { boards(px); for (const sy of [9, 21]) { fill(px, 0, sy, T, 2, [60, 36, 18]); for (let x = 1; x < T - 6; x += 10) { fill(px, x, sy - 7, 8, 7, [214, 206, 186]); fill(px, x, sy - 7, 8, 1, [170, 160, 140]); fill(px, x + 1, sy - 4, 6, 1, [40, 40, 40]); fill(px, x + 2, sy - 2, 3, 1, [200, 40, 40]); } } fill(px, 0, 29, T, 2, [60, 36, 18]); fill(px, 4, 23, 6, 6, [214, 206, 186]); fill(px, 14, 24, 5, 5, [214, 206, 186]); fill(px, 22, 25, 8, 4, [200, 160, 60]); }),
+    // The back-issue rack: rows of made-up covers on a wire rack.
+    4: tex(px => { fill(px, 0, 0, T, T, [50, 44, 40]); let i = 0; for (let y = 1; y < T - 10; y += 15) for (let x = 0; x < T; x += 8) cover(px, x, y, COV[i++ % COV.length], i); for (const y of [12, 27]) fill(px, 0, y, T, 1, [160, 160, 170]); }),
     // The boss room: boards burned red, claw marks.
     5: tex(px => { for (let x = 0; x < T; x++) for (let y = 0; y < T; y++) px(x, y, (x >> 3) % 2 ? [110, 30, 34] : [90, 22, 28]); for (let x = 7; x < T; x += 8) fill(px, x, 0, 1, T, [30, 6, 8]); for (let i = 0; i < 12; i++) { px(8 + i, 6 + i, [20, 4, 4]); px(12 + i, 6 + i, [20, 4, 4]); px(16 + i, 6 + i, [20, 4, 4]); } }),
+    // The slab wall: graded slabs (clear case, red label, a card inside).
+    6: tex(px => { fill(px, 0, 0, T, T, [40, 34, 30]); for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) { const x = 1 + c * 8, y = 1 + r * 16; fill(px, x, y, 7, 14, [200, 210, 220]); fill(px, x, y, 7, 3, [210, 40, 40]); fill(px, x + 1, y + 1, 5, 1, [255, 255, 255]); fill(px, x + 1, y + 4, 5, 9, COV[(r * 4 + c + 2) % COV.length]); fill(px, x + 2, y + 6, 3, 4, [240, 220, 160]); } }),
+    // The corkboard: flyers -- FNM, BUY, $5, a lost-cat-style sheet.
+    7: tex(px => { fill(px, 0, 0, T, T, [170, 120, 70]); for (let i = 0; i < 40; i++) px((i * 7) % T, (i * 13) % T, [140, 96, 52]); fill(px, 1, 2, 14, 9, [240, 240, 230]); text(px, 2, 4, 'FNM', [30, 30, 160]); fill(px, 17, 1, 13, 9, [250, 230, 90]); text(px, 18, 3, 'BUY', [180, 30, 30]); fill(px, 3, 14, 11, 9, [140, 220, 140]); text(px, 4, 16, '$5', [20, 20, 20]); fill(px, 17, 13, 12, 16, [235, 235, 235]); fill(px, 19, 15, 8, 6, [90, 90, 90]); fill(px, 19, 23, 8, 1, [30, 30, 30]); fill(px, 19, 25, 6, 1, [30, 30, 30]); for (const [x, y] of [[7, 2], [23, 1], [8, 14], [22, 13]]) px(x, y, [220, 30, 30]); }),
+    // Binder pages: 9-pocket sheets of made-up cards.
+    8: tex(px => { fill(px, 0, 0, T, T, [30, 30, 36]); fill(px, 1, 1, 30, 30, [70, 70, 80]); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const x = 2 + c * 10, y = 2 + r * 10, k = COV[(r * 3 + c) % COV.length]; fill(px, x, y, 8, 9, [220, 210, 160]); fill(px, x + 1, y + 1, 6, 4, k); fill(px, x + 1, y + 6, 6, 1, [60, 60, 60]); fill(px, x + 1, y + 7, 4, 1, [120, 120, 120]); px(x, y, [255, 255, 255]); } }),
   };
 }
 // Props along the hallway, 16 x 16 sprites ('.' is see-through).
 const SPRITES = {
-  can: ['......aaaa......', '.....abbbba.....', '.....abbbba.....', '.....accccA.....', '.....accccA.....', '.....acddcA.....', '.....acddcA.....', '.....accccA.....', '.....aaaaaa.....'],
-  boxes: ['..aaaaaaaaaaaa..', '..abbbbbbbbbba..', '..abbccccccbba..', '..abbbbbbbbbba..', '..aaaaaaaaaaaa..', '..aaaaaaaaaaaa..', '..abbbbbbbbbba..', '..abbccccccbba..', '..abbbbbbbbbba..', '..aaaaaaaaaaaa..'],
-  rake: ['..a.a.a.a.a.....', '..aaaaaaaaa.....', '......b.........', '......b.........', '......b.........', '......b.........', '......b.........', '......b.........', '......b.........', '......b.........', '......b.........'],
-  gnome: ['.......a........', '......aaa.......', '.....aaaaa......', '.....bbbbb......', '.....bcbcb......', '.....ddddd......', '....eeeeeee.....', '....eeeeeee.....', '.....ff.ff......'],
-  mower: ['.a..............', '..a.............', '...a............', '....aaaaaaaaa...', '....abbbbbbba...', '...abbbbbbbbba..', '...accaaaaacca..', '...accA...accA..'],
+  // The dollar bin: a beat-up box of comics with a "$1" sign.
+  dollarbin: ['..aaaaaaaaaaa...', '..abbbbbbbbba...', '..abwwwwwwwba...', '..abw$1wwwwba...', '..abwwwwwwwba...', '..aaaaaaaaaaa...', '.ccdcedcfdcecc..', '.aaaaaaaaaaaaa..', '.agggggggggggga.', '.agggggggggggga.', '.agggggggggggga.', '.aaaaaaaaaaaaaa.'],
+  // A leaning stack of comics.
+  comics: ['....cccccccc....', '....dddddddd....', '...eeeeeeee.....', '....ffffffff....', '...cccccccc.....', '....dddddddd....', '....eeeeeeee....', '...ffffffff.....', '....cccccccc....', '....dddddddd....'],
+  // A white card storage box (800 count), lid half off.
+  cardbox: ['.aaaaaaaaaaaaa..', '.awwwwwwwwwwwa..', '..aaaaaaaaaaaaa.', '..awwwwwwwwwwwa.', '..awwbbbbbwwwwa.', '..awwwwwwwwwwwa.', '..awwwwwwwwwwwa.', '..aaaaaaaaaaaaa.'],
+  // An empty pizza box (game night).
+  pizza: ['..aaaaaaaaaaaa..', '..abbbbbbbbbba..', '..abbbrrrbbbba..', '..abbrrrrrbbba..', '..abbbrrrbbbba..', '..aaaaaaaaaaaa..'],
+  // A bucket catching the roof leak.
+  bucket: ['.......c........', '.......c........', '................', '...aaaaaaaaaa...', '...abccccccba...', '....abbbbbba....', '....abbbbbba....', '.....aaaaaa.....'],
+  // A folding table with a playmat and two decks.
+  table: ['aaaaaaaaaaaaaaaa', 'abbbbbbbbbbbbbba', 'abbcccbbbbcccbba', 'abbcccbbbbcccbba', 'aaaaaaaaaaaaaaaa', '.d............d.', '.d............d.', '.d............d.', 'dd............dd'],
+  // A boxed figure in a window box (made up).
+  figure: ['...aaaaaaaa.....', '...abbbbbbba.....', '...abcccccba.....', '...abcdddcba.....', '...abcdedcba.....', '...abcdddcba.....', '...abccfccba.....', '...abcffccba.....', '...abcccccba.....', '...abbbbbbba.....', '...aaaaaaaa.....'],
   eyes: ['................', '....a.....a.....', '...aaa...aaa....'],
 };
 const SPRITE_COLORS = {
-  can: { a: [20, 20, 20], b: [150, 150, 160], c: [60, 120, 200], A: [40, 80, 140], d: [230, 230, 230] },
-  boxes: { a: [40, 30, 20], b: [214, 206, 186], c: [90, 90, 90] },
-  rake: { a: [140, 140, 150], b: [120, 80, 44] },
-  gnome: { a: [200, 30, 40], b: [240, 210, 180], c: [20, 20, 20], d: [240, 240, 240], e: [40, 110, 200], f: [80, 50, 30] },
-  mower: { a: [30, 30, 30], b: [200, 40, 40], c: [40, 40, 40], A: [20, 20, 20] },
+  dollarbin: { a: [40, 26, 14], b: [200, 40, 40], w: [250, 240, 200], $: [20, 120, 30], 1: [20, 120, 30], c: [200, 40, 40], d: [40, 90, 190], e: [230, 170, 30], f: [60, 150, 70], g: [160, 120, 70] },
+  comics: { c: [200, 40, 40], d: [40, 90, 190], e: [230, 170, 30], f: [130, 50, 160] },
+  cardbox: { a: [120, 120, 130], w: [240, 240, 236], b: [40, 40, 40] },
+  pizza: { a: [110, 80, 40], b: [200, 160, 100], r: [190, 50, 30] },
+  bucket: { a: [40, 40, 50], b: [120, 120, 140], c: [90, 150, 220] },
+  table: { a: [40, 40, 40], b: [40, 90, 70], c: [200, 190, 160], d: [130, 130, 140] },
+  figure: { a: [30, 30, 30], b: [230, 90, 30], c: [200, 230, 250], d: [240, 200, 160], e: [20, 20, 20], f: [60, 70, 200] },
   eyes: { a: [255, 230, 80] },
 };
 // Where the props sit: fixed spots along each stretch of the route.
 function propsFor(layout, floor) {
-  const kinds = ['boxes', 'can', 'rake', 'gnome', 'mower', 'boxes', 'can', 'eyes'], out = [];
+  const kinds = ['dollarbin', 'comics', 'bucket', 'cardbox', 'table', 'figure', 'pizza', 'eyes'], out = [];
   for (let i = 1; i < layout.route.length; i++) {
     const [x0, y0] = layout.route[i - 1], [x1, y1] = layout.route[i], n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 3));
     for (let k = 1; k <= n; k++) {
@@ -178,7 +207,9 @@ export function createShedCrawl(canvas, { scale = 4 } = {}) {
       const dist = Math.max(0.05, side ? sdy - ddy : sdx - ddx); zbuf[x] = dist;
       const h = Math.floor(VIEW_H / dist), top = Math.max(0, horizon - (h >> 1)), bot = Math.min(VIEW_H - 1, horizon + (h >> 1));
       let wx = side ? pose.x + dist * rx : pose.y + dist * ry; wx -= Math.floor(wx);
-      const tx = Math.floor(wx * T), t = textures[cell] || textures[1];
+      // Flip on the walls seen from the other side, so signs read the right way.
+      let tx = Math.floor(wx * T); if ((!side && rx < 0) || (side && ry > 0)) tx = T - 1 - tx;
+      const t = textures[cell] || textures[1];
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
       const light = Math.max(0.16, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1));
       for (let y = top; y <= bot; y++) {
