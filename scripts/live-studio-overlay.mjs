@@ -46,6 +46,8 @@ const place=(el,left,top,show=true)=>{el.style.left=left+'px';el.style.top=top+'
 
 function apply(s) {
   settings={...DEFAULT_STUDIO,...s};
+  // See-through panels (2026-11-11: "the score board etc. blocks a lot"): their backgrounds, not their text.
+  document.body.style.setProperty('--pa',String(Math.max(0.2,Math.min(1,(Number(settings.panelAlpha)||70)/100))));
   Object.assign(sign.style,{left:settings.x+'px',top:settings.y+'px',width:settings.width+'px',height:settings.height+'px'});
   sign.classList.toggle('mana-hidden',!settings.visible);
   sign.style.setProperty('--mana-speed',settings.speed+'s'); text.textContent=settings.message;
@@ -174,7 +176,7 @@ function paintCrawl(d,center){
 const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic','bucket','cardbox'];
 // The store's own items pass by in front too, in top loaders (2026-11-11).
 let fgImgs=[];
-function loadFgPics(){const urls=[...new Set([...shedPics,...(stage.next||[])].filter(x=>x&&x.image).map(x=>x.image))].slice(0,12);fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
+function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
 let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0,fgIdx=0;
 function paintForeground(d,center){
   const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
@@ -184,10 +186,10 @@ function paintForeground(d,center){
   fgTarget=pct;fgOpened=d.opened||[];
   el.style.top=Math.max(0,settings.y-62-350)+'px';
 }
-function fgSide(cv,phase,kind,side,open){
+function fgSide(cv,phase,kind,side,open,idx=0){
   // phase 0..1: far and small near the middle -> close, big, sliding off the edge.
   const k=cv.getContext('2d');k.imageSmoothingEnabled=false;
-  const im=kind==='pic'?fgImgs[(fgIdx++>>4)%Math.max(1,fgImgs.length)]:null;
+  const im=kind==='pic'&&fgImgs.length?fgImgs[idx%fgImgs.length]:null;
   if(kind==='pic'&&!(im&&im.complete&&im.naturalWidth))kind='comics';
   if(kind==='pic'){k.clearRect(0,0,160,160);const w=96,h=134,x0=32,y0=160-h;k.fillStyle='#e8f0f8';k.fillRect(x0-6,y0-6,w+12,h+6);k.imageSmoothingEnabled=true;const sc=Math.min(w/im.naturalWidth,h/im.naturalHeight),iw=im.naturalWidth*sc,ih=im.naturalHeight*sc;try{k.drawImage(im,x0+(w-iw)/2,y0+(h-ih)/2,iw,ih);}catch{}k.fillStyle='#ffffff55';k.fillRect(x0-6,y0-6,10,h+6);}
   else fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
@@ -195,16 +197,24 @@ function fgSide(cv,phase,kind,side,open){
   cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));
   cv.style.filter=`drop-shadow(8px 10px 0 #000a) brightness(${0.75+phase*0.35})`;
 }
+// 2026-11-11: "the foreground items need to come from the background items --
+// pop up past us and then disappear". The same props the 3D shed draws (its
+// floor, layout and eye), so whatever you walk past in the hall comes
+// past you in front and is gone once you've passed it.
+let fgCache={key:'',L:null,grid:null,props:[]};
 function fgFrame(now){
   requestAnimationFrame(fgFrame);
   if(now-fgLast<50||$('mana-fg').classList.contains('mana-hidden'))return;const dt=Math.min(0.2,(now-(fgLast||now))/1000);fgLast=now;
   if(fgShown<0)fgShown=fgTarget;if(fgShown<fgTarget)fgShown=Math.min(fgTarget,fgShown+dt*0.06);else fgShown=fgTarget;
-  // Three props per side per floor; the right side shows a chest when the walk is at one.
-  const at=[0.16,0.47,0.8],near=at.findIndex(a=>Math.abs(fgShown-a)<0.07);
-  const pl=(fgShown*3)%1,pr=(fgShown*3+0.5)%1,il=Math.floor(fgShown*3),ir=Math.floor(fgShown*3+0.5);
-  fgSide($('mana-fg-l'),pl,FG_KINDS[(il+fgFloor)%FG_KINDS.length],-1,false);
-  if(near>=0){const ph=Math.min(0.95,Math.max(0.05,0.5+(fgShown-at[near])/0.14));fgSide($('mana-fg-r'),ph,'chest',1,fgOpened.includes(near));}
-  else fgSide($('mana-fg-r'),pr,FG_KINDS[(ir+fgFloor+3)%FG_KINDS.length],1,false);
+  const d=dg(),key=fgFloor+'|'+(d?.fork||'');
+  if(fgCache.key!==key){const L=fpLib.layoutFor(fgFloor);fgCache={key,L,grid:fpLib.buildMap(fgFloor,d?.fork||'').grid,props:fpLib.propsFor(L,fgFloor).filter(p=>p.kind!=='eyes')};}
+  const eye=fpLib.eyePose(fgCache.L,fgCache.grid,fgShown),dx=Math.cos(eye.ang),dy=Math.sin(eye.ang);
+  // Beside you and just ahead: fwd 0.15..1.6 cells, within a cell to the side.
+  const near={'-1':null,'1':null};
+  for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx;if(fwd<0.15||fwd>1.6||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
+  for(const k of ['-1','1']){const cv=$(k==='-1'?'mana-fg-l':'mana-fg-r'),p=near[k];
+    if(!p){cv.style.opacity='0';continue;}
+    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/1.45)),p.kind,Number(k),p.kind==='chest'&&fgOpened.includes(p.idx),p.idx);}
 }
 requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
@@ -448,7 +458,7 @@ function connect() {
   socket.onopen=()=>socket.send(JSON.stringify({token}));
   socket.onmessage=ev=>{try {const m=JSON.parse(ev.data);offset=m.serverNow-Date.now();retry=0;
     if(m.settings)apply(m.settings);
-    if(m.stage){stage=m.stage;paintStage();}
+    if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
     if(m.stats)paintStats(m.stats,m.type==='effect'||m.type==='stats');
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};

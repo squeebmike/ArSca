@@ -217,12 +217,13 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       const paint = () => {
         const d = stats?.dungeon; if (!d) return;
         const last = Math.max(Number(stats.lastSaleAt) || 0, Number(d.lastAt) || 0), battery = last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / (6 * 60000))) : 1;
-        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), battery, fork: d.fork || '' });
+        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), battery, fork: d.fork || '', hideNear: hideNear });
         if (bossId !== d.boss.character) { bossId = d.boss.character; void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
         const urls = [...new Set([stage.now, ...(stage.next || []), ...shedPics].filter(x => x && x.image).map(x => x.image))].slice(0, 24), key = urls.join('|');
         if (key !== picKey) { picKey = key; Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list)); }
       };
-      onState = m => { if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+      let hideNear = true;
+      onState = m => { if (m.settings) hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
       setInterval(paint, 5000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
