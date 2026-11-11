@@ -76,3 +76,6 @@ assert.match(dash, /updateWebOrdersAlert\(pending\.length, stale\.length\)/, 'or
 assert.match(dash, /btn\.onclick = \(\) => switchTab\('orders'\)/, 'header alert opens the Orders tab');
 assert.match(dash, /WAITING \$\{webOrderWaitingDays\(o\)\} DAYS/, 'old orders are flagged in the list');
 console.log('Dashboard web order alert checks passed');
+// Each book in a website order shows its cover (store, 2026-11-11).
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'); assert.ok(app.includes('class="sf-order-line"') && app.includes('li.image_url'), 'order lines show cover images'); }
+console.log('Website order cover images checks passed');

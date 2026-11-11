@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.11.3-live-studio-panels';
+const APP_VERSION = '2026.11.11.4-order-covers';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21839,7 +21839,15 @@ async function renderStorefrontOrders(){
   }
   list.innerHTML = orders.slice(0, 40).map(o => {
     const items = (o.items || []).filter(li => li.category !== 'Shipping');
-    const itemsText = items.map(li => `${li.quantity}× ${escHtml(li.title)}`).join(', ');
+    // Each book with its cover (store, 2026-11-11: "I need images in the orders,
+    // I don't know what books") -- a list to pull the order from.
+    const itemsText = items.map(li => {
+      const img = /^https:\/\//i.test(String(li.image_url || '')) ? li.image_url : '';
+      return `<div class="sf-order-line" style="display:flex;gap:8px;align-items:center">
+        ${img ? `<img src="${escHtml(img)}" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:54px;height:80px;object-fit:contain;background:#000;border-radius:4px;flex:none" onerror="this.style.visibility='hidden'">` : '<div style="width:54px;height:80px;border:1px dashed var(--border);border-radius:4px;flex:none"></div>'}
+        <div style="min-width:0"><div style="font-size:11px;color:var(--text);line-height:1.35">${escHtml(li.title)}</div><div style="color:var(--dim)">${li.quantity}× $${Number(li.unit_price || 0).toFixed(2)}</div></div>
+      </div>`;
+    }).join('');
     const addr = o.shipping_address;
     const addrText = addr ? [addr.line1, addr.line2, [addr.city, addr.state, addr.zip].filter(Boolean).join(', ')].filter(Boolean).map(escHtml).join('<br>') : '';
     const fulfilled = o.fulfillment_status === 'fulfilled';
@@ -21856,7 +21864,7 @@ async function renderStorefrontOrders(){
       <div style="font-size:12px;font-weight:700;color:var(--text)">${escHtml(o.customer_name)} · ${escHtml(o.customer_phone)}${o.customer_email?' · '+escHtml(o.customer_email):''}</div>
       <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${escHtml(FULFILLMENT_METHOD_LABELS[o.fulfillment_method] || o.fulfillment_method)}</div>
       ${addrText ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${addrText}</div>` : ''}
-      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">${itemsText || 'No items'}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text);display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))">${itemsText || 'No items'}</div>
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-weight:800">$${Number(o.sale?.total || 0).toFixed(2)}</div>
         ${fulfilled ? '' : `<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="fulfillStorefrontOrder('${o.id}')">MARK FULFILLED</button>`}
