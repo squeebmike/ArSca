@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Mana Pocket Arcade V4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Luckiest+Guy&family=Press+Start+2P&display=swap">
-<link rel="stylesheet" href="assets/live-studio.css?v=24"><link rel="stylesheet" href="assets/byterider.css?v=20"></head>
+<link rel="stylesheet" href="assets/live-studio.css?v=26"><link rel="stylesheet" href="assets/byterider.css?v=20"></head>
 <body class="mana-overlay">
 <section id="mana-hud" class="mana-panel" aria-label="Show score board">
   <div class="mana-hud-row">
@@ -23,7 +23,9 @@
   <div id="mana-combo" aria-live="polite"></div>
 </section>
 <main id="mana-sign" class="mana-panel" aria-label="Mana Pocket arcade sign"><div class="mana-liquid" aria-hidden="true"></div><div class="mana-bubbles" aria-hidden="true"></div><div class="mana-title"><span id="mana-title-text">THE MANA POCKET</span><span id="mana-flask-meter"></span></div><div id="mana-cbar-sub"></div><div id="mana-sign-hits" aria-hidden="true"></div><div class="mana-track"><span id="mana-message"></span></div></main>
-<section id="mana-crawl" class="mana-hidden" aria-label="The shed crawl"><canvas id="mana-fp" width="240" height="96" aria-hidden="true"></canvas><div id="mana-crawl-weapon"></div><div id="mana-fp-hand" aria-hidden="true"></div><div id="mana-fp-peek"></div><div id="mana-fp-chest"></div></section>
+<section id="mana-crawl" class="mana-hidden" aria-label="The shed crawl"><canvas id="mana-fp" width="240" height="96" aria-hidden="true"></canvas><div id="mana-crawl-weapon"></div><div id="mana-fp-hand" aria-hidden="true"></div><div id="mana-fp-peek"></div><div id="mana-fp-chest"></div><div id="mana-fp-batt" aria-label="Flashlight battery"></div></section>
+<div id="mana-fg" class="mana-hidden" aria-hidden="true"><canvas id="mana-fg-l" width="160" height="160"></canvas><canvas id="mana-fg-r" width="160" height="160"></canvas></div>
+<section id="mana-reveal" class="mana-hidden" aria-live="polite"><div id="mana-reveal-label"></div><div class="mana-reveal-stage"><div class="mana-reveal-card"><img id="mana-reveal-img" alt=""><div class="mana-reveal-back">THE MANA POCKET</div></div></div><div id="mana-reveal-title"></div><div id="mana-reveal-price"></div></section>
 <section id="mana-vote" class="mana-hidden" aria-live="polite"><div class="mana-vote-head">CHAT PICKS!</div><div id="mana-vote-title"></div><ol id="mana-vote-list"></ol><div class="mana-vote-foot">TYPE THE NUMBER IN CHAT</div></section>
 <section id="mana-arena" class="mana-hidden" aria-label="Boss"></section>
 <section id="mana-card" class="mana-panel" aria-label="Now playing">
@@ -39,4 +41,4 @@
 <div id="mana-hype" aria-label="Hype meter"><b>HYPE</b><i></i><i></i><i></i><i></i><i></i></div>
 <div id="byterider" aria-label="ByteRider_97"></div>
 <div id="mana-connection" hidden></div>
-<script type="module" src="scripts/live-studio-overlay.mjs?v=24"></script></body></html>
+<script type="module" src="scripts/live-studio-overlay.mjs?v=26"></script></body></html>

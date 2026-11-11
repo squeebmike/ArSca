@@ -315,3 +315,54 @@ body.mana-center #mana-arena #mana-boss-sprite,body.mana-center #mana-arena #man
 
 /* Treasure chests: the goal chat is working toward, in the crawl window. */
 #mana-fp-chest{position:absolute;right:16px;top:12px;z-index:2;font:400 16px 'Press Start 2P',monospace;color:#ffe14a;text-shadow:3px 3px 0 var(--ink)}
+
+/* Crawl on the green screen (2026-11-11): the overlay keeps a slim bar with the floor, chests and battery. */
+#mana-crawl.bar{height:62px!important;top:auto;background:#160a2bee;border-radius:18px 18px 0 0}
+#mana-crawl.bar #mana-fp,#mana-crawl.bar #mana-fp-hand,#mana-crawl.bar::after{display:none}
+body.mana-center #mana-crawl.bar{transform:translateY(342px)}
+#mana-crawl.bar #mana-fp-peek{top:-74px;font-size:40px}
+#mana-fp-batt{position:absolute;left:16px;bottom:10px;z-index:2;font:400 14px 'Press Start 2P',monospace;color:#b4ff3a;text-shadow:3px 3px 0 var(--ink)}
+#mana-crawl.bar #mana-fp-batt{left:auto;right:16px;bottom:8px}
+#mana-crawl.bar #mana-fp-chest{top:8px}
+#mana-crawl.bar #mana-crawl-weapon{top:8px}
+#mana-crawl.lowbatt #mana-fp-batt{color:#ff4a64;animation:mana-vote-blink .8s steps(2) infinite}
+#mana-crawl.lowbatt:not(.bar) #mana-fp{filter:brightness(.55)}
+/* Trivia uses the vote banner: the question big, no numbers. */
+#mana-vote.trivia #mana-vote-title{font-size:30px;line-height:1.3;margin:6px 0}
+/* The item reveal: the real item's photo spinning in 3D. */
+#mana-reveal{position:absolute;left:190px;width:700px;z-index:8;pointer-events:none;text-align:center;opacity:0}
+#mana-reveal.on{animation:mana-reveal-in 7.6s ease-out forwards}
+#mana-reveal-label{font-family:'Luckiest Guy',Bangers,sans-serif;font-size:54px;color:var(--yel);-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 #6f1fac}
+.mana-reveal-stage{perspective:900px;height:410px;display:flex;align-items:center;justify-content:center}
+.mana-reveal-card{position:relative;width:280px;height:390px;transform-style:preserve-3d;animation:mana-reveal-spin 3.2s linear infinite}
+#mana-reveal-img,.mana-reveal-back{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:14px;backface-visibility:hidden;background:#0b0612;border:6px solid #ffe14a;box-shadow:0 0 40px #ffe14a,0 0 90px #ff3fd277;box-sizing:border-box}
+.mana-reveal-back{transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;font:400 22px 'Press Start 2P',monospace;color:#b4ff3a;text-align:center;padding:20px}
+#mana-reveal-title{font-family:Bangers,sans-serif;font-size:36px;letter-spacing:1px;color:#fff;text-shadow:3px 3px 0 var(--ink);margin-top:6px}
+#mana-reveal-price{font:400 26px 'Press Start 2P',monospace;color:#b4ff3a;text-shadow:3px 3px 0 var(--ink);margin-top:6px}
+@keyframes mana-reveal-spin{to{transform:rotateY(360deg)}}
+@keyframes mana-reveal-in{0%{opacity:0;transform:scale(.4) translateY(80px)}10%{opacity:1;transform:scale(1.06)}16%{transform:scale(1)}88%{opacity:1}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.mana-reveal-card{animation:none}}
+/* A chest or dig with a real item: the spinning item is the show, not the burst. */
+#mana-effect.with-item .mana-burst{display:none}
+#mana-crawl.bar #mana-crawl-weapon,#mana-crawl.bar #mana-fp-chest,#mana-crawl.bar #mana-fp-batt{font-size:12px}
+#mana-crawl.bar #mana-fp-chest{top:auto;bottom:8px;left:16px;right:auto}
+
+/* THE SHOW REMOTE (2026-11-11: "we need an easier way to control it"): big buttons up top. */
+.mana-remote{border:2px solid #b4ff3a;border-radius:14px;padding:12px;margin:10px 0 14px;background:#0f0a1a}
+.mana-remote-status{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;margin-bottom:10px;font-size:14px}
+.mana-remote-status b{color:#c3ff80}
+.mana-remote-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.mana-remote-grid button{min-height:58px;font-size:15px;font-weight:700;border-radius:12px;margin:0}
+.mana-remote-grid button.tap{background:#1f3a12;border-color:#b4ff3a}
+.mana-remote-grid button.vote{background:#3a1250;border-color:#d14bff}
+.mana-remote-pick:not(:empty){margin-top:10px}
+.mana-remote-pick #mana-vote-pick:not(:empty)::before{content:"TAP THE WINNER:";display:block;width:100%;font-weight:700;color:#ffe14a;margin-bottom:4px}
+.mana-remote-pick button{min-height:52px;font-size:15px;font-weight:700;background:#4a3a00;border-color:#ffe14a}
+.mana-all>summary{cursor:pointer;font-size:16px;font-weight:700;padding:12px;border:1px solid #9457d3;border-radius:12px;margin:6px 0;color:#c3ff80}
+@media(max-width:600px){.mana-remote-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* PROPS IN FRONT of the hosts (over the top camera's bottom corners). */
+#mana-fg{position:absolute;left:0;width:1080px;height:340px;z-index:4;pointer-events:none;overflow:hidden}
+#mana-fg canvas{position:absolute;bottom:0;width:240px;height:240px;image-rendering:pixelated;transform-origin:50% 100%;transition:none}
+#mana-fg-l{left:40px}
+#mana-fg-r{right:40px}

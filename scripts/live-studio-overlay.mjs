@@ -109,7 +109,7 @@ function paintDungeon(d){
   if(center&&boss.parentElement!==arena)arena.append(boss);
   else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
   arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));
-  paintCrawl(d,center);
+  paintCrawl(d,center);paintForeground(d,center);
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
@@ -126,21 +126,92 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs').then(m=>{fp=m.createShedCrawl($('mana-fp'));
-  fp.onPeek(t=>{const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');});
+import('./shed-crawl-fp.mjs').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+  fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
+// The flashlight battery (2026-11-11): it runs down when the show goes quiet
+// (no sales, follows, shares or bookmarks) and is full again with the next one.
+const BATTERY_DRAIN_MS=6*60000;
+function batteryNow(d){const last=Math.max(Number(stats.lastSaleAt)||0,Number(d?.lastAt)||0);if(!last)return 1;return Math.max(0.15,Math.min(1,1-(Date.now()+offset-last)/BATTERY_DRAIN_MS));}
+// Item photos for the crawl's walls: NEXT UP's photos through the Worker (CORS).
+let fpPicKey='';
+function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
+function loadPictures(){if(!fp||!fpLib)return;const urls=[stage.now,...(stage.next||[])].filter(x=>x&&x.image).map(x=>x.image).slice(0,12),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list));}
+let fpLib=null,peekPct=-1,peekFloor=0;
 function paintCrawl(d,center){
-  const el=$('mana-crawl'),show=!!d&&center;el.classList.toggle('mana-hidden',!show);el.classList.toggle('boss',!!d&&d.phase==='boss');
-  if(!show){if(fpOn){fp?.stop();fpOn=false;}return;}
-  if(fp){
-    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:(d.chests||[]).map(c=>c.open)});
+  // The window over the top camera only when CRAWL WINDOW is on; otherwise the
+  // crawl is the green-screen background (shed-background.html) and this is a slim bar.
+  const el=$('mana-crawl'),show=!!d&&center,win=show&&settings.crawlWindow===true;
+  el.classList.toggle('mana-hidden',!show);el.classList.toggle('bar',show&&!win);el.classList.toggle('boss',!!d&&d.phase==='boss');
+  if(!win&&fpOn){fp?.stop();fpOn=false;}
+  if(!show)return;
+  const batt=batteryNow(d);
+  if(win&&fp){
+    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),battery:batt,fork:d.fork||''});
     if(fpBoss!==d.boss.character){fpBoss=d.boss.character;void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
     if(!fpOn){fp.start();fpOn=true;}
+    loadPictures();
   }
-  const w=d.weapon;$('mana-crawl-weapon').textContent=(w?w.icon+' '+w.name+'  ·  ':'')+'FLOOR '+d.floor+' · '+d.shed;
+  // Without the window, the overlay calls out the rummaging spots itself.
+  if(!win&&fpLib){const pk=fpLib.layoutFor(d.floor).peeks,pct=d.phase==='boss'?100:d.pct;if(peekFloor!==d.floor){peekFloor=d.floor;peekPct=pct;}else{const hit=pk.find(p=>peekPct<p.at*100&&pct>=p.at*100);if(hit)showPeek(hit.label);peekPct=pct;}}
+  const w=d.weapon;$('mana-crawl-weapon').textContent=(w?w.icon+' '+w.name+'  ·  ':'')+'FLOOR '+d.floor+' · '+(d.name?'"'+d.name+'"':d.shed)+(d.fork?' · '+(d.fork==='left'?'COLLECTOR SIDE':'BARGAIN SIDE'):'');
   $('mana-fp-hand').textContent=w?w.icon:'🔦';
-  // The next treasure chest chat is working toward.
-  const ch=d.chests||[],next=ch.find(c=>!c.open);$('mana-fp-chest').textContent=!ch.length?'':next?'🧰 '+next.have+'/'+next.n+' '+next.kind.toUpperCase()+'S':'🧰 ALL CHESTS OPEN';
+  // The next treasure chest: locked until chat's goal, or how far ahead.
+  const opened=d.opened||[],goals=d.chests||[],nextK=[0,1,2].find(k=>!opened.includes(k));
+  const g=nextK==null?null:goals[nextK];
+  $('mana-fp-chest').textContent=nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':'🧰 CHEST '+(nextK+1)+' AHEAD';
+  // The battery: bars, and a warning when it's low.
+  const bars=Math.round(batt*5);$('mana-fp-batt').textContent='🔦 '+'▮'.repeat(bars)+'▯'.repeat(5-bars)+(batt<0.35?' FOLLOW/SHARE TO RECHARGE!':'');
+  el.classList.toggle('lowbatt',batt<0.35);
+}
+// PROPS IN FRONT (2026-11-11: "some things in front of us ... some behind ...
+// make it pseudo 3D"): with the hallway on the green screen BEHIND the hosts,
+// big pixel props slide past IN FRONT of them as the crawl walks -- comic
+// stacks, dollar bins, card boxes, figures -- and the floor's chests when the
+// walk reaches one (open once it's opened). They grow and slide out to the
+// sides like you're walking past them.
+const FG_KINDS=['comics','dollarbin','cardbox','figure','pizza','bucket','comics','cardbox'];
+let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0;
+function paintForeground(d,center){
+  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
+  el.classList.toggle('mana-hidden',!on);if(!on)return;
+  const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
+  if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}
+  fgTarget=pct;fgOpened=d.opened||[];
+  el.style.top=Math.max(0,settings.y-62-350)+'px';
+}
+function fgSide(cv,phase,kind,side,open){
+  // phase 0..1: far and small near the middle -> close, big, sliding off the edge.
+  const k=cv.getContext('2d');k.imageSmoothingEnabled=false;
+  fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
+  const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60),y=-phase*6;
+  cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));
+  cv.style.filter=`drop-shadow(8px 10px 0 #000a) brightness(${0.75+phase*0.35})`;
+}
+function fgFrame(now){
+  requestAnimationFrame(fgFrame);
+  if(now-fgLast<50||$('mana-fg').classList.contains('mana-hidden'))return;const dt=Math.min(0.2,(now-(fgLast||now))/1000);fgLast=now;
+  if(fgShown<0)fgShown=fgTarget;if(fgShown<fgTarget)fgShown=Math.min(fgTarget,fgShown+dt*0.06);else fgShown=fgTarget;
+  // Three props per side per floor; the right side shows a chest when the walk is at one.
+  const at=[0.16,0.47,0.8],near=at.findIndex(a=>Math.abs(fgShown-a)<0.07);
+  const pl=(fgShown*3)%1,pr=(fgShown*3+0.5)%1,il=Math.floor(fgShown*3),ir=Math.floor(fgShown*3+0.5);
+  fgSide($('mana-fg-l'),pl,FG_KINDS[(il+fgFloor)%FG_KINDS.length],-1,false);
+  if(near>=0){const ph=Math.min(0.95,Math.max(0.05,0.5+(fgShown-at[near])/0.14));fgSide($('mana-fg-r'),ph,'chest',1,fgOpened.includes(near));}
+  else fgSide($('mana-fg-r'),pr,FG_KINDS[(ir+fgFloor+3)%FG_KINDS.length],1,false);
+}
+requestAnimationFrame(fgFrame);
+function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
+setInterval(()=>{const d=dg();if(d&&document.body.classList.contains('mana-center'))paintCrawl(d,true);},5000);
+// A revealed item (a chest, or where chat said to dig): its photo spins in 3D.
+function revealItem(e){
+  const it=e.item;if(!it||!it.title)return;
+  const el=$('mana-reveal'),img=$('mana-reveal-img');
+  $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'$1 START!');
+  $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'$1 START!':(it.price?'VALUE '+usd(it.price):'');
+  img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
+  el.style.top=Math.max(0,settings.y-610)+'px';
+  el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
+  clearTimeout(revealItem.t);revealItem.t=setTimeout(()=>el.classList.add('mana-hidden'),7600);
 }
 // CHAT PICKS: the numbered choices chat votes on (the host taps the winner).
 // An open door vote shows on its own.
@@ -149,7 +220,11 @@ function paintVote(){
   const doors=!v&&d&&d.doors?{kind:'door',options:d.doors.map(r=>({label:r.icon+' '+r.name}))}:null,show=v||doors;
   el.classList.toggle('mana-hidden',!show||settings.visible===false);
   if(!show)return;
-  $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':'PICK A DOOR';
+  el.classList.toggle('trivia',show.kind==='trivia');el.style.top=Math.max(0,settings.y-330)+'px';
+  el.querySelector('.mana-vote-foot').textContent=show.kind==='trivia'?'TYPE YOUR ANSWER IN CHAT':'TYPE THE NUMBER IN CHAT';
+  el.querySelector('.mana-vote-head').textContent=show.kind==='trivia'?'BYTERIDER TRIVIA!':'CHAT PICKS!';
+  $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':show.kind==='dig'?'WHERE DO WE DIG?':show.kind==='fork'?'A FORK IN THE HALL!':show.kind==='trivia'?show.question:'PICK A DOOR';
+  if(show.kind==='trivia'){$('mana-vote-list').replaceChildren();return;}
   $('mana-vote-list').replaceChildren(...show.options.map((o,i)=>{const li=document.createElement('li');const n=document.createElement('b');n.textContent=String(i+1);li.append(n,document.createTextNode(o.label));return li;}));
   el.style.top=Math.max(0,settings.y-330)+'px';
 }
@@ -218,7 +293,9 @@ function react(e){
     case 'room': {const r=roomById(e.room);mascot.play('excited',{text:r?'INTO THE '+r.name+'!':'ONWARD!'});break;}
     case 'floor': mascot.play('alert',{text:'FLASK FULL! '+(e.bossName||'THE BOSS')+' INCOMING!',ms:1800});mascot.play('angry',{text:'GET HIM, CHAT!'});break;
     case 'unlock': mascot.play('celebrating',{text:'UNLOCKED: '+(e.unlockText||'')});break;
-    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.chestText||'')});break;
+    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.item?.title?'$1 START: '+e.item.title:e.chestText||'')});break;
+    case 'found': mascot.play('excited',{text:'FOUND IT! '+(e.item?.title||'')});break;
+    case 'trivia': mascot.play('celebrating',{text:'CORRECT! IT WAS '+(e.answer||'')+'!'});break;
     case 'tap': mascot.play(e.tapKind==='follow'?'love':'happy',{text:TAP_LINES[e.tapKind]||'MANA!'});break;
     case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
     case 'ready': mascot.play('disappearing',{boot:true});mascot.play('loading',{ms:1500});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
@@ -298,9 +375,9 @@ function receiveEffect(e,initial=false) {
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
   // A follow / share / bookmark: a float on the flask and a line, no burst.
   if(e.kind==='tap'){react(e);const m=document.createElement('b');m.textContent='+'+(e.mana||0)+' '+(TAP_WORDS[e.tapKind]||'MANA');$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);if(!initial)SOUNDS.tap();return;}
-  react(e);
+  react(e);revealItem(e);
   effect=e;lastBeep=-1;coins.replaceChildren();
-  if(['jackpot','boss','unlock','chest'].includes(e.kind)) rain(e.kind==='boss'?36:24);
+  if(['jackpot','boss','unlock','chest','found','trivia'].includes(e.kind)) rain(e.kind==='boss'?36:24);
   if(!initial && e.kind!=='countdown') (SOUNDS[e.kind]||SOUNDS.coin)();
 }
 function words(e) {
@@ -314,7 +391,9 @@ function words(e) {
       return [(e.bossName||settings.bossName)+' DEFEATED!','K.O.!',e.reward||settings.bossReward];
     case 'floor': return ['FLOOR '+(e.floor||'')+' CLEARED!','BOSS APPEARS!','VS '+(e.bossName||'THE BOSS')];
     case 'unlock': return ['UNLOCKED!',e.unlockAt?usd(e.unlockAt):'',e.unlockText||''];
-    case 'chest': return ['CHEST OPENED!',e.chestGoal?'CHAT HIT '+e.chestGoal+'!':'',e.chestText||''];
+    case 'chest': return ['CHEST OPENED!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'',e.item?.title?(e.chestText||'$1 START')+': '+e.item.title:e.chestText||''];
+    case 'found': return ['FOUND IT!',e.spot?'IN '+e.spot:'',e.item?.title||''];
+    case 'trivia': return ['CORRECT!',e.answer||'',(e.who?'@'+e.who+' GOT IT · ':'')+(e.mana?'+'+usd(e.mana)+' MANA FOR EVERYONE':'NICE ONE, CHAT')];
     case 'giveaway': return ['FREE GIVEAWAY!','','FREE TO ENTER IN THE WHATNOT APP'];
     case 'winner': return ['WINNER!',e.buyer?'@'+e.buyer:'','GIVEAWAY WINNER — PICKED BY WHATNOT'];
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
@@ -329,7 +408,7 @@ let lastKind='';
 function draw() {
   const now=Date.now()+offset;
   if(effect && effect.endsAt>now) {
-    if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind;lastKind=effect.id;
+    if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind+(effect.item?.title&&['chest','found'].includes(effect.kind)?' with-item':'');lastKind=effect.id;
       if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg())){
         const who=effect.bossCharacter||settings.bossCharacter;
         if(effectBoss){effectBoss.set(who);effectBoss.defeat(false);if(effect.kind==='floor')effectBoss.enter();effectBoss.start();

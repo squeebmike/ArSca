@@ -111,6 +111,8 @@ let _pcQueueTail = Promise.resolve();
 
 const WEBFLOW_BASE = 'https://api.webflow.com/v2';
 const ANTHROPIC_BASE = 'https://api.anthropic.com/v1';
+// Image hosts the store's inventory uses (for /public/studio-img).
+const STUDIO_IMG_HOSTS = new Set(['www.bcwsupplies.com', 'images.penguinrandomhouse.com', 'tcgplayer-cdn.tcgplayer.com', 'product-images.tcgplayer.com', 'storage.googleapis.com', 'static.metron.cloud', 'cards.scryfall.io', 'cdn-vault.fanaticscollect.com', 'media.gamestop.com', 'i.ebayimg.com', 'cdn.prod.website-files.com', 'uploads-ssl.webflow.com', 'images.pricecharting.com']);
 const CARDSIGHTAI_BASE = 'https://api.cardsight.ai';
 
 // Shared by the /identify/card route and Card Intake's server-side
@@ -16929,6 +16931,25 @@ async function routeRequest(request, env, ctx) {
     // text-to-speech, free daily allowance; the site falls back to the
     // browser's own voice when this is off or busy). Short text only, per-IP
     // and daily caps, MP3 back.
+    // Item photos for the Shed Dungeon's 3D walls and chest reveals
+    // (2026-11-11): the overlay draws them into a canvas, which needs CORS.
+    // Only the image hosts the store's inventory uses; images only; cached a day.
+    if (url.pathname === '/public/studio-img' && request.method === 'GET') {
+      let target; try { target = new URL(url.searchParams.get('u') || ''); } catch { return new Response('Bad image', { status: 400 }); }
+      const okHost = target.protocol === 'https:' && (STUDIO_IMG_HOSTS.has(target.hostname) || target.hostname === url.hostname || /\.supabase\.co$/.test(target.hostname));
+      if (!okHost) return new Response('Host not allowed', { status: 403 });
+      const cacheKey = new Request('https://studio-img.cache/' + encodeURIComponent(target.href));
+      const hit = await caches.default.match(cacheKey).catch(() => null);
+      if (hit) return hit;
+      const res = await fetch(target.href, { headers: { Accept: 'image/*' }, cf: { cacheTtl: 86400 } }).catch(() => null);
+      const type = res?.headers.get('Content-Type') || '';
+      if (!res?.ok || !/^image\//.test(type) || Number(res.headers.get('Content-Length') || 0) > 4e6) return new Response('Image unavailable', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
+      const body = await res.arrayBuffer();
+      if (body.byteLength > 4e6) return new Response('Too large', { status: 413 });
+      const out = new Response(body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=86400', 'Access-Control-Allow-Origin': '*', 'X-Robots-Tag': 'noindex' } });
+      ctx.waitUntil(caches.default.put(cacheKey, out.clone()).catch(() => {}));
+      return out;
+    }
     if (url.pathname === '/public/byterider/voice' && request.method === 'POST') {
       if (!env.AI || !env.LBA_KV) return json({ ok: false, error: 'voice off' }, 503);
       const parsed = await readJsonWithLimit(request, 4096);

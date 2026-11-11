@@ -64,12 +64,41 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
   showMap: true,       // the dungeon map + relic shelf panel
   centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
+  crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
+  foreground: true,    // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
+  triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
-export const DUNGEON_LIMITS = { mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
+export const DUNGEON_LIMITS = { triviaMana: [0, 1000], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
 export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
+// Where the floor's three treasure chests sit along the walk (0..1). A chest
+// opens when the crawl reaches it -- once chat has hit its goal, if it has one.
+export const CHEST_AT = [0.16, 0.47, 0.8];
+// The fork in the hall (chat picks): which side of the shed the rest of the floor is.
+export const FORKS = [{ id: 'left', label: '⬅ LEFT: THE COLLECTOR SIDE' }, { id: 'right', label: '➡ RIGHT: THE BARGAIN SIDE' }];
+// "Found it!": where chat says to dig; each spot holds the next lineup item in turn.
+export const DIG_SPOTS = ['📦 THE LONG BOXES', '📒 THE BINDER', '🏆 THE SLAB WALL'];
+// ByteRider's trivia (original wording; well-known facts). Asked in this order.
+export const TRIVIA = [
+  { q: 'WHAT YEAR DID AMAZING FANTASY #15, SPIDER-MAN\'S FIRST APPEARANCE, COME OUT?', a: '1962' },
+  { q: 'BATMAN FIRST APPEARED IN WHICH COMIC?', a: 'DETECTIVE COMICS #27' },
+  { q: 'SUPERMAN FIRST APPEARED IN WHICH COMIC?', a: 'ACTION COMICS #1' },
+  { q: 'WHICH POKEMON IS #001 IN THE POKEDEX?', a: 'BULBASAUR' },
+  { q: 'WHAT YEAR DID THE POKEMON TCG BASE SET COME OUT IN THE US?', a: '1999' },
+  { q: 'IN CARD GRADING, WHAT DOES PSA STAND FOR?', a: 'PROFESSIONAL SPORTS AUTHENTICATOR' },
+  { q: 'WHAT YEAR DID MAGIC: THE GATHERING FIRST COME OUT?', a: '1993' },
+  { q: 'WOLVERINE\'S FIRST FULL APPEARANCE WAS IN WHICH COMIC?', a: 'INCREDIBLE HULK #181' },
+  { q: 'IN COMIC GRADING, WHAT DOES CGC STAND FOR?', a: 'CERTIFIED GUARANTY COMPANY' },
+  { q: 'WHO CREATED SPAWN?', a: 'TODD MCFARLANE' },
+  { q: 'WHAT YEAR DID THE TEENAGE MUTANT NINJA TURTLES FIRST APPEAR IN COMICS?', a: '1984' },
+  { q: 'ON A SPORTS CARD, WHAT DOES "RC" MEAN?', a: 'ROOKIE CARD' },
+  { q: 'DEADPOOL FIRST APPEARED IN WHICH COMIC?', a: 'NEW MUTANTS #98' },
+  { q: 'IN COMICS, WHAT DOES FOC STAND FOR?', a: 'FINAL ORDER CUTOFF' },
+  { q: 'WHAT IS THE HIGHEST GRADE ON PSA\'S SCALE?', a: '10 (GEM MINT)' },
+  { q: 'WHICH MAGIC CARD IS THE MOST FAMOUS OF THE "POWER NINE"?', a: 'BLACK LOTUS' },
+];
 // TREASURE CHESTS (store, 2026-11-11: "add treasure chests that open when chat
 // hits a goal"). Goals are chat's follows, shares and bookmarks this week (or
 // all three as "taps") -- never sales or what anyone spends -- and each
@@ -86,6 +115,13 @@ export function chestsOf(s, d = {}) {
 }
 // The chests a tap just opened.
 export const chestsOpened = (before, after, s) => { const a = chestsOf(s, before); return chestsOf(s, after).filter((c, i) => c.open && !a[i]?.open); };
+// This floor's chests the crawl has reached whose goal (if any) is met and
+// that haven't opened yet: [{ k, goal }]. In a boss fight every chest is reached.
+export function chestsToOpen(d, s) {
+  const done = d.opened?.[d.floor] || [], goals = chestsOf(s, d), pct = d.phase === 'boss' ? 1 : Math.min(1, (d.mana || 0) / floorGoal(s, d.floor, d));
+  return CHEST_AT.map((at, k) => ({ k, at, goal: goals[k] || null })).filter(c => !done.includes(c.k) && pct >= c.at && (!c.goal || c.goal.open));
+}
+export const openChest = (d, k, now = Date.now()) => ({ ...d, opened: { ...(d.opened || {}), [d.floor]: [...(d.opened?.[d.floor] || []), k] }, lastAt: now });
 
 const r2 = n => Math.round(n * 100) / 100;
 function pacificParts(at) {
@@ -177,8 +213,17 @@ export function addTap(dIn, kind, s, now = Date.now()) {
   return { ...addMana({ ...w, taps }, amount, s, now), amount };
 }
 // The host's fixes: set the floor, or start the week over.
-export function adjustDungeon(dIn, { floor, resetWeek, door, weapon } = {}, now = Date.now()) {
+export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name } = {}, now = Date.now()) {
   const w = ensureWeek(dIn, now);
+  // Chat's pick at the fork, and the floor name chat came up with.
+  if (fork !== undefined) {
+    if (!FORKS.some(f => f.id === fork)) throw new Error('Invalid fork');
+    return { ...w, forks: { ...(w.forks || {}), [w.floor]: fork }, lastAt: now };
+  }
+  if (name !== undefined) {
+    const clean = String(name || '').replace(/[\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 30).toUpperCase();
+    return { ...w, names: { ...(w.names || {}), [w.floor]: clean }, lastAt: now };
+  }
   // The weapon chat picked for this floor.
   if (weapon !== undefined) {
     if (!weaponById(weapon)) throw new Error('Invalid weapon');
@@ -224,7 +269,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
-    chests: chestsOf(s, d),
+    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };

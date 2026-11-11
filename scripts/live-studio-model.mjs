@@ -52,8 +52,8 @@ export const DEFAULT_STUDIO = Object.freeze({
   ...DUNGEON_DEFAULTS,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
-export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room', 'chest'];
-export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!', room: 'CHAT PICKED A DOOR!', chest: 'TREASURE CHEST!' };
+export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room', 'chest', 'found', 'trivia'];
+export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!', room: 'CHAT PICKED A DOOR!', chest: 'TREASURE CHEST!', found: 'FOUND IT!', trivia: 'TRIVIA!' };
 // Comic sound effects for a sale (a cycle, not chance -- the next one in line).
 export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', 'KA-CHING!', 'THWIP!', 'SNIKT!', 'BOOM!'];
 // Words for games of chance / raffles: not allowed on the sign or the boss reward.
@@ -214,7 +214,7 @@ export function whatnotEffect(event, settings, now = Date.now()) {
   const big = amount?.currency === settings.currency && Number.isFinite(Number(amount.amount)) && Number(amount.amount) >= settings.jackpotAmount;
   return { kind: big ? 'jackpot' : 'sold', at };
 }
-const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000, chest: 7000 };
+const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000, chest: 8000, found: 8000, trivia: 7000 };
 export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (!EFFECTS.includes(kind)) throw new Error('Unknown effect');
   const length = kind === 'countdown' ? settings.countdownSeconds * 1000 + 1200 : DURATION[kind] ?? 5000;
@@ -233,6 +233,10 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (kind === 'floor') { safe.bossName = txt(extra.bossName, 40); safe.bossCharacter = BOSS_IDS.includes(extra.bossCharacter) ? extra.bossCharacter : settings.bossCharacter; }
   if (kind === 'unlock') safe.unlockText = txt(extra.unlockText, 120);
   if (kind === 'chest') { safe.chestText = txt(extra.chestText, 120); safe.chestGoal = txt(extra.chestGoal, 40); }
+  // A lineup item revealed (a chest, or where chat said to dig): its photo spins on screen.
+  if (extra.item && typeof extra.item === 'object') { const im = String(extra.item.image || ''); safe.item = { title: txt(extra.item.title, 90), image: /^https:\/\/[^\s"'<>]{1,600}$/.test(im) ? im : '', price: Number.isFinite(Number(extra.item.price)) ? Number(extra.item.price) : 0 }; }
+  if (kind === 'found') safe.spot = txt(extra.spot, 40);
+  if (kind === 'trivia') { safe.answer = txt(extra.answer, 80); safe.who = txt(extra.who, 30); }
   if (TAP_KINDS.includes(extra.tapKind)) safe.tapKind = extra.tapKind;
   for (const k of ['floor', 'nextFloor', 'stars', 'mana', 'unlockAt']) if (Number.isFinite(extra[k])) safe[k] = extra[k];
   if (typeof extra.shed === 'string') safe.shed = txt(extra.shed, 40);

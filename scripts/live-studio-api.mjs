@@ -37,6 +37,8 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/vote-open') return deps.json({ok:true,...await room.openVote(String(body.kind||''))});
     if (url.pathname==='/live-studio/vote-pick') return deps.json({ok:true,...await room.pickVote(Number(body.index))});
     if (url.pathname==='/live-studio/vote-close') return deps.json({ok:true,...await room.closeVote()});
+    if (url.pathname==='/live-studio/trivia') return deps.json({ok:true,...await room.askTrivia({question:String(body.question||''),answer:String(body.answer||'')})});
+    if (url.pathname==='/live-studio/floor-name') return deps.json({ok:true,...await room.nameFloor(String(body.name||''))});
     if (url.pathname==='/live-studio/stats-reset') return deps.json({ok:true,...await room.resetStats()});
     // Totals from Whatnot's own order list for the selected show.
     if (url.pathname==='/live-studio/stats-sync') {
