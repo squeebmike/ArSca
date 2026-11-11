@@ -312,3 +312,6 @@ body.mana-center #mana-arena #mana-boss-sprite,body.mana-center #mana-arena #man
 .mana-vote-foot{font:400 14px 'Press Start 2P',monospace;color:#b4ff3a;margin-top:6px}
 @keyframes mana-vote-blink{50%{color:#fff}}
 @media(prefers-reduced-motion:reduce){.mana-vote-head{animation:none}}
+
+/* Treasure chests: the goal chat is working toward, in the crawl window. */
+#mana-fp-chest{position:absolute;right:16px;top:12px;z-index:2;font:400 16px 'Press Start 2P',monospace;color:#ffe14a;text-shadow:3px 3px 0 var(--ink)}

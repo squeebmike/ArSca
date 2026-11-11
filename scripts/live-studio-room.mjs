@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById } from './live-studio-dungeon.mjs';
+import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened } from './live-studio-dungeon.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
 // boss appearing, which beats a show unlock, which beats the sale itself.
@@ -43,8 +43,10 @@ export class ManaLiveStudio extends DurableObject {
   dungeonTap(kind) {
     const s = this.read(), now = Date.now();
     const r = addTap(s.dungeon, kind, s.settings, now);
+    // A treasure chest this tap opened (chat's goal reached).
+    const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();
     s.dungeon = r.dungeon;
-    const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
+    const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || (chest ? { kind: 'chest', chestText: chest.text, chestGoal: chest.n + ' ' + chest.kind.toUpperCase() + 'S' } : null) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
     s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now });

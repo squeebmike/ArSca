@@ -180,7 +180,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const k of ["/live-studio/vote-open", "/live-studio/vote-pick", "/live-studio/vote-close"]) assert.ok(api.includes(k), k);
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
   assert.ok(html.includes('<section id="mana-crawl"') && html.includes('<section id="mana-vote"'));
-  assert.ok(ov.includes("fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase});"), 'the first-person crawl follows the floor and its mana');
+  assert.ok(ov.includes("fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:(d.chests||[]).map(c=>c.open)});"), 'the first-person crawl follows the floor and its mana');
   assert.ok(html.includes('<canvas id="mana-fp" width="240" height="96" aria-hidden="true"></canvas>'));
   assert.ok(ov.includes("dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')"), 'hits show chat\'s weapon');
   assert.match(controls, /data-vote="weapon"/);
@@ -203,5 +203,23 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(Math.hypot(a1.x - a0.x, a1.y - a0.y) > 1, 'mana walks you forward');
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(src, /Math\.random/, 'nothing random');
+}
+// TREASURE CHESTS (2026-11-11): chat goals (follows, shares, bookmarks, taps)
+// open a chest with the store's own reward line. Never sales, nothing drawn.
+{
+  const { parseChestLines, chestsOf, chestsOpened } = await import('../scripts/live-studio-dungeon.mjs');
+  const S = { ...DEFAULT_STUDIO, dungeonOn: true, manaFollow: 0, manaShare: 0, manaBookmark: 0, chestGoals: '10 follows: Free giveaway in the Whatnot tool\n25 taps: Open a box on stream\n5 shares: $1 start on a slab\n100 dollars: not a chat goal\nnonsense' };
+  assert.deepEqual(parseChestLines(S.chestGoals).map(c => [c.n, c.kind]), [[10, 'follow'], [25, 'tap'], [5, 'share']], 'only chat goals; sales are never a chest');
+  let d = emptyDungeon(weekKey(WED)), opened = [];
+  for (let i = 0; i < 10; i++) { const next = addTap(d, 'follow', S, WED).dungeon; opened.push(...chestsOpened(d, next, S)); d = next; }
+  assert.deepEqual(opened.map(c => c.text), ['Free giveaway in the Whatnot tool'], 'the 10th follow opens the first chest, once');
+  assert.deepEqual(chestsOf(S, d).map(c => [c.have, c.open]), [[10, true], [10, false], [0, false]]);
+  assert.equal(publicDungeon(d, S, 0, WED).chests.length, 3);
+  assert.equal(chestsOf(S, ensureWeek(d, Date.parse('2026-11-12T20:00:00Z'))).filter(c => c.open).length, 0, 'chests close again with the new week');
+  assert.throws(() => validateSettings({ chestGoals: '10 follows: spin the wheel' }), /game of chance.*treasure chests/);
+  assert.equal(makeEffect('chest', DEFAULT_STUDIO, WED, { chestText: 'Free giveaway in the Whatnot tool', chestGoal: '10 FOLLOWS' }).chestGoal, '10 FOLLOWS');
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();"));
+  assert.match(controls, /textarea name="chestGoals"/);
 }
 console.log('live-studio-dungeon: ok');
