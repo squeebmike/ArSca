@@ -207,7 +207,14 @@ assert.equal(r.link.error, 'title: String too long');
   assert.equal(v(a, 13483), 'Graded'); assert.equal(v(a, 141), 'DC Comics'); assert.equal(v(a, 137), 'Absolute Batman'); assert.equal(v(a, 138), '25'); assert.equal(v(a, 136), '2026'); assert.equal(v(a, 139), 'Clay Mann');
   assert.equal(v(a, 144), 'Certified Guaranty Company (CGC)'); assert.equal(v(a, 145), '9.8');
   a = whatnotAttributes({ condition: 'Weird' }, {}, '9');
-  assert.equal(v(a, 84), undefined, 'no value Whatnot would refuse');
+  assert.equal(v(a, 84), 'Near Mint', 'an unknown condition is never left blank (Whatnot would show "Graded")');
+  // 2026-11-11: comics with no condition showed "Graded" on Whatnot.
+  for (const condition of ['', '05cbd3bb538b65343a8f40c0fbe31282', 'Graded']) {
+    a = whatnotAttributes({ condition, comic: { publisher: 'Marvel', seriesName: 'X-Men', number: '1' } }, {}, '244');
+    assert.equal(v(a, 13483), 'Near Mint', 'ungraded comic: ' + condition); assert.equal(v(a, 389), undefined);
+  }
+  assert.equal(v(whatnotAttributes({ condition: 'VF' }, {}, '244'), 13483), 'Very Fine');
+  assert.equal(v(whatnotAttributes({ name: 'Pikachu' }, {}, '2'), 84), 'Near Mint');
 }
 // Title, description, details and photos edited here go to the same listing.
 {
@@ -410,7 +417,7 @@ assert.match(worker, /const showId = type\.startsWith\('shows\.'\) \? \(data\.sh
 assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql', 'utf8'), /create unique index if not exists whatnot_shows_store_whatnot_id on public\.whatnot_shows\(store_id, whatnot_show_id\)/);
 // Bulk SELL ON WHATNOT / STOP ON WHATNOT from the inventory bulk bar.
 {
-  const dash = fs.readFileSync('dashboard.html', 'utf8');
+  const dash = fs.readFileSync('dashboard.html', 'utf8') + fs.readFileSync('scripts/dashboard-app.js', 'utf8'); // the app script moved out of the page
   // WHATNOT MODE buttons (2026-11-05); setSellOnWhatnotSelected stays for older callers.
   assert.match(dash, /onclick="setWhatnotModeSelected\('bin'\)"[^>]*>BUY IT NOW</);
   assert.match(dash, /onclick="setWhatnotModeSelected\('auction'\)"[^>]*>AUCTION</);

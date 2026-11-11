@@ -252,7 +252,9 @@ export async function runWhatnotListingSync(storeId, deps, { limit = 40, force =
   // -v2 (2026-11-03): one fresh pass, so the comics refused for the size
   // profile are listed (unchanged items cost no Whatnot calls).
   // -v3: one more fresh pass so items refused for a cents price are listed.
-  const seenKey = 'whatnot-sync-seen-v3:' + storeId;
+  // -v4 (2026-11-11): one more pass so listings that showed "Graded" get a
+  // real condition (only the ones whose details changed are edited).
+  const seenKey = 'whatnot-sync-seen-v4:' + storeId;
   const seen = (!force && await deps.kvGet(seenKey)) || {};
   const linkedState = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
   const linkedIds = new Set(Object.keys(linkedState));
@@ -771,7 +773,9 @@ function tcgCondition(item) {
   if (/^(hp|heav)/.test(c)) return 'Heavily Played';
   if (/^(dmg|damage)/.test(c)) return 'Damaged';
   if (/^mint/.test(c)) return 'Mint';
-  return '';
+  // No condition saved: Near Mint. Sending none made Whatnot show its first
+  // choice, "Graded" (store, 2026-11-11: "we have 0 graded").
+  return 'Near Mint';
 }
 function sportsCondition(item) {
   if (item.gradingCompany) return 'Graded';
@@ -787,7 +791,9 @@ function comicCondition(item) {
   if (/^(nm|near mint)/.test(c)) return 'Near Mint';
   if (/^(vf|very fine)/.test(c)) return 'Very Fine';
   if (/^(vg|very good)/.test(c)) return 'Very Good';
-  return pick(item.condition, COMIC_CONDITION);
+  // New comics with no condition saved are Near Mint. Sending none made
+  // Whatnot show its first choice, "Graded" (store, 2026-11-11).
+  return pick(item.condition, COMIC_CONDITION.slice(1)) || 'Near Mint';
 }
 const firstName = v => Array.isArray(v) ? String(v[0]?.name || v[0] || '') : String(v || '');
 export function whatnotAttributes(item, data = {}, categoryId) {
@@ -1063,7 +1069,7 @@ export async function whatnotAllProducts(api, { pages = 20 } = {}) {
 export async function linkWhatnotListings(pairs, deps) {
   const storeId = deps.storeId;
   const linked = (await deps.kvGet('whatnot-linked:' + storeId)) || {};
-  const seenKey = 'whatnot-sync-seen-v3:' + storeId;
+  const seenKey = 'whatnot-sync-seen-v4:' + storeId;
   const seen = (await deps.kvGet(seenKey)) || {};
   const rows = new Map((await deps.rows(pairs.map(p => p.itemId))).map(r => [r.id, r]));
   const results = [];

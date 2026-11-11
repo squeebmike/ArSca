@@ -10,7 +10,7 @@ const kv = {}, sets = [], created = [];
 const rows = [1, 2, 3].map(n => ({ id: ID(n), status: n === 2 ? 'sold' : 'in_stock', updated_at: 't', data: { sellOnWhatnot: true, quantity: n === 2 ? 0 : 1, category: 'Comic' } }));
 for (const r of rows) kv[`whatnot-link:s:${r.id}`] = { productId: 'p' + r.id.slice(-1), variantId: 'v' + r.id.slice(-1), qty: 1, price: 5, published: true };
 kv['whatnot-linked:s'] = Object.fromEntries(rows.map(r => [r.id, 'ok']));
-kv['whatnot-sync-seen-v3:s'] = Object.fromEntries(rows.map(r => [r.id, 't'])); // the last run saw them all
+kv['whatnot-sync-seen-v4:s'] = Object.fromEntries(rows.map(r => [r.id, 't'])); // the last run saw them all
 const api = async (method, path, body) => {
   if (method === 'POST' && path === '/products') { created.push(body); return { ok: true, status: 201, data: { id: 'new' } }; }
   if (path === '/inventory/set') { sets.push(...body.items.map(i => [i.variant_id, i.quantity])); return { ok: true, status: 200, data: { results: [{ status: 'applied' }] } }; }
