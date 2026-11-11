@@ -125,6 +125,9 @@ const SPRITES = {
   // A boxed figure in a window box (made up).
   figure: ['...aaaaaaaa.....', '...abbbbbbba.....', '...abcccccba.....', '...abcdddcba.....', '...abcdedcba.....', '...abcdddcba.....', '...abccfccba.....', '...abcffccba.....', '...abcccccba.....', '...abbbbbbba.....', '...aaaaaaaa.....'],
   eyes: ['................', '....a.....a.....', '...aaa...aaa....'],
+  // Treasure chests: shut, and open once chat hits its goal.
+  chest: ['..aaaaaaaaaaaa..', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaayyaaaaaa.', '.abbbbbyybbbbba.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
+  chestopen: ['.aaaaaaaaaaaaaa.', '.abbbbbbbbbbbba.', '.aaaaaaaaaaaaaa.', '..dd.d..d.dd.d..', '.agggggggggggga.', '.agygygygygygya.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
 };
 const SPRITE_COLORS = {
   dollarbin: { a: [40, 26, 14], b: [200, 40, 40], w: [250, 240, 200], $: [20, 120, 30], 1: [20, 120, 30], c: [200, 40, 40], d: [40, 90, 190], e: [230, 170, 30], f: [60, 150, 70], g: [160, 120, 70] },
@@ -135,6 +138,8 @@ const SPRITE_COLORS = {
   table: { a: [40, 40, 40], b: [40, 90, 70], c: [200, 190, 160], d: [130, 130, 140] },
   figure: { a: [30, 30, 30], b: [230, 90, 30], c: [200, 230, 250], d: [240, 200, 160], e: [20, 20, 20], f: [60, 70, 200] },
   eyes: { a: [255, 230, 80] },
+  chest: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 220, 60] },
+  chestopen: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 250, 200], g: [255, 210, 40], d: [255, 250, 160] },
 };
 // Where the props sit: fixed spots along each stretch of the route.
 function propsFor(layout, floor) {
@@ -146,6 +151,8 @@ function propsFor(layout, floor) {
       out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind: kinds[(i * 3 + k + floor) % kinds.length] });
     }
   }
+  // Three treasure chests along the way (chat's goals open them).
+  for (const [k, t] of [[0, 0.16], [1, 0.47], [2, 0.8]]) { const p = poseAt(layout, t), side = k % 2 ? 0.34 : -0.34; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'chest', idx: k }); }
   return out;
 }
 
@@ -232,9 +239,9 @@ export function createShedCrawl(canvas, { scale = 4 } = {}) {
         for (let sy = Math.max(0, top); sy < Math.min(VIEW_H, top + size); sy++) {
           const v = (sy - top) / size; let col = null;
           if (s.kind === 'boss') { const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
-          else { const rows = SPRITES[s.kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[s.kind][ch]; }
+          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[kind][ch]; }
           if (!col) continue;
-          const i = (sy * VIEW_W + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' ? 1 : light;
+          const i = (sy * VIEW_W + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
         }
       }

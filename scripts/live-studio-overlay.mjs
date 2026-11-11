@@ -133,12 +133,14 @@ function paintCrawl(d,center){
   const el=$('mana-crawl'),show=!!d&&center;el.classList.toggle('mana-hidden',!show);el.classList.toggle('boss',!!d&&d.phase==='boss');
   if(!show){if(fpOn){fp?.stop();fpOn=false;}return;}
   if(fp){
-    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase});
+    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:(d.chests||[]).map(c=>c.open)});
     if(fpBoss!==d.boss.character){fpBoss=d.boss.character;void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
     if(!fpOn){fp.start();fpOn=true;}
   }
   const w=d.weapon;$('mana-crawl-weapon').textContent=(w?w.icon+' '+w.name+'  ·  ':'')+'FLOOR '+d.floor+' · '+d.shed;
   $('mana-fp-hand').textContent=w?w.icon:'🔦';
+  // The next treasure chest chat is working toward.
+  const ch=d.chests||[],next=ch.find(c=>!c.open);$('mana-fp-chest').textContent=!ch.length?'':next?'🧰 '+next.have+'/'+next.n+' '+next.kind.toUpperCase()+'S':'🧰 ALL CHESTS OPEN';
 }
 // CHAT PICKS: the numbered choices chat votes on (the host taps the winner).
 // An open door vote shows on its own.
@@ -216,6 +218,7 @@ function react(e){
     case 'room': {const r=roomById(e.room);mascot.play('excited',{text:r?'INTO THE '+r.name+'!':'ONWARD!'});break;}
     case 'floor': mascot.play('alert',{text:'FLASK FULL! '+(e.bossName||'THE BOSS')+' INCOMING!',ms:1800});mascot.play('angry',{text:'GET HIM, CHAT!'});break;
     case 'unlock': mascot.play('celebrating',{text:'UNLOCKED: '+(e.unlockText||'')});break;
+    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.chestText||'')});break;
     case 'tap': mascot.play(e.tapKind==='follow'?'love':'happy',{text:TAP_LINES[e.tapKind]||'MANA!'});break;
     case 'countdown': mascot.play('countdown',{ms:Math.max(1000,e.endsAt-1200-e.startsAt)});mascot.play('surprised',{text:'GO GO GO!'});break;
     case 'ready': mascot.play('disappearing',{boot:true});mascot.play('loading',{ms:1500});mascot.play('talking',{text:"PLAYER 1 READY! LET'S GO!"});break;
@@ -297,7 +300,7 @@ function receiveEffect(e,initial=false) {
   if(e.kind==='tap'){react(e);const m=document.createElement('b');m.textContent='+'+(e.mana||0)+' '+(TAP_WORDS[e.tapKind]||'MANA');$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);if(!initial)SOUNDS.tap();return;}
   react(e);
   effect=e;lastBeep=-1;coins.replaceChildren();
-  if(['jackpot','boss','unlock'].includes(e.kind)) rain(e.kind==='boss'?36:24);
+  if(['jackpot','boss','unlock','chest'].includes(e.kind)) rain(e.kind==='boss'?36:24);
   if(!initial && e.kind!=='countdown') (SOUNDS[e.kind]||SOUNDS.coin)();
 }
 function words(e) {
@@ -311,6 +314,7 @@ function words(e) {
       return [(e.bossName||settings.bossName)+' DEFEATED!','K.O.!',e.reward||settings.bossReward];
     case 'floor': return ['FLOOR '+(e.floor||'')+' CLEARED!','BOSS APPEARS!','VS '+(e.bossName||'THE BOSS')];
     case 'unlock': return ['UNLOCKED!',e.unlockAt?usd(e.unlockAt):'',e.unlockText||''];
+    case 'chest': return ['CHEST OPENED!',e.chestGoal?'CHAT HIT '+e.chestGoal+'!':'',e.chestText||''];
     case 'giveaway': return ['FREE GIVEAWAY!','','FREE TO ENTER IN THE WHATNOT APP'];
     case 'winner': return ['WINNER!',e.buyer?'@'+e.buyer:'','GIVEAWAY WINNER — PICKED BY WHATNOT'];
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];

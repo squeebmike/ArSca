@@ -66,9 +66,26 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
+  chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
 export const DUNGEON_LIMITS = { mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
-export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200 };
+export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
+// TREASURE CHESTS (store, 2026-11-11: "add treasure chests that open when chat
+// hits a goal"). Goals are chat's follows, shares and bookmarks this week (or
+// all three as "taps") -- never sales or what anyone spends -- and each
+// chest's reward is the line the store wrote, for everyone watching. Fixed,
+// listed rewards; nothing is drawn.
+const CHEST_KINDS = { follow: 'follow', follows: 'follow', share: 'share', shares: 'share', bookmark: 'bookmark', bookmarks: 'bookmark', tap: 'tap', taps: 'tap' };
+export function parseChestLines(text) {
+  return String(text || '').split(/\r?\n/).map(l => l.match(/^\s*(\d{1,5})\s*([a-z]+)\s*[:=\-–]\s*(.+?)\s*$/i)).filter(m => m && CHEST_KINDS[m[2].toLowerCase()] && Number(m[1]) > 0)
+    .slice(0, 6).map(m => ({ n: Number(m[1]), kind: CHEST_KINDS[m[2].toLowerCase()], text: m[3].slice(0, 120) }));
+}
+export function chestsOf(s, d = {}) {
+  const t = d.taps || {}, total = (t.follow || 0) + (t.share || 0) + (t.bookmark || 0);
+  return parseChestLines(s.chestGoals).map(c => { const have = c.kind === 'tap' ? total : (t[c.kind] || 0); return { ...c, have: Math.min(have, c.n), open: have >= c.n }; });
+}
+// The chests a tap just opened.
+export const chestsOpened = (before, after, s) => { const a = chestsOf(s, before); return chestsOf(s, after).filter((c, i) => c.open && !a[i]?.open); };
 
 const r2 = n => Math.round(n * 100) / 100;
 function pacificParts(at) {
@@ -207,6 +224,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
+    chests: chestsOf(s, d),
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };
