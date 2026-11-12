@@ -6,6 +6,7 @@ import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {catalogStoreCopyHtml,tcgplayerAffiliateUrl,marketplaceDisclosureHtml} from './catalog-inventory.mjs';
 import { renderBookAlertForm } from './book-alert-ui.mjs';
 import { afterFocAvailability } from './foc-preorders.mjs';
+import { articleStatsScript } from './substack-articles.mjs';
 // Comic articles at www.themanapocket.com/articles.
 //
 // Written in Webflow's CMS ("Comic Articles" collection) so they're edited in
@@ -521,7 +522,7 @@ export function renderArticlePage(article, statuses, related, deps) {
       (image&&lead.caption?`<div class="mp-art-meta">${lead.caption}</div>`:'') + renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
       `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + marketplace.after + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
-      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : '') + (statuses.some(st=>st.stock?.length)?articleCartScript:''),
+      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : '') + (statuses.some(st=>st.stock?.length)?articleCartScript:'') + articleStatsScript(article.slug),
   });
 }
 

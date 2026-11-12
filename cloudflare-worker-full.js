@@ -63,7 +63,8 @@ import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.m
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
 import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicSearch, freshPreorderRequest } from './scripts/comic-search.mjs';
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
-import { handleArticlesRequest, articleSitemapPaths, fetchArticles } from './scripts/comic-articles.mjs';
+import { handleArticlesRequest, articleSitemapPaths, fetchArticles, sameComic } from './scripts/comic-articles.mjs';
+import { handleArticleStudio, runSubstackArticlesSync } from './scripts/substack-articles.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
@@ -6310,6 +6311,20 @@ async function fetchSoldCompsWithFallback(env, query, limit = 40) {
   return result;
 }
 
+// Sean's Substack articles (scripts/substack-articles.mjs): the import, the
+// page's view/click counter and the dashboard report.
+function articleStudioDeps(env) {
+  return {
+    kv: env.LBA_KV, supabaseAdminFetch, storeId: ITEM_DETAIL_STORE_ID, json, enforceUsageLimit, requireStoreUser, sameComic,
+    webflow: async (path, init = {}) => {
+      const r = await fetch(WEBFLOW_BASE + path, { ...init, headers: { Authorization: 'Bearer ' + env.WEBFLOW_TOKEN, accept: 'application/json', 'Content-Type': 'application/json' } });
+      if (r.status === 204) return {};
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error('Webflow ' + r.status + ': ' + String(data?.message || '').slice(0, 200));
+      return data;
+    },
+  };
+}
 async function routeRequest(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
@@ -6317,6 +6332,7 @@ async function routeRequest(request, env, ctx) {
     try {
     const url = new URL(request.url);
 
+    if (url.pathname === '/public/article-hit' || url.pathname.startsWith('/store/articles')) { const studio = await handleArticleStudio(request, env, url, articleStudioDeps(env)); if (studio) return studio; }
     const onlineDeckLab = await handleDeckLabRooms(request,env,{limit:enforceUsageLimit});
     if(onlineDeckLab)return onlineDeckLab;
     const deckLab = handleDeckLab(request,{shell:mtgPageShell});
@@ -19761,6 +19777,8 @@ export default {
       const at = new Date(event.scheduledTime || Date.now());
       const sixHourRun = at.getUTCMinutes() === 0 && at.getUTCHours() % 6 === 0;
       await Promise.allSettled([runScheduledWhatnotSync(env, ctx), runWhatnotShowEventsSync(env), sixHourRun ? null : runScheduledEbayNewSales(env), runFocEbayMatchOnce(env, ctx), runScheduledWebOrderNotify(env), runWhatnotDuplicateCleanup(env, ctx)]);
+      // Sean's Substack: new comic posts into the articles as drafts (every 3 hours; scripts/substack-articles.mjs).
+      await Promise.allSettled([runSubstackArticlesSync(env, articleStudioDeps(env)).then(r => { if (r?.created?.length || r?.errors?.length) console.log('Substack articles', JSON.stringify(r)); })]);
       return;
     }
     await Promise.allSettled([runScheduledDealScans(env), runScheduledEbayReprice(env), runScheduledEbayOrderSync(env), runScheduledShopifyOrderSync(env), runScheduledStorefrontReviewRequests(env), runScheduledPointsHoldSweep(env), runScheduledPptUsageCleanup(env), runScheduledEbayFinanceReconcile(env), runScheduledStaleWebOrderReminders(env), runScheduledBookAlerts(env), runScheduledStockHealthCheck(env), runScheduledLunarCoverFill(env), runScheduledFocAutoList(env), runScheduledFocEbayCheck(env, ctx)]);

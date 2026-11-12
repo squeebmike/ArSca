@@ -51,6 +51,7 @@ on:
       - scripts/topps/remaining-parallel-programs.mjs
       - scripts/topps/bowman-prospect-sections.mjs
       - scripts/comic-articles.mjs
+      - scripts/substack-articles.mjs
       - scripts/pull-list-page.mjs
       - scripts/cover-coming-soon.mjs
       - scripts/restock.mjs

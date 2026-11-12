@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.12.1-giveaway-chests';
+const APP_VERSION = '2026.11.12.2-sean-articles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18351,7 +18351,7 @@ function switchTab(name, btn){
   if(name === 'database') setTimeout(()=>window.ensureDatabasePanel?.(), 0);
   if(name === 'cardintake') setTimeout(()=>window.ensureCardIntakePanel?.(), 0);
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
-  if(name === 'orders') setTimeout(()=>{ renderOrdersBoard(); renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
+  if(name === 'orders') setTimeout(()=>{ renderOrdersBoard(); renderFocPreorderOrders(); renderStorefrontOrders(); renderSubstackArticles(); }, 0);
   if(name === 'whatnot' && window.renderWhatnotBridge) setTimeout(()=>window.renderWhatnotBridge(), 0);
   if(name === 'sales' && window.renderExpensesPanel) setTimeout(()=>window.renderExpensesPanel(), 0);
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
@@ -21872,6 +21872,60 @@ async function renderStorefrontOrders(){
     </div>`;
   }).join('');
 }
+
+// Sean's Substack articles (2026-11-12): pick which go on the site; views,
+// clicks and sales of the books each one is about.
+async function renderSubstackArticles(){
+  const list = document.getElementById('substack-articles-list'), count = document.getElementById('substack-articles-count');
+  if(!list) return;
+  try {
+    const res = await storeWorkerFetch('/store/articles-report');
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Articles unavailable');
+    const arts = data.articles || [];
+    const live = arts.filter(a => a.live).length;
+    if(count) count.textContent = `${live} on the site · ${arts.length - live} waiting` + (data.lastCheck ? ' · checked ' + new Date(data.lastCheck).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '');
+    if(!arts.length){ list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">None yet -- tap CHECK SUBSTACK NOW</div>'; return; }
+    list.innerHTML = arts.map(a => `<div style="display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
+      ${a.image ? `<img src="${escHtml(a.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:64px;height:90px;object-fit:cover;border-radius:4px;flex:none">` : ''}
+      <div style="min-width:0;flex:1;display:grid;gap:4px">
+        <div style="font-weight:800;color:var(--text);font-size:12px">${escHtml(a.title)}</div>
+        <div><span class="qpl-badge ${a.live?'good':'warn'}">${a.live?'ON THE SITE':'DRAFT'}</span> <span style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</span></div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">👁 ${a.views} views · 👆 ${a.clicks} clicks on books · 📚 ${a.sold} sold ($${Number(a.soldTotal||0).toFixed(2)})</div>
+        ${a.books?.length ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Books on the page: ${a.books.map(escHtml).join(', ')}</div>` : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No books matched -- add them in Webflow ("Books To Promote") to show your stock on the page</div>'}
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${a.live
+            ? `<a class="ra" href="https://www.themanapocket.com/articles/${encodeURIComponent(a.slug)}" target="_blank" rel="noopener">VIEW</a><button class="ra" onclick="setSubstackArticleLive('${a.id}',false)">TAKE OFF SITE</button>`
+            : `<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="setSubstackArticleLive('${a.id}',true)">PUT ON SITE</button>`}
+        </div>
+      </div>
+    </div>`).join('');
+  } catch(e) {
+    if(count) count.textContent = 'unavailable';
+    list.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--red);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${escHtml(e.message)}</div>`;
+  }
+}
+window.renderSubstackArticles = renderSubstackArticles;
+window.setSubstackArticleLive = async function(id, live){
+  if(!live && !confirm('Take this article off the site?')) return;
+  try {
+    const res = await storeWorkerFetch('/store/articles/publish', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ id, live }) });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not update');
+    toast_dash(live ? 'On the site' : 'Taken off the site');
+    renderSubstackArticles();
+  } catch(e) { toast_dash(e.message); }
+};
+window.importSubstackArticles = async function(){
+  try {
+    toast_dash('Checking Substack…');
+    const res = await storeWorkerFetch('/store/articles/import', { method:'POST' });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not check');
+    toast_dash(data.created?.length ? data.created.length + ' new article' + (data.created.length > 1 ? 's' : '') + ' added as drafts' : 'Nothing new on Substack');
+    renderSubstackArticles();
+  } catch(e) { toast_dash(e.message); }
+};
 
 window.fulfillStorefrontOrder = async function(orderId){
   try {
