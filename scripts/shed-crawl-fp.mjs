@@ -613,7 +613,7 @@ export function eyePose(layout, grid, t) {
 export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let seenPic = null, pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
+  let revealed = new Uint8Array(GRID * GRID), lastPose = null, seenPic = null, pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
   // The arena's spot: just inside it, from the end of the hall, looking at the boss.
   function arenaPose(p, k) {
     if (k < 0.002) return p;
@@ -639,10 +639,13 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const forkChanged = (next.fork || '') !== (state.fork || '');
     state = { ...state, ...next };
     if (forkChanged && !floorChanged) map = buildMap(state.floor, state.fork || '');
+    if (floorChanged || forkChanged) revealed = new Uint8Array(GRID * GRID);
     if (floorChanged) { map = buildMap(state.floor, state.fork || ''); textures = makeTextures(PALETTES[state.shed] || PALETTES['GARDEN SHED']); props = propsFor(map.layout, state.floor); shown = 0; done = new Set(); }
     if (floorChanged) { surf = { f: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).f), c: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).c), r: surfaceTex((SURFACES[state.shed] || {}).f === 'carpet' ? 'planks' : 'carpet'), df: surfaceTex('cobble'), dc: surfaceTex('vault') }; }
     bulbs = map.lights || [];
     target = state.phase === 'boss' ? 1 : Math.max(0, Math.min(1, state.pct / 100));
+    // Joining partway (or a reload): what's already been walked shows on the map.
+    if (floorChanged || forkChanged) for (let t = 0; t <= target; t += 0.004) { const p = poseAt(map.layout, t); for (let y = Math.floor(p.y) - 3; y <= Math.floor(p.y) + 3; y++) for (let x = Math.floor(p.x) - 3; x <= Math.floor(p.x) + 3; x++) if (x >= 0 && y >= 0 && x < GRID && y < GRID && (x + 0.5 - p.x) ** 2 + (y + 0.5 - p.y) ** 2 <= 10) revealed[y * GRID + x] = 1; }
     if (floorChanged) { shown = target; if (shown >= (map.layout.split ?? DUNGEON_AT)) done.add('down'); }
   }
   function frame(now) {
@@ -706,6 +709,9 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const inDeep = zone ? zone[Math.floor(pose.y) * N + Math.floor(pose.x)] : 0; fogMix += ((inDeep ? 1 : 0) - fogMix) * 0.05;
     const pal = { ...pal0, fog: pal0.fog.map((c, k) => Math.round(c * (1 - fogMix) + [4, 3, 8][k] * fogMix)) };
     const boss = state.phase === 'boss', rooms = map.layout.rooms || [];
+    // THE MINI-MAP (2026-11-12): it fills in as you walk -- what's within 3 cells of you.
+    lastPose = pose;
+    for (let y = Math.max(0, Math.floor(pose.y) - 3); y <= Math.min(N - 1, Math.floor(pose.y) + 3); y++) for (let x = Math.max(0, Math.floor(pose.x) - 3); x <= Math.min(N - 1, Math.floor(pose.x) + 3); x++) if ((x + 0.5 - pose.x) ** 2 + (y + 0.5 - pose.y) ** 2 <= 10) revealed[y * N + x] = 1;
     // The cracked wall: how far chat has smashed it (0-3), and once it's open, rubble and dust.
     const sec = map.layout.secret, crackSt = state.secret ? (state.secret.broken ? 3 : Math.min(3, Math.floor((state.secret.frac || 0) * 3) + ((state.secret.frac || 0) > 0 ? 1 : 0))) : 0;
     if (sec && state.secret?.broken && map.grid[sec.wall[1]][sec.wall[0]]) { map.grid[sec.wall[1]][sec.wall[0]] = 0; if (!first2) crumbleAt = clockNow; }
@@ -827,6 +833,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (pr.kind === 'pedestal' && state.secret?.broken) list.push({ x: pr.x, y: pr.y, kind: 'pic', float: true, idx: 990, lift: 0.62 + Math.sin(tm * 1.6) * 0.04 });
     }
     if (state.merchant) { const mp = eyePose(map.layout, map.grid, Math.min(0.99, shown + 1.8 / (map.layout.len || 30))); list.push({ x: mp.x, y: mp.y, kind: 'merchant', idx: 960, face: mp.ang + Math.PI, lift: Math.sin(tm * 2) * 0.01 }); near.push({ x: mp.x, y: mp.y, torch: true, f: 0.9 + 0.1 * Math.sin(tm * 7) }); }
+    // The boss holds up one of the store's items (2026-11-12: "boss taunts with your products").
+    if (boss && bossPx && state.bossItem >= 0 && pics.length) { const [bx, by, bw, bh] = map.layout.boss, bx0 = map.layout.bossAt?.[0] ?? bx + bw / 2, by0 = map.layout.bossAt?.[1] ?? by + bh / 2, k = 0.55; list.push({ x: bx0 + (pose.x - bx0) * 0.12 - Math.cos(pose.ang + Math.PI / 2) * k, y: by0 + (pose.y - by0) * 0.12 - Math.sin(pose.ang + Math.PI / 2) * k, kind: 'pic', float: true, idx: state.bossItem, lift: (map.layout.arena ? 0.62 : 0.5) + Math.sin(tm * 3.2) * 0.05 + (atkOn ? 0.1 : 0) }); }
     if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss, bx0 = map.layout.bossAt?.[0] ?? bx + bw / 2, by0 = map.layout.bossAt?.[1] ?? by + bh / 2, side = mv === 'snatch' ? Math.sin(atkA * Math.PI * 3) * 0.5 * lunge : 0; list.push({ x: bx0 + (pose.x - bx0) * lunge - Math.sin(pose.ang) * side, y: by0 + (pose.y - by0) * lunge + Math.cos(pose.ang) * side, kind: 'boss', lift: map.layout.arena ? 0.06 + Math.sin(tm * 3.2) * 0.04 : 0 }); }
     const inv = 1 / (planeX * dirY - dirX * planeY);
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
@@ -998,6 +1006,32 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The 3D props' photos (scripts/prop-models.mjs bakeProps); null keeps the flat sprites.
     setModels(m) { models = m || null; },
+    // The mini-map, sharp, on any 2D canvas: what you've seen of this floor,
+    // you (an arrow), the chests, locked long boxes, the cracked wall, the arena.
+    drawMap(ctx, { cell = 6 } = {}) {
+      const N = GRID, g = map.grid, z = map.zone, L = map.layout;
+      let x0 = N, y0 = N, x1 = 0, y1 = 0;
+      for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (!g[y][x]) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+      x0 = Math.max(0, x0 - 1); y0 = Math.max(0, y0 - 1); x1 = Math.min(N - 1, x1 + 1); y1 = Math.min(N - 1, y1 + 1);
+      const W = (x1 - x0 + 1) * cell, H = (y1 - y0 + 1) * cell; if (ctx.canvas.width !== W || ctx.canvas.height !== H) { ctx.canvas.width = W; ctx.canvas.height = H; }
+      ctx.clearRect(0, 0, W, H); ctx.fillStyle = '#0b0612cc'; ctx.fillRect(0, 0, W, H);
+      const X = x => (x - x0) * cell, Y = y => (y - y0) * cell, seen = (x, y) => revealed[Math.floor(y) * N + Math.floor(x)];
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        if (!revealed[y * N + x]) continue;
+        const c = g[y][x];
+        ctx.fillStyle = c === 0 ? (z[y * N + x] ? '#5b5866' : '#a0703c') : c === 28 ? '#d9a640' : c === 23 || c === 19 && L.arena && x >= L.boss[0] - 1 && x <= L.boss[0] + L.boss[2] && y >= L.boss[1] - 1 && y <= L.boss[1] + L.boss[3] ? '#7a1f22' : (z[y * N + x] ? '#24212b' : '#3b2614');
+        ctx.fillRect(X(x), Y(y), cell, cell);
+      }
+      const dot = (x, y, col, r = cell * 0.42) => { if (!seen(x, y)) return; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(X(x), Y(y), r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke(); };
+      for (const pr of props) {
+        if (pr.kind === 'chest') dot(pr.x, pr.y, state.chests?.[pr.idx] ? '#6b5a20' : '#ffd84a');
+        if (pr.kind === 'lockbox') dot(pr.x, pr.y, state.boxes?.[pr.idx] ? '#6b5530' : '#e8c88a');
+      }
+      if (L.secret && seen(L.secret.wall[0] + 0.5, L.secret.wall[1] + 0.5)) { ctx.fillStyle = state.secret?.broken ? '#ffd84a' : '#9a96a6'; ctx.font = `${Math.round(cell * 1.4)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(state.secret?.broken ? '✦' : '▦', X(L.secret.wall[0] + 0.5), Y(L.secret.wall[1] + 0.5)); }
+      if (L.boss && seen(L.boss[0] + L.boss[2] / 2, L.boss[1] + L.boss[3] / 2)) { ctx.font = `${Math.round(cell * 2.2)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('💀', X(L.boss[0] + L.boss[2] / 2), Y(L.boss[1] + L.boss[3] / 2)); }
+      if (lastPose) { const p = lastPose, a = p.ang, r = cell * 1.3; ctx.save(); ctx.translate(X(p.x), Y(p.y)); ctx.rotate(a); ctx.fillStyle = '#7CFF4F'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(-r * 0.7, r * 0.65); ctx.lineTo(-r * 0.35, 0); ctx.lineTo(-r * 0.7, -r * 0.65); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+      return { w: W, h: H };
+    },
     // The store item you're walking right past (its index in setPictures' list), for a sharp close-up.
     nearItem() { return seenPic && clockNow - seenPic.at < 400 ? seenPic.i : -1; },
     // The boss's attack in the arena: 'fire' | 'flood' | 'barrage' | 'chomp' | 'snatch' | 'curse' | 'trash'.

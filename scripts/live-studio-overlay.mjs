@@ -132,7 +132,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=15').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=16').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -192,9 +192,11 @@ let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgBoxes=[],fgLast=0,fgIdx=0;
 // ── Boss fights (2026-11-12: "the bosses are lame") ──────────────────────
 // The entrance: lights flicker, a versus card slams in with the boss and its line.
 let lastDefeated=false,comboN=0,comboAt=0,rageKey='',rageSeen=-1;
+// The item the boss grabs (2026-11-12: "boss taunts with your products"): the priciest in NEXT UP.
+function bossGrab(st){let best=null;for(const n of [st?.now,...(st?.next||[])])if(n&&n.title&&(!best||(Number(n.price)||0)>(Number(best.price)||0)))best=n;return best;}
 function bossIntro(b,d){
   const el=$('mana-boss-intro');if(!el||!b)return;
-  $('mana-vs-floor').textContent='FLOOR '+(d?.floor||'')+' BOSS';$('mana-vs-name').textContent=b.name;$('mana-vs-taunt').textContent='"'+bossById(b.character).taunt+'"';
+  $('mana-vs-floor').textContent='FLOOR '+(d?.floor||'')+' BOSS';$('mana-vs-name').textContent=b.name;const grab=bossGrab(stage);$('mana-vs-taunt').textContent='"'+(grab?String(grab.title).toUpperCase().slice(0,48)+' IS MINE!':bossById(b.character).taunt)+'"';
   void drawBoss($('mana-vs-art'),b.character);
   el.classList.remove('mana-hidden');el.querySelectorAll('*').forEach(n=>{n.style.animation='none';void n.offsetWidth;n.style.animation='';});
   clearTimeout(bossIntro.t);bossIntro.t=setTimeout(()=>el.classList.add('mana-hidden'),3500);

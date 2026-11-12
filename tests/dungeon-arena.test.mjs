@@ -45,7 +45,7 @@ const B = await import('../scripts/live-studio-bosses.mjs');
 for (const id of B.BOSS_IDS || Object.keys(B.BOSSES || {})) { const m = B.bossById(id).move; assert.ok(fp.includes("'" + m + "'"), 'the arena plays ' + m); }
 assert.match(fp, /attack\(move\) \{ atk = \{ move:/);
 assert.match(read('scripts/live-studio-overlay.mjs'), /fp\?\.attack\?\.\(move\);/);
-const bg = read('scripts/shed-background.mjs'); assert.match(bg, /stage > rage\.seen\) \{ rage\.seen = stage; fp\.attack\(bosses\.bossById\(d\.boss\.character\)\.move\); \}/); assert.match(bg, /type === 'mana-attack'/);
+const bg = read('scripts/shed-background.mjs'); assert.match(bg, /rStage > rage\.seen\) \{ rage\.seen = rStage; fp\.attack\(bosses\.bossById\(d\.boss\.character\)\.move\); \}/); assert.match(bg, /type === 'mana-attack'/);
 assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
 // 5. The cracked wall and its secret vault; the merchant; sharper pixels.
 {
@@ -89,6 +89,18 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.match(fp, /const torchFlame = \(tx, ty, sx\) =>/); assert.match(fp, /if \(cell === 19 && tx >= 9/);
   assert.match(fp, /nearItem\(\) \{ return seenPic/);
   const bg = read('scripts/shed-background.mjs'), html = read('shed-background.html');
-  assert.match(bg, /const i = fp\?\.nearItem\?\.\(\) \?\? -1/); assert.ok(html.includes('#shed-item.on{'), 'the sharp close-up card');
+  assert.match(bg, /i = boss \? -1 : fp\?\.nearItem\?\.\(\) \?\? -1/); assert.ok(html.includes('#shed-item.on{'), 'the sharp close-up card');
+}
+// 8. The boss taunts with the store's items; the mini-map (2026-11-12: "do 6 and 7").
+{
+  assert.match(fp, /if \(boss && bossPx && state\.bossItem >= 0 && pics\.length\)/, 'the boss holds up an item');
+  assert.match(fp, /drawMap\(ctx, \{ cell = 6 \} = \{\}\) \{/); assert.match(fp, /revealed\[y \* N \+ x\] = 1;/);
+  const bg = read('scripts/shed-background.mjs'), html = read('shed-background.html'), ov = read('scripts/live-studio-overlay.mjs');
+  assert.match(bg, /const bossItem = grab \? picUrls\.indexOf\(grab\.image\) : -1;/);
+  assert.match(bg, /' IS MINE!'/); assert.match(bg, /fp\?\.drawMap\?\.\(miniCtx/);
+  assert.ok(html.includes('#shed-mini{') && html.includes('#shed-taunt.on{'));
+  assert.ok(!/const rk = [^;]*\bstage = d\.phase/.test(bg), 'no local "stage" hiding the lineup (it blanked the green screen\'s item photos)');
+  assert.match(ov, /function bossGrab\(st\)/);
+  assert.equal(D.DUNGEON_DEFAULTS.miniMap, true);
 }
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');
