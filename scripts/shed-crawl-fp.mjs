@@ -141,8 +141,9 @@ export const ROOM_THEMES = [
   // Down in the dungeon under the shed.
   { name: 'THE CRYPT', tex: 18, props: ['bones', 'coffin', 'candles'], dungeon: true },
   { name: 'THE TORCH HALL', tex: 19, props: ['brazier', 'skeleton', 'brazier'], dungeon: true },
-  { name: 'THE LONG BOX CATACOMB', tex: 20, props: ['coffin', 'coffin', 'bones'], dungeon: true },
+  { name: 'THE LONG BOX CATACOMB', tex: 20, props: ['longboxstack', 'coffin', 'longboxopen'], dungeon: true },
   { name: 'THE SPIDER NEST', tex: 21, props: ['bones', 'crystal', 'candles'], dungeon: true },
+  { name: 'THE FORGOTTEN STOCK', tex: 22, props: ['crate', 'longboxstack', 'shortbox'], dungeon: true },
 ];
 const SHED_THEMES = 7;
 // Each shed's floor and ceiling (2026-11-11: "PS1 graphics"): textured and
@@ -212,7 +213,7 @@ export function buildMap(floor, fork = '') {
   const EXTRA = [[12, 15], [15, 13], [12, 11], [12, 14], [16, 15], [15, 12], [14, 9]][(Math.max(1, floor) - 1) % 7];
   const pat = PATTERN.slice(); pat[floor % 12] = EXTRA[0]; pat[(floor + 6) % 12] = EXTRA[1];
   // The dungeon's walls: stone, crypt niches, rotten long boxes, cobwebs and chains.
-  const DPAT = [17, 17, 21, 17, 20, 17, 17, 21, 17, 18, 17, 17];
+  const DPAT = [17, 17, 21, 17, 20, 22, 17, 21, 17, 18, 20, 17];
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = zone[y * N + x] ? DPAT[(x * 3 + y * 5 + floor) % 12] : pat[(x * 3 + y * 5 + floor) % 12];
   // A themed room's walls all around it.
   for (const [rx, ry, rw, rh, th] of L.rooms || []) { const tx = ROOM_THEMES[th ?? 0]?.tex; if (tx) for (let y = ry - 1; y <= ry + rh; y++) for (let x = rx - 1; x <= rx + rw; x++) if (grid[y]?.[x]) grid[y][x] = tx; }
@@ -318,6 +319,8 @@ function makeTextures(p) {
     20: tex(px => { stone(px); for (const y0 of [2, 17]) { fill(px, 1, y0, 30, 12, [16, 14, 18]); for (const x0 of [2, 16]) { fill(px, x0, y0 + 3, 13, 8, [150, 124, 84]); fill(px, x0, y0 + 3, 13, 1, [176, 150, 106]); fill(px, x0 + 3, y0 + 6, 5, 2, [214, 206, 180]); px(x0 + 10, y0 + 9, [90, 70, 40]); } } }),
     // 21 cobwebs and a hanging chain.
     21: tex(px => { stone(px); for (let k = 0; k < 12; k++) { px(k, k, [200, 200, 210]); px(k, Math.floor(k / 2), [180, 180, 190]); px(Math.floor(k / 2), k, [180, 180, 190]); } for (const r of [4, 8]) for (let a = 0; a <= r; a++) px(a, r - a, [170, 170, 180]); for (let y = 0; y < 26; y += 3) { fill(px, 22, y, 3, 2, [96, 92, 100]); px(23, y + 2, [60, 58, 64]); } }),
+    // 22 a collapsed heap of long boxes in the stone, comics spilling out.
+    22: tex(px => { stone(px); [[1, 18, 14, 7, 0], [15, 20, 16, 7, 1], [4, 11, 13, 7, 2], [17, 12, 12, 7, 0], [8, 4, 14, 7, 1]].forEach(([x, y, w, h, k]) => { fill(px, x, y, w, h, [196 - k * 14, 182 - k * 14, 150 - k * 12]); fill(px, x, y, w, 1, [222, 212, 186]); fill(px, x + 2, y + 3, 4, 2, [240, 236, 220]); }); [[3, 26], [12, 27], [21, 28], [27, 26]].forEach(([x, y], i) => fill(px, x, y, 5, 4, [[220, 50, 50], [50, 110, 220], [240, 190, 40], [60, 170, 80]][i])); }),
     8: tex(px => { fill(px, 0, 0, T, T, [30, 30, 36]); fill(px, 1, 1, 30, 30, [70, 70, 80]); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const x = 2 + c * 10, y = 2 + r * 10, k = COV[(r * 3 + c) % COV.length]; fill(px, x, y, 8, 9, [220, 210, 160]); fill(px, x + 1, y + 1, 6, 4, k); fill(px, x + 1, y + 6, 6, 1, [60, 60, 60]); fill(px, x + 1, y + 7, 4, 1, [120, 120, 120]); px(x, y, [255, 255, 255]); } }),
   };
 }
@@ -429,6 +432,11 @@ const ANIM = {
 // What glows in the dark (screens, flames, crystals, eyes) and how big each prop stands.
 const SPRITE_GLOW = { chest: 'ygw', chestopen: 'ygwcs', arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y', brazier: 'fy', bat: 'r', bat2: 'r', spider: 'r' };
 const SPRITE_SIZE = { chest: 0.85, chestopen: 0.85, arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4, bones: 0.3, coffin: 0.5, brazier: 0.55, trapdoor: 0.45, rat: 0.16, rat2: 0.16, bat: 0.2, bat2: 0.2, spider: 0.5 };
+// The 3D-only props drawn flat when the 3D photos aren't there (no WebGL).
+const FLAT = { longbox: 'cardbox', longboxopen: 'comics', longboxstack: 'cardbox', shortbox: 'cardbox', crate: 'dollarbin' };
+// Each 3D prop's photo, as a share of the wall's height.
+const MODEL_SIZE = { chest: 0.95, chestopen: 0.95, rat: 0.55, bat: 0.6, spider: 0.75, longbox: 0.8, longboxopen: 0.85, longboxstack: 1.0, shortbox: 0.75, crate: 0.8, coffin: 0.85, bones: 0.6, brazier: 0.9 };
+const MODEL_GLOW = new Set(['chestopen', 'brazier']);
 // Critters move on their own; they never hide for the props passing in front.
 const CRITTERS = new Set(['rat', 'rat2', 'bat', 'bat2', 'spider']);
 // One prop, drawn big and crisp on a 2D canvas (the overlay's props in front
@@ -450,7 +458,7 @@ export function propsFor(layout, floor) {
   // raccoon one, skeletons and candles when it's haunted...); COOL: anywhere.
   const kinds = ['dollarbin', 'pic', 'THEME', 'comics', 'table', 'pic', 'COOL', 'comics', 'pic', 'THEME', 'cardbox', 'table', 'pic', 'figure', 'COOL', 'comics', 'THEME', 'pizza', 'eyes'], out = []; let picN = 0;
   const theme = SHED_PROPS[(Math.min(Math.max(1, floor), SHED_PROPS.length)) - 1], cool = ['arcade', 'tv', 'gumball', 'lavalamp', 'fridge', 'cat'];
-  const deep = ['bones', 'coffin', 'brazier', 'skeleton', 'candles', 'bones', 'crystal'], split = layout.split ?? DUNGEON_AT, total = layout.len || routeLength(layout); let acc = 0, deepN = floor;
+  const deep = ['longbox', 'bones', 'longboxopen', 'brazier', 'longboxstack', 'coffin', 'shortbox', 'crate', 'skeleton', 'longbox', 'candles', 'longboxopen', 'crystal'], split = layout.split ?? DUNGEON_AT, total = layout.len || routeLength(layout); let acc = 0, deepN = floor;
   let themeN = 0, coolN = floor; // each in turn, so every one of them shows up
   const pick = k => k === 'THEME' ? theme[themeN++ % theme.length] : k === 'COOL' ? cool[coolN++ % cool.length] : k;
   for (let i = 1; i < layout.route.length; i++) {
@@ -460,7 +468,7 @@ export function propsFor(layout, floor) {
       const f = k / (n + 1), side = (i + k) % 2 ? 0.32 : -0.32, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
       const below = (acc + f * segLen) / total > split, k0 = kinds[(i * 3 + k + floor) % kinds.length];
       const kind = below && (k0 === 'THEME' || k0 === 'COOL' || k0 === 'pizza' || k0 === 'figure' || k0 === 'dollarbin') ? deep[deepN++ % deep.length] : pick(k0);
-      out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, idx: picN++ });
+      out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, idx: picN++, face: Math.atan2(-(dx / len) * side, (dy / len) * side) });
     }
     acc += segLen;
   }
@@ -469,10 +477,10 @@ export function propsFor(layout, floor) {
   // Each room's own things, in its corners.
   for (const [rx, ry, rw, rh, th] of layout.rooms || []) {
     const things = ROOM_THEMES[th ?? 0]?.props || [];
-    [[rx + 0.5, ry + 0.5], [rx + rw - 0.5, ry + rh - 0.5], [rx + rw - 0.5, ry + 0.5]].forEach(([x, y], j) => { if (things[j]) out.push({ x, y, kind: things[j], idx: picN++ }); });
+    [[rx + 0.5, ry + 0.5], [rx + rw - 0.5, ry + rh - 0.5], [rx + rw - 0.5, ry + 0.5]].forEach(([x, y], j) => { if (things[j]) out.push({ x, y, kind: things[j], idx: picN++, face: Math.atan2(ry + rh / 2 - y, rx + rw / 2 - x) }); });
   }
   // Three treasure chests along the way (chat's goals open them).
-  for (const [k, t] of [[0, 0.16], [1, 0.47], [2, 0.8]]) { const p = poseAt(layout, t), side = k % 2 ? 0.34 : -0.34; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'chest', idx: k }); }
+  for (const [k, t] of [[0, 0.16], [1, 0.47], [2, 0.8]]) { const p = poseAt(layout, t), side = k % 2 ? 0.34 : -0.34; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'chest', idx: k, face: Math.atan2(-Math.cos(p.ang) * side, Math.sin(p.ang) * side) }); }
   return out;
 }
 
@@ -522,7 +530,7 @@ export function eyePose(layout, grid, t) {
 export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0;
+  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null;
   let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
   let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false, dipAt = -99, fogMix = 0;
   const listeners = { peek: () => {} };
@@ -656,9 +664,9 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const [x0, y0] = R[i - 1], [x1, y1] = R[i], len = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / len, uy = (y1 - y0) / len, mid = (acc + len / 2) / total; acc += len;
       if (Math.abs((x0 + x1) / 2 - pose.x) + Math.abs((y0 + y1) / 2 - pose.y) > 16) continue;
       const cyc = (tm / 11 + i * 0.37) % 1;
-      if (i % 2 && cyc < 0.35) { const f = cyc / 0.35, a = i % 4 === 1 ? f : 1 - f; list.push({ x: x0 + 0.5 + ux * len * a - uy * 0.42, y: y0 + 0.5 + uy * len * a + ux * 0.42, kind: (tm * 8 | 0) % 2 ? 'rat' : 'rat2' }); }
-      if (mid > split && i % 2 === 0) { const cx = x0 + 0.5 + ux * len / 2, cy = y0 + 0.5 + uy * len / 2; list.push({ x: cx + Math.cos(tm * 1.3 + i) * 0.7, y: cy + Math.sin(tm * 1.7 + i) * 0.45, kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2', lift: 0.62 + Math.sin(tm * 2.3 + i) * 0.08 }); }
-      if (i % 3 === 0) list.push({ x: x0 + 0.5 - uy * 0.3, y: y0 + 0.5 + ux * 0.3, kind: 'spider', lift: 0.5 + Math.sin(tm * 0.8 + i) * 0.02 });
+      if (i % 2 && cyc < 0.35) { const f = cyc / 0.35, fwd = i % 4 === 1, a = fwd ? f : 1 - f; list.push({ x: x0 + 0.5 + ux * len * a - uy * 0.42, y: y0 + 0.5 + uy * len * a + ux * 0.42, kind: (tm * 8 | 0) % 2 ? 'rat' : 'rat2', face: Math.atan2(fwd ? uy : -uy, fwd ? ux : -ux) }); }
+      if (mid > split && i % 2 === 0) { const cx = x0 + 0.5 + ux * len / 2, cy = y0 + 0.5 + uy * len / 2, a = tm * 1.3 + i; list.push({ x: cx + Math.cos(a) * 0.7, y: cy + Math.sin(tm * 1.7 + i) * 0.45, kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2', lift: (models ? 0.3 : 0.62) + Math.sin(tm * 2.3 + i) * 0.08, face: a + Math.PI / 2 }); }
+      if (i % 3 === 0) list.push({ x: x0 + 0.5 - uy * 0.3, y: y0 + 0.5 + ux * 0.3, kind: 'spider', lift: (models ? 0.38 : 0.5) + Math.sin(tm * 0.8 + i) * 0.02, face: tm * 0.3 + i });
     }
     if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss; list.push({ x: bx + bw / 2, y: by + bh / 2, kind: 'boss' }); }
     const inv = 1 / (planeX * dirY - dirX * planeY);
@@ -669,7 +677,12 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (s.kind === 'eyes' && (tm / 5 + (s.idx || 0) * 0.37) % 1 < 0.05) return; // they blink
       if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && !CRITTERS.has(s.kind)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : (SPRITE_SIZE[s.kind] || 0.55))));
+      // A 3D prop: the photo taken from the angle you see it from (8 around), and its frame.
+      const named = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind, base = named === 'rat2' ? 'rat' : named === 'bat2' ? 'bat' : named;
+      const mdl = !pd && models?.[base] ? models[base] : null;
+      let shot = null;
+      if (mdl) { const rel = Math.atan2(pose.y - s.y, pose.x - s.x) - (s.face ?? 0), k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, fr = named === 'rat2' || named === 'bat2' ? 1 : base === 'brazier' ? (tm * 6 | 0) % 2 : 0; shot = mdl.frames[Math.min(fr, mdl.frames.length - 1)][k]; }
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
       const floorY = horizon + Math.floor(VH / tY / 2), top = (s.kind === 'eyes' ? horizon - size : floorY - size) - Math.floor((s.lift || 0) * VH / tY);
       const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
@@ -688,7 +701,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
             else if (how === 'sealed' && v >= 0.66 && (Math.abs(u - 0.12) < 0.03 || Math.abs(u - 0.88) < 0.03)) col = [70, 70, 76];
             else if (how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
           }
-          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
+          else if (shot) { const bi = (Math.min(shot.h - 1, Math.floor(v * shot.h)) * shot.w + Math.min(shot.w - 1, Math.floor(u * shot.w))) * 4; if (shot.data[bi + 3] > 110) { col = [shot.data[bi], shot.data[bi + 1], shot.data[bi + 2]]; glow = MODEL_GLOW.has(base) && shot.data[bi] > 200; } }
+          else { const k0 = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, kind = SPRITES[k0] ? k0 : FLAT[k0] || 'comics', rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
           if (!col) continue;
           const i = (sy * VW + sx) * 4, l = glow || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
@@ -763,6 +777,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
   }
   return {
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
+    // The 3D props' photos (scripts/prop-models.mjs bakeProps); null keeps the flat sprites.
+    setModels(m) { models = m || null; },
     // The host's joystick: { yaw, pitch } (-1..1) to look; { action: 'scout' | 'back' }.
     setCamera(c = {}) { const now = performance.now(); if (c.action === 'scout') scoutAt = now; else if (c.action === 'back') backAt = now; else manual = { yaw: Math.max(-1, Math.min(1, Number(c.yaw) || 0)), pitch: Math.max(-1, Math.min(1, Number(c.pitch) || 0)), at: now }; },
     // The store's item photos for the walls (from loadPicture).

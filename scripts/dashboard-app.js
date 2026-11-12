@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.12.7-camera-joystick';
+const APP_VERSION = '2026.11.12.8-3d-props';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -373,6 +373,8 @@ function roleCanAccessTab(tab){
   if(role === 'owner' || role === 'admin') allowed = true;
   else if(role === 'manager') allowed = !['backoffice','database'].includes(tab);
   else if(role === 'employee') allowed = ['overview','display','browse','inventory','research','pos','whatnot','scout','alerts','wantlist','locations','restock','grading','sets','events','pulllists','foc','backlist','phone','cardintake','tasks'].includes(tab);
+  // Sean's articles are The Mana Pocket's own site (2026-11-12: "articles tab shouldn't be available for other stores").
+  if(tab === 'articles' && getActiveStoreId() !== HOME_STORE_ID) return false;
   return allowed && planCanAccessTab(tab) && featureCanAccessTab(tab);
 }
 // Second-store pilot (scripts/store-features.mjs): tabs tied to The Mana

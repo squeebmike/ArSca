@@ -131,7 +131,9 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=8').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=9').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+  // The 3D props (Duke Nukem style): photographed once from 8 angles.
+  import('./prop-models.mjs?v=1').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -180,7 +182,7 @@ function paintCrawl(d,center){
 // sides like you're walking past them.
 const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic','bucket','cardbox'];
 // The store's own items pass by in front too, in top loaders (2026-11-11).
-let fgImgs=[],fgUrls=[];
+let fgImgs=[],fgUrls=[],baked=null;const fgShot=Object.assign(document.createElement('canvas'),{width:64,height:64});
 function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgUrls=urls;fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
 let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0,fgIdx=0;
 // ── Boss fights (2026-11-12: "the bosses are lame") ──────────────────────
@@ -252,6 +254,10 @@ function fgSide(cv,phase,kind,side,open,idx=0){
     if(how==='sealed'){k.fillStyle='#78787e';k.fillRect(8,160-40,144,8);k.fillStyle='#46464c';k.fillRect(16,160-32,8,32);k.fillRect(136,160-32,8,32);}
     const sc=Math.min(w/im.naturalWidth,h/im.naturalHeight),iw=im.naturalWidth*sc,ih=im.naturalHeight*sc;try{k.drawImage(im,x0+(w-iw)/2,y0+(h-ih),iw,ih);}catch{}
     if(how==='card'){k.fillStyle='#ffffff55';k.fillRect(x0-6,y0-6,10,h+6);}}
+  else if(baked&&baked[kind==='chest'&&open?'chestopen':kind]){
+    // The 3D prop turns as it passes: seen from the front far off, from the side right beside you.
+    const shot=baked[kind==='chest'&&open?'chestopen':kind].frames[0][side<0?Math.min(2,Math.floor(phase*3)):(8-Math.min(2,Math.floor(phase*3)))%8];
+    k.clearRect(0,0,160,160);fgShot.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(shot.data),shot.w,shot.h),0,0);k.imageSmoothingEnabled=false;k.filter=`brightness(${0.55+0.45*phase})`;k.drawImage(fgShot,0,0,160,160);k.filter='none';}
   else fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
   const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60),y=-phase*6;
   cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));
