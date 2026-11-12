@@ -125,6 +125,19 @@ export async function syncSubstackArticles(deps, { max = 5 } = {}) {
   return out;
 }
 
+// What an edit may keep: the words, headings, lists, quotes, links and
+// pictures. Scripts, frames, styles, event handlers and javascript: links go.
+export function cleanEditedHtml(html) {
+  let s = String(html || '');
+  s = s.replace(/<(script|style|iframe|object|embed|form|svg|button|input|textarea|select)\b[\s\S]*?<\/\1\s*>/gi, '');
+  s = s.replace(/<\/?(script|style|iframe|object|embed|form|meta|link|base|svg|button|input|textarea|select|font|span|div)\b[^>]*>/gi, m => /^<\/?div/i.test(m) ? (m.startsWith('</') ? '</p>' : '<p>') : '');
+  s = s.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+  s = s.replace(/\s(style|class|id|contenteditable|data-[a-z-]+)\s*=\s*("[^"]*"|'[^']*')/gi, '');
+  s = s.replace(/\s(href|src)\s*=\s*(["'])\s*(?:javascript|vbscript|data):[^"']*\2/gi, '');
+  s = s.replace(/<p>\s*(?:<br\s*\/?>)?\s*<\/p>/gi, '').replace(/<p>\s*<p>/gi, '<p>').replace(/<\/p>\s*<\/p>/gi, '</p>');
+  return s.trim();
+}
+
 // ── The Worker side ──────────────────────────────────────────────────────────
 // deps: { kv, webflow(path, init) -> json, supabaseAdminFetch, storeId }
 const WF_ARTICLES_ID = '6ab95f7914e615c91fc4dbd6';
@@ -251,6 +264,30 @@ export async function handleArticleStudio(request, env, url, deps) {
     await deps.webflow(`/collections/${WF_ARTICLES_ID}/items/${id}`, { method: 'PATCH', body: JSON.stringify({ isDraft: false, fieldData: {} }) });
     await deps.webflow(`/collections/${WF_ARTICLES_ID}/items/publish`, { method: 'POST', body: JSON.stringify({ itemIds: [id] }) });
     return deps.json({ ok: true, live: true, url: 'https://www.themanapocket.com/articles/' + item.fieldData?.slug });
+  }
+  // Edits from the dashboard (2026-11-12: "edit it from that same screen, fix
+  // things and then publish"): title, summary, the books on the page, the words
+  // and pictures. A live article goes live again with the changes.
+  if (url.pathname === '/store/articles/save' && request.method === 'POST') {
+    const body = await request.json().catch(() => ({})), id = String(body.id || '');
+    if (!/^[a-f0-9]{24}$/i.test(id)) return deps.json({ ok: false, error: 'Article id required' }, 400);
+    const item = await deps.webflow(`/collections/${WF_ARTICLES_ID}/items/${id}`);
+    if (!authors.includes(String(item.fieldData?.author || ''))) return deps.json({ ok: false, error: 'Only Substack articles can be changed here' }, 403);
+    const title = String(body.title ?? '').replace(/\s+/g, ' ').trim().slice(0, 250);
+    if (!title) return deps.json({ ok: false, error: 'A title is required' }, 400);
+    const fieldData = {
+      name: title,
+      summary: String(body.summary ?? '').replace(/\s+/g, ' ').trim().slice(0, 500),
+      'books-to-promote': String(body.books ?? '').split(/\r?\n/).map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 12).join('\n'),
+      ...(typeof body.body === 'string' ? { body: cleanEditedHtml(body.body).slice(0, 100000) } : {}),
+    };
+    await deps.webflow(`/collections/${WF_ARTICLES_ID}/items/${id}`, { method: 'PATCH', body: JSON.stringify({ fieldData }) });
+    const goLive = body.publish === true || (!item.isDraft && !!item.lastPublished);
+    if (goLive) {
+      if (item.isDraft) await deps.webflow(`/collections/${WF_ARTICLES_ID}/items/${id}`, { method: 'PATCH', body: JSON.stringify({ isDraft: false, fieldData: {} }) });
+      await deps.webflow(`/collections/${WF_ARTICLES_ID}/items/publish`, { method: 'POST', body: JSON.stringify({ itemIds: [id] }) });
+    }
+    return deps.json({ ok: true, live: goLive, url: 'https://www.themanapocket.com/articles/' + item.fieldData?.slug });
   }
   if (url.pathname === '/store/articles/import' && request.method === 'POST') return deps.json({ ok: true, ...(await runSubstackArticlesSync(env, deps, { force: true })) });
   return deps.json({ ok: false, error: 'Not found' }, 404);

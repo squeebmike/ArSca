@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { isBot, referredSales, parseSubstackFeed, cleanSubstackHtml, isComicPost, suggestBooks, substackArticleFields, articleReport, articleStatsScript, SUBSTACK_FEEDS, runSubstackArticlesSync } from '../scripts/substack-articles.mjs';
+import { cleanEditedHtml, handleArticleStudio, isBot, referredSales, parseSubstackFeed, cleanSubstackHtml, isComicPost, suggestBooks, substackArticleFields, articleReport, articleStatsScript, SUBSTACK_FEEDS, runSubstackArticlesSync } from '../scripts/substack-articles.mjs';
 
 // A Substack feed the way Substack writes it (made-up posts).
 const img = u => `<div class="captioned-image-container"><figure><a class="image-link image2 is-viewable-img" target="_blank" href="${u}"><div class="image2-inset"><picture><source type="image/webp" srcset="${u} 424w" sizes="100vw"><img src="${u}" width="1456" height="2257" data-attrs="{}" class="sizing-normal" alt="" srcset="${u} 424w" loading="lazy"></picture><div class="image-link-expand"><div class="pencraft"><button class="pencraft icon-container"><svg xmlns="http://www.w3.org/2000/svg"><path d="M1"/></svg></button></div></div></div></a></figure></div>`;
@@ -95,4 +95,27 @@ for (const ua of ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleW
 { const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
   assert.ok(app.includes('📖 READ IT') && app.includes('<iframe sandbox="allow-popups allow-popups-to-escape-sandbox"') && !/<iframe sandbox="[^"]*allow-scripts/.test(app));
 }
+// Editing from the dashboard (2026-11-12): what's kept, what's dropped, and the save.
+assert.equal(cleanEditedHtml('<div>Hi <b>there</b></div><p onclick="x()">ok <a href="javascript:alert(1)">bad</a> <a href="https://x">good</a></p><script>alert(1)</script><img src="https://a/b.jpg" onerror="x" style="width:1px" alt="A"><p><br></p><span style="color:red">t</span><h2>Head</h2>'),
+  '<p>Hi <b>there</b></p><p>ok <a>bad</a> <a href="https://x">good</a></p><img src="https://a/b.jpg" alt="A">t<h2>Head</h2>');
+{
+  const calls = [], item = { id: 'a'.repeat(24), isDraft: true, lastPublished: null, fieldData: { slug: 'sw-1', author: 'S.A. Van Overbeke' } };
+  const deps = { storeId: 'store', json: (d, status = 200) => new Response(JSON.stringify(d), { status }), kv: { get: async () => null },
+    requireStoreUser: async () => ({ role: 'owner' }), supabaseAdminFetch: async () => ({ data: [] }),
+    webflow: async (path, init = {}) => { calls.push([init.method || 'GET', path, init.body ? JSON.parse(init.body) : null]); return init.method ? {} : item; } };
+  const save = body => handleArticleStudio(new Request('https://w/store/articles/save?store_id=store', { method: 'POST', body: JSON.stringify(body) }), { WEBFLOW_TOKEN: 'x' }, new URL('https://w/store/articles/save?store_id=store'), deps).then(r => r.json());
+  let r = await save({ id: item.id, title: '  New  title ', summary: 'S', books: 'SPIDER-WOMAN #1\n\n  Venom #1 ', body: '<p onclick="x">Words</p><img src="https://cdn/a.jpg">' });
+  assert.equal(r.ok, true); assert.equal(r.live, false, 'a draft stays a draft');
+  const patch = calls.find(c => c[0] === 'PATCH')[2].fieldData;
+  assert.deepEqual(patch, { name: 'New title', summary: 'S', 'books-to-promote': 'SPIDER-WOMAN #1\nVenom #1', body: '<p>Words</p><img src="https://cdn/a.jpg">' });
+  assert.ok(!calls.some(c => c[1].endsWith('/items/publish')));
+  calls.length = 0; r = await save({ id: item.id, title: 'T', publish: true });
+  assert.equal(r.live, true); assert.ok(calls.some(c => c[1].endsWith('/items/publish')), 'SAVE & PUT ON SITE publishes');
+  item.isDraft = false; item.lastPublished = '2026-11-12'; calls.length = 0; await save({ id: item.id, title: 'T' });
+  assert.ok(calls.some(c => c[1].endsWith('/items/publish')), 'a live article updates live');
+  assert.equal((await save({ id: item.id, title: '   ' })).ok, false, 'a title is required');
+  item.fieldData.author = 'The Mana Pocket'; assert.equal((await save({ id: item.id, title: 'T' })).ok, false, 'only his articles here');
+}
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.ok(app.includes('✏️ EDIT') && app.includes("'/store/articles/save'") && app.includes('function articleEditSafe(') && app.includes('SAVE &amp; PUT ON SITE')); }
 console.log('Substack articles: feed, clean-up, comic posts only, books, drafts, report and counters passed');

@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.12.5-article-orders';
+const APP_VERSION = '2026.11.12.6-edit-articles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21901,18 +21901,67 @@ async function renderSubstackArticles(){
           <iframe sandbox="allow-popups allow-popups-to-escape-sandbox" title="${escHtml(a.title)}" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;background:#fff;margin-top:6px"></iframe></details>
         ${a.books?.length ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Books on the page: ${a.books.map(escHtml).join(', ')}</div>` : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No books matched -- add them in Webflow ("Books To Promote") to show your stock on the page</div>'}
         <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="ra" onclick="editSubstackArticle(${i})">✏️ EDIT</button>
           ${a.live
             ? `<a class="ra" href="https://www.themanapocket.com/articles/${encodeURIComponent(a.slug)}" target="_blank" rel="noopener">VIEW</a><button class="ra" onclick="setSubstackArticleLive('${a.id}',false)">TAKE OFF SITE</button>`
             : `<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="setSubstackArticleLive('${a.id}',true)">PUT ON SITE</button>`}
         </div>
+        <div id="sf-article-edit-${i}"></div>
       </div>
     </div>`).join('');
+    window._articles = arts;
   } catch(e) {
     if(count) count.textContent = 'unavailable';
     list.innerHTML = `<div style="font-family:var(--font-mono);font-size:10px;color:var(--red);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">${escHtml(e.message)}</div>`;
   }
 }
 window.renderSubstackArticles = renderSubstackArticles;
+// Edit an article right here (2026-11-12): title, summary, the books on the
+// page, and the words and pictures (tap to type; B / I / heading / link; tap a
+// picture and press delete to remove it). The text shown here is cleaned of
+// anything that could run (scripts, handlers) before it's put on the page.
+function articleEditSafe(html){
+  const doc = new DOMParser().parseFromString('<div>' + String(html || '') + '</div>', 'text/html');
+  doc.querySelectorAll('script,style,iframe,object,embed,form,svg,button,input,textarea,select,link,meta,base').forEach(n => n.remove());
+  doc.querySelectorAll('*').forEach(n => { [...n.attributes].forEach(at => { if(/^on/i.test(at.name) || ((at.name === 'href' || at.name === 'src') && /^\s*(javascript|vbscript|data):/i.test(at.value))) n.removeAttribute(at.name); }); });
+  return doc.body.firstChild.innerHTML;
+}
+window.editSubstackArticle = function(i){
+  const a = (window._articles || [])[i], box = document.getElementById('sf-article-edit-' + i);
+  if(!a || !box) return;
+  if(box.innerHTML){ box.innerHTML = ''; return; }
+  const field = 'width:100%;box-sizing:border-box;background:var(--surf);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px;font-size:13px;margin:3px 0 8px';
+  const tool = (cmd, label, arg) => `<button type="button" class="ra" onmousedown="event.preventDefault()" onclick="document.execCommand('${cmd}',false,${arg ? `'${arg}'` : 'null'})">${label}</button>`;
+  box.innerHTML = `<div style="border:1px solid var(--g);border-radius:8px;padding:10px;margin-top:6px">
+    <label style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">TITLE<input id="sfe-title-${i}" style="${field}" value="${escHtml(a.title)}"></label>
+    <label style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">SUMMARY (shows in Google and on the articles list)<textarea id="sfe-summary-${i}" rows="2" style="${field}">${escHtml(a.summary || '')}</textarea></label>
+    <label style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">BOOKS ON THE PAGE (one per line, like "Spider-Woman #1")<textarea id="sfe-books-${i}" rows="3" style="${field}">${escHtml((a.books || []).join('\n'))}</textarea></label>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">THE ARTICLE (tap to type; tap a picture and press delete to remove it)</div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin:4px 0">${tool('bold', '<b>B</b>')}${tool('italic', '<i>I</i>')}${tool('formatBlock', 'HEADING', 'h2')}${tool('formatBlock', 'TEXT', 'p')}<button type="button" class="ra" onmousedown="event.preventDefault()" onclick="const u=prompt('Link to (https://...)');if(u&&(u.indexOf('https://')===0||u.indexOf('http://')===0))document.execCommand('createLink',false,u)">LINK</button>${tool('undo', '↶ UNDO')}</div>
+    <div id="sfe-body-${i}" contenteditable="true" style="background:#fff;color:#222;font:16px/1.55 Georgia,serif;border:1px solid var(--border);border-radius:6px;padding:12px;max-height:70vh;overflow:auto"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      <button class="ra" onclick="saveSubstackArticle(${i},false)">SAVE${a.live ? ' (updates the live page)' : ' AS DRAFT'}</button>
+      ${a.live ? '' : `<button class="ra" style="background:rgba(0,255,179,.08);border-color:rgba(0,255,179,.25);color:var(--g)" onclick="saveSubstackArticle(${i},true)">SAVE &amp; PUT ON SITE</button>`}
+      <button class="ra" onclick="editSubstackArticle(${i})">CANCEL</button>
+    </div></div>`;
+  const ed = document.getElementById('sfe-body-' + i);
+  ed.innerHTML = articleEditSafe(a.body);
+  ed.querySelectorAll('img').forEach(img => { img.style.maxWidth = '100%'; img.style.height = 'auto'; });
+};
+window.saveSubstackArticle = async function(i, publish){
+  const a = (window._articles || [])[i]; if(!a) return;
+  const ed = document.getElementById('sfe-body-' + i);
+  ed.querySelectorAll('img').forEach(img => img.removeAttribute('style'));
+  const payload = { id:a.id, publish, title:document.getElementById('sfe-title-' + i).value, summary:document.getElementById('sfe-summary-' + i).value, books:document.getElementById('sfe-books-' + i).value, body:ed.innerHTML };
+  try {
+    toast_dash('Saving…');
+    const res = await storeWorkerFetch('/store/articles/save', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error(data.error || 'Could not save');
+    toast_dash(data.live ? 'Saved -- the page updates within a few minutes' : 'Saved as a draft');
+    renderSubstackArticles();
+  } catch(e) { toast_dash(e.message); }
+};
 window.setSubstackArticleLive = async function(id, live){
   if(!live && !confirm('Take this article off the site?')) return;
   try {
