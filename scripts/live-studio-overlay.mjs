@@ -131,7 +131,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=6').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=7').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -520,6 +520,7 @@ function connect() {
   socket=new WebSocket(url);
   socket.onopen=()=>socket.send(JSON.stringify({token}));
   socket.onmessage=ev=>{try {const m=JSON.parse(ev.data);offset=m.serverNow-Date.now();retry=0;
+    if(m.type==='camera'){fp?.setCamera?.(m.cam);return;}
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
@@ -550,4 +551,5 @@ setInterval(()=>{
 apply(settings);draw();connect();
 // Local editor preview only; same-origin parent can show settings without network access.
 if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.origin!==location.origin)return;
+  if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);return;}
   if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});

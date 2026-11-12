@@ -291,7 +291,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(controls.includes('<iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" src="shed-background.html#preview=1"></iframe>'));
   assert.ok(controls.includes("host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);"));
   const bg2 = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
-  assert.ok(bg2.includes("if (ev.source !== parent || ev.origin !== location.origin || ev.data?.type !== 'mana-preview') return;"), 'only its own dashboard can drive the preview');
+  assert.ok(bg2.includes("if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera')") && bg2.includes("if (ev.data?.type !== 'mana-preview') return;"), 'only its own dashboard can drive the preview');
 }
 // 2026-11-11: "still don't see items playing next ... nothing happens when I hit
 // the buttons ... can it use the names of users?" -- NOW PLAYING / NEXT UP is in
@@ -460,4 +460,16 @@ console.log('live-studio-dungeon: ok');
   assert.ok(!/Math\.random/.test(src), 'nothing left to chance: the same on every screen');
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(ov.includes('fgShown+dt*Math.max(1.6/len,(fgTarget-fgShown)/12)'), 'the props in front walk at the same pace');
+}
+{
+  // 2026-11-12: "can I move camera from the dashboard? Joystick?"
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("this.broadcast({ type: 'camera', cam, serverNow: now });") && api.includes("url.pathname==='/live-studio/camera'"), 'the remote sends, the screens hear');
+  const fp = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  for (const k of ['setCamera(c = {})', 'const held = now - manual.at < 3000', 'Math.min(0.99, shown + scoutNow)', 'pitchNow * VH * 0.28']) assert.ok(fp.includes(k), k);
+  assert.ok(!fp.match(/shown\s*=\s*[^;]*scoutNow/), 'scouting never moves how far along the floor you are');
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8'), ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
+  assert.ok(ov.includes("if(m.type==='camera'){fp?.setCamera?.(m.cam);return;}") && ov.includes("ev.data?.type==='mana-camera'"));
+  assert.ok(bg.includes("if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }") && bg.includes("ev.data?.type === 'mana-camera'"));
+  assert.ok(ctl.includes('id="mana-joy"') && ctl.includes("camSend({action:'scout'})") && ctl.includes("camSend({action:'back'})") && ctl.includes("api('camera',cam)"));
 }

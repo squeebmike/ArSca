@@ -521,7 +521,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
   let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
   let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false, dipAt = -99, fogMix = 0;
   const listeners = { peek: () => {} };
-  let clockNow = 0;
+  let clockNow = 0, manual = { yaw: 0, pitch: 0, at: -1e9 }, scoutAt = -1e9, backAt = -1e9, pitchNow = 0, scoutNow = 0;
   function setBoss(sourceCanvas) {
     if (!sourceCanvas) { bossPx = null; return; }
     const c = sourceCanvas.getContext('2d'), d = c.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
@@ -550,8 +550,17 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       // glance to one side and back.
       const tm = now / 1000, ph = (tm % 13) / 13, side = Math.floor(tm / 13) % 2 ? 1 : -1;
       const glance = ph > 0.55 && ph < 0.8 ? Math.sin((ph - 0.55) / 0.25 * Math.PI) * 0.42 * side : 0;
-      const idle = walking ? 0 : Math.sin(tm * 0.31) * 0.06 + glance;
-      look += (idle - look) * Math.min(1, dt * (walking ? 4 : 1.6));
+      let idle = walking ? 0 : Math.sin(tm * 0.31) * 0.06 + glance;
+      // The host's joystick wins for 3 seconds after it last moved; LOOK BACK
+      // turns all the way round and back.
+      const held = now - manual.at < 3000, back = (now - backAt) / 2600;
+      if (held) idle = manual.yaw * 1.1;
+      if (back >= 0 && back < 1) idle = Math.PI * (back < 0.3 ? back / 0.3 : back > 0.72 ? (1 - back) / 0.28 : 1);
+      look += (idle - look) * Math.min(1, dt * (held || back < 1 ? 3 : walking ? 4 : 1.6));
+      pitchNow += ((held ? manual.pitch : 0) - pitchNow) * Math.min(1, dt * 3);
+      // SCOUT AHEAD: the camera runs on around the next corner, waits, and comes back.
+      const sc = (now - scoutAt) / 7000, reach = Math.min(0.12, 10 / (map.layout.len || 30));
+      scoutNow = sc >= 0 && sc < 1 ? reach * (sc < 0.35 ? Math.sin(sc / 0.35 * Math.PI / 2) : sc > 0.65 ? Math.cos((sc - 0.65) / 0.35 * Math.PI / 2) : 1) : 0;
       walking = shown < target - 0.002;
       if (walking) {
         // Steady footsteps (about 1.6 cells a second) on these long floors, a
@@ -564,18 +573,19 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         else shown += step;
       } else if (shown > target) shown = target;
     }
-    bob = walking ? bob + dt * 9 : bob * 0.9;
+    const scoutWalk = now - scoutAt < 7000 && (now - scoutAt < 2450 || now - scoutAt > 4550); // footsteps out and back
+    bob = walking || scoutWalk ? bob + dt * 9 : bob * 0.9;
     clockNow = now;
     draw();
   }
   function draw() {
     // The eye sits a little behind the walker (when there's room), so the view looks down the hall, not into the wall.
-    const pose = eyePose(map.layout, map.grid, shown), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
+    const pose = eyePose(map.layout, map.grid, Math.min(0.99, shown + scoutNow)), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
     const tm = clockNow / 1000, N = GRID, zone = map.zone;
     // Breathing while standing; a dip as you climb down the trapdoor.
     const dip = (clockNow - dipAt) / 1600, breathe = walking ? 0 : Math.sin(tm * 1.3) * VH * 0.006;
-    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
+    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
     // Down in the dungeon the fog turns colder and darker.
     const inDeep = zone ? zone[Math.floor(pose.y) * N + Math.floor(pose.x)] : 0; fogMix += ((inDeep ? 1 : 0) - fogMix) * 0.05;
     const pal = { ...pal0, fog: pal0.fog.map((c, k) => Math.round(c * (1 - fogMix) + [4, 3, 8][k] * fogMix)) };
@@ -729,6 +739,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
   }
   return {
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
+    // The host's joystick: { yaw, pitch } (-1..1) to look; { action: 'scout' | 'back' }.
+    setCamera(c = {}) { const now = performance.now(); if (c.action === 'scout') scoutAt = now; else if (c.action === 'back') backAt = now; else manual = { yaw: Math.max(-1, Math.min(1, Number(c.yaw) || 0)), pitch: Math.max(-1, Math.min(1, Number(c.pitch) || 0)), at: now }; },
     // The store's item photos for the walls (from loadPicture).
     // Order kept (a photo that didn't load is a gap), so the overlay's items match.
     setPictures(list, kinds = []) { pics = (list || []).slice(0, 24); picKinds = kinds.slice(0, pics.length); while (picKinds.length < pics.length) picKinds.push('card'); },
