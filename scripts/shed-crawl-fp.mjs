@@ -369,8 +369,11 @@ const SPRITES = {
   spider: ['.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '...l...w...l....', '....l.bbb.l.....', '..llbbbbbbbll...', '....bbrbrbb.....', '..ll.bbbbb.ll...', '....l.....l.....'],
   cat: ['...k...k........', '...kk.kk........', '...kkkkk........', '...kykyk........', '...kkkkk........', '....kkk.........', '...kkkkkk.......', '..kkkkkkkk...k..', '..kkkkkkkk..k...', '..kkkkkkkkkk....'],
   // Treasure chests: shut, and open once chat hits its goal.
-  chest: ['..aaaaaaaaaaaa..', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaayyaaaaaa.', '.abbbbbyybbbbba.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
-  chestopen: ['.aaaaaaaaaaaaaa.', '.abbbbbbbbbbbba.', '.aaaaaaaaaaaaaa.', '..dd.d..d.dd.d..', '.agggggggggggga.', '.agygygygygygya.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
+  // Treasure chests (2026-11-12: "the chests need to be better looking, I don't
+  // really notice them"): a big wooden chest, gold bands, a glowing lock; open,
+  // it spills gold light and coins.
+  chest: ['...aaaaaaaaaa...', '..abbybbbbybba..', '.abbbybbbbybbba.', '.abbbybbbbybbba.', '.aaaayaaaayaaaa.', '.gggggggggggggg.', '.abbbybwwbybbba.', '.abbbybkkbybbba.', '.abbbybbbbybbba.', '.abbbybbbbybbba.', '.abbbybbbbybbba.', '.aaaaaaaaaaaaaa.', '.d............d.'],
+  chestopen: ['..s....s....s...', '...aaaaaaaaaa...', '..abbybbbbybba..', '.aaaayaaaayaaaa.', '.cccccccccccccc.', '.cyycyycyycyycc.', '.gggggggggggggg.', '.abbbybwwbybbba.', '.abbbybbbbybbba.', '.abbbybbbbybbba.', '.abbbybbbbybbba.', '.aaaaaaaaaaaaaa.', '.d............d.'],
 };
 const SPRITE_COLORS = {
   dollarbin: { a: [40, 26, 14], b: [200, 40, 40], w: [250, 240, 200], $: [20, 120, 30], 1: [20, 120, 30], c: [200, 40, 40], d: [40, 90, 190], e: [230, 170, 30], f: [60, 150, 70], g: [160, 120, 70] },
@@ -406,13 +409,15 @@ const SPRITE_COLORS = {
   bat: { a: [70, 50, 80], b: [44, 32, 54], r: [255, 70, 70] },
   bat2: { a: [70, 50, 80], b: [44, 32, 54], r: [255, 70, 70] },
   spider: { w: [190, 190, 200], l: [30, 25, 30], b: [44, 32, 44], r: [255, 50, 50] },
-  chest: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 220, 60] },
-  chestopen: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 250, 200], g: [255, 210, 40], d: [255, 250, 160] },
+  chest: { a: [44, 24, 10], b: [156, 88, 36], y: [255, 205, 60], g: [240, 178, 40], w: [255, 244, 180], k: [30, 18, 8], d: [44, 24, 10] },
+  chestopen: { a: [44, 24, 10], b: [156, 88, 36], y: [255, 205, 60], g: [240, 178, 40], w: [255, 244, 180], c: [255, 248, 200], s: [255, 255, 220], d: [44, 24, 10] },
 };
 // Props that move (2026-11-12): TV static, cycling arcade screens, flowing
 // lava lamps, dancing flames, pulsing crystals. Pure functions of time.
 const hashN = (a, b, c) => (((a * 73856093) ^ (b * 19349663) ^ (c * 83492791)) >>> 0) % 1000 / 1000;
 const ANIM = {
+  chest: (ch, col, u, v, tm) => ('ygw'.includes(ch) ? col.map(c => c * (0.85 + 0.5 * Math.max(0, 1 - Math.abs(u + v * 0.4 - ((tm * 0.45) % 1) * 2.2 + 0.3) * 6))) : col),
+  chestopen: (ch, col, u, v, tm) => ('cs'.includes(ch) ? col.map(c => c * (0.8 + 0.2 * Math.sin(tm * 6 + u * 9))) : col),
   tv: (ch, col, u, v, tm) => (ch === 's' || ch === 'z') ? (hashN(Math.floor(u * 16), Math.floor(v * 16), Math.floor(tm * 12)) > 0.55 ? [225, 230, 255] : [50 + 40 * Math.sin(tm), 80, 190]) : col,
   arcade: (ch, col, u, v, tm) => ch === 's' ? [30 + 60 * (1 + Math.sin(tm * 2 + v * 6)), 140 + 50 * Math.sin(tm * 1.3), 220] : ch === 'm' ? (Math.floor(tm * 3 + u * 8) % 2 ? [255, 60, 170] : [255, 220, 60]) : col,
   lavalamp: (ch, col, u, v, tm) => (ch === 'g' || ch === 'l') ? (Math.sin(v * 14 - tm * 1.6 + Math.sin(u * 6 + tm) * 1.5) > 0.35 ? [255, 120, 40] : [120, 30, 140]) : col,
@@ -422,8 +427,8 @@ const ANIM = {
   crystal: (ch, col, u, v, tm) => col.map(c => c * (0.8 + 0.2 * Math.sin(tm * 2 + v * 3))),
 };
 // What glows in the dark (screens, flames, crystals, eyes) and how big each prop stands.
-const SPRITE_GLOW = { arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y', brazier: 'fy', bat: 'r', bat2: 'r', spider: 'r' };
-const SPRITE_SIZE = { arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4, bones: 0.3, coffin: 0.5, brazier: 0.55, trapdoor: 0.45, rat: 0.16, rat2: 0.16, bat: 0.2, bat2: 0.2, spider: 0.5 };
+const SPRITE_GLOW = { chest: 'ygw', chestopen: 'ygwcs', arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y', brazier: 'fy', bat: 'r', bat2: 'r', spider: 'r' };
+const SPRITE_SIZE = { chest: 0.85, chestopen: 0.85, arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4, bones: 0.3, coffin: 0.5, brazier: 0.55, trapdoor: 0.45, rat: 0.16, rat2: 0.16, bat: 0.2, bat2: 0.2, spider: 0.5 };
 // Critters move on their own; they never hide for the props passing in front.
 const CRITTERS = new Set(['rat', 'rat2', 'bat', 'bat2', 'spider']);
 // One prop, drawn big and crisp on a 2D canvas (the overlay's props in front
@@ -596,6 +601,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     for (let k = 0; k < bulbs.length; k++) { const b = bulbs[k]; if ((b.x - pose.x) ** 2 + (b.y - pose.y) ** 2 > 81) continue;
       const f = b.torch ? 0.78 + 0.14 * Math.sin(tm * 9 + k * 1.7) + 0.08 * Math.sin(tm * 23 + k * 3.1) : ((Math.floor(tm * 4) + k * 13) % 53 === 0 ? 0.3 : 0.93 + 0.07 * Math.sin(tm * 3 + k));
       near.push({ x: b.x, y: b.y, torch: b.torch, f: f * (b.torch ? 1.15 : 0.9) }); }
+    // Each chest glows: a warm gold pool of light around it, brighter while it's shut.
+    for (const pr of props) if (pr.kind === 'chest' && (pr.x - pose.x) ** 2 + (pr.y - pose.y) ** 2 < 100) near.push({ x: pr.x, y: pr.y, torch: true, f: state.chests?.[pr.idx] ? 0.7 : 1.3 + 0.3 * Math.sin(tm * 2.4 + pr.idx) });
     let litO = 0;
     // Floor and ceiling, textured (floor casting): each row is a distance;
     // lit by the flashlight and the bulbs, fading into the shed's fog.
@@ -712,6 +719,23 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         const k = a * Math.min(1, 1.6 - tY * 0.2), w = tY < 1.5 ? 2 : 1;
         for (let yy = sy; yy < sy + len * w; yy++) for (let xx = sx; xx < sx + w; xx++) { if (xx >= VW || yy < 0 || yy >= VH) continue; const i = (yy * VW + xx) * 4; data[i] += (col[0] - data[i]) * k; data[i + 1] += (col[1] - data[i + 1]) * k; data[i + 2] += (col[2] - data[i + 2]) * k; }
       }
+    }
+    // Sparkles circling each shut chest, and a gold arrow bobbing over it once it's close.
+    for (const pr of props) {
+      if (pr.kind !== 'chest' || state.chests?.[pr.idx]) continue;
+      const crx = pr.x - pose.x, cry = pr.y - pose.y, cTY = inv * (-planeY * crx + planeX * cry);
+      if (cTY <= 0.4 || cTY > 9) continue;
+      const put = (x, y, z, col, w) => { const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.3) return; const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY); for (let yy = sy; yy < sy + w; yy++) for (let xx = sx; xx < sx + w; xx++) { if (xx < 0 || xx >= VW || yy < 0 || yy >= VH || tY > zbuf[xx] + 0.2) continue; const i = (yy * VW + xx) * 4; data[i] = col[0]; data[i + 1] = col[1]; data[i + 2] = col[2]; } };
+      for (let k = 0; k < 6; k++) { const a = tm * 1.4 + k * 1.05, tw = Math.sin(tm * 5 + k * 2.3); if (tw < -0.2) continue; put(pr.x + Math.cos(a) * 0.32, pr.y + Math.sin(a) * 0.32, 0.12 + ((tm * 0.35 + k / 6) % 1) * 0.5, tw > 0.7 ? [255, 255, 230] : [255, 214, 70], cTY < 2.5 ? 2 : 1); }
+      // A loot beam: a column of gold light from the chest up to the ceiling, pulsing -- seen from far down the hall.
+      { const rx = pr.x - pose.x, ry = pr.y - pose.y, tX = inv * (dirY * rx - dirX * ry), cx = Math.floor((VW / 2) * (1 + tX / cTY)), half = Math.max(2, Math.floor(VH / cTY * 0.16)), ceil = 0, // up through the ceiling: a marker, not a lamp
+           floorY = horizon + Math.floor(VH / cTY * 0.5), pulse = 0.5 + 0.15 * Math.sin(tm * 3);
+        for (let X = cx - half; X <= cx + half; X++) { if (X < 0 || X >= VW || cTY > zbuf[X] + 0.2) continue; const edge = 1 - Math.abs(X - cx) / (half + 1);
+          for (let Y = Math.max(0, ceil); Y < Math.min(VH, floorY - Math.floor(VH / cTY * 0.3)); Y++) { const a = pulse * Math.sqrt(edge) * (0.45 + 0.55 * (Y - ceil) / Math.max(1, floorY - ceil)), i = (Y * VW + X) * 4; data[i] += (255 - data[i]) * a; data[i + 1] += (222 - data[i + 1]) * a; data[i + 2] += (110 - data[i + 2]) * a; } } }
+      if (cTY < 7) { const z = 0.8 + Math.abs(Math.sin(tm * 3)) * 0.1, px = Math.max(3, Math.round(6 / cTY));
+        // A small down arrow, 5 wide and 4 tall, in pixels of px.
+        const rx = pr.x - pose.x, ry = pr.y - pose.y, tX = inv * (dirY * rx - dirX * ry), sx0 = Math.floor((VW / 2) * (1 + tX / cTY)), sy0 = horizon + Math.floor((0.5 - z) * VH / cTY);
+        ['#####', '.###.', '..#..'].forEach((row, ry2) => [...row].forEach((c, rx2) => { if (c !== '#') return; for (let yy = 0; yy < px; yy++) for (let xx = 0; xx < px; xx++) { const X = sx0 + (rx2 - 2) * px + xx, Y = sy0 + ry2 * px + yy; if (X < 0 || X >= VW || Y < 0 || Y >= VH || cTY > zbuf[X] + 0.2) continue; const i = (Y * VW + X) * 4; data[i] = 255; data[i + 1] = 210 + 40 * Math.sin(tm * 6); data[i + 2] = 60; } })); }
     }
     // Moths around the bulbs.
     for (let k = 0; k < near.length; k++) { const b = near[k]; if (b.torch) continue;

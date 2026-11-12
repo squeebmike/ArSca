@@ -473,3 +473,10 @@ console.log('live-studio-dungeon: ok');
   assert.ok(bg.includes("if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }") && bg.includes("ev.data?.type === 'mana-camera'"));
   assert.ok(ctl.includes('id="mana-joy"') && ctl.includes("camSend({action:'scout'})") && ctl.includes("camSend({action:'back'})") && ctl.includes("api('camera',cam)"));
 }
+{
+  // 2026-11-12: "the chests need to be better looking, I don't really notice them".
+  const fp = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  for (const k of ["chest: { a: [44, 24, 10]", "SPRITE_GLOW = { chest: 'ygw'", 'chest: 0.85', 'A loot beam', 'Sparkles circling each shut chest', "pr.kind === 'chest' && (pr.x - pose.x)"]) assert.ok(fp.includes(k), k);
+  const { drawSprite } = await import('../scripts/shed-crawl-fp.mjs');
+  assert.equal(typeof drawSprite, 'function');
+}

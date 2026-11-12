@@ -131,7 +131,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=7').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=8').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
