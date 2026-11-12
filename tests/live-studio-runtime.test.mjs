@@ -25,7 +25,7 @@ try {
  const link=await call('/link');assert.equal(link.token.length,72);
  const ws=await socket();let msg=message(ws);ws.send(JSON.stringify({token:link.token}));assert.equal((await msg).type,'snapshot');
  const wrong=await socket('other');let closed=close(wrong);wrong.send(JSON.stringify({token:link.token}));assert.equal((await closed).code,1008,'token cannot cross stores');
- msg=message(ws);await call('/settings',{revision:0,settings:{message:'NEW MANA',automatic:true,sellerId:'s',showId:'show'}});assert.equal((await msg).settings.message,'NEW MANA');
+ msg=message(ws);await call('/settings',{revision:0,settings:{message:'NEW MANA',automatic:true,sellerId:'s',showId:'show',giveawayChests:0}});assert.equal((await msg).settings.message,'NEW MANA');
  assert.equal((await call('/settings',{revision:0,settings:{message:'stale'}})).conflict,true);
  assert.equal((await call('/state?store=other')).settings.message,state.settings.message);
  msg=message(ws);await call('/effect',{kind:'countdown'});const countdown=(await msg).effect;assert.equal(countdown.kind,'countdown');
@@ -68,11 +68,15 @@ try {
  const tq=await call('/trivia',{});assert.ok(tq.triviaAnswer);assert.equal(JSON.stringify(tq.stats).includes(tq.triviaAnswer),false);
  const tc=await call('/vote-pick',{index:0});assert.equal(tc.effect.kind,'trivia');assert.equal(tc.effect.answer,tq.triviaAnswer);
  // A chest the crawl reaches opens and brings the most valuable NEXT UP item up as a $1 start.
- await call('/settings',{revision:(await call('/state')).revision,settings:{dungeonOn:true,floorBase:100}});
+ await call('/settings',{revision:(await call('/state')).revision,settings:{dungeonOn:true,floorBase:100,giveawayChests:0}});
  await call('/stage',{stage:{now:{title:'A'},next:[{title:'Cheap',price:3},{title:'Grail',price:400}]}});
  await call('/adjust',{resetWeek:true});const before=(await call('/state')).stats.dungeon;assert.deepEqual(before.opened,[]);
  const ch=await call('/adjust',{mana:Math.ceil(before.goal*0.16)+1});
- assert.equal(ch.effect.kind,'chest');assert.equal(ch.effect.item.title,'Grail');assert.equal(ch.stage.next[0].title,'Grail');assert.deepEqual(ch.stats.dungeon.opened,[0]);
+ assert.equal(ch.effect.kind,'chest');assert.equal(ch.effect.item.title,'Grail');assert.equal(ch.stage.now.title,'Grail');assert.deepEqual(ch.stats.dungeon.opened,[0]);
+ // The first chests can be a FREE giveaway instead (2026-11-12): no item runs, the host starts a Whatnot giveaway.
+ await call('/settings',{revision:(await call('/state')).revision,settings:{giveawayChests:2}});
+ await call('/adjust',{resetWeek:true});const gv=await call('/adjust',{mana:Math.ceil(before.goal*0.16)+1});
+ assert.equal(gv.effect.kind,'chest');assert.equal(gv.effect.chestText,'FREE GIVEAWAY!');assert.equal(gv.effect.item,undefined);assert.equal(gv.chestGiveaway,true);assert.equal(gv.chestItem,undefined);
  assert.equal((await call('/name',{name:'box fort'})).stats.dungeon.name,'BOX FORT');
  // A new show going live on Whatnot: the studio follows it on its own (2026-11-11).
  const nextShow='9b2f6c1e-4d3a-4f8b-a1c2-3d4e5f6a7b8c';

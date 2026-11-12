@@ -83,14 +83,44 @@ export function generateLayout(floor) {
       L.peeks.push({ at, cell, ...picks[j] });
     }
     if (L.peeks.length < 2) continue;
-    // A wide stretch (a room) on one leg of the hall.
-    const r = route[1 + Math.floor(rnd() * (route.length - 2))];
-    L.rooms.push([Math.max(1, r[0] - 1), Math.max(1, r[1] - 1), 3, 3]);
+    // Rooms (store, 2026-11-12: "more variation, make the rooms better, other
+    // random cool shit in there"): two or three, 3 to 4 cells a side, each with
+    // a theme -- the arcade corner, the TV room, the poster room, the stock
+    // room, the neon room, the garage, the lounge.
+    const nRooms = 2 + (rnd() < 0.5 ? 1 : 0), usedCorners = new Set();
+    for (let j = 0; j < nRooms * 3 && L.rooms.length < nRooms; j++) {
+      const ci = 1 + Math.floor(rnd() * (route.length - 2)); if (usedCorners.has(ci)) continue;
+      const r = route[ci], w = 3 + (rnd() < 0.5 ? 1 : 0), h = 3 + (rnd() < 0.5 ? 1 : 0);
+      const x0 = Math.max(1, Math.min(N - 1 - w, r[0] - 1 - (w > 3 && rnd() < 0.5 ? 1 : 0)));
+      const y0 = Math.max(1, Math.min(N - 1 - h, r[1] - 1 - (h > 3 && rnd() < 0.5 ? 1 : 0)));
+      const [bx0, by0, bw0, bh0] = boss;
+      if (x0 < bx0 + bw0 + 1 && x0 + w > bx0 - 1 && y0 < by0 + bh0 + 1 && y0 + h > by0 - 1) continue;
+      usedCorners.add(ci);
+      L.rooms.push([x0, y0, w, h, (floor * 3 + L.rooms.length * 2) % ROOM_THEMES.length]); // never the same theme twice on a floor
+    }
+    // Alcoves: a nook off the hall with a vending machine or a shelf of sealed.
+    L.nooks = [];
+    for (const [at, side, tex] of [[0.14, -1, 10], [0.5, 1, 13], [0.86, -1, 10]]) {
+      const pose = poseAt(L, at), cx = Math.floor(pose.x), cy = Math.floor(pose.y);
+      const cell = [cx + Math.round(-Math.sin(pose.ang)) * side, cy + Math.round(Math.cos(pose.ang)) * side];
+      if (cell[0] < 1 || cell[1] < 1 || cell[0] > N - 2 || cell[1] > N - 2 || used.has(key(...cell)) || L.peeks.some(pk => pk.cell[0] === cell[0] && pk.cell[1] === cell[1])) continue;
+      L.nooks.push({ cell, tex });
+    }
     return L;
   }
   return LAYOUTS[(Math.max(1, floor) - 1) % LAYOUTS.length];
 }
 const layoutCache = new Map();
+// The rooms' themes: the wall all around it (a texture) and what's in it.
+export const ROOM_THEMES = [
+  { name: 'ARCADE CORNER', tex: 9, props: ['arcade', 'arcade', 'gumball'] },
+  { name: 'TV ROOM', tex: 11, props: ['tv', 'tv', 'lavalamp'] },
+  { name: 'POSTER ROOM', tex: 12, props: ['lavalamp', 'cat', 'table'] },
+  { name: 'STOCK ROOM', tex: 13, props: ['table', 'cardbox', 'table'] },
+  { name: 'NEON ROOM', tex: 14, props: ['gumball', 'lavalamp', 'arcade'] },
+  { name: 'THE GARAGE', tex: 15, props: ['mower', 'cone', 'fridge'] },
+  { name: 'THE LOUNGE', tex: 16, props: ['fridge', 'tv', 'pizza'] },
+];
 // Each shed's floor and ceiling (2026-11-11: "PS1 graphics"): textured and
 // lit, not a flat fade. f: planks / concrete / wet / carpet / dirt / scorched /
 // stone; c: rafters / tin / tarp / drop tiles.
@@ -122,7 +152,7 @@ function surfaceTex(kind) {
   });
 }
 // Bare bulbs hanging over the hall (warm light pools), every few cells along it.
-function bulbsFor(layout) { const out = []; for (let t = 0.08; t < 1; t += 0.17) { const p = poseAt(layout, t); out.push([p.x, p.y]); } return out; }
+function bulbsFor(layout) { const out = []; for (let t = 0.08; t < 1; t += 0.17) { const p = poseAt(layout, t); out.push([p.x, p.y]); } for (const [rx, ry, rw, rh] of layout.rooms || []) out.push([rx + rw / 2, ry + rh / 2]); return out; }
 // PS1-style color: a 4 x 4 ordered dither, then 5 bits per channel.
 
 export const layoutFor = floor => { const f = Math.max(1, Math.floor(floor) || 1); if (!layoutCache.has(f)) layoutCache.set(f, generateLayout(f)); return layoutCache.get(f); };
@@ -140,20 +170,27 @@ export function buildMap(floor, fork = '') {
   for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) open(x, y);
   for (const p of L.peeks) open(...p.cell);
   for (const [rx, ry, rw, rh] of L.rooms || []) for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) open(x, y);
+  for (const nk of L.nooks || []) open(...nk.cell);
   // Textures on a fixed pattern: duct-taped boards (1), booster pegboard (2),
   // long-box shelves (3), the comic rack (4), the slab wall (6), the flyer
   // corkboard (7), binder pages (8); each peek looks at its own; the boss room is 5.
   // Chat's pick at the fork changes the shed: LEFT is the collector side
   // (slabs, binders, racks), RIGHT the bargain side (long boxes, bins, packs).
   const PATTERN = fork === 'left' ? [6, 8, 4, 6, 1, 8, 4, 6, 1, 8, 6, 4] : fork === 'right' ? [3, 1, 2, 3, 7, 1, 3, 2, 1, 3, 7, 2] : [1, 4, 2, 1, 3, 6, 1, 7, 8, 1, 4, 3];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = PATTERN[(x * 3 + y * 5 + floor) % 12];
+  // Each shed mixes its own extras into the walls (posters, garage doors, TVs, neon...).
+  const EXTRA = [[12, 15], [15, 13], [12, 11], [12, 14], [16, 15], [15, 12], [14, 9]][(Math.max(1, floor) - 1) % 7];
+  const pat = PATTERN.slice(); pat[floor % 12] = EXTRA[0]; pat[(floor + 6) % 12] = EXTRA[1];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = pat[(x * 3 + y * 5 + floor) % 12];
+  // A themed room's walls all around it.
+  for (const [rx, ry, rw, rh, th] of L.rooms || []) { const tx = ROOM_THEMES[th ?? 0]?.tex; if (tx) for (let y = ry - 1; y <= ry + rh; y++) for (let x = rx - 1; x <= rx + rw; x++) if (grid[y]?.[x]) grid[y][x] = tx; }
+  for (const nk of L.nooks || []) { const [cx, cy] = nk.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = nk.tex; }
   for (const p of L.peeks) { const [cx, cy] = p.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = p.tex; }
   for (let y = by - 1; y <= by + bh; y++) for (let x = bx - 1; x <= bx + bw; x++) if (grid[y]?.[x]) grid[y][x] = 5;
   // Walls that face the walk and are racks or slab walls become frames for
-  // the store's own item photos (1000 + n*10 + the wall's own texture, which
+  // the store's own item photos (1000 + n*100 + the wall's own texture, which
   // shows when there are no photos).
   let n = 0;
-  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 10 + grid[y][x];
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 12 && (x + y) % 2 === 0) || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 100 + grid[y][x];
   return { grid, layout: L };
 }
 
@@ -209,6 +246,22 @@ function makeTextures(p) {
     // The corkboard: flyers -- FNM, BUY, $5, a lost-cat-style sheet.
     7: tex(px => { fill(px, 0, 0, T, T, [170, 120, 70]); for (let i = 0; i < 40; i++) px((i * 7) % T, (i * 13) % T, [140, 96, 52]); fill(px, 1, 2, 14, 9, [240, 240, 230]); text(px, 2, 4, 'FNM', [30, 30, 160]); fill(px, 17, 1, 13, 9, [250, 230, 90]); text(px, 18, 3, 'BUY', [180, 30, 30]); fill(px, 3, 14, 11, 9, [140, 220, 140]); text(px, 4, 16, '$5', [20, 20, 20]); fill(px, 17, 13, 12, 16, [235, 235, 235]); fill(px, 19, 15, 8, 6, [90, 90, 90]); fill(px, 19, 23, 8, 1, [30, 30, 30]); fill(px, 19, 25, 6, 1, [30, 30, 30]); for (const [x, y] of [[7, 2], [23, 1], [8, 14], [22, 13]]) px(x, y, [220, 30, 30]); }),
     // Binder pages: 9-pocket sheets of made-up cards.
+    // 9 arcade cabinets: marquee, glowing screen, buttons.
+    9: tex(px => { fill(px, 0, 0, T, T, [18, 14, 26]); [[1, [255, 60, 170], [30, 190, 240]], [17, [255, 200, 40], [80, 240, 120]]].forEach(([x, m, sc]) => { fill(px, x, 0, 14, T, [70, 30, 120]); fill(px, x + 1, 1, 12, 4, m); fill(px, x + 2, 7, 10, 9, sc); for (let y = 8; y < 16; y += 2) fill(px, x + 2, y, 10, 1, sc.map(v => v * 0.7)); fill(px, x + 4, 9, 2, 2, [250, 255, 255]); fill(px, x, 18, 14, 3, [50, 50, 60]); px(x + 3, 19, [230, 40, 50]); px(x + 6, 19, [255, 220, 40]); px(x + 9, 19, [40, 200, 80]); fill(px, x + 5, 24, 4, 3, [200, 170, 60]); fill(px, x + 6, 25, 2, 1, [30, 20, 10]); }); }),
+    // 10 a vending machine: rows of cans behind glass.
+    10: tex(px => { fill(px, 0, 0, T, T, [30, 26, 24]); fill(px, 2, 0, 28, T, [190, 30, 40]); fill(px, 4, 3, 18, 22, [20, 30, 50]); const CAN = [[240, 60, 60], [60, 200, 240], [250, 210, 40], [80, 220, 100], [240, 240, 240]]; for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) fill(px, 5 + c * 4, 4 + r * 5, 3, 4, CAN[(r + c) % CAN.length]); fill(px, 24, 4, 4, 6, [230, 230, 230]); for (let y = 12; y < 22; y += 3) fill(px, 25, y, 2, 2, [40, 40, 40]); fill(px, 6, 27, 14, 3, [12, 12, 14]); }),
+    // 11 a stack of CRT TVs, all on different channels.
+    11: tex(px => { boards(px); const SC = [[60, 120, 230], [40, 200, 90], [230, 80, 160], [200, 200, 210]]; for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) { const x = 1 + c * 16, y = 1 + r * 16, sc = SC[r * 2 + c]; fill(px, x, y, 14, 14, [64, 58, 52]); fill(px, x + 2, y + 2, 10, 8, sc); for (let k = 0; k < 10; k++) px(x + 2 + (k * 7 + r * 3 + c) % 10, y + 2 + (k * 3 + c) % 8, [240, 240, 250]); px(x + 11, y + 12, [210, 200, 160]); px(x + 9, y + 12, [210, 200, 160]); } }),
+    // 12 posters (all made up): a sunset, a robot, a starburst SALE.
+    12: tex(px => { boards(px); fill(px, 1, 2, 9, 13, [250, 140, 60]); fill(px, 1, 9, 9, 6, [80, 40, 120]); fill(px, 3, 5, 5, 3, [255, 230, 120]); fill(px, 12, 3, 8, 12, [40, 60, 90]); fill(px, 14, 5, 4, 4, [170, 180, 190]); px(15, 6, [255, 60, 60]); px(16, 6, [255, 60, 60]); fill(px, 14, 10, 4, 4, [140, 150, 160]); fill(px, 22, 2, 9, 12, [255, 230, 40]); for (let k = 0; k < 9; k++) { px(26 + Math.round(Math.cos(k) * 4), 8 + Math.round(Math.sin(k) * 4), [230, 40, 40]); } text(px, 3, 20, 'SALE', [255, 255, 255]); fill(px, 1, 18, 17, 9, [200, 30, 40]); text(px, 3, 20, 'SALE', [255, 240, 200]); [[1, 2], [9, 2], [12, 3], [19, 3], [22, 2], [30, 2]].forEach(([x, y]) => px(x, y, [200, 200, 190])); }),
+    // 13 a metal shelf of sealed boxes (made-up foil boxes).
+    13: tex(px => { fill(px, 0, 0, T, T, [44, 42, 48]); fill(px, 0, 0, 2, T, [120, 120, 128]); fill(px, 30, 0, 2, T, [120, 120, 128]); const FOIL = [[220, 40, 60], [40, 170, 220], [240, 190, 40], [150, 60, 210], [50, 190, 90], [240, 120, 30]]; [9, 20, 31].forEach((sy, r) => { fill(px, 0, sy, T, 1, [140, 140, 148]); for (let x = 3, k = r; x < 28; x += 7, k++) { const c = FOIL[k % FOIL.length]; fill(px, x, sy - 8, 6, 8, c); fill(px, x, sy - 8, 6, 2, c.map(v => Math.min(255, v + 50))); fill(px, x + 1, sy - 5, 4, 1, [250, 250, 240]); } }); }),
+    // 14 a brick wall with a neon OPEN sign and a lightning bolt.
+    14: tex(px => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(x, y, (y % 4 === 3 || (x + (y >> 2) % 2 * 4) % 8 === 7) ? [24, 14, 16] : [66, 30, 34]); for (let x = 3; x < 29; x++) { px(x, 4, [255, 60, 180]); px(x, 13, [255, 60, 180]); } for (let y = 4; y < 14; y++) { px(3, y, [255, 60, 180]); px(28, y, [255, 60, 180]); } text(px, 8, 7, 'OPEN', [90, 240, 255]); [[22, 17], [20, 20], [23, 20], [21, 23], [19, 27], [24, 22], [22, 25]].forEach(([x, y]) => fill(px, x, y, 2, 2, [255, 230, 60])); }),
+    // 15 a roll-up garage door with spray paint.
+    15: tex(px => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(x, y, (y >> 2) % 2 ? [130, 134, 140] : [106, 110, 116]); for (let y = 3; y < T; y += 4) fill(px, 0, y, T, 1, [70, 72, 78]); for (let k = 0; k < 18; k++) { const x = 4 + k, y = 12 + Math.round(Math.sin(k / 2) * 3); fill(px, x, y, 2, 2, [40, 220, 120]); } for (let k = 0; k < 10; k++) fill(px, 8 + k * 2, 21 + (k % 2), 2, 2, [240, 70, 200]); fill(px, 13, 28, 6, 2, [50, 50, 54]); }),
+    // 16 brick with string lights and a dartboard.
+    16: tex(px => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(x, y, (y % 5 === 4 || (x + ((y / 5) | 0) % 2 * 5) % 10 === 9) ? [60, 40, 34] : [130, 66, 48]); const BUL = [[255, 80, 80], [255, 220, 60], [80, 220, 120], [80, 160, 255]]; for (let x = 0; x < T; x++) { const y = 4 + Math.round(Math.sin(x / 5) * 2); px(x, y, [30, 30, 30]); if (x % 4 === 1) fill(px, x, y + 1, 2, 2, BUL[(x >> 2) % 4]); } for (let r = 7; r > 0; r -= 2) for (let a = 0; a < 40; a++) px(16 + Math.round(Math.cos(a / 6.4) * r), 20 + Math.round(Math.sin(a / 6.4) * r), r % 4 === 1 ? [230, 220, 200] : [30, 30, 30]); px(16, 20, [220, 40, 40]); }),
     8: tex(px => { fill(px, 0, 0, T, T, [30, 30, 36]); fill(px, 1, 1, 30, 30, [70, 70, 80]); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const x = 2 + c * 10, y = 2 + r * 10, k = COV[(r * 3 + c) % COV.length]; fill(px, x, y, 8, 9, [220, 210, 160]); fill(px, x + 1, y + 1, 6, 4, k); fill(px, x + 1, y + 6, 6, 1, [60, 60, 60]); fill(px, x + 1, y + 7, 4, 1, [120, 120, 120]); px(x, y, [255, 255, 255]); } }),
   };
 }
@@ -229,6 +282,26 @@ const SPRITES = {
   // A boxed figure in a window box (made up).
   figure: ['...aaaaaaaa.....', '...abbbbbbba.....', '...abcccccba.....', '...abcdddcba.....', '...abcdedcba.....', '...abcdddcba.....', '...abccfccba.....', '...abcffccba.....', '...abcccccba.....', '...abbbbbbba.....', '...aaaaaaaa.....'],
   eyes: ['................', '....a.....a.....', '...aaa...aaa....'],
+  // Random cool stuff (2026-11-12), all made up: an arcade cabinet, a CRT TV on
+  // a cart, a gumball machine, a traffic cone, a skeleton, a raccoon, a trash
+  // can, a rubber duck, candles, a fire barrel, a glowing crystal, a garden
+  // gnome, a push mower, a mini fridge, a lava lamp, a black cat.
+  arcade: ['..aaaaaaaaaaaa..', '..ammmmmmmmmma..', '..ammmmmmmmmma..', '..aaaaaaaaaaaa..', '..abbbbbbbbbba..', '..abssssssssba..', '..abswsssswsba..', '..abssssssssba..', '..absssswsssba..', '..abbbbbbbbbba..', '.cccccccccccccc.', '.ccyccrcccgcccc.', '..abbbbbbbbbba..', '..abbbbddbbbba..', '..abbbbbbbbbba..', '..aaaaaaaaaaaa..'],
+  tv: ['....a....a......', '.....a..a.......', '......aa........', '.bbbbbbbbbbbbb..', '.bsssssssssssb..', '.bszsszsszszsb..', '.bsssssssssssb..', '.bszszsszsszsb..', '.bsssssssssssb..', '.bbbbbbbbbkbkb..', '...cc......cc...'],
+  gumball: ['......ccc.......', '....gggggggg....', '...grgybgrygg...', '..gybrgyrbgyrg..', '..grygbrygbryg..', '..gybrgybrgybg..', '...grybgrybgg...', '....gggggggg....', '....aaaaaaaa....', '....aaakkaaa....', '....aaaaaaaa....', '.....aaaaaa.....', '....aaaaaaaa....'],
+  cone: ['.......oo.......', '.......oo.......', '......owwo......', '......owwo......', '.....oooooo.....', '.....oooooo.....', '....owwwwwwo....', '....oooooooo....', '...oooooooooo...', '..aaaaaaaaaaaa..'],
+  skeleton: ['......wwww......', '.....wwwwww.....', '.....wkwwkw.....', '.....wwwwww.....', '......wkkw......', '.......ww.......', '....wwwwwwww....', '...w.wkwwkw.w...', '...w.wwwwww.w...', '..w..wkwwkw..w..', '.......ww.......', '......wwww......', '......w..w......', '......w..w......', '.....w....w.....', '....ww....ww....'],
+  raccoon: ['..a.......a.....', '..aa.....aa.....', '..agggggggga....', '..akwkggkwka....', '..agggnnggga....', '...aggggggga....', '..aggggggggggat.', '..agggggggggatat', '..aa.aa..aa.aa..'],
+  trashcan: ['...aaaaaaaaaaa..', '..abbbbbbbbbbba.', '...aaaaaaaaaaa..', '...acbcbcbcbca..', '...acbcbcbcbca..', '...acbcbcbcbca..', '...acbcbcbcbca..', '...acbcbcbcbca..', '...acbcbcbcbca..', '...acbcbcbcbca..', '...aaaaaaaaaaa..'],
+  duck: ['.....yyyy.......', '....yyyyyy......', '....yykyyyoo....', '.....yyyyyoo....', '.yy..yyyy.......', '.yyyyyyyyyy.....', '..yyyyyyyyy.....', '...yyyyyyy......'],
+  candles: ['...f.....f......', '..fff...fff..f..', '...w.....w..fff.', '..www...www..w..', '..www...www.www.', '..www...www.www.', '..www...www.www.', '.aaaaaaaaaaaaaa.'],
+  barrel: ['.....f...f......', '....fff.fff.....', '...ffyfffyff....', '...fyyyfyyyf....', '..aaaaaaaaaaa...', '..abbbbbbbbba...', '..aaaaaaaaaaa...', '..abbbbbbbbba...', '..abbbbbbbbba...', '..aaaaaaaaaaa...', '..abbbbbbbbba...', '..abbbbbbbbba...', '..aaaaaaaaaaa...'],
+  crystal: ['.......c........', '......ccc.......', '......cdc...c...', '.....ccdcc.ccc..', '.....cdddc.cdc..', '..c..ccdcc.ccc..', '.ccc.ccdcc.cdc..', '.cdc.cdddc.ccc..', '.ccc.ccdcc.ccc..', '.aaaaaaaaaaaaa..'],
+  gnome: ['.......r........', '......rr........', '......rrr.......', '.....rrrr.......', '.....rrrrr......', '....rrrrrr......', '....ssssss......', '....skssks......', '....wwwwww......', '...wwwwwwww.....', '...bwwwwwwb.....', '...bbbbbbbb.....', '....kk..kk......', '...kkk..kkk.....'],
+  mower: ['h...............', '.h..............', '..h.............', '...h............', '....h...........', '.....aaaaaaaa...', '....arrrrrrrra..', '...arrrrrrrrrra.', '...kk.......kk..'],
+  fridge: ['...aaaaaaaaaa...', '...awwwwwwwwa...', '...awwrwwwwwa...', '...awwwwwbwwa...', '...awwwwwwwwa...', '...aaaaaaaaaa...', '...awwwwwwwka...', '...awwywwwwka...', '...awwwwwwwka...', '...awwwwgwwka...', '...awwwwwwwka...', '...aaaaaaaaaa...', '....k......k....'],
+  lavalamp: ['.......aa.......', '......aaaa......', '......lggl......', '......glgg......', '.....gglggg.....', '.....ggggll.....', '.....glllgg.....', '....gggggllg....', '....ggllgggg....', '....glllllgg....', '.....aaaaaa.....', '....aaaaaaaa....', '...aaaaaaaaaa...', '...aaaaaaaaaa...'],
+  cat: ['...k...k........', '...kk.kk........', '...kkkkk........', '...kykyk........', '...kkkkk........', '....kkk.........', '...kkkkkk.......', '..kkkkkkkk...k..', '..kkkkkkkk..k...', '..kkkkkkkkkk....'],
   // Treasure chests: shut, and open once chat hits its goal.
   chest: ['..aaaaaaaaaaaa..', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaayyaaaaaa.', '.abbbbbyybbbbba.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
   chestopen: ['.aaaaaaaaaaaaaa.', '.abbbbbbbbbbbba.', '.aaaaaaaaaaaaaa.', '..dd.d..d.dd.d..', '.agggggggggggga.', '.agygygygygygya.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
@@ -242,9 +315,28 @@ const SPRITE_COLORS = {
   table: { a: [40, 40, 40], b: [40, 90, 70], c: [200, 190, 160], d: [130, 130, 140] },
   figure: { a: [30, 30, 30], b: [230, 90, 30], c: [200, 230, 250], d: [240, 200, 160], e: [20, 20, 20], f: [60, 70, 200] },
   eyes: { a: [255, 230, 80] },
+  arcade: { a: [20, 16, 26], m: [255, 60, 170], b: [70, 30, 120], s: [30, 190, 240], w: [220, 255, 255], c: [50, 50, 60], y: [255, 220, 40], r: [230, 40, 50], g: [40, 200, 80], d: [200, 170, 60] },
+  tv: { a: [140, 140, 150], b: [70, 56, 44], s: [70, 120, 220], z: [220, 230, 255], k: [200, 190, 150], c: [40, 40, 40] },
+  gumball: { c: [200, 30, 40], g: [200, 230, 240], r: [230, 40, 50], y: [250, 210, 40], b: [50, 120, 230], a: [200, 30, 40], k: [220, 220, 220] },
+  cone: { o: [240, 110, 20], w: [240, 240, 240], a: [40, 40, 40] },
+  skeleton: { w: [230, 226, 210], k: [40, 30, 30] },
+  raccoon: { a: [60, 56, 56], g: [130, 126, 120], k: [20, 20, 20], w: [250, 250, 250], n: [10, 10, 10], t: [40, 36, 36] },
+  trashcan: { a: [70, 76, 80], b: [110, 116, 120], c: [90, 96, 100] },
+  duck: { y: [250, 220, 30], k: [20, 20, 20], o: [240, 120, 20] },
+  candles: { f: [255, 200, 60], w: [230, 220, 200], a: [60, 50, 40] },
+  barrel: { f: [255, 120, 20], y: [255, 230, 80], a: [60, 40, 30], b: [120, 60, 40] },
+  crystal: { c: [150, 80, 255], d: [230, 200, 255], a: [50, 40, 60] },
+  gnome: { r: [210, 30, 40], s: [240, 190, 150], k: [40, 30, 20], w: [240, 240, 240], b: [40, 90, 200] },
+  mower: { h: [140, 140, 150], a: [40, 40, 40], r: [200, 40, 30], k: [20, 20, 20] },
+  fridge: { a: [90, 90, 96], w: [220, 224, 230], k: [60, 60, 64], r: [230, 50, 50], b: [50, 120, 230], y: [250, 210, 40], g: [40, 190, 80] },
+  lavalamp: { a: [160, 160, 170], g: [120, 30, 140], l: [255, 120, 40] },
+  cat: { k: [24, 22, 28], y: [180, 255, 80] },
   chest: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 220, 60] },
   chestopen: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 250, 200], g: [255, 210, 40], d: [255, 250, 160] },
 };
+// What glows in the dark (screens, flames, crystals, eyes) and how big each prop stands.
+const SPRITE_GLOW = { arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y' };
+const SPRITE_SIZE = { arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4 };
 // One prop, drawn big and crisp on a 2D canvas (the overlay's props in front
 // of the hosts): kind is any SPRITES key; px is the size of one pixel.
 export const SPRITE_KINDS = Object.keys(SPRITES);
@@ -258,15 +350,26 @@ export function drawSprite(ctx, kind, px = 10, shade = 1) {
 
 // Where the props sit: fixed spots along each stretch of the route.
 // 'pic' is one of the store's items in a top loader on a little stand.
+const SHED_PROPS = [['gnome', 'mower', 'cone', 'cat'], ['cone', 'barrel', 'fridge', 'mower'], ['duck', 'bucket', 'duck', 'cone'], ['skeleton', 'candles', 'cat', 'crystal'], ['raccoon', 'trashcan', 'raccoon', 'pizza'], ['barrel', 'skeleton', 'trashcan', 'candles'], ['crystal', 'candles', 'skeleton', 'crystal']];
 export function propsFor(layout, floor) {
-  const kinds = ['dollarbin', 'pic', 'comics', 'table', 'bucket', 'pic', 'comics', 'cardbox', 'table', 'pic', 'figure', 'comics', 'pizza', 'eyes'], out = []; let picN = 0;
+  // THEME: this shed's own (gnomes in the garden shed, raccoons in the
+  // raccoon one, skeletons and candles when it's haunted...); COOL: anywhere.
+  const kinds = ['dollarbin', 'pic', 'THEME', 'comics', 'table', 'pic', 'COOL', 'comics', 'pic', 'THEME', 'cardbox', 'table', 'pic', 'figure', 'COOL', 'comics', 'THEME', 'pizza', 'eyes'], out = []; let picN = 0;
+  const theme = SHED_PROPS[(Math.min(Math.max(1, floor), SHED_PROPS.length)) - 1], cool = ['arcade', 'tv', 'gumball', 'lavalamp', 'fridge', 'cat'];
+  let themeN = 0, coolN = floor; // each in turn, so every one of them shows up
+  const pick = k => k === 'THEME' ? theme[themeN++ % theme.length] : k === 'COOL' ? cool[coolN++ % cool.length] : k;
   for (let i = 1; i < layout.route.length; i++) {
     const [x0, y0] = layout.route[i - 1], [x1, y1] = layout.route[i], n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 2.5));
     for (let k = 1; k <= n; k++) {
       const f = k / (n + 1), side = (i + k) % 2 ? 0.32 : -0.32, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
-      const kind = kinds[(i * 3 + k + floor) % kinds.length];
+      const kind = pick(kinds[(i * 3 + k + floor) % kinds.length]);
       out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, idx: picN++ });
     }
+  }
+  // Each room's own things, in its corners.
+  for (const [rx, ry, rw, rh, th] of layout.rooms || []) {
+    const things = ROOM_THEMES[th ?? 0]?.props || [];
+    [[rx + 0.5, ry + 0.5], [rx + rw - 0.5, ry + rh - 0.5], [rx + rw - 0.5, ry + 0.5]].forEach(([x, y], j) => { if (things[j]) out.push({ x, y, kind: things[j], idx: picN++ }); });
   }
   // Three treasure chests along the way (chat's goals open them).
   for (const [k, t] of [[0, 0.16], [1, 0.47], [2, 0.8]]) { const p = poseAt(layout, t), side = k % 2 ? 0.34 : -0.34; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'chest', idx: k }); }
@@ -333,7 +436,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const forkChanged = (next.fork || '') !== (state.fork || '');
     state = { ...state, ...next };
     if (forkChanged && !floorChanged) map = buildMap(state.floor, state.fork || '');
-    if (floorChanged) { surf = { f: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).f), c: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).c) }; bulbs = bulbsFor(layoutFor(state.floor)); }
+    if (floorChanged) { surf = { f: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).f), c: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).c), r: surfaceTex((SURFACES[state.shed] || {}).f === 'carpet' ? 'planks' : 'carpet') }; bulbs = bulbsFor(layoutFor(state.floor)); }
     if (floorChanged) { map = buildMap(state.floor, state.fork || ''); textures = makeTextures(PALETTES[state.shed] || PALETTES['GARDEN SHED']); props = propsFor(map.layout, state.floor); shown = 0; done = new Set(); }
     target = state.phase === 'boss' ? 1 : Math.max(0, Math.min(1, state.pct / 100));
     if (floorChanged) shown = target;
@@ -362,7 +465,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const pose = eyePose(map.layout, map.grid, shown), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
     const pal = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5);
-    const boss = state.phase === 'boss';
+    const boss = state.phase === 'boss', rooms = map.layout.rooms || [];
     // Floor and ceiling, textured (floor casting): each row is a distance;
     // lit by the flashlight and the bulbs, fading into the shed's fog.
     const bulbLight = (wx, wy) => { let l = 0; for (const [bx, by] of bulbs) { const d2 = (wx - bx) ** 2 + (wy - by) ** 2; l += 0.9 / (1 + d2 * 1.6); } return l; };
@@ -370,11 +473,13 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     for (let y = 0; y < VH; y++) {
       const floorRow = y > horizon, p = floorRow ? y - horizon : horizon - y;
       if (p <= 0 || !surf) { for (let x = 0; x < VW; x++) { const i = (y * VW + x) * 4; data[i] = pal.fog[0]; data[i + 1] = pal.fog[1]; data[i + 2] = pal.fog[2]; data[i + 3] = 255; } continue; }
-      const rowDist = posZ / p, stepX = rowDist * (rx1 - rx0) / VW, stepY = rowDist * (ry1 - ry0) / VW, t = floorRow ? surf.f : surf.c;
+      const rowDist = posZ / p, stepX = rowDist * (rx1 - rx0) / VW, stepY = rowDist * (ry1 - ry0) / VW, tRow = floorRow ? surf.f : surf.c;
       let fx = pose.x + rowDist * rx0, fy = pose.y + rowDist * ry0;
       const base = Math.min(1, 1.7 / (1 + rowDist * 0.5)) * batt * (floorRow ? 1 : 0.7);
       for (let x = 0; x < VW; x++, fx += stepX, fy += stepY) {
         const tx = (Math.floor(fx * T) % T + T) % T, ty = (Math.floor(fy * T) % T + T) % T, ti = (ty * T + tx) * 3, i = (y * VW + x) * 4;
+        // A rug down in each room.
+        const t = floorRow && rooms.length && rooms.some(([ax, ay, aw, ah]) => fx >= ax + 0.2 && fx < ax + aw - 0.2 && fy >= ay + 0.2 && fy < ay + ah - 0.2) ? surf.r : tRow;
         const l = Math.min(1.25, base * (1 - Math.abs(2 * x / VW - 1) * 0.3) + bulbLight(fx, fy) * 0.55), fog = Math.max(0, Math.min(1, l));
         data[i] = t[ti] * l * 1 + pal.fog[0] * (1 - fog); data[i + 1] = t[ti + 1] * l * 0.96 + pal.fog[1] * (1 - fog); data[i + 2] = t[ti + 2] * l * 0.88 + pal.fog[2] * (1 - fog); data[i + 3] = 255;
       }
@@ -392,10 +497,10 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       // Flip on the walls seen from the other side, so signs read the right way.
       const flip = (!side && rx < 0) || (side && ry > 0);
       // A photo wall: the store's item, framed; without photos, the wall's own texture.
-      const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 10) % pics.length] || null : null;
+      const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 100) % pics.length] || null : null;
       const tw = pic ? PIC_W : T, th = pic ? PIC_H : T;
       let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
-      const t = pic || textures[cell >= 1000 ? cell % 10 : cell] || textures[1];
+      const t = pic || textures[cell >= 1000 ? cell % 100 : cell] || textures[1];
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
       const light = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4);
       for (let y = top; y <= bot; y++) {
@@ -410,16 +515,16 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
       if (tY <= 0.15) return;
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
-      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= 1.6 && Math.abs(side) <= 1.05) return; }
+      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : 0.55)));
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : (SPRITE_SIZE[s.kind] || 0.55))));
       const floorY = horizon + Math.floor(VH / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
       const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
         if (tY > zbuf[sx]) continue;
         const u = (sx - (scx - (size >> 1))) / size;
         for (let sy = Math.max(0, top); sy < Math.min(VH, top + size); sy++) {
-          const v = (sy - top) / size; let col = null;
+          const v = (sy - top) / size; let col = null, glow = false;
           if (s.kind === 'boss') { const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
           else if (pd) {
             // The store's item, by what it is: a comic leaning in the hall, a
@@ -431,9 +536,9 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
             else if (how === 'sealed' && v >= 0.66 && (Math.abs(u - 0.12) < 0.03 || Math.abs(u - 0.88) < 0.03)) col = [70, 70, 76];
             else if (how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
           }
-          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') col = SPRITE_COLORS[kind][ch]; }
+          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); } }
           if (!col) continue;
-          const i = (sy * VW + sx) * 4, l = s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
+          const i = (sy * VW + sx) * 4, l = glow || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
         }
       }

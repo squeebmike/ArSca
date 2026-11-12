@@ -128,7 +128,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=3').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=5').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -220,17 +220,19 @@ function fgFrame(now){
   const eye=fpLib.eyePose(fgCache.L,fgCache.grid,fgShown),dx=Math.cos(eye.ang),dy=Math.sin(eye.ang);
   // Beside you and just ahead: fwd 0.15..1.6 cells, within a cell to the side.
   const near={'-1':null,'1':null};
-  for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx;if(fwd<0.15||fwd>1.6||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
+  for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx,reach=p.kind==='chest'?3:1.6;if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
   for(const k of ['-1','1']){const cv=$(k==='-1'?'mana-fg-l':'mana-fg-r'),p=near[k];
     if(!p){cv.style.opacity='0';continue;}
-    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/1.45)),p.kind,Number(k),p.kind==='chest'&&fgOpened.includes(p.idx),p.idx);}
+    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/(p.kind==='chest'?2.85:1.45))),p.kind,Number(k),p.kind==='chest'&&fgOpened.includes(p.idx),p.idx);}
 }
 requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
 setInterval(()=>{const d=dg();if(d&&document.body.classList.contains('mana-center'))paintCrawl(d,true);},5000);
 // A revealed item (a chest, or where chat said to dig): its photo spins in 3D.
 function revealItem(e){
-  const it=e.item;if(!it||!it.title)return;
+  // A giveaway chest: the chest pops open, FREE GIVEAWAY rises out of it.
+  const giveaway=e.kind==='chest'&&!e.item&&/GIVEAWAY/.test(e.chestText||'');
+  const it=giveaway?{title:'FREE GIVEAWAY!'}:e.item;if(!it||!it.title)return;
   const el=$('mana-reveal'),img=$('mana-reveal-img');
   $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'$1 START!');
   $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'$1 START!':(it.price?'VALUE '+usd(it.price):'');
@@ -239,7 +241,7 @@ function revealItem(e){
   // shows shut, the lid pops open in a burst of light, the item rises out of
   // it spinning and hangs there -- YOU GOT IT!
   const isChest=e.kind==='chest',cv=$('mana-reveal-chest');el.classList.toggle('chest-mode',isChest);
-  if(isChest){$('mana-reveal-label').textContent='YOU GOT IT!';$('mana-reveal-price').textContent=(e.chestText&&e.chestText!=='$1 START!'?e.chestText+' · ':'')+'$1 START!';
+  if(isChest){$('mana-reveal-label').textContent=giveaway?'CHEST OPENED!':'YOU GOT IT!';$('mana-reveal-price').textContent=giveaway?'FREE TO ENTER IN THE WHATNOT APP':(e.chestText&&e.chestText!=='$1 START!'?e.chestText+' · ':'')+'$1 START!';
     const k=cv.getContext('2d');k.imageSmoothingEnabled=false;if(fpLib){fpLib.drawSprite(k,'chest',10);clearTimeout(revealItem.lid);revealItem.lid=setTimeout(()=>fpLib.drawSprite(k,'chestopen',10),650);}}
   el.style.top=Math.max(0,settings.y-(isChest?700:610))+'px';
   el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
@@ -325,7 +327,7 @@ function react(e){
     case 'room': {const r=roomById(e.room);mascot.play('excited',{text:r?'INTO THE '+r.name+'!':'ONWARD!'});break;}
     case 'floor': mascot.play('alert',{text:'FLASK FULL! '+(e.bossName||'THE BOSS')+' INCOMING!',ms:1800});mascot.play('angry',{text:'GET HIM, CHAT!'});break;
     case 'unlock': mascot.play('celebrating',{text:'UNLOCKED: '+(e.unlockText||'')});break;
-    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.item?.title?'$1 START: '+e.item.title:e.chestText||'')});break;
+    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.item?.title?'$1 START: '+e.item.title:/GIVEAWAY/.test(e.chestText||'')?'FREE GIVEAWAY! ENTER IN THE WHATNOT APP!':e.chestText||'')});break;
     case 'found': mascot.play('excited',{text:'FOUND IT! '+(e.item?.title||'')});break;
     case 'trivia': mascot.play('celebrating',{text:'CORRECT! IT WAS '+(e.answer||'')+'!'});break;
     case 'tap': mascot.play(e.tapKind==='follow'?'love':'happy',{text:TAP_LINES[e.tapKind]||'MANA!'});break;
@@ -423,7 +425,8 @@ function words(e) {
       return [(e.bossName||settings.bossName)+' DEFEATED!','K.O.!',e.reward||settings.bossReward];
     case 'floor': return ['FLOOR '+(e.floor||'')+' CLEARED!','BOSS APPEARS!','VS '+(e.bossName||'THE BOSS')];
     case 'unlock': return ['UNLOCKED!',e.unlockAt?usd(e.unlockAt):'',e.unlockText||''];
-    case 'chest': return ['CHEST OPENED!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'',e.item?.title?(e.chestText||'$1 START')+': '+e.item.title:e.chestText||''];
+    case 'chest': if(!e.item&&/GIVEAWAY/.test(e.chestText||''))return ['FREE GIVEAWAY!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'','FREE TO ENTER IN THE WHATNOT APP'];
+    return ['CHEST OPENED!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'',e.item?.title?(e.chestText||'$1 START')+': '+e.item.title:e.chestText||''];
     case 'found': return ['FOUND IT!',e.spot?'IN '+e.spot:'',e.item?.title||''];
     case 'trivia': return ['CORRECT!',e.answer||'',(e.who?'@'+e.who+' GOT IT · ':'')+(e.mana?'+'+usd(e.mana)+' MANA FOR EVERYONE':'NICE ONE, CHAT')];
     case 'giveaway': return ['FREE GIVEAWAY!','','FREE TO ENTER IN THE WHATNOT APP'];

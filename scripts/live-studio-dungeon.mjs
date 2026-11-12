@@ -67,11 +67,12 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
   foreground: true,    // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
+  giveawayChests: 2,   // the first N chests on a floor are a FREE giveaway for everyone watching (store, 2026-11-12); the rest run an item
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
-export const DUNGEON_LIMITS = { triviaMana: [0, 1000], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
+export const DUNGEON_LIMITS = { triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
 export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.
