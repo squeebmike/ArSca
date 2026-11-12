@@ -140,6 +140,14 @@ export class ManaLiveStudio extends DurableObject {
     let fx = null;
     for (const c of chestsToOpen(s.dungeon, s.settings)) {
       s.dungeon = openChest(s.dungeon, c.k, now);
+      // The first chests are a FREE giveaway for everyone watching (store,
+      // 2026-11-12: "place the 1st 2 chests as givys"). No item runs; the host
+      // starts a giveaway in the Whatnot app, free to enter.
+      if (c.k < (Number(s.settings.giveawayChests ?? 2) || 0)) {
+        this.chestGiveaway = true;
+        fx = { kind: 'chest', chestText: 'FREE GIVEAWAY!', chestGoal: c.goal ? 'CHAT HIT ' + c.goal.n + ' ' + c.goal.kind.toUpperCase() + 'S' : 'CHEST ' + (c.k + 1) + ' OF 3' };
+        continue;
+      }
       const next = [...(s.stage.next || [])];
       let best = -1; next.forEach((n, i) => { if (best < 0 || (Number(n.price) || 0) > (Number(next[best].price) || 0)) best = i; });
       const [item] = best >= 0 ? next.splice(best, 1) : [];
@@ -153,7 +161,7 @@ export class ManaLiveStudio extends DurableObject {
     return fx;
   }
   // The chest item that just opened (once), for the Worker to add to the Whatnot show.
-  takeChest(s) { const it = this.chestItem; this.chestItem = null; return it ? { chestItem: it, showId: s.settings.showId || '' } : {}; }
+  takeChest(s) { const it = this.chestItem, gv = this.chestGiveaway; this.chestItem = null; this.chestGiveaway = false; return { ...(it ? { chestItem: it, showId: s.settings.showId || '' } : {}), ...(gv ? { chestGiveaway: true } : {}) }; }
   closeVote() {
     const s = this.read(); s.vote = null; this.write(s);
     this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:Date.now() });

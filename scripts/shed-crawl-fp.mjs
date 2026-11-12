@@ -515,7 +515,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
       if (tY <= 0.15) return;
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
-      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= 1.6 && Math.abs(side) <= 1.05) return; }
+      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
       const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : (SPRITE_SIZE[s.kind] || 0.55))));
       const floorY = horizon + Math.floor(VH / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
