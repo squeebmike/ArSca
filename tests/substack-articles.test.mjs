@@ -86,4 +86,8 @@ for (const ua of ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleW
   assert.ok(app.includes("['articles', 'ARTICLES']") && app.includes("if(name === 'articles') setTimeout(()=>renderSubstackArticles(), 0);"));
   const tab = html.slice(html.indexOf('<div id="tab-articles"'), html.indexOf('<!-- DATABASE VIEWER TAB'));
   assert.ok(tab.includes('id="substack-articles-list"')); assert.equal(html.split('id="substack-articles-list"').length, 2, 'only in the ARTICLES tab'); }
+// The article can be read in the dashboard before it goes up, in a sandbox.
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.ok(app.includes('📖 READ IT') && app.includes('<iframe sandbox="allow-popups allow-popups-to-escape-sandbox"') && !/<iframe sandbox="[^"]*allow-scripts/.test(app));
+  assert.equal(rep.find(a => a.slug === 'avengers-is-back').body, '', 'the report carries the body'); }
 console.log('Substack articles: feed, clean-up, comic posts only, books, drafts, report and counters passed');

@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.12.3-articles-tab';
+const APP_VERSION = '2026.11.12.4-read-articles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21888,12 +21888,17 @@ async function renderSubstackArticles(){
     const live = arts.filter(a => a.live).length;
     if(count) count.textContent = `${live} on the site · ${arts.length - live} waiting` + (data.lastCheck ? ' · checked ' + new Date(data.lastCheck).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : '');
     if(!arts.length){ list.innerHTML = '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);padding:10px;border:1px dashed var(--border);border-radius:8px;text-align:center">None yet -- tap CHECK SUBSTACK NOW</div>'; return; }
-    list.innerHTML = arts.map(a => `<div style="display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
+    // The article as it will read: his words and pictures, in a sandbox (no scripts run).
+    window._articleBodies = arts.map(a => `<!doctype html><meta charset="utf-8"><base target="_blank"><style>body{font:16px/1.55 Georgia,serif;color:#222;max-width:680px;margin:16px auto;padding:0 14px}img{max-width:100%;height:auto;display:block;margin:12px auto;border-radius:4px}figure{margin:0}h1{font:700 24px/1.2 system-ui,sans-serif}</style><h1>${escHtml(a.title)}</h1>${a.body || '<p>(empty)</p>'}`);
+    list.innerHTML = arts.map((a, i) => `<div style="display:flex;gap:10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px">
       ${a.image ? `<img src="${escHtml(a.image)}" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:64px;height:90px;object-fit:cover;border-radius:4px;flex:none">` : ''}
       <div style="min-width:0;flex:1;display:grid;gap:4px">
         <div style="font-weight:800;color:var(--text);font-size:12px">${escHtml(a.title)}</div>
         <div><span class="qpl-badge ${a.live?'good':'warn'}">${a.live?'ON THE SITE':'DRAFT'}</span> <span style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</span></div>
         <div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">👁 ${a.views} views · 👆 ${a.clicks} clicks on books · 📚 ${a.sold} sold ($${Number(a.soldTotal||0).toFixed(2)})</div>
+        ${a.summary ? `<div style="font-size:11px;color:var(--text);font-style:italic">${escHtml(a.summary)}</div>` : ''}
+        <details class="sf-article-read" ontoggle="if(this.open&&!this.dataset.done){this.dataset.done=1;const f=this.querySelector('iframe');f.srcdoc=window._articleBodies[this.dataset.i];}" data-i="${i}"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--g);font-weight:700">📖 READ IT</summary>
+          <iframe sandbox="allow-popups allow-popups-to-escape-sandbox" title="${escHtml(a.title)}" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;background:#fff;margin-top:6px"></iframe></details>
         ${a.books?.length ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">Books on the page: ${a.books.map(escHtml).join(', ')}</div>` : '<div style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">No books matched -- add them in Webflow ("Books To Promote") to show your stock on the page</div>'}
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           ${a.live

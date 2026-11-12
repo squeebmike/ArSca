@@ -185,6 +185,8 @@ export function articleReport({ items, stats = [], lines = [], sameComic, author
     return {
       id: i.id, slug: f.slug, title: f.name, live: !i.isDraft && !!i.lastPublished, draft: !!i.isDraft, publishedAt: f['published-on-2'] || null,
       image: f['cover-image']?.url || '', books, ...(by.get(f.slug) || { views: 0, clicks: 0 }),
+      // What it says, to read before it goes up (the dashboard shows it in a sandbox).
+      summary: String(f.summary || ''), body: String(f.body || '').slice(0, 60000),
       sold: sold.reduce((n, l) => n + (Number(l.quantity) || 1), 0), soldTotal: Math.round(sold.reduce((n, l) => n + (Number(l.adjusted_price) || 0) * (Number(l.quantity) || 1), 0) * 100) / 100,
     };
   }).sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
