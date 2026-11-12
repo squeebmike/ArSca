@@ -203,13 +203,15 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=7'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=9'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=1').catch(() => null)]).then(([fpm, bosses, pm]) => {
+      // The 3D props (Duke Nukem style), photographed once from 8 angles.
+      let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0;
       const build = y => {
         const h = Math.max(300, Math.min(1920, Math.round(Number(y) || 850)));
         if (h === topH && fp) return; topH = h;
         fp?.stop(); fp = fpm.createShedCrawl(canvas, { w: 360, h: Math.round(360 * h / 1080), fov: 0.66 });
-        canvas.style.height = h + 'px'; bossId = ''; picKey = ''; window.shedCrawl = fp; fp.start();
+        canvas.style.height = h + 'px'; bossId = ''; picKey = ''; window.shedCrawl = fp; if (baked) fp.setModels(baked); fp.start();
       };
       const bossCanvas = document.createElement('canvas');
       let stats = null, stage = { now: null, next: [] }, shedPics = [], offset = 0, bossId = '', picKey = '';

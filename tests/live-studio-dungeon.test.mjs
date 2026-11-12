@@ -413,7 +413,7 @@ console.log('live-studio-dungeon: ok');
     L.rooms.forEach(r => names.add(fpm.ROOM_THEMES[r[4]].name));
     for (const r of L.rooms) assert.ok(g.some(row => row.some(c => (c >= 1000 ? c % 100 : c) === fpm.ROOM_THEMES[r[4]].tex)), 'the room has its walls');
     fpm.propsFor(L, f).forEach(p => props.add(p.kind));
-    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 21) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 21)), 'every wall has a texture');
+    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 22) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 22)), 'every wall has a texture');
   }
   assert.ok(names.size >= 6, 'room themes vary: ' + [...names]);
   for (const k of ['arcade', 'tv', 'gnome', 'skeleton', 'raccoon', 'crystal', 'lavalamp']) assert.ok(props.has(k), 'cool stuff: ' + k);
@@ -472,4 +472,11 @@ console.log('live-studio-dungeon: ok');
   assert.ok(ov.includes("if(m.type==='camera'){fp?.setCamera?.(m.cam);return;}") && ov.includes("ev.data?.type==='mana-camera'"));
   assert.ok(bg.includes("if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }") && bg.includes("ev.data?.type === 'mana-camera'"));
   assert.ok(ctl.includes('id="mana-joy"') && ctl.includes("camSend({action:'scout'})") && ctl.includes("camSend({action:'back'})") && ctl.includes("api('camera',cam)"));
+}
+{
+  // 2026-11-12: "the chests need to be better looking, I don't really notice them".
+  const fp = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  for (const k of ["chest: { a: [44, 24, 10]", "SPRITE_GLOW = { chest: 'ygw'", 'chest: 0.85', 'A loot beam', 'Sparkles circling each shut chest', "pr.kind === 'chest' && (pr.x - pose.x)"]) assert.ok(fp.includes(k), k);
+  const { drawSprite } = await import('../scripts/shed-crawl-fp.mjs');
+  assert.equal(typeof drawSprite, 'function');
 }
