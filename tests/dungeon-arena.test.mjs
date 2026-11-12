@@ -71,4 +71,24 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.equal(D.DUNGEON_DEFAULTS.crawlSharp, false, 'sharper pixels are opt-in');
   for (const k of ['pedestal', 'merchant']) assert.ok((await import('../scripts/prop-models.mjs')).MODEL_KINDS.includes(k));
 }
+// 6. The store's products down in the dungeon too (2026-11-12: "yes add the products to the dungeon").
+{
+  let walls = 0, stands = 0;
+  for (let f = 1; f <= 7; f++) { const L = F.layoutFor(f), m = F.buildMap(f); for (let y = 0; y < F.GRID; y++) for (let x = 0; x < F.GRID; x++) if (m.grid[y][x] >= 1000 && m.zone[y * F.GRID + x]) walls++; stands += F.propsFor(L, f).filter(p => p.kind === 'pic' && m.zone[Math.floor(p.y) * F.GRID + Math.floor(p.x)]).length; }
+  assert.ok(walls / 7 >= 12, 'item photos on the dungeon walls: ' + walls / 7);
+  assert.ok(stands / 7 >= 4, 'items on stands in the dungeon: ' + stands / 7);
+  assert.match(fp, /kind: 'pic', float: true, idx: 970 \+ pr\.idx/, 'the opened long box\'s item hovers over it');
+  assert.match(fp, /kind: 'pic', float: true, idx: 990/, 'the vault\'s item over its pedestal');
+  assert.match(fp, /grid\[y\]\[x\] === 23 && L\.arena/, 'trophies on the arena walls');
+}
+// 7. Clearer items and live torches (2026-11-12: "item images need to be clearer", "are the torches animated?").
+{
+  assert.match(fp, /if \(pic\) \{ const pl = Math\.max\(0\.85,/, 'item photos on walls stay lit, never lost in the fog');
+  assert.match(fp, /contrast\(1\.15\) saturate\(1\.25\)/);
+  assert.match(fp, /pd \? 0\.82 :/, 'bigger items on the stands');
+  assert.match(fp, /const torchFlame = \(tx, ty, sx\) =>/); assert.match(fp, /if \(cell === 19 && tx >= 9/);
+  assert.match(fp, /nearItem\(\) \{ return seenPic/);
+  const bg = read('scripts/shed-background.mjs'), html = read('shed-background.html');
+  assert.match(bg, /const i = fp\?\.nearItem\?\.\(\) \?\? -1/); assert.ok(html.includes('#shed-item.on{'), 'the sharp close-up card');
+}
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');
