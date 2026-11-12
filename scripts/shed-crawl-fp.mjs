@@ -275,7 +275,7 @@ export function buildMap(floor, fork = '') {
   // the store's own item photos (1000 + n*100 + the wall's own texture, which
   // shows when there are no photos).
   let n = 0;
-  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 12 && (x + y) % 2 === 0) || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 100 + grid[y][x];
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 12 && (x + y) % 2 === 0) || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0) || ((grid[y][x] === 18 || grid[y][x] === 20) && (x * 5 + y * 3 + floor) % 2 === 0) || (grid[y][x] === 17 && (x * 3 + y * 7 + floor) % 4 === 0) || (grid[y][x] === 23 && L.arena)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 100 + grid[y][x];
   // WINDOWS (2026-11-12: "weather in the shed has to make sense, we're
   // inside -- through open windows"): now and then a plain shed wall is an
   // open window; the sky and the weather show through it, and daylight comes in.
@@ -509,6 +509,8 @@ const FLAT = { pedestal: 'crystal', merchant: 'figure', lockbox: 'cardbox', lock
 const MODEL_SIZE = { pedestal: 0.9, merchant: 1.15, lockbox: 0.85, lockboxopen: 0.9, chest: 0.95, chestopen: 0.95, rat: 0.55, bat: 0.6, spider: 0.75, longbox: 0.8, longboxopen: 0.85, longboxstack: 1.0, shortbox: 0.75, crate: 0.8, coffin: 0.85, bones: 0.6, brazier: 0.9 };
 // The cracked wall's cracks: each pixel and the stage (1-3) it opens at. Fixed, no chance.
 const CRACK = (() => { const m = new Uint8Array(32 * 32); [[0.3, 13], [1.2, 12], [2.1, 14], [2.9, 11], [3.8, 13], [4.6, 12], [5.5, 14]].forEach(([a, len], b) => { let x = 16, y = 15; for (let k = 0; k < len; k++) { x += Math.cos(a + Math.sin(k * 0.9 + b) * 0.5); y += Math.sin(a + Math.sin(k * 0.9 + b) * 0.5); const i = (Math.round(y) & 31) * 32 + (Math.round(x) & 31); const st = 1 + Math.floor(k / len * 3); if (!m[i] || st < m[i]) m[i] = st; if (k % 4 === 2) { const j = i + 1; if (!m[j]) m[j] = Math.min(3, st + 1); } } }); return m; })();
+// Dungeon walls whose item photos sit in a stone niche.
+const NICHE = new Set([17, 18, 20, 23]);
 const MODEL_GLOW = new Set(['pedestal', 'merchant', 'chestopen', 'brazier', 'lockbox', 'lockboxopen']);
 // Critters move on their own; they never hide for the props passing in front.
 const CRITTERS = new Set(['rat', 'rat2', 'bat', 'bat2', 'spider']);
@@ -531,7 +533,7 @@ export function propsFor(layout, floor) {
   // raccoon one, skeletons and candles when it's haunted...); COOL: anywhere.
   const kinds = ['dollarbin', 'pic', 'THEME', 'comics', 'table', 'pic', 'COOL', 'comics', 'pic', 'THEME', 'cardbox', 'table', 'pic', 'figure', 'COOL', 'comics', 'THEME', 'pizza', 'eyes'], out = []; let picN = 0;
   const theme = SHED_PROPS[(Math.min(Math.max(1, floor), SHED_PROPS.length)) - 1], cool = ['arcade', 'tv', 'gumball', 'lavalamp', 'fridge', 'cat'];
-  const deep = ['longbox', 'bones', 'longboxopen', 'brazier', 'longboxstack', 'coffin', 'shortbox', 'crate', 'skeleton', 'longbox', 'candles', 'longboxopen', 'crystal'], split = layout.split ?? DUNGEON_AT, total = layout.len || routeLength(layout); let acc = 0, deepN = floor;
+  const deep = ['longbox', 'pic', 'bones', 'longboxopen', 'pic', 'brazier', 'longboxstack', 'pic', 'coffin', 'shortbox', 'pic', 'crate', 'skeleton', 'pic', 'longbox', 'candles', 'longboxopen', 'pic', 'crystal'], split = layout.split ?? DUNGEON_AT, total = layout.len || routeLength(layout); let acc = 0, deepN = floor;
   let themeN = 0, coolN = floor; // each in turn, so every one of them shows up
   const pick = k => k === 'THEME' ? theme[themeN++ % theme.length] : k === 'COOL' ? cool[coolN++ % cool.length] : k;
   for (let i = 1; i < layout.route.length; i++) {
@@ -777,12 +779,13 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 100) % pics.length] || null : null;
       const tw = pic ? PIC_W : T, th = pic ? PIC_H : T;
       let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
-      const t = pic || textures[cell >= 1000 ? cell % 100 : cell] || textures[1];
+      const t = pic || textures[cell >= 1000 ? cell % 100 : cell] || textures[1], tb = pic && NICHE.has(cell % 100) ? textures[cell % 100] : null;
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
       const light0 = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4), wo = Math.min(1, litO * 0.6);
       for (let y = top; y <= bot; y++) {
         const ty = Math.min(th - 1, Math.floor((y - horizon + (h >> 1)) * th / h)), ti = (ty * tw + tx) * 3, i = (y * VW + x) * 4;
         const vy = (y - horizon + (h >> 1)) / h, wao = 0.62 + 0.38 * Math.min(1, Math.min(vy, 1 - vy) * 5.5), light = light0 * wao;
+        if (tb) { const u = tx / tw, v = ty / th; if (u < 0.15 || u > 0.85 || v < 0.1 || v > 0.92) { const bi = (Math.min(T - 1, (v * T) | 0) * T + Math.min(T - 1, (u * T) | 0)) * 3; data[i] = tb[bi] * light + pal.fog[0] * (1 - light); data[i + 1] = tb[bi + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = tb[bi + 2] * light + pal.fog[2] * (1 - light); continue; } if (u < 0.18 || u > 0.82 || v < 0.13 || v > 0.89) { data[i] = 16 * light; data[i + 1] = 12 * light; data[i + 2] = 10 * light; continue; } }
         if (cell === 25 && crackSt && T === tw) { const c = CRACK[ty * 32 + tx]; if (c && c <= crackSt) { const leak = crackSt >= 3 && Math.abs(tx - 16) + Math.abs(ty - 15) < 9; data[i] = leak ? 255 : 14; data[i + 1] = leak ? 196 : 10; data[i + 2] = leak ? 70 : 12; continue; } }
         if (cell === 24 && t[ti] === 255 && t[ti + 1] === 0 && t[ti + 2] === 255) { const c = windowSky(tx, ty, wx, x); data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2]; continue; }
         data[i] = t[ti] * light * (1 + wo * 0.5) + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light * (1 + wo * 0.05) + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light * (1 - wo * 0.3) + pal.fog[2] * (1 - light);
@@ -800,6 +803,11 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (i % 2 && cyc < 0.35) { const f = cyc / 0.35, fwd = i % 4 === 1, a = fwd ? f : 1 - f; list.push({ x: x0 + 0.5 + ux * len * a - uy * 0.42, y: y0 + 0.5 + uy * len * a + ux * 0.42, kind: (tm * 8 | 0) % 2 ? 'rat' : 'rat2', face: Math.atan2(fwd ? uy : -uy, fwd ? ux : -ux) }); }
       if (mid > split && i % 2 === 0) { const cx = x0 + 0.5 + ux * len / 2, cy = y0 + 0.5 + uy * len / 2, a = tm * 1.3 + i; list.push({ x: cx + Math.cos(a) * 0.7, y: cy + Math.sin(tm * 1.7 + i) * 0.45, kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2', lift: (models ? 0.3 : 0.62) + Math.sin(tm * 2.3 + i) * 0.08, face: a + Math.PI / 2 }); }
       if (i % 3 === 0) list.push({ x: x0 + 0.5 - uy * 0.3, y: y0 + 0.5 + ux * 0.3, kind: 'spider', lift: (models ? 0.38 : 0.5) + Math.sin(tm * 0.8 + i) * 0.02, face: tm * 0.3 + i });
+    }
+    // What came out: an opened long box's item hovers over it; the vault's over its pedestal.
+    for (const pr of props) {
+      if (pr.kind === 'lockbox' && state.boxes?.[pr.idx]) list.push({ x: pr.x, y: pr.y, kind: 'pic', float: true, idx: 970 + pr.idx, lift: 0.32 + Math.sin(tm * 2 + pr.idx) * 0.03 });
+      if (pr.kind === 'pedestal' && state.secret?.broken) list.push({ x: pr.x, y: pr.y, kind: 'pic', float: true, idx: 990, lift: 0.62 + Math.sin(tm * 1.6) * 0.04 });
     }
     if (state.merchant) { const mp = eyePose(map.layout, map.grid, Math.min(0.99, shown + 1.8 / (map.layout.len || 30))); list.push({ x: mp.x, y: mp.y, kind: 'merchant', idx: 960, face: mp.ang + Math.PI, lift: Math.sin(tm * 2) * 0.01 }); near.push({ x: mp.x, y: mp.y, torch: true, f: 0.9 + 0.1 * Math.sin(tm * 7) }); }
     if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss, bx0 = map.layout.bossAt?.[0] ?? bx + bw / 2, by0 = map.layout.bossAt?.[1] ?? by + bh / 2, side = mv === 'snatch' ? Math.sin(atkA * Math.PI * 3) * 0.5 * lunge : 0; list.push({ x: bx0 + (pose.x - bx0) * lunge - Math.sin(pose.ang) * side, y: by0 + (pose.y - by0) * lunge + Math.cos(pose.ang) * side, kind: 'boss', lift: map.layout.arena ? 0.06 + Math.sin(tm * 3.2) * 0.04 : 0 }); }
@@ -837,17 +845,17 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
           else if (pd) {
             // The store's item, by what it is: a comic leaning in the hall, a
             // sealed box on a folding table, a card in a top loader on a stand.
-            const box = how === 'comic' ? [0.2, 0.8, 0.3, 1] : how === 'sealed' ? [0.16, 0.84, 0.12, 0.6] : [0.18, 0.82, 0, 0.94];
+            const box = s.float ? [0.2, 0.8, 0.04, 0.96] : how === 'comic' ? [0.2, 0.8, 0.3, 1] : how === 'sealed' ? [0.16, 0.84, 0.12, 0.6] : [0.18, 0.82, 0, 0.94];
             const uu = (u - box[0]) / (box[1] - box[0]), vv = (v - box[2]) / (box[3] - box[2]);
             if (uu >= 0 && uu < 1 && vv >= 0 && vv < 1) { const ti = (Math.floor(Math.min(0.999, vv) * PIC_H) * PIC_W + Math.floor(uu * PIC_W)) * 3; col = [pd[ti], pd[ti + 1], pd[ti + 2]]; }
             else if (how === 'sealed' && v >= 0.6 && v < 0.66 && u > 0.04 && u < 0.96) col = [120, 120, 126];
             else if (how === 'sealed' && v >= 0.66 && (Math.abs(u - 0.12) < 0.03 || Math.abs(u - 0.88) < 0.03)) col = [70, 70, 76];
-            else if (how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
+            else if (!s.float && how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
           }
           else if (shot) { const bi = (Math.min(shot.h - 1, Math.floor(v * shot.h)) * shot.w + Math.min(shot.w - 1, Math.floor(u * shot.w))) * 4; if (shot.data[bi + 3] > 110) { col = [shot.data[bi], shot.data[bi + 1], shot.data[bi + 2]]; glow = MODEL_GLOW.has(base) && shot.data[bi] > 200; } }
           else { const k0 = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind === 'pic' ? 'comics' : s.kind, kind = SPRITES[k0] ? k0 : FLAT[k0] || 'comics', rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
           if (!col) continue;
-          const i = (sy * VW + sx) * 4, l = glow || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
+          const i = (sy * VW + sx) * 4, l = glow || s.float || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           const wm = l === light ? warm : 0;
           data[i] = col[0] * l * (1 + wm * 0.25); data[i + 1] = col[1] * l; data[i + 2] = col[2] * l * (1 - wm * 0.2);
         }
