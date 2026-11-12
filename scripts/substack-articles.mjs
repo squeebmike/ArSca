@@ -175,17 +175,33 @@ export async function runSubstackArticlesSync(env, deps, { force = false, now = 
 // views and clicks, and sales of the books it's about since it went up
 // (any channel -- shop, website, Whatnot). Not proof the article sold them;
 // a guide to which articles move books.
-export function articleReport({ items, stats = [], lines = [], sameComic, authors }) {
+// Website orders that came through an article (store, 2026-11-12: "sold from
+// someone coming in the website and buying any book, but coming in through
+// his articles"): the buyer read the article in the 7 days before checkout
+// (the article page remembers it in the browser; the cart sends it with the
+// order). Every book in those paid orders counts. orders: storefront_orders
+// {referral, sale_id}; sales: paid pos_sales {id}; lines: their pos_sale_lines.
+export function referredSales(orders = [], sales = [], lines = []) {
+  const paid = new Set(sales.map(x => x.id)), out = new Map();
+  for (const o of orders) {
+    const slug = String(o.referral || '').replace(/^article:/, ''); if (!slug || !paid.has(o.sale_id)) continue;
+    const e = out.get(slug) || { orders: 0, sold: 0, soldTotal: 0 }; e.orders++;
+    for (const l of lines) if (l.sale_id === o.sale_id && l.category !== 'Shipping') { e.sold += Number(l.quantity) || 1; e.soldTotal += (Number(l.adjusted_price) || 0) * (Number(l.quantity) || 1); }
+    e.soldTotal = Math.round(e.soldTotal * 100) / 100; out.set(slug, e);
+  }
+  return out;
+}
+export function articleReport({ items, stats = [], referred = new Map(), authors }) {
   const by = new Map();
   for (const s of stats) { const e = by.get(s.slug) || { views: 0, clicks: 0 }; e.views += Number(s.views) || 0; e.clicks += Number(s.clicks) || 0; by.set(s.slug, e); }
   return items.filter(i => authors.includes(String(i.fieldData?.author || ''))).map(i => {
     const f = i.fieldData || {}, books = String(f['books-to-promote'] || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    const since = Date.parse(f['published-on-2'] || i.createdOn || 0) || 0;
-    const sold = lines.filter(l => Date.parse(l.created_at) >= since && books.some(b => sameComic(l.title, b)));
     return {
       id: i.id, slug: f.slug, title: f.name, live: !i.isDraft && !!i.lastPublished, draft: !!i.isDraft, publishedAt: f['published-on-2'] || null,
       image: f['cover-image']?.url || '', books, ...(by.get(f.slug) || { views: 0, clicks: 0 }),
-      sold: sold.reduce((n, l) => n + (Number(l.quantity) || 1), 0), soldTotal: Math.round(sold.reduce((n, l) => n + (Number(l.adjusted_price) || 0) * (Number(l.quantity) || 1), 0) * 100) / 100,
+      // What it says, to read before it goes up (the dashboard shows it in a sandbox).
+      summary: String(f.summary || ''), body: String(f.body || '').slice(0, 60000),
+      ...(referred.get(f.slug) || { orders: 0, sold: 0, soldTotal: 0 }),
     };
   }).sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
 }
@@ -213,13 +229,18 @@ export async function handleArticleStudio(request, env, url, deps) {
   if (url.pathname === '/store/articles-report' && request.method === 'GET') {
     const items = await listArticleItems(deps);
     const mine = items.filter(i => authors.includes(String(i.fieldData?.author || '')));
-    const since = mine.map(i => i.fieldData?.['published-on-2'] || i.createdOn).filter(Boolean).sort()[0] || new Date().toISOString();
     const slugs = mine.map(i => i.fieldData?.slug).filter(Boolean);
-    const [stats, lines] = await Promise.all([
-      slugs.length ? deps.supabaseAdminFetch(env, `article_stats?slug=in.(${slugs.map(encodeURIComponent).join(',')})&select=slug,views,clicks`).then(r => r.data || []) : [],
-      deps.supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${encodeURIComponent(storeId)}&category=ilike.*comic*&created_at=gte.${encodeURIComponent(since)}&select=title,adjusted_price,quantity,created_at,pos_sales!inner(status)&pos_sales.status=in.(completed,succeeded)&limit=5000`).then(r => r.data || []),
+    const enc = encodeURIComponent, list = a => a.map(enc).join(',');
+    const [stats, orders] = await Promise.all([
+      slugs.length ? deps.supabaseAdminFetch(env, `article_stats?slug=in.(${list(slugs)})&select=slug,views,clicks`).then(r => r.data || []) : [],
+      deps.supabaseAdminFetch(env, `storefront_orders?store_id=eq.${enc(storeId)}&referral=like.article:*&select=referral,sale_id&limit=2000`).then(r => r.data || []),
     ]);
-    return deps.json({ ok: true, articles: articleReport({ items, stats, lines, sameComic: deps.sameComic, authors }), lastCheck: Number(await deps.kv.get('substack-articles:last-run')) || 0 });
+    const saleIds = [...new Set(orders.map(o => o.sale_id).filter(Boolean))].slice(0, 300);
+    const [sales, lines] = saleIds.length ? await Promise.all([
+      deps.supabaseAdminFetch(env, `pos_sales?store_id=eq.${enc(storeId)}&id=in.(${list(saleIds)})&status=in.(completed,succeeded)&select=id`).then(r => r.data || []),
+      deps.supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${enc(storeId)}&sale_id=in.(${list(saleIds)})&select=sale_id,quantity,adjusted_price,category`).then(r => r.data || []),
+    ]) : [[], []];
+    return deps.json({ ok: true, articles: articleReport({ items, stats, referred: referredSales(orders, sales, lines), authors }), lastCheck: Number(await deps.kv.get('substack-articles:last-run')) || 0 });
   }
   if (url.pathname === '/store/articles/publish' && request.method === 'POST') {
     const body = await request.json().catch(() => ({})), id = String(body.id || '');
@@ -238,5 +259,5 @@ export async function handleArticleStudio(request, env, url, deps) {
 // On the article page: count a view, and clicks on its books (buy, preorder, add to cart).
 export function articleStatsScript(slug) {
   if (!/^[a-z0-9-]{3,120}$/.test(String(slug || ''))) return '';
-  return `<script>(function(){var s=${JSON.stringify(slug)},u=function(k){try{navigator.sendBeacon('/public/article-hit?s='+s+'&k='+k)}catch(e){}};u('view');document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="/item/"],a[href*="/preorder/"],.mp-art button');if(a)u('click')},true)})();</script>`;
+  return `<script>(function(){var s=${JSON.stringify(slug)},u=function(k){try{navigator.sendBeacon('/public/article-hit?s='+s+'&k='+k)}catch(e){}};u('view');try{localStorage.setItem('mp_article_ref',JSON.stringify({s:s,at:Date.now()}))}catch(e){}document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="/item/"],a[href*="/preorder/"],.mp-art button');if(a)u('click')},true)})();</script>`;
 }

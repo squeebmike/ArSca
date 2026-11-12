@@ -8655,7 +8655,7 @@ async function routeRequest(request, env, ctx) {
 
       await supabaseAdminFetch(env, 'pos_payments', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), sale_id:saleId, store_id:storeId, method:'Stripe Card', amount:totalCents/100, status:pi.status, provider:'stripe', stripe_mode:mode, stripe_payment_intent_id:pi.id, currency:pi.currency, amount_cents:totalCents, processing_fee_paid_by:'platform_account' }) });
 
-      await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending' }) });
+      await supabaseAdminFetch(env, 'storefront_orders', { method:'POST', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ id:crypto.randomUUID(), store_id:storeId, sale_id:saleId, confirmation_number:confirmationNumber, customer_name:customerName, customer_phone:customerPhone, customer_email:customerEmail || null, fulfillment_method:method, shipping_address:shippingAddress, shipping_fee_cents:shippingFeeCents, fulfillment_status:'pending', ...(/^article:[a-z0-9-]{3,120}$/.test(String(body.referral || '')) ? { referral:String(body.referral) } : {}) }) });
 
       // This legacy handoff records an intent only after the external
       // checkout has already succeeded, so its Stripe webhook may have

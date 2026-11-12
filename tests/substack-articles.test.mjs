@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { isBot, parseSubstackFeed, cleanSubstackHtml, isComicPost, suggestBooks, substackArticleFields, articleReport, articleStatsScript, SUBSTACK_FEEDS, runSubstackArticlesSync } from '../scripts/substack-articles.mjs';
-import { sameComic } from '../scripts/comic-articles.mjs';
+import { isBot, referredSales, parseSubstackFeed, cleanSubstackHtml, isComicPost, suggestBooks, substackArticleFields, articleReport, articleStatsScript, SUBSTACK_FEEDS, runSubstackArticlesSync } from '../scripts/substack-articles.mjs';
 
 // A Substack feed the way Substack writes it (made-up posts).
 const img = u => `<div class="captioned-image-container"><figure><a class="image-link image2 is-viewable-img" target="_blank" href="${u}"><div class="image2-inset"><picture><source type="image/webp" srcset="${u} 424w" sizes="100vw"><img src="${u}" width="1456" height="2257" data-attrs="{}" class="sizing-normal" alt="" srcset="${u} 424w" loading="lazy"></picture><div class="image-link-expand"><div class="pencraft"><button class="pencraft icon-container"><svg xmlns="http://www.w3.org/2000/svg"><path d="M1"/></svg></button></div></div></div></a></figure></div>`;
@@ -55,20 +54,26 @@ assert.ok(f.body.includes('first appeared on <a href="https://savanoverbeke.subs
   } finally { globalThis.fetch = realFetch; }
 }
 
-// The report: views, clicks and sales of its books since it went up.
+// The report: views, clicks, and website orders that came through the article.
 const items = [
-  { id: 'a1', isDraft: false, lastPublished: '2026-11-11', fieldData: { slug: 'avengers-is-back', name: 'Avengers', author: 'S.A. Van Overbeke', 'published-on-2': '2026-11-10T00:00:00Z', 'books-to-promote': 'AVENGERS #1' } },
+  { id: 'a1', isDraft: false, lastPublished: '2026-11-11', fieldData: { slug: 'avengers-is-back', name: 'Avengers', author: 'S.A. Van Overbeke', 'published-on-2': '2026-11-10T00:00:00Z', 'books-to-promote': 'AVENGERS #1', body: '<p>Hi</p>' } },
   { id: 'a2', isDraft: true, fieldData: { slug: 'other', name: 'Other', author: 'S.A. Van Overbeke', 'published-on-2': '2026-11-12T00:00:00Z' } },
   { id: 'x', isDraft: false, fieldData: { slug: 'store-guide', name: 'Guide', author: 'The Mana Pocket' } },
 ];
-const rep = articleReport({ items, authors: ['S.A. Van Overbeke'], sameComic,
-  stats: [{ slug: 'avengers-is-back', views: 10, clicks: 2 }, { slug: 'avengers-is-back', views: 5, clicks: 1 }],
-  lines: [{ title: 'AVENGERS #1 SKOTTIE YOUNG VARIANT', adjusted_price: 6, quantity: 1, created_at: '2026-11-11T01:00:00Z' }, { title: 'AVENGERS #1', adjusted_price: 5, quantity: 2, created_at: '2026-11-09T01:00:00Z' }, { title: 'VENOM #1', adjusted_price: 5, quantity: 1, created_at: '2026-11-11T01:00:00Z' }] });
+const referred = referredSales(
+  [{ referral: 'article:avengers-is-back', sale_id: 's1' }, { referral: 'article:avengers-is-back', sale_id: 's2' }, { referral: 'article:avengers-is-back', sale_id: 'unpaid' }],
+  [{ id: 's1' }, { id: 's2' }],
+  [{ sale_id: 's1', quantity: 2, adjusted_price: 5, category: 'Comic' }, { sale_id: 's1', quantity: 1, adjusted_price: 6.5, category: 'Shipping' }, { sale_id: 's2', quantity: 1, adjusted_price: 20, category: 'Pokemon TCG' }, { sale_id: 'unpaid', quantity: 9, adjusted_price: 9, category: 'Comic' }]);
+const rep = articleReport({ items, authors: ['S.A. Van Overbeke'], referred, stats: [{ slug: 'avengers-is-back', views: 10, clicks: 2 }, { slug: 'avengers-is-back', views: 5, clicks: 1 }] });
 assert.equal(rep.length, 2, 'only his articles');
 const av = rep.find(a => a.slug === 'avengers-is-back');
 assert.equal(av.live, true); assert.equal(av.views, 15); assert.equal(av.clicks, 3);
-assert.equal(av.sold, 1, 'only after it went up, only its books'); assert.equal(av.soldTotal, 6);
-assert.equal(rep.find(a => a.slug === 'other').draft, true);
+assert.equal(av.orders, 2, 'paid orders only'); assert.equal(av.sold, 3, 'every item in them, not shipping'); assert.equal(av.soldTotal, 30);
+assert.equal(av.body, '<p>Hi</p>');
+assert.equal(rep.find(a => a.slug === 'other').draft, true); assert.equal(rep.find(a => a.slug === 'other').orders, 0);
+// The page remembers the article for the cart (7 days, this browser).
+assert.ok(articleStatsScript('avengers-is-back').includes("localStorage.setItem('mp_article_ref'"));
+assert.ok(fs.readFileSync('cloudflare-worker-full.js', 'utf8').includes("/^article:[a-z0-9-]{3,120}$/.test(String(body.referral || ''))"), 'record-order keeps the article');
 
 // The page counts a view and clicks on its books.
 assert.ok(articleStatsScript('avengers-is-back').includes("/public/article-hit?s="));
@@ -86,4 +91,8 @@ for (const ua of ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleW
   assert.ok(app.includes("['articles', 'ARTICLES']") && app.includes("if(name === 'articles') setTimeout(()=>renderSubstackArticles(), 0);"));
   const tab = html.slice(html.indexOf('<div id="tab-articles"'), html.indexOf('<!-- DATABASE VIEWER TAB'));
   assert.ok(tab.includes('id="substack-articles-list"')); assert.equal(html.split('id="substack-articles-list"').length, 2, 'only in the ARTICLES tab'); }
+// The article can be read in the dashboard before it goes up, in a sandbox.
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.ok(app.includes('📖 READ IT') && app.includes('<iframe sandbox="allow-popups allow-popups-to-escape-sandbox"') && !/<iframe sandbox="[^"]*allow-scripts/.test(app));
+}
 console.log('Substack articles: feed, clean-up, comic posts only, books, drafts, report and counters passed');
