@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=11'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=2').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=12'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=2').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0;
@@ -220,14 +220,19 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const d = stats?.dungeon; if (!d) return;
         const last = Math.max(Number(stats.lastSaleAt) || 0, Number(d.lastAt) || 0), battery = last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / (6 * 60000))) : 1;
         const now = Date.now() + offset;
-        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), boxes: [0, 1].map(k => !!d.boxes?.[k]?.open), day: fpm.dayPhase(stats.startedAt, now), weather: fpm.weatherFor(d.floor, now), battery, fork: d.fork || '', hideNear: hideNear });
+        // BOSS ATTACKS (2026-11-12): at 2/3 and 1/3 of its HP the boss pulls its move in the arena.
+        const rk = d.boss.character + '|' + d.floor, stage = d.phase !== 'boss' ? -1 : d.pct <= 33.4 ? 2 : d.pct <= 66.7 ? 1 : 0;
+        if (rk !== rage.key) rage = { key: rk, seen: stage }; else if (stage > rage.seen) { rage.seen = stage; fp.attack(bosses.bossById(d.boss.character).move); }
+        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: Date.now() < testUntil ? 'boss' : d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), boxes: [0, 1].map(k => !!d.boxes?.[k]?.open), day: fpm.dayPhase(stats.startedAt, now), weather: fpm.weatherFor(d.floor, now), battery, fork: d.fork || '', hideNear: hideNear });
         // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
         if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
         const urls = [...new Set([stage.now, ...(stage.next || []), ...shedPics].filter(x => x && x.image).map(x => x.image))].slice(0, 24), key = urls.join('|');
         if (key !== picKey) { picKey = key; const all = [stage.now, ...(stage.next || []), ...shedPics], kinds = urls.map(u => all.find(x => x && x.image === u)?.kind || 'card'); Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list, kinds)); }
       };
-      let hideNear = true;
-      onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; } if (m.settings) { hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+      let hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
+      onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
+        // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
+        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
       setInterval(paint, 5000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
@@ -246,6 +251,6 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     socket.onclose = ev => { if (ev.code === 1008) return; setTimeout(connect, Math.min(30000, 1000 * 2 ** Math.min(retry++, 5))); };
   }
   // Live Studio's preview: the dashboard sends the state (same page only), no socket.
-  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics }; onState(pending); });
+  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type === 'mana-attack') { onState({ type: 'attack' }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics }; onState(pending); });
   else if (!demo) connect();
 }

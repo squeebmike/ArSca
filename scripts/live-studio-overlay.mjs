@@ -132,7 +132,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=11').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=12').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=2').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -223,6 +223,7 @@ function bossMove(b,stage){
   else if(move==='trash'){for(let k=0;k<8;k++)add('junk',{left:(80+k*120)+'px',top:'0','--dx':((k%2?1:-1)*(40+k*12))+'px',animationDelay:(k*0.12)+'s',background:k%3?'#c98a3c':'#9ca3af'});document.body.classList.add('mana-shake');setTimeout(()=>document.body.classList.remove('mana-shake'),1100);}
   else if(move==='snatch'){const card=$('mana-card');if(card){card.classList.add('snatched');setTimeout(()=>card.classList.remove('snatched'),3000);}}
   else{add('jaw top');add('jaw bottom');document.body.classList.add('mana-shake');setTimeout(()=>document.body.classList.remove('mana-shake'),1100);}
+  fp?.attack?.(move); // the crawl window: the attack in the arena
   bossView?.hit();clearTimeout(bossMove.t);bossMove.t=setTimeout(()=>{box.innerHTML='';},3400);
 }
 // K.O.: the boss blows apart into comic pages and coins; K.O.! slams in.
@@ -298,14 +299,14 @@ function revealItem(e){
   const giveaway=e.kind==='chest'&&!e.item&&/GIVEAWAY/.test(e.chestText||'');
   const it=giveaway?{title:'FREE GIVEAWAY!'}:e.item;if(!it||!it.title)return;
   const el=$('mana-reveal'),img=$('mana-reveal-img');
-  $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'$1 START!');
-  $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'$1 START!':(it.price?'VALUE '+usd(it.price):'');
+  $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'LOW START!');
+  $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'LOW START!':(it.price?'VALUE '+usd(it.price):'');
   img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
   // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
   // shows shut, the lid pops open in a burst of light, the item rises out of
   // it spinning and hangs there -- YOU GOT IT!
   const isChest=e.kind==='chest',cv=$('mana-reveal-chest');el.classList.toggle('chest-mode',isChest);
-  if(isChest){$('mana-reveal-label').textContent=giveaway?'CHEST OPENED!':'YOU GOT IT!';$('mana-reveal-price').textContent=giveaway?'FREE TO ENTER IN THE WHATNOT APP':(e.chestText&&e.chestText!=='$1 START!'?e.chestText+' · ':'')+'$1 START!';
+  if(isChest){$('mana-reveal-label').textContent=giveaway?'CHEST OPENED!':'YOU GOT IT!';$('mana-reveal-price').textContent=giveaway?'FREE TO ENTER IN THE WHATNOT APP':(e.chestText&&e.chestText!=='LOW START!'?e.chestText+' · ':'')+'LOW START!';
     const k=cv.getContext('2d');k.imageSmoothingEnabled=false;if(fpLib){fpLib.drawSprite(k,'chest',10);clearTimeout(revealItem.lid);revealItem.lid=setTimeout(()=>fpLib.drawSprite(k,'chestopen',10),650);}}
   el.style.top=Math.max(0,settings.y-(isChest?700:610))+'px';
   el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
@@ -391,7 +392,7 @@ function react(e){
     case 'room': {const r=roomById(e.room);mascot.play('excited',{text:r?'INTO THE '+r.name+'!':'ONWARD!'});break;}
     case 'floor': mascot.play('alert',{text:'FLASK FULL! '+(e.bossName||'THE BOSS')+' INCOMING!',ms:1800});mascot.play('angry',{text:'GET HIM, CHAT!'});break;
     case 'unlock': mascot.play('celebrating',{text:'UNLOCKED: '+(e.unlockText||'')});break;
-    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.item?.title?'$1 START: '+e.item.title:/GIVEAWAY/.test(e.chestText||'')?'FREE GIVEAWAY! ENTER IN THE WHATNOT APP!':e.chestText||'')});break;
+    case 'chest': mascot.play('jackpot',{text:'CHEST OPENED! '+(e.item?.title?'LOW START: '+e.item.title:/GIVEAWAY/.test(e.chestText||'')?'FREE GIVEAWAY! ENTER IN THE WHATNOT APP!':e.chestText||'')});break;
     case 'found': mascot.play('excited',{text:'FOUND IT! '+(e.item?.title||'')});break;
     case 'trivia': mascot.play('celebrating',{text:'CORRECT! IT WAS '+(e.answer||'')+'!'});break;
     case 'tap': mascot.play(e.tapKind==='follow'?'love':'happy',{text:TAP_LINES[e.tapKind]||'MANA!'});break;
@@ -490,7 +491,7 @@ function words(e) {
     case 'floor': return ['FLOOR '+(e.floor||'')+' CLEARED!','BOSS APPEARS!','VS '+(e.bossName||'THE BOSS')];
     case 'unlock': return ['UNLOCKED!',e.unlockAt?usd(e.unlockAt):'',e.unlockText||''];
     case 'chest': if(!e.item&&/GIVEAWAY/.test(e.chestText||''))return ['FREE GIVEAWAY!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'','FREE TO ENTER IN THE WHATNOT APP'];
-    return ['CHEST OPENED!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'',e.item?.title?(e.chestText||'$1 START')+': '+e.item.title:e.chestText||''];
+    return ['CHEST OPENED!',e.chestGoal?(/^CHAT HIT|^CHEST/.test(e.chestGoal)?e.chestGoal:'CHAT HIT '+e.chestGoal)+'!':'',e.item?.title?(e.chestText||'LOW START')+': '+e.item.title:e.chestText||''];
     case 'found': return ['FOUND IT!',e.spot?'IN '+e.spot:'',e.item?.title||''];
     case 'trivia': return ['CORRECT!',e.answer||'',(e.who?'@'+e.who+' GOT IT · ':'')+(e.mana?'+'+usd(e.mana)+' MANA FOR EVERYONE':'NICE ONE, CHAT')];
     case 'giveaway': return ['FREE GIVEAWAY!','','FREE TO ENTER IN THE WHATNOT APP'];
@@ -565,4 +566,6 @@ apply(settings);draw();connect();
 // Local editor preview only; same-origin parent can show settings without network access.
 if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.origin!==location.origin)return;
   if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);return;}
+  // The remote's TEST A BOSS ATTACK (preview only).
+  if(ev.data?.type==='mana-attack'){const d=stats.dungeon,b=d?.boss?{name:d.boss.name,character:d.boss.character}:stats.boss;if(b)bossMove(b,2);return;}
   if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});

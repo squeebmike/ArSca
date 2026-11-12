@@ -156,7 +156,7 @@ export class ManaLiveStudio extends DurableObject {
       if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; }
       // Nothing in it (no item in NEXT UP, no goal's reward): it opens quietly.
       if (!item && !c.goal) continue;
-      fx = { kind: 'chest', chestText: c.goal?.text || '$1 START!', chestGoal: c.goal ? 'CHAT HIT ' + c.goal.n + ' ' + c.goal.kind.toUpperCase() + 'S' : 'CHEST ' + (c.k + 1) + ' OF 3', ...(item ? { item } : {}) };
+      fx = { kind: 'chest', chestText: c.goal?.text || 'LOW START!', chestGoal: c.goal ? 'CHAT HIT ' + c.goal.n + ' ' + c.goal.kind.toUpperCase() + 'S' : 'CHEST ' + (c.k + 1) + ' OF 3', ...(item ? { item } : {}) };
     }
     return fx;
   }

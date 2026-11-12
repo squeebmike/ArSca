@@ -446,3 +446,14 @@ assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql
   assert.match(worker, /job: 'whatnot-sync', store_id: storeId/, 'Whatnot runs are kept where they can be checked');
 }
 console.log('whatnot sync checks passed');
+// 2026-11-12: "yes" -- every auction starts at break-even or more once we know the cost (chests and hooks too).
+{
+  const { breakEvenStart, auctionStartPrice } = await import('../scripts/whatnot-sync.mjs');
+  const be = breakEvenStart({ cost: 3.99 });
+  assert.ok(be >= 5, 'a $3.99 book can\'t start at $4: ' + be);
+  assert.equal(breakEvenStart({}), 0, 'no cost known: the rule stands');
+  assert.equal(Math.max(auctionStartPrice({ amount: 1 }), breakEvenStart({ costBasis: 10 })), 12);
+  const src = (await import('node:fs')).readFileSync(new URL('../scripts/whatnot-sync.mjs', import.meta.url), 'utf8');
+  assert.match(src, /if \(start != null\) start = Math\.max\(start, breakEvenStart\(row\.data, deps\.whatnotFee\)\);/);
+  console.log('whatnot-sync: break-even floor on auction starts passed');
+}

@@ -577,7 +577,7 @@ export function eyePose(layout, grid, t) {
 export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0;
+  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null;
   // The arena's spot: just inside it, from the end of the hall, looking at the boss.
   function arenaPose(p, k) {
     if (k < 0.002) return p;
@@ -656,9 +656,15 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const pose = arenaPose(eyePose(map.layout, map.grid, Math.min(0.99, shown + scoutNow)), arenaK), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
     const tm = clockNow / 1000, N = GRID, zone = map.zone;
+    // BOSS ATTACKS in the arena (2026-11-12): 3.6 seconds each, all show.
+    const atkA = atk ? (clockNow - atk.at) / 3600 : -1, atkOn = atkA >= 0 && atkA < 1, mv = atkOn ? atk.move : '';
+    const env = atkOn ? Math.min(1, atkA / 0.15, (1 - atkA) / 0.2) : 0; // in, hold, out
+    const lunge = mv === 'chomp' || mv === 'snatch' ? Math.max(0, Math.sin(Math.min(1, atkA / 0.7) * Math.PI)) * (mv === 'chomp' ? 0.75 : 0.6) : 0;
+    const atkShake = !atkOn ? 0 : (mv === 'chomp' ? Math.sin(tm * 47) * lunge * VH * 0.05 : mv === 'trash' ? Math.sin(tm * 41) * env * VH * 0.025 : mv === 'fire' || mv === 'barrage' ? Math.sin(tm * 33) * env * VH * 0.01 : 0);
+    if (atk && atkA >= 1) atk = null;
     // Breathing while standing; a dip as you climb down the trapdoor.
     const dip = (clockNow - dipAt) / 1600, breathe = walking ? 0 : Math.sin(tm * 1.3) * VH * 0.006;
-    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + (state.phase === 'boss' ? Math.sin(tm * 37) * Math.max(0, Math.sin(tm * 0.9)) ** 3 * VH * 0.02 : 0) + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
+    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + atkShake + (state.phase === 'boss' ? Math.sin(tm * 37) * Math.max(0, Math.sin(tm * 0.9)) ** 3 * VH * 0.02 : 0) + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
     // Down in the dungeon the fog turns colder and darker.
     const inDeep = zone ? zone[Math.floor(pose.y) * N + Math.floor(pose.x)] : 0; fogMix += ((inDeep ? 1 : 0) - fogMix) * 0.05;
     const pal = { ...pal0, fog: pal0.fog.map((c, k) => Math.round(c * (1 - fogMix) + [4, 3, 8][k] * fogMix)) };
@@ -750,7 +756,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (mid > split && i % 2 === 0) { const cx = x0 + 0.5 + ux * len / 2, cy = y0 + 0.5 + uy * len / 2, a = tm * 1.3 + i; list.push({ x: cx + Math.cos(a) * 0.7, y: cy + Math.sin(tm * 1.7 + i) * 0.45, kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2', lift: (models ? 0.3 : 0.62) + Math.sin(tm * 2.3 + i) * 0.08, face: a + Math.PI / 2 }); }
       if (i % 3 === 0) list.push({ x: x0 + 0.5 - uy * 0.3, y: y0 + 0.5 + ux * 0.3, kind: 'spider', lift: (models ? 0.38 : 0.5) + Math.sin(tm * 0.8 + i) * 0.02, face: tm * 0.3 + i });
     }
-    if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss; list.push({ x: map.layout.bossAt?.[0] ?? bx + bw / 2, y: map.layout.bossAt?.[1] ?? by + bh / 2, kind: 'boss', lift: map.layout.arena ? 0.06 + Math.sin(tm * 3.2) * 0.04 : 0 }); }
+    if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss, bx0 = map.layout.bossAt?.[0] ?? bx + bw / 2, by0 = map.layout.bossAt?.[1] ?? by + bh / 2, side = mv === 'snatch' ? Math.sin(atkA * Math.PI * 3) * 0.5 * lunge : 0; list.push({ x: bx0 + (pose.x - bx0) * lunge - Math.sin(pose.ang) * side, y: by0 + (pose.y - by0) * lunge + Math.cos(pose.ang) * side, kind: 'boss', lift: map.layout.arena ? 0.06 + Math.sin(tm * 3.2) * 0.04 : 0 }); }
     const inv = 1 / (planeX * dirY - dirX * planeY);
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
@@ -859,6 +865,27 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     // night (the bulbs and the flashlight carry it). Down in the dungeon it's always night.
     const shedK = 1 - fogMix;
     if (shedK > 0.02 && (day === 'sunset' || day === 'night')) { const m = day === 'sunset' ? [1.1, 0.9, 0.72] : [0.52, 0.58, 0.82]; for (let i = 0; i < data.length; i += 4) { data[i] *= 1 + (m[0] - 1) * shedK; data[i + 1] *= 1 + (m[1] - 1) * shedK; data[i + 2] *= 1 + (m[2] - 1) * shedK; } }
+    // The boss's attack, in the room with you.
+    if (atkOn && boss) {
+      const B = map.layout.bossAt || [map.layout.boss[0] + map.layout.boss[2] / 2, map.layout.boss[1] + map.layout.boss[3] / 2];
+      const dot = (x, y, z, r, col, sq = false) => { const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.2) return; const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY), rr = Math.max(1, Math.round(r * VH / tY)); for (let yy = sy - rr; yy <= sy + rr; yy++) for (let xx = sx - rr; xx <= sx + rr; xx++) { if (xx < 0 || xx >= VW || yy < 0 || yy >= VH || tY > zbuf[xx] + 0.3 || (!sq && (xx - sx) ** 2 + (yy - sy) ** 2 > rr * rr) || (sq && Math.abs(yy - sy) > rr * 0.6)) continue; const i = (yy * VW + xx) * 4, band = sq && yy - sy < -rr * 0.25; data[i] = band ? 230 : col[0]; data[i + 1] = band ? 40 : col[1]; data[i + 2] = band ? 50 : col[2]; } };
+      // From the boss's mouth toward you, spread a little each way (a fixed spread).
+      const stream = (n, speed, spread, z0, z1, r, cols, gap = 0, sq = false) => { for (let k = 0; k < n; k++) { const ph = ((atkA * speed + k / n) % 1), wob = Math.sin(k * 2.4) * spread * ph, w = Math.cos(k * 1.7) * Math.min(0.25, spread * 0.2) * ph; if (atkA * speed < k / n * gap) continue; dot(B[0] + (pose.x - B[0]) * ph * 0.95 - Math.sin(pose.ang) * wob, B[1] + (pose.y - B[1]) * ph * 0.95 + Math.cos(pose.ang) * wob, z0 + (z1 - z0) * ph + w, r * (0.5 + ph), cols[k % cols.length], sq); } };
+      if (mv === 'fire') stream(48, 2.2, 0.9, 0.62, 0.35, 0.05, [[255, 220, 90], [255, 140, 30], [240, 70, 20], [255, 250, 200]]);
+      if (mv === 'barrage') stream(26, 1.5, 0.9, 0.6, 0.45, 0.07, [[250, 250, 240], [255, 236, 150], [240, 240, 255]], 1, true); // price tags flying at you
+      if (mv === 'curse') { stream(18, 0.9, 1.6, 0.75, 0.5, 0.06, [[140, 255, 150], [200, 120, 255]]); for (let k = 0; k < 16; k++) { const a = tm * 1.8 + k * 0.39, r = 0.9 + Math.sin(tm * 2 + k) * 0.25; dot(pose.x + Math.cos(a) * r, pose.y + Math.sin(a) * r, 0.5 + Math.sin(a * 2) * 0.25, 0.06, k % 2 ? [120, 255, 140] : [200, 120, 255]); } }
+      if (mv === 'trash') for (let k = 0; k < 28; k++) { const fall = Math.min(1, Math.max(0, atkA * 2.2 - k * 0.07)), bounce = fall >= 1 ? Math.abs(Math.sin((atkA * 2.2 - k * 0.07 - 1) * 9)) * 0.08 * Math.max(0, 1 - (atkA * 2.2 - k * 0.07 - 1)) : 0; dot(pose.x + Math.cos(k * 2.1) * (0.4 + (k % 3) * 0.35) + Math.cos(pose.ang) * 1.6, pose.y + Math.sin(k * 2.1) * (0.4 + (k % 3) * 0.35) + Math.sin(pose.ang) * 1.6, 1 - fall * 0.92 + bounce, 0.08 + (k % 3) * 0.02, [[150, 156, 166], [201, 138, 60], [70, 70, 76], [90, 140, 70]][k % 4]); }
+      // CHOMP: the jaws snap shut on the screen at the lunge's peak.
+      if (mv === 'chomp' && lunge > 0.55) { const shut = Math.min(1, (lunge - 0.55) / 0.2) * VH * 0.32; for (let x = 0; x < VW; x++) { const tooth = (x % 12) < 6 ? (x % 12) : 12 - (x % 12), hT = shut + tooth * 1.4; for (let y = 0; y < VH; y++) if (y < hT || y > VH - hT) { const i = (y * VW + x) * 4; data[i] = 245; data[i + 1] = 240; data[i + 2] = 225; } } }
+      // FLOOD: the water rises up the screen, waves on top.
+      if (mv === 'flood') { const lvl = VH - env * VH * 0.38; for (let x = 0; x < VW; x++) { const top = Math.floor(lvl + Math.sin(x * 0.18 + tm * 5) * 2 + Math.sin(x * 0.05 - tm * 3) * 2); for (let y = Math.max(0, top); y < VH; y++) { const i = (y * VW + x) * 4, foam = y - top < 2; data[i] = foam ? 220 : data[i] * 0.35 + 20; data[i + 1] = foam ? 240 : data[i + 1] * 0.45 + 80; data[i + 2] = foam ? 255 : data[i + 2] * 0.5 + 150; } } }
+      // The whole room takes the attack's colour.
+      // SNATCH: it grabs your flashlight -- the room goes dark, then it's back.
+      const dark = mv === 'snatch' ? 0.15 + 0.85 * (1 - Math.max(0, Math.min(1, (atkA - 0.35) / 0.08, (0.8 - atkA) / 0.08))) : 1;
+      const tint = mv === 'snatch' ? [dark, dark, dark * 1.05] : { fire: [1.25, 0.95, 0.7], curse: [0.7, 1.2, 0.85], barrage: [1.08, 1.08, 1.08], flood: [0.85, 0.95, 1.15] }[mv];
+      const e2 = mv === 'snatch' ? 1 : env;
+      if (tint) for (let i = 0; i < data.length; i += 4) { data[i] *= 1 + (tint[0] - 1) * e2; data[i + 1] *= 1 + (tint[1] - 1) * e2; data[i + 2] *= 1 + (tint[2] - 1) * e2; }
+    }
     // A boss up: the room flushes red.
     if (boss) for (let i = 0; i < data.length; i += 4) data[i] = Math.min(255, data[i] * 1.18 + 10);
     // The bulbs themselves: little glowing dots up in the rafters.
@@ -881,6 +908,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The 3D props' photos (scripts/prop-models.mjs bakeProps); null keeps the flat sprites.
     setModels(m) { models = m || null; },
+    // The boss's attack in the arena: 'fire' | 'flood' | 'barrage' | 'chomp' | 'snatch' | 'curse' | 'trash'.
+    attack(move) { atk = { move: ['fire', 'flood', 'barrage', 'chomp', 'snatch', 'curse', 'trash'].includes(move) ? move : 'chomp', at: performance.now() }; },
     // Where the camera's looking right now (the props in front follow the hall, not the screen).
     view() { return { look, pitch: pitchNow, scout: scoutNow, fov: FOV }; },
     // The host's joystick: { yaw, pitch } (-1..1) to look; { action: 'scout' | 'back' }.
