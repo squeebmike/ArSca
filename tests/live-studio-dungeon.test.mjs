@@ -257,7 +257,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const k of ['export function loadPicture(src)', "im.crossOrigin = 'anonymous'", 'setPictures(list, kinds = [])', 'batt = 0.25 + 0.75']) assert.ok(fp.includes(k), k);
   // The green screen is the crawl now.
   const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
-  assert.ok(bg.includes("fp = fpm.createShedCrawl(canvas, { w: 360, h: Math.round(360 * h / 1080), fov: 0.66 });"));
+  assert.ok(bg.includes("fp = fpm.createShedCrawl(canvas, { w: W, h: Math.round(W * h / 1080), fov: 0.66 });"));
   assert.ok(bg.includes("painted = demo || params.get('painted') === '1'"));
   // The image route only serves the inventory's own image hosts.
   const w = readFileSync(new URL('../cloudflare-worker-full.js', import.meta.url), 'utf8');
@@ -413,7 +413,7 @@ console.log('live-studio-dungeon: ok');
     L.rooms.forEach(r => names.add(fpm.ROOM_THEMES[r[4]].name));
     for (const r of L.rooms) assert.ok(g.some(row => row.some(c => (c >= 1000 ? c % 100 : c) === fpm.ROOM_THEMES[r[4]].tex)), 'the room has its walls');
     fpm.propsFor(L, f).forEach(p => props.add(p.kind));
-    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 24) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 24)), 'every wall has a texture');
+    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 28) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 28)), 'every wall has a texture');
   }
   assert.ok(names.size >= 6, 'room themes vary: ' + [...names]);
   for (const k of ['arcade', 'tv', 'gnome', 'skeleton', 'raccoon', 'crystal', 'lavalamp']) assert.ok(props.has(k), 'cool stuff: ' + k);

@@ -66,16 +66,18 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
   showMap: true,       // the dungeon map + relic shelf panel
   centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
+  crawlSharp: false,   // the green-screen crawl at 480 pixels across instead of 360 (sharper; harder on the streaming computer)
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
   foreground: true,    // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
+  secretTaps: 15,      // the cracked wall comes down at N follows / shares / bookmarks on a floor (0: off)
   lockboxTaps: 5,      // a locked long box opens every N follows / shares / bookmarks on a floor (0: off) -- chat's taps, never sales
   giveawayChests: 2,   // the first N chests on a floor are a FREE giveaway for everyone watching (store, 2026-11-12); the rest run an item
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
-export const DUNGEON_LIMITS = { lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
+export const DUNGEON_LIMITS = { secretTaps: [0, 500], lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
 export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.
@@ -137,6 +139,47 @@ export function boxesOf(d, s) {
 export function boxesToOpen(d, s) {
   const pct = d.phase === 'boss' ? 1 : Math.min(1, (d.mana || 0) / floorGoal(s, d.floor, d));
   return boxesOf(d, s).filter(b => !b.open && b.unlocked && pct >= b.at);
+}
+// THE CRACKED WALL (2026-11-12: "cracked wall would be cool, needs more to
+// it"): on each floor, deep in the dungeon. Every follow / share / bookmark on
+// the floor cracks it more (three stages you can see); at secretTaps it comes
+// down in a cloud of dust and a SECRET VAULT is behind it. When the crawl gets
+// there, the vault's treasure -- the best item in NEXT UP -- comes out and runs.
+export const SECRET_AT = 0.76;
+export function secretOf(d, s) {
+  const need = Number(s.secretTaps ?? 15) || 0;
+  if (!need) return null;
+  const have = Math.min(need, d.floorTaps || 0);
+  return { at: SECRET_AT, need, have, frac: have / need, broken: have >= need, open: !!d.vaults?.[d.floor] };
+}
+export function secretToOpen(d, s) {
+  const sc = secretOf(d, s); if (!sc || !sc.broken || sc.open) return null;
+  const pct = d.phase === 'boss' ? 1 : Math.min(1, (d.mana || 0) / floorGoal(s, d.floor, d));
+  return pct >= sc.at ? sc : null;
+}
+export const openVault = (d, now = Date.now()) => ({ ...d, vaults: { ...(d.vaults || {}), [d.floor]: true }, lastAt: now });
+// THE MERCHANT: the two items he offers chat -- the specials in NEXT UP first
+// (ratio variants, glow in the dark, foils, virgins, signed, sketch...), each
+// with what makes it special. Fixed order, nothing drawn.
+export const MERCHANT_TAGS = [
+  { re: /\b1\s*:\s*\d+|\bratio\b|incentive/i, tag: '🎯 RATIO VARIANT' },
+  { re: /glow/i, tag: '🌙 GLOW IN THE DARK' },
+  { re: /foil|holo|prism|refractor|chrome/i, tag: '✨ FOIL' },
+  { re: /virgin/i, tag: '🤍 VIRGIN VARIANT' },
+  { re: /signed|autograph|\bauto\b/i, tag: '✍️ SIGNED' },
+  { re: /sketch|blank cover/i, tag: '✏️ SKETCH COVER' },
+  { re: /1st app|first app|1st appearance|first appearance/i, tag: '⭐ 1ST APPEARANCE' },
+  { re: /\b(cgc|cbcs|psa|bgs|sgc)\b/i, tag: '🏆 SLABBED' },
+  { re: /variant|\bcover [b-z]\b|\bvar\b/i, tag: '🎨 VARIANT' },
+];
+export function merchantTag(item = {}) { const t = (item.title || '') + ' ' + (item.detail || ''); return MERCHANT_TAGS.find(m => m.re.test(t))?.tag || ''; }
+export function merchantPicks(next = []) {
+  const tagged = next.map((item, i) => ({ i, item, tag: merchantTag(item) }));
+  const out = [], seen = new Set();
+  for (const p of tagged) if (p.tag && !seen.has(p.tag) && out.length < 2) { out.push(p); seen.add(p.tag); }
+  for (const p of tagged) if (p.tag && out.length < 2 && !out.includes(p)) out.push(p);
+  for (const p of tagged) if (out.length < 2 && !out.includes(p)) out.push({ ...p, tag: '💎 FROM HIS PACK' });
+  return out;
 }
 export const openBox = (d, k, now = Date.now()) => ({ ...d, boxes: { ...(d.boxes || {}), [d.floor]: [...(d.boxes?.[d.floor] || []), k] }, lastAt: now });
 export const openChest = (d, k, now = Date.now()) => ({ ...d, opened: { ...(d.opened || {}), [d.floor]: [...(d.opened?.[d.floor] || []), k] }, lastAt: now });
@@ -287,7 +330,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
-    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), boxes: boxesOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
+    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };
