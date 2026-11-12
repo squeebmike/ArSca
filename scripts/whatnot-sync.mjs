@@ -1,4 +1,5 @@
 import { packageFor, PACKAGES } from './shipping-package.mjs';
+import { breakEvenPrice, WHATNOT_FEE } from './whatnot-show-prep.mjs';
 // Whatnot Seller API -- selling (store, 2026-10-31: "Anything I checkbox
 // will be put on whatnot and synced. Whenever we run a price update, the
 // whatnot should update also." Same price as the dashboard, Buy It Now any
@@ -610,6 +611,9 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
     // Auction first, then its starting bid as the price (the single price is
     // the auction's once it is one -- set before, it would be the shop price).
     if (rule) start = auctionStartPrice(rule, Number(link.price) || Number(deps.shape(row).price) || 0);
+    // Never a losing start (store, 2026-11-12): at least break-even after
+    // Whatnot's fees whenever we know what the item cost -- chests and hooks too.
+    if (start != null) start = Math.max(start, breakEvenStart(row.data, deps.whatnotFee));
     // A show-only item isn't in the shop, so its starting bid can go on first
     // (Whatnot may want a price before it takes it as an auction).
     const showOnly = row.data?.whatnotShowOnly === true;
@@ -879,6 +883,10 @@ export function whatnotTitle(item = {}, d = {}) {
 // Starting bid: a set amount, or a percent of the item's price; whole
 // dollars (Whatnot's auction start is in whole units), at least $1.
 // min: a floor ("50 percent of my price or 4 dollars, whatever is greater").
+export function breakEvenStart(data = {}, fee = WHATNOT_FEE) {
+  const cost = Number(data?.cost ?? data?.costBasis ?? data?.cost_basis ?? 0);
+  return cost > 0 ? Math.ceil(breakEvenPrice(cost, fee || WHATNOT_FEE)) : 0;
+}
 export function auctionStartPrice(spec = {}, price = 0) {
   const floor = Math.max(1, Math.round(Number(spec.min) || 0));
   if (spec.percent != null) return Math.max(floor, Math.round((Number(price) || 0) * Number(spec.percent) / 100));
