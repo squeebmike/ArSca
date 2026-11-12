@@ -132,9 +132,9 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=12').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=13').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
-  import('./prop-models.mjs?v=2').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
+  import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -158,7 +158,7 @@ function paintCrawl(d,center){
   if(!show)return;
   const batt=batteryNow(d);
   if(win&&fp){
-    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),boxes:[0,1].map(k=>!!d.boxes?.[k]?.open),day:fpLib.dayPhase(stats.startedAt,Date.now()+offset),weather:fpLib.weatherFor(d.floor,Date.now()+offset),battery:batt,fork:d.fork||''});
+    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),boxes:[0,1].map(k=>!!d.boxes?.[k]?.open),secret:d.secret?{frac:d.secret.frac,broken:d.secret.broken}:null,merchant:stats.vote?.kind==='merchant',day:fpLib.dayPhase(stats.startedAt,Date.now()+offset),weather:fpLib.weatherFor(d.floor,Date.now()+offset),battery:batt,fork:d.fork||''});
     // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
     if(fpBoss!==d.boss.character){fpBoss=d.boss.character;let anim=null;try{anim=gl3d?.bakeBoss?.(fpBoss,{size:96});}catch{}if(anim)fp.setBoss(anim);else void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
     if(!fpOn){fp.start();fpOn=true;}
@@ -172,8 +172,8 @@ function paintCrawl(d,center){
   const opened=d.opened||[],goals=d.chests||[],nextK=[0,1,2].find(k=>!opened.includes(k));
   const g=nextK==null?null:goals[nextK];
   // The next locked long box: chat's taps on this floor are its key.
-  const bx=(d.boxes||[]).find(b=>!b.open);
-  $('mana-fp-chest').textContent=(nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':'🧰 CHEST '+(nextK+1)+' AHEAD')+(bx?'  ·  '+(bx.unlocked?'🔓 LONG BOX '+(bx.k+1)+' UNLOCKED':'🔒 LONG BOX '+(bx.k+1)+': '+bx.have+'/'+bx.need+' TAPS'):'');
+  const bx=(d.boxes||[]).find(b=>!b.open),sw=d.secret;
+  $('mana-fp-chest').textContent=(nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':'🧰 CHEST '+(nextK+1)+' AHEAD')+(bx?'  ·  '+(bx.unlocked?'🔓 LONG BOX '+(bx.k+1)+' UNLOCKED':'🔒 LONG BOX '+(bx.k+1)+': '+bx.have+'/'+bx.need+' TAPS'):'')+(sw&&!sw.open?'  ·  '+(sw.broken?'🧱 THE WALL IS DOWN!':'🧱 CRACKED WALL: '+sw.have+'/'+sw.need+' TAPS'):'');
   // The battery: bars, and a warning when it's low.
   const bars=Math.round(batt*5);$('mana-fp-batt').textContent='🔦 '+'▮'.repeat(bars)+'▯'.repeat(5-bars)+(batt<0.35?' FOLLOW/SHARE TO RECHARGE!':'');
   el.classList.toggle('lowbatt',batt<0.35);
@@ -299,7 +299,7 @@ function revealItem(e){
   const giveaway=e.kind==='chest'&&!e.item&&/GIVEAWAY/.test(e.chestText||'');
   const it=giveaway?{title:'FREE GIVEAWAY!'}:e.item;if(!it||!it.title)return;
   const el=$('mana-reveal'),img=$('mana-reveal-img');
-  $('mana-reveal-label').textContent=e.kind==='found'?'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!':'CHEST OPENED! '+(e.chestText||'LOW START!');
+  $('mana-reveal-label').textContent=e.kind==='found'?(e.spot==='THE MERCHANT'?'THE MERCHANT SELLS IT! UP NOW!':e.spot==='THE SECRET VAULT'?'TREASURE FROM THE SECRET VAULT!':'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!'):'CHEST OPENED! '+(e.chestText||'LOW START!');
   $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'LOW START!':(it.price?'VALUE '+usd(it.price):'');
   img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
   // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
@@ -322,9 +322,10 @@ function paintVote(){
   el.classList.toggle('trivia',show.kind==='trivia');el.style.top=Math.max(0,settings.y-330)+'px';
   el.querySelector('.mana-vote-foot').textContent=show.kind==='trivia'?'TYPE YOUR ANSWER IN CHAT':'TYPE THE NUMBER IN CHAT';
   el.querySelector('.mana-vote-head').textContent=show.kind==='trivia'?'BYTERIDER TRIVIA!':'CHAT PICKS!';
-  $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':show.kind==='dig'?'WHERE DO WE DIG?':show.kind==='fork'?'A FORK IN THE HALL!':show.kind==='trivia'?show.question:'PICK A DOOR';
+  $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':show.kind==='dig'?'WHERE DO WE DIG?':show.kind==='fork'?'A FORK IN THE HALL!':show.kind==='trivia'?show.question:show.kind==='merchant'?'🧙 THE MERCHANT HAS WARES!':'PICK A DOOR';
   if(show.kind==='trivia'){$('mana-vote-list').replaceChildren();return;}
-  $('mana-vote-list').replaceChildren(...show.options.map((o,i)=>{const li=document.createElement('li');const n=document.createElement('b');n.textContent=String(i+1);li.append(n,document.createTextNode(o.label));return li;}));
+  el.classList.toggle('merchant',show.kind==='merchant');
+  $('mana-vote-list').replaceChildren(...show.options.map((o,i)=>{const li=document.createElement('li');const n=document.createElement('b');n.textContent=String(i+1);li.append(n);if(o.image){const im=document.createElement('img');im.src=studioImg(o.image);im.alt='';li.append(im);}li.append(document.createTextNode(o.label));return li;}));
   el.style.top=Math.max(0,settings.y-330)+'px';
 }
 // The map (floors this week, the next one dark), the doors chat is voting

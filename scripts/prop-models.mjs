@@ -72,6 +72,27 @@ const MODELS = {
     for (let i = 0; i < 12; i++) { const c = add(r, box(0.3, 0.42, 0.02, mat(COMIC[i % COMIC.length])), 0, 0.27 + (i % 3) * 0.02, -0.48 + i * 0.085); c.rotation.x = (i % 4 - 1.5) * 0.06; }
     const lid = add(r, box(0.38, 0.06, 1.12, mat(0xc9bc9c)), 0.3, 0.04, 0.05); lid.rotation.z = 0.25; // the lid leaning on the side
   } },
+  // The secret vault's pedestal: a stone pillar, a glowing gold box on top.
+  pedestal: { frames: 1, build(r) {
+    const stone = mat(0x8a8494), gold = mat(0xf5c542, { shininess: 120, specular: 0xffffff });
+    add(r, box(0.5, 0.1, 0.5, stone), 0, 0.05, 0); add(r, cyl(0.16, 0.2, 0.62, stone, 8), 0, 0.41, 0); add(r, box(0.46, 0.08, 0.46, stone), 0, 0.76, 0);
+    add(r, box(0.3, 0.22, 0.24, gold), 0, 0.91, 0); add(r, box(0.2, 0.12, 0.26, glow(0xfff2a0)), 0, 0.93, 0.01);
+    for (let k = 0; k < 6; k++) { const g = add(r, box(0.05, 0.05, 0.05, glow([0xff5577, 0x55aaff, 0x66ff99][k % 3])), Math.cos(k) * 0.3, 1.1 + (k % 2) * 0.1, Math.sin(k) * 0.3); g.rotation.set(k, k * 2, 0); }
+  } },
+  // THE MERCHANT (2026-11-12): a hooded traveller, a huge pack of long boxes and
+  // comics on his back, a lantern held up -- he offers chat two items.
+  merchant: { frames: 1, build(r) {
+    const robe = mat(0x5b3a8c), dark = mat(0x2a1a40), skin = mat(0xd8a878), card = mat(0xd9cdb0), brass = mat(0xd9a640, { shininess: 100 });
+    add(r, cone(0.36, 0.95, robe, 10), 0, 0.48, 0); // the robe
+    const hood = add(r, cone(0.22, 0.42, robe, 10), 0, 1.12, 0); hood.rotation.x = -0.15;
+    add(r, ball(0.15, dark, 10), 0, 0.98, 0.06); // shadow in the hood
+    for (const x of [-0.06, 0.06]) add(r, ball(0.025, glow(0xffe680), 6), x, 1.0, 0.19); // eyes glinting
+    add(r, ball(0.06, skin, 8), 0, 0.92, 0.19); // the nose
+    add(r, box(0.52, 0.6, 0.3, card), 0, 0.85, -0.3); add(r, box(0.54, 0.06, 0.32, mat(0xc9bc9c)), 0, 1.16, -0.3); // the pack: long boxes
+    for (let i = 0; i < 5; i++) add(r, box(0.2, 0.28, 0.02, mat(COMIC[i % COMIC.length])), -0.18 + i * 0.09, 1.3, -0.3 + (i % 2) * 0.04); // comics poking out
+    const arm = add(r, cyl(0.06, 0.07, 0.42, robe, 8), 0.3, 0.86, 0.12); arm.rotation.z = -0.9;
+    add(r, box(0.12, 0.16, 0.12, brass), 0.5, 1.05, 0.18); add(r, box(0.08, 0.1, 0.08, glow(0xffd860)), 0.5, 1.05, 0.18); // the lantern
+  } },
   // A LOCKED long box (2026-11-12: "doors and keys"): chained shut with a glowing
   // padlock; chat's follows / shares / bookmarks open it and a store item comes out.
   lockbox: { frames: 1, build(r) {

@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, boxesToOpen, openBox, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
+import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
@@ -46,9 +46,11 @@ export class ManaLiveStudio extends DurableObject {
     const r = addTap(s.dungeon, kind, s.settings, now);
     // A treasure chest this tap opened (chat's goal reached).
     const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();
+    // This tap brought the cracked wall down (a secret vault behind it).
+    const wallDown = r.dungeon.floor === s.dungeon.floor && !secretOf(s.dungeon, s.settings)?.broken && !!secretOf(r.dungeon, s.settings)?.broken;
     s.dungeon = r.dungeon;
-    const reached = this.openReachedChests(s, now) || this.openReachedBoxes(s, now);
-    const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || reached || (chest ? { kind: 'chest', chestText: chest.text, chestGoal: chest.n + ' ' + chest.kind.toUpperCase() + 'S' } : null) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
+    const reached = this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now);
+    const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || reached || (wallDown ? { kind: 'unlock', unlockText: 'THE CRACKED WALL CRUMBLES! A SECRET VAULT!' } : null) || (chest ? { kind: 'chest', chestText: chest.text, chestGoal: chest.n + ' ' + chest.kind.toUpperCase() + 'S' } : null) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
     s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), stage:s.stage, serverNow:now });
@@ -63,7 +65,7 @@ export class ManaLiveStudio extends DurableObject {
       if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Invalid mana');
       const r = addMana(s.dungeon, amount, s.settings, now);
       s.dungeon = r.dungeon;
-      fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 }) || this.openReachedChests(s, now) || this.openReachedBoxes(s, now);
+      fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 }) || this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now);
     } else if (input.door !== undefined) {
       // Chat's vote: the door the host tapped sets this floor's room.
       s.dungeon = adjustDungeon(s.dungeon, { door: input.door }, now);
@@ -84,6 +86,8 @@ export class ManaLiveStudio extends DurableObject {
     else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
     else if (kind === 'door') { if (!s.dungeon.doors?.length) throw new Error('Vote: no doors are open right now'); options = s.dungeon.doors.map(id => { const r = roomById(id); return { id, label: r.icon + ' ' + r.name }; }); }
     else if (kind === 'fork') options = FORKS.map(f => ({ id: f.id, label: f.label }));
+    // THE MERCHANT (2026-11-12): two items, what makes each special; chat picks, it runs.
+    else if (kind === 'merchant') { const picks = merchantPicks(s.stage.next || []); if (picks.length < 2) throw new Error('The merchant needs two items in NEXT UP'); options = picks.map(p => ({ id: String(p.i), label: p.tag + ': ' + String(p.item.title || '').slice(0, 60), ...(p.item.image ? { image: p.item.image } : {}) })); }
     // FOUND IT!: each spot holds one of the next lineup items.
     else if (kind === 'dig') { const next = s.stage.next || []; if (next.length < 2) throw new Error('Vote needs two items in NEXT UP'); options = DIG_SPOTS.slice(0, Math.min(3, next.length)).map((label, i) => ({ id: String(i), label })); }
     else throw new Error('Invalid vote');
@@ -103,12 +107,13 @@ export class ManaLiveStudio extends DurableObject {
     else if (v.kind === 'fork') s.dungeon = adjustDungeon(s.dungeon, { fork: opt.id }, now);
     let fx = null;
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
+    if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
     if (v.kind === 'trivia') { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
     s.effect = fx || makeEffect('mascot', s.settings, now, { mascotState: 'happy', say: 'CHAT PICKED: ' + opt.label.replace(/^\S+\s/, '') });
     this.write(s);
     this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), stage:s.stage, serverNow:now });
-    return this.publicState(s);
+    return { ...this.publicState(s), ...this.takeChest(s) };
   }
   // ByteRider's trivia: the next question in the list (or the host's own);
   // the host taps CORRECT when chat gets it, and everyone's mana goes up.
@@ -170,6 +175,17 @@ export class ManaLiveStudio extends DurableObject {
       fx = { kind: 'found', spot: 'THE LOCKED LONG BOX', lockbox: b.k + 1, ...(item ? { item } : { chestText: 'UNLOCKED!' }) };
     }
     return fx;
+  }
+  // The secret vault behind the cracked wall, once it's down and the crawl
+  // gets there: the best item in NEXT UP comes out of it and runs.
+  openReachedVault(s, now) {
+    if (!secretToOpen(s.dungeon, s.settings)) return null;
+    s.dungeon = openVault(s.dungeon, now);
+    const next = [...(s.stage.next || [])];
+    let best = -1; next.forEach((n, i) => { if (best < 0 || (Number(n.price) || 0) > (Number(next[best].price) || 0)) best = i; });
+    const [item] = best >= 0 ? next.splice(best, 1) : [];
+    if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; }
+    return { kind: 'found', spot: 'THE SECRET VAULT', ...(item ? { item } : {}) };
   }
   // The chest item that just opened (once), for the Worker to add to the Whatnot show.
   takeChest(s) { const it = this.chestItem, gv = this.chestGiveaway; this.chestItem = null; this.chestGiveaway = false; return { ...(it ? { chestItem: it, showId: s.settings.showId || '' } : {}), ...(gv ? { chestGiveaway: true } : {}) }; }
@@ -285,7 +301,7 @@ export class ManaLiveStudio extends DurableObject {
         s.dungeon = m.dungeon;
         const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];
         // A chest the crawl just reached opens (its item comes up next).
-        const chestFx = this.openReachedChests(s, now) || this.openReachedBoxes(s, now); if (chestFx?.item) { stageMoved = true; statsChanged = true; }
+        const chestFx = this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now); if (chestFx?.item) { stageMoved = true; statsChanged = true; }
         if (r.effect) dfx = dungeonEffect(m.events, unlocks, r.effect) || chestFx;
       }
       if (r.effect && eventIsFresh(event, s.settings, now)) effect = dfx || r.effect;

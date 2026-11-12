@@ -47,4 +47,28 @@ assert.match(fp, /attack\(move\) \{ atk = \{ move:/);
 assert.match(read('scripts/live-studio-overlay.mjs'), /fp\?\.attack\?\.\(move\);/);
 const bg = read('scripts/shed-background.mjs'); assert.match(bg, /stage > rage\.seen\) \{ rage\.seen = stage; fp\.attack\(bosses\.bossById\(d\.boss\.character\)\.move\); \}/); assert.match(bg, /type === 'mana-attack'/);
 assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
+// 5. The cracked wall and its secret vault; the merchant; sharper pixels.
+{
+  assert.equal(D.SECRET_AT, F.SECRET_AT);
+  const S2 = { ...D.DUNGEON_DEFAULTS, secretTaps: 3 }; let w = D.emptyDungeon();
+  assert.deepEqual([D.secretOf(w, S2).have, D.secretOf(w, S2).broken], [0, false]);
+  for (let i = 0; i < 3; i++) w = D.addTap(w, 'follow', S2).dungeon;
+  assert.equal(D.secretOf(w, S2).broken, true, 'chat smashed it');
+  assert.equal(D.secretToOpen(w, S2), null, 'not reached yet');
+  w = D.addMana(w, D.floorGoal(S2, 1, w) * 0.8 - w.mana, S2).dungeon;
+  assert.ok(D.secretToOpen(w, S2)); w = D.openVault(w); assert.equal(D.secretToOpen(w, S2), null); assert.equal(D.publicDungeon(w, S2).secret.open, true);
+  assert.equal(D.secretOf(w, { ...S2, secretTaps: 0 }), null, 'off at 0');
+  let placed = 0; for (let f = 1; f <= 20; f++) { const L = F.layoutFor(f); if (L.secret) { placed++; const m = F.buildMap(f); assert.equal(m.grid[L.secret.wall[1]][L.secret.wall[0]], 25, 'sealed by the cracked wall'); } }
+  assert.ok(placed >= 17, 'cracked walls: ' + placed);
+  const picks = D.merchantPicks([{ title: 'Spawn #1' }, { title: 'Venom #1 1:25 Ratio Variant' }, { title: 'Glow in the Dark cover' }, { title: 'X-Men #1 Foil' }]);
+  assert.deepEqual(picks.map(p => [p.i, p.tag]), [[1, '🎯 RATIO VARIANT'], [2, '🌙 GLOW IN THE DARK']], 'specials first, two different kinds');
+  assert.deepEqual(D.merchantPicks([{ title: 'A' }, { title: 'B' }]).map(p => p.tag), ['💎 FROM HIS PACK', '💎 FROM HIS PACK']);
+  const room = read('scripts/live-studio-room.mjs'), api = read('scripts/live-studio-api.mjs');
+  assert.match(room, /else if \(kind === 'merchant'\)/); assert.match(room, /spot: 'THE MERCHANT'/); assert.match(room, /spot: 'THE SECRET VAULT'/); assert.match(room, /THE CRACKED WALL CRUMBLES! A SECRET VAULT!/);
+  assert.match(api, /withChest\(await room\.pickVote\(/, 'the merchant\'s pick goes into the Whatnot show');
+  assert.ok(read('scripts/live-studio-controls.js').includes('data-vote="merchant"'));
+  assert.match(read('scripts/shed-background.mjs'), /const W = sharp \? 480 : 360;/);
+  assert.equal(D.DUNGEON_DEFAULTS.crawlSharp, false, 'sharper pixels are opt-in');
+  for (const k of ['pedestal', 'merchant']) assert.ok((await import('../scripts/prop-models.mjs')).MODEL_KINDS.includes(k));
+}
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');
