@@ -181,7 +181,9 @@ export function statsFromOrders(orders, settings, now = Date.now()) {
 export function publicStats(stats, settings) {
   const s = stats && stats.showId === settings.showId ? stats : emptyStats(settings.showId);
   const hp = Math.max(0, settings.bossGoal - s.gross);
-  return { gross: s.gross, sold: s.sold, giveaways: s.giveaways, biggest: s.biggest, combo: s.combo, lastSaleAt: s.lastSaleAt,
+  // When the show's first sale came in (the crawl's morning-to-night clock).
+  let startedAt = 0; for (const o of Object.values(s.orders || {})) if (o.at && (!startedAt || o.at < startedAt)) startedAt = o.at;
+  return { gross: s.gross, sold: s.sold, giveaways: s.giveaways, biggest: s.biggest, combo: s.combo, lastSaleAt: s.lastSaleAt, startedAt,
     boss: { character: settings.bossCharacter, name: settings.bossName, goal: settings.bossGoal, hp, pct: Math.round(hp / settings.bossGoal * 1000) / 10, defeated: hp <= 0, reward: settings.bossReward } };
 }
 
@@ -237,6 +239,7 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   // A lineup item revealed (a chest, or where chat said to dig): its photo spins on screen.
   if (extra.item && typeof extra.item === 'object') { const im = String(extra.item.image || ''); safe.item = { title: txt(extra.item.title, 90), image: /^https:\/\/[^\s"'<>]{1,600}$/.test(im) ? im : '', price: Number.isFinite(Number(extra.item.price)) ? Number(extra.item.price) : 0 }; }
   if (kind === 'found') safe.spot = txt(extra.spot, 40);
+  if (kind === 'found' && Number.isInteger(extra.lockbox)) safe.lockbox = extra.lockbox;
   if (kind === 'trivia') { safe.answer = txt(extra.answer, 80); safe.who = txt(extra.who, 30); }
   if (TAP_KINDS.includes(extra.tapKind)) safe.tapKind = extra.tapKind;
   for (const k of ['floor', 'nextFloor', 'stars', 'mana', 'unlockAt']) if (Number.isFinite(extra[k])) safe[k] = extra[k];

@@ -69,12 +69,13 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
   foreground: true,    // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
+  lockboxTaps: 5,      // a locked long box opens every N follows / shares / bookmarks on a floor (0: off) -- chat's taps, never sales
   giveawayChests: 2,   // the first N chests on a floor are a FREE giveaway for everyone watching (store, 2026-11-12); the rest run an item
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
-export const DUNGEON_LIMITS = { triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
+export const DUNGEON_LIMITS = { lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
 export const DUNGEON_STRINGS = { floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.
@@ -124,6 +125,20 @@ export function chestsToOpen(d, s) {
   const done = d.opened?.[d.floor] || [], goals = chestsOf(s, d), pct = d.phase === 'boss' ? 1 : Math.min(1, (d.mana || 0) / floorGoal(s, d.floor, d));
   return CHEST_AT.map((at, k) => ({ k, at, goal: goals[k] || null })).filter(c => !done.includes(c.k) && pct >= c.at && (!c.goal || c.goal.open));
 }
+// LOCKED LONG BOXES (2026-11-12: "doors and keys"): two on each floor, down in
+// the dungeon. Chat's follows / shares / bookmarks on this floor are the keys:
+// box 1 opens at lockboxTaps, box 2 at twice that, once the crawl reaches it.
+// What's inside is the next item in NEXT UP -- the same for everyone, nothing drawn.
+export const LOCKBOX_AT = [0.62, 0.9];
+export function boxesOf(d, s) {
+  const need = Number(s.lockboxTaps ?? 5) || 0, have = d.floorTaps || 0, done = d.boxes?.[d.floor] || [];
+  return need ? LOCKBOX_AT.map((at, k) => ({ k, at, need: need * (k + 1), have: Math.min(have, need * (k + 1)), unlocked: have >= need * (k + 1), open: done.includes(k) })) : [];
+}
+export function boxesToOpen(d, s) {
+  const pct = d.phase === 'boss' ? 1 : Math.min(1, (d.mana || 0) / floorGoal(s, d.floor, d));
+  return boxesOf(d, s).filter(b => !b.open && b.unlocked && pct >= b.at);
+}
+export const openBox = (d, k, now = Date.now()) => ({ ...d, boxes: { ...(d.boxes || {}), [d.floor]: [...(d.boxes?.[d.floor] || []), k] }, lastAt: now });
 export const openChest = (d, k, now = Date.now()) => ({ ...d, opened: { ...(d.opened || {}), [d.floor]: [...(d.opened?.[d.floor] || []), k] }, lastAt: now });
 
 const r2 = n => Math.round(n * 100) / 100;
@@ -200,7 +215,7 @@ export function addMana(dIn, amount, s, now = Date.now()) {
       d.stars += Number(s.starsPerFloor) || 0;
       const relic = relicFor(cleared);
       d.cleared.push({ floor: cleared, at: now, room: d.rooms[cleared] || '' });
-      d.floor = cleared + 1; d.phase = 'floor'; d.mana = 0; d.doors = doorsFor(d.floor);
+      d.floor = cleared + 1; d.phase = 'floor'; d.mana = 0; d.floorTaps = 0; d.doors = doorsFor(d.floor);
       events.push({ kind: 'boss', floor: cleared, nextFloor: d.floor, shed: shedFor(d.floor), bossCharacter: id, bossName: bossById(id).name, reward: floorReward(s, cleared, d), stars: d.stars, relic: relic.name, relicIcon: relic.icon, doors: d.doors });
     }
   }
@@ -212,8 +227,8 @@ export function addTap(dIn, kind, s, now = Date.now()) {
   if (!TAP_KINDS.includes(kind)) throw new Error('Invalid tap');
   const w = ensureWeek(dIn, now), taps = { ...(w.taps || {}) };
   taps[kind] = (taps[kind] || 0) + 1;
-  const amount = tapMana(s, kind);
-  return { ...addMana({ ...w, taps }, amount, s, now), amount };
+  const amount = tapMana(s, kind), floorTaps = (w.floorTaps || 0) + 1;
+  return { ...addMana({ ...w, taps, floorTaps }, amount, s, now), amount };
 }
 // The host's fixes: set the floor, or start the week over.
 export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name } = {}, now = Date.now()) {
@@ -241,7 +256,7 @@ export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name 
   if (resetWeek) { const fresh = emptyDungeon(w.week); if (w.lastWeek) fresh.lastWeek = w.lastWeek; return fresh; }
   if (floor !== undefined) {
     if (!Number.isInteger(floor) || floor < 1 || floor > 99) throw new Error('Invalid floor');
-    return { ...w, floor, phase: 'floor', mana: 0, bossHp: 0, doors: floor > 1 && !w.rooms?.[floor] ? doorsFor(floor) : null, lastAt: now };
+    return { ...w, floor, phase: 'floor', mana: 0, bossHp: 0, floorTaps: 0, doors: floor > 1 && !w.rooms?.[floor] ? doorsFor(floor) : null, lastAt: now };
   }
   return w;
 }
@@ -272,7 +287,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
-    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
+    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), boxes: boxesOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };

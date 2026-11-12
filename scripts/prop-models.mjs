@@ -72,6 +72,24 @@ const MODELS = {
     for (let i = 0; i < 12; i++) { const c = add(r, box(0.3, 0.42, 0.02, mat(COMIC[i % COMIC.length])), 0, 0.27 + (i % 3) * 0.02, -0.48 + i * 0.085); c.rotation.x = (i % 4 - 1.5) * 0.06; }
     const lid = add(r, box(0.38, 0.06, 1.12, mat(0xc9bc9c)), 0.3, 0.04, 0.05); lid.rotation.z = 0.25; // the lid leaning on the side
   } },
+  // A LOCKED long box (2026-11-12: "doors and keys"): chained shut with a glowing
+  // padlock; chat's follows / shares / bookmarks open it and a store item comes out.
+  lockbox: { frames: 1, build(r) {
+    const card = mat(0xcbb48a), lid = mat(0xb9a074), iron = mat(0x6a6a74, { shininess: 90, specular: 0xffffff });
+    add(r, box(0.42, 0.4, 1.1, card), 0, 0.2, 0); add(r, box(0.44, 0.08, 1.12, lid), 0, 0.42, 0);
+    for (const z of [-0.3, 0.3]) { add(r, box(0.48, 0.05, 0.05, iron), 0, 0.3, z); add(r, box(0.05, 0.46, 0.05, iron), 0.235, 0.23, z); add(r, box(0.05, 0.46, 0.05, iron), -0.235, 0.23, z); add(r, box(0.48, 0.05, 0.05, iron), 0, 0.47, z); }
+    add(r, box(0.18, 0.16, 0.06, glow(0xffd84a)), 0, 0.26, 0.58); // the padlock, glowing gold
+    const sh = add(r, cyl(0.06, 0.06, 0.03, iron, 10), 0, 0.37, 0.58); sh.rotation.x = Math.PI / 2;
+    add(r, box(0.04, 0.06, 0.02, mat(0x1a1206)), 0, 0.25, 0.615);
+  } },
+  lockboxopen: { frames: 1, build(r) {
+    const card = mat(0xcbb48a), iron = mat(0x6a6a74);
+    add(r, box(0.42, 0.4, 1.1, card), 0, 0.2, 0);
+    add(r, box(0.36, 0.06, 1.0, glow(0xfff0a0)), 0, 0.41, 0); // light pouring out
+    for (let i = 0; i < 10; i++) { const c = add(r, box(0.34, 0.44, 0.02, mat(COMIC[i % COMIC.length])), 0, 0.3 + (i % 3) * 0.02, -0.45 + i * 0.1); c.rotation.x = (i % 4 - 1.5) * 0.08; }
+    const lid = add(r, box(0.44, 0.06, 1.12, mat(0xb9a074)), 0.34, 0.04, 0.05); lid.rotation.z = 0.3;
+    for (const x of [-0.42, 0.5]) add(r, box(0.05, 0.05, 0.5, iron), x, 0.03, 0.4); // the chains, dropped
+  } },
   longboxstack: { frames: 1, build(r) {
     const card = mat(0xd9cdb0), lid = mat(0xc9bc9c);
     [[0, 0, 0], [0.05, 0.42, 0.08], [-0.04, 0.84, -0.05]].forEach(([x, y, a]) => { const g = new THREE.Group(); g.position.set(x, y, 0); g.rotation.y = a; r.add(g); add(g, box(0.36, 0.34, 1.0, card), 0, 0.17, 0); add(g, box(0.38, 0.07, 1.02, lid), 0, 0.36, 0); add(g, box(0.2, 0.08, 0.01, mat(0xffffff)), 0, 0.2, 0.506); });
@@ -144,6 +162,6 @@ export function bakeProps({ size = 64 } = {}) {
     }
     baked[kind] = { frames };
   }
-  renderer.dispose();
+  renderer.dispose(); renderer.forceContextLoss?.();
   return baked;
 }

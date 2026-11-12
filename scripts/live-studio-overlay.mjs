@@ -21,8 +21,9 @@ let hype={level:0,at:Date.now()};
 let lastNowTitle=null, soldLine=0, lastPhase='';
 // Polished-N64 3D (scripts/live-studio-3d.mjs): the boss and the coins. If
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
-let gl=null, bossView=null, effectBoss=null, coinLayer=null;
+let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null;
 import('./live-studio-3d.mjs').then(m=>{
+  gl3d=m;fpBoss='';
   try{
     const ps1=settings.bossStyle!=='n64';
     bossView=m.createBossView($('mana-boss-3d'),{size:280,ps1});
@@ -131,9 +132,9 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=10').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=11').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
-  import('./prop-models.mjs?v=1').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
+  import('./prop-models.mjs?v=2').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -157,8 +158,9 @@ function paintCrawl(d,center){
   if(!show)return;
   const batt=batteryNow(d);
   if(win&&fp){
-    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),battery:batt,fork:d.fork||''});
-    if(fpBoss!==d.boss.character){fpBoss=d.boss.character;void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
+    fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),boxes:[0,1].map(k=>!!d.boxes?.[k]?.open),day:fpLib.dayPhase(stats.startedAt,Date.now()+offset),weather:fpLib.weatherFor(d.floor,Date.now()+offset),battery:batt,fork:d.fork||''});
+    // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
+    if(fpBoss!==d.boss.character){fpBoss=d.boss.character;let anim=null;try{anim=gl3d?.bakeBoss?.(fpBoss,{size:96});}catch{}if(anim)fp.setBoss(anim);else void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
     if(!fpOn){fp.start();fpOn=true;}
     loadPictures();
   }
@@ -169,7 +171,9 @@ function paintCrawl(d,center){
   // The next treasure chest: locked until chat's goal, or how far ahead.
   const opened=d.opened||[],goals=d.chests||[],nextK=[0,1,2].find(k=>!opened.includes(k));
   const g=nextK==null?null:goals[nextK];
-  $('mana-fp-chest').textContent=nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':'🧰 CHEST '+(nextK+1)+' AHEAD';
+  // The next locked long box: chat's taps on this floor are its key.
+  const bx=(d.boxes||[]).find(b=>!b.open);
+  $('mana-fp-chest').textContent=(nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':'🧰 CHEST '+(nextK+1)+' AHEAD')+(bx?'  ·  '+(bx.unlocked?'🔓 LONG BOX '+(bx.k+1)+' UNLOCKED':'🔒 LONG BOX '+(bx.k+1)+': '+bx.have+'/'+bx.need+' TAPS'):'');
   // The battery: bars, and a warning when it's low.
   const bars=Math.round(batt*5);$('mana-fp-batt').textContent='🔦 '+'▮'.repeat(bars)+'▯'.repeat(5-bars)+(batt<0.35?' FOLLOW/SHARE TO RECHARGE!':'');
   el.classList.toggle('lowbatt',batt<0.35);
@@ -184,7 +188,7 @@ const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic
 // The store's own items pass by in front too, in top loaders (2026-11-11).
 let fgImgs=[],fgUrls=[],baked=null;const fgShot=Object.assign(document.createElement('canvas'),{width:64,height:64});
 function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgUrls=urls;fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
-let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0,fgIdx=0;
+let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgBoxes=[],fgLast=0,fgIdx=0;
 // ── Boss fights (2026-11-12: "the bosses are lame") ──────────────────────
 // The entrance: lights flicker, a versus card slams in with the boss and its line.
 let lastDefeated=false,comboN=0,comboAt=0,rageKey='',rageSeen=-1;
@@ -238,14 +242,14 @@ function paintForeground(d,center){
   el.classList.toggle('mana-hidden',!on);if(!on)return;
   const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
   if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}
-  fgTarget=pct;fgOpened=d.opened||[];
+  fgTarget=pct;fgOpened=d.opened||[];fgBoxes=(d.boxes||[]).filter(b=>b.open).map(b=>b.k);
   el.style.top=Math.max(0,settings.y-62-350)+'px';
 }
 function fgSide(cv,phase,kind,side,open,idx=0){
   // phase 0..1: far and small near the middle -> close, big, sliding off the edge.
   const k=cv.getContext('2d');k.imageSmoothingEnabled=false;
   // The same item the hall shows for this prop (an item stand, a sealed box on the table, a comic).
-  const it=kind!=='chest'&&fpLib?fpLib.itemFor({kind,idx},fgUrls.map(picKind)):null,im=it?fgImgs[it.i]:null,how=it?.how||'card';
+  const it=kind!=='chest'&&kind!=='lockbox'&&fpLib?fpLib.itemFor({kind,idx},fgUrls.map(picKind)):null,im=it?fgImgs[it.i]:null,how=it?.how||'card';
   if(im&&im.complete&&im.naturalWidth)kind='pic';else if(kind==='pic')kind='comics';
   if(kind==='pic'){k.clearRect(0,0,160,160);k.imageSmoothingEnabled=true;
     // Same as in the hall: a comic leaning, a sealed box on a folding table, a card in a top loader.
@@ -254,9 +258,9 @@ function fgSide(cv,phase,kind,side,open,idx=0){
     if(how==='sealed'){k.fillStyle='#78787e';k.fillRect(8,160-40,144,8);k.fillStyle='#46464c';k.fillRect(16,160-32,8,32);k.fillRect(136,160-32,8,32);}
     const sc=Math.min(w/im.naturalWidth,h/im.naturalHeight),iw=im.naturalWidth*sc,ih=im.naturalHeight*sc;try{k.drawImage(im,x0+(w-iw)/2,y0+(h-ih),iw,ih);}catch{}
     if(how==='card'){k.fillStyle='#ffffff55';k.fillRect(x0-6,y0-6,10,h+6);}}
-  else if(baked&&baked[kind==='chest'&&open?'chestopen':kind]){
+  else if(baked&&baked[open?(kind==='chest'?'chestopen':kind==='lockbox'?'lockboxopen':kind):kind]){
     // The 3D prop turns as it passes: seen from the front far off, from the side right beside you.
-    const shot=baked[kind==='chest'&&open?'chestopen':kind].frames[0][side<0?Math.min(2,Math.floor(phase*3)):(8-Math.min(2,Math.floor(phase*3)))%8];
+    const shot=baked[open?(kind==='chest'?'chestopen':kind==='lockbox'?'lockboxopen':kind):kind].frames[0][side<0?Math.min(2,Math.floor(phase*3)):(8-Math.min(2,Math.floor(phase*3)))%8];
     k.clearRect(0,0,160,160);fgShot.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(shot.data),shot.w,shot.h),0,0);k.imageSmoothingEnabled=false;k.filter=`brightness(${0.55+0.45*phase})`;k.drawImage(fgShot,0,0,160,160);k.filter='none';}
   else fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
   const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60)+fgCam.x,y=-phase*6+fgCam.y;
@@ -283,7 +287,7 @@ function fgFrame(now){
   for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx,reach=p.kind==='chest'?3:1.6;if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
   for(const k of ['-1','1']){const cv=$(k==='-1'?'mana-fg-l':'mana-fg-r'),p=near[k];
     if(!p||fgCam.hide){cv.style.opacity='0';continue;}
-    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/(p.kind==='chest'?2.85:1.45))),p.kind,Number(k),p.kind==='chest'&&fgOpened.includes(p.idx),p.idx);}
+    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/(p.kind==='chest'?2.85:1.45))),p.kind,Number(k),p.kind==='chest'?fgOpened.includes(p.idx):p.kind==='lockbox'&&fgBoxes.includes(p.idx),p.idx);}
 }
 requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}

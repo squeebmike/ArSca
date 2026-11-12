@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
+import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, boxesToOpen, openBox, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
@@ -47,7 +47,7 @@ export class ManaLiveStudio extends DurableObject {
     // A treasure chest this tap opened (chat's goal reached).
     const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();
     s.dungeon = r.dungeon;
-    const reached = this.openReachedChests(s, now);
+    const reached = this.openReachedChests(s, now) || this.openReachedBoxes(s, now);
     const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || reached || (chest ? { kind: 'chest', chestText: chest.text, chestGoal: chest.n + ' ' + chest.kind.toUpperCase() + 'S' } : null) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
     s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
@@ -63,7 +63,7 @@ export class ManaLiveStudio extends DurableObject {
       if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Invalid mana');
       const r = addMana(s.dungeon, amount, s.settings, now);
       s.dungeon = r.dungeon;
-      fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 }) || this.openReachedChests(s, now);
+      fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 }) || this.openReachedChests(s, now) || this.openReachedBoxes(s, now);
     } else if (input.door !== undefined) {
       // Chat's vote: the door the host tapped sets this floor's room.
       s.dungeon = adjustDungeon(s.dungeon, { door: input.door }, now);
@@ -157,6 +157,17 @@ export class ManaLiveStudio extends DurableObject {
       // Nothing in it (no item in NEXT UP, no goal's reward): it opens quietly.
       if (!item && !c.goal) continue;
       fx = { kind: 'chest', chestText: c.goal?.text || '$1 START!', chestGoal: c.goal ? 'CHAT HIT ' + c.goal.n + ' ' + c.goal.kind.toUpperCase() + 'S' : 'CHEST ' + (c.k + 1) + ' OF 3', ...(item ? { item } : {}) };
+    }
+    return fx;
+  }
+  // Locked long boxes the crawl reached once chat's taps unlocked them: each
+  // shows the next item in NEXT UP coming out of the box (FOUND IT!).
+  openReachedBoxes(s, now) {
+    let fx = null;
+    for (const b of boxesToOpen(s.dungeon, s.settings)) {
+      s.dungeon = openBox(s.dungeon, b.k, now);
+      const item = (s.stage.next || [])[0];
+      fx = { kind: 'found', spot: 'THE LOCKED LONG BOX', lockbox: b.k + 1, ...(item ? { item } : { chestText: 'UNLOCKED!' }) };
     }
     return fx;
   }
@@ -274,7 +285,7 @@ export class ManaLiveStudio extends DurableObject {
         s.dungeon = m.dungeon;
         const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];
         // A chest the crawl just reached opens (its item comes up next).
-        const chestFx = this.openReachedChests(s, now); if (chestFx?.item) { stageMoved = true; statsChanged = true; }
+        const chestFx = this.openReachedChests(s, now) || this.openReachedBoxes(s, now); if (chestFx?.item) { stageMoved = true; statsChanged = true; }
         if (r.effect) dfx = dungeonEffect(m.events, unlocks, r.effect) || chestFx;
       }
       if (r.effect && eventIsFresh(event, s.settings, now)) effect = dfx || r.effect;

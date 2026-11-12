@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=10'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=1').catch(() => null)]).then(([fpm, bosses, pm]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=11'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=2').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0;
@@ -219,8 +219,10 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       const paint = () => {
         const d = stats?.dungeon; if (!d) return;
         const last = Math.max(Number(stats.lastSaleAt) || 0, Number(d.lastAt) || 0), battery = last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / (6 * 60000))) : 1;
-        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), battery, fork: d.fork || '', hideNear: hideNear });
-        if (bossId !== d.boss.character) { bossId = d.boss.character; void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
+        const now = Date.now() + offset;
+        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), boxes: [0, 1].map(k => !!d.boxes?.[k]?.open), day: fpm.dayPhase(stats.startedAt, now), weather: fpm.weatherFor(d.floor, now), battery, fork: d.fork || '', hideNear: hideNear });
+        // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
+        if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
         const urls = [...new Set([stage.now, ...(stage.next || []), ...shedPics].filter(x => x && x.image).map(x => x.image))].slice(0, 24), key = urls.join('|');
         if (key !== picKey) { picKey = key; const all = [stage.now, ...(stage.next || []), ...shedPics], kinds = urls.map(u => all.find(x => x && x.image === u)?.kind || 'card'); Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list, kinds)); }
       };
