@@ -131,7 +131,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=5').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=6').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -265,7 +265,7 @@ let fgCache={key:'',L:null,grid:null,props:[]};
 function fgFrame(now){
   requestAnimationFrame(fgFrame);
   if(now-fgLast<50||$('mana-fg').classList.contains('mana-hidden'))return;const dt=Math.min(0.2,(now-(fgLast||now))/1000);fgLast=now;
-  if(fgShown<0)fgShown=fgTarget;if(fgShown<fgTarget)fgShown=Math.min(fgTarget,fgShown+dt*0.06);else fgShown=fgTarget;
+  if(fgShown<0)fgShown=fgTarget;if(fgShown<fgTarget){const L0=fpLib.layoutFor(fgFloor),len=L0.len||fpLib.routeLength(L0);fgShown=Math.min(fgTarget,fgShown+dt*Math.max(1.6/len,(fgTarget-fgShown)/12));}else fgShown=fgTarget;
   const d=dg(),key=fgFloor+'|'+(d?.fork||'');
   if(fgCache.key!==key){const L=fpLib.layoutFor(fgFloor);fgCache={key,L,grid:fpLib.buildMap(fgFloor,d?.fork||'').grid,props:fpLib.propsFor(L,fgFloor).filter(p=>p.kind!=='eyes')};}
   const eye=fpLib.eyePose(fgCache.L,fgCache.grid,fgShown),dx=Math.cos(eye.ang),dy=Math.sin(eye.ang);
