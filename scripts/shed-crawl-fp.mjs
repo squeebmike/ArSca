@@ -586,10 +586,12 @@ export function loadPicture(src) {
     const im = new Image(); im.crossOrigin = 'anonymous'; im.decoding = 'async';
     im.onload = () => { try {
       const c = document.createElement('canvas'); c.width = PIC_W; c.height = PIC_H; const x = c.getContext('2d');
+      // (2026-11-12: "item images need to be clearer, so we can tell what they are"):
+      // a thin frame, the item filling it, a touch more contrast and colour.
       x.fillStyle = '#111'; x.fillRect(0, 0, PIC_W, PIC_H);
-      const iw = PIC_W - 6, ih = PIC_H - 14, k = Math.min(iw / im.width, ih / im.height), w = im.width * k, h = im.height * k;
-      x.imageSmoothingEnabled = true; x.drawImage(im, 3 + (iw - w) / 2, 3 + (ih - h) / 2, w, h);
-      x.fillStyle = '#d23'; x.fillRect(3, PIC_H - 9, PIC_W - 6, 6);
+      const iw = PIC_W - 4, ih = PIC_H - 7, k = Math.min(iw / im.width, ih / im.height), w = im.width * k, h = im.height * k;
+      x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.filter = 'contrast(1.15) saturate(1.25)'; x.drawImage(im, 2 + (iw - w) / 2, 2 + (ih - h) / 2, w, h); x.filter = 'none';
+      x.fillStyle = '#d23'; x.fillRect(2, PIC_H - 4, PIC_W - 4, 3);
       const d = x.getImageData(0, 0, PIC_W, PIC_H).data, out = new Uint8ClampedArray(PIC_W * PIC_H * 3);
       for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { out[j] = d[i]; out[j + 1] = d[i + 1]; out[j + 2] = d[i + 2]; }
       resolve(out);
@@ -611,7 +613,7 @@ export function eyePose(layout, grid, t) {
 export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
+  let seenPic = null, pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
   // The arena's spot: just inside it, from the end of the hall, looking at the boss.
   function arenaPose(p, k) {
     if (k < 0.002) return p;
@@ -750,6 +752,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         data[i] = t[ti] * l * (1 + o * 0.5) + pal.fog[0] * (1 - fog) + sheen; data[i + 1] = t[ti + 1] * l * (0.96 + o * 0.08) + pal.fog[1] * (1 - fog) + sheen * 0.8; data[i + 2] = t[ti + 2] * l * (0.88 - o * 0.3) + pal.fog[2] * (1 - fog) + sheen * 0.55; data[i + 3] = 255;
       }
     }
+    let nearPic = null; // the item photo nearest the middle of the view, close by
     // Out of the window: the sky's colour for the time of day, a tree line at
     // the bottom, and the weather -- rain streaks, snow, leaves, lightning, stars.
     const windowSky = (tx, ty, wx, x) => {
@@ -762,6 +765,16 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (wth === 'snow' && (g * 13 + Math.floor(ty - tm * 8 + Math.sin(tm + g) * 2) * 7) % 11 === 0) return [250, 250, 255];
       if (wth === 'leaves' && (g * 5 + Math.floor(ty - tm * 5) * 3 + Math.floor(tm * 3)) % 17 === 0) return [[214, 110, 30], [180, 60, 24], [230, 170, 40]][g % 3];
       return wth === 'rain' || wth === 'storm' ? c.map(v2 => v2 * 0.62) : c;
+    };
+    // A torch's flame: taller and shorter, swaying, white-hot in the middle,
+    // red at the edges, an ember now and then. Each torch on its own rhythm.
+    const torchFlame = (tx, ty, sx) => {
+      const ph = Math.floor(sx / 7) * 1.7, H = 10 + 2.2 * Math.sin(tm * 11 + ph) + Math.sin(tm * 23 + ph * 2), rel = (16 - ty) / H;
+      if (rel < 0 || rel > 1.25) return null;
+      if (rel > 1) { const e = (Math.floor(tm * 6 + ph) % 5 === 0) && Math.abs(tx + 0.5 - (16 + Math.sin(tm * 5 + ph) * 2)) < 0.6 && Math.abs(rel - 1.05 - ((tm * 2 + ph) % 0.2)) < 0.06; return e ? [255, 200, 90] : null; }
+      const c = 16 + Math.sin(tm * 7 + ty * 0.6 + ph) * rel * 1.6, hw = 3.3 * Math.pow(1 - rel, 0.7) * (1 + 0.15 * Math.sin(tm * 17 + ty + ph)) + 0.3, d = Math.abs(tx + 0.5 - c) / hw;
+      if (d > 1) return null;
+      return d < 0.35 && rel < 0.6 ? [255, 250, 210] : d < 0.7 ? [255, 190 - rel * 70, 50] : [235, 80 + (1 - rel) * 40, 20];
     };
     // Walls: one ray per column (DDA).
     for (let x = 0; x < VW; x++) {
@@ -779,13 +792,17 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const pic = cell >= 1000 && pics.length ? pics[Math.floor((cell - 1000) / 100) % pics.length] || null : null;
       const tw = pic ? PIC_W : T, th = pic ? PIC_H : T;
       let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
+      if (pic && dist < 2.8 && Math.abs(cam) < 0.45 && (!nearPic || dist < nearPic.d)) nearPic = { i: Math.floor((cell - 1000) / 100) % pics.length, d: dist };
       const t = pic || textures[cell >= 1000 ? cell % 100 : cell] || textures[1], tb = pic && NICHE.has(cell % 100) ? textures[cell % 100] : null;
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
       const light0 = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4), wo = Math.min(1, litO * 0.6);
       for (let y = top; y <= bot; y++) {
         const ty = Math.min(th - 1, Math.floor((y - horizon + (h >> 1)) * th / h)), ti = (ty * tw + tx) * 3, i = (y * VW + x) * 4;
         const vy = (y - horizon + (h >> 1)) / h, wao = 0.62 + 0.38 * Math.min(1, Math.min(vy, 1 - vy) * 5.5), light = light0 * wao;
-        if (tb) { const u = tx / tw, v = ty / th; if (u < 0.15 || u > 0.85 || v < 0.1 || v > 0.92) { const bi = (Math.min(T - 1, (v * T) | 0) * T + Math.min(T - 1, (u * T) | 0)) * 3; data[i] = tb[bi] * light + pal.fog[0] * (1 - light); data[i + 1] = tb[bi + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = tb[bi + 2] * light + pal.fog[2] * (1 - light); continue; } if (u < 0.18 || u > 0.82 || v < 0.13 || v > 0.89) { data[i] = 16 * light; data[i + 1] = 12 * light; data[i + 2] = 10 * light; continue; } }
+        if (tb) { const u = tx / tw, v = ty / th; if (u < 0.09 || u > 0.91 || v < 0.06 || v > 0.95) { const bi = (Math.min(T - 1, (v * T) | 0) * T + Math.min(T - 1, (u * T) | 0)) * 3; data[i] = tb[bi] * light + pal.fog[0] * (1 - light); data[i + 1] = tb[bi + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = tb[bi + 2] * light + pal.fog[2] * (1 - light); continue; } if (u < 0.11 || u > 0.89 || v < 0.08 || v > 0.93) { data[i] = 16 * light; data[i + 1] = 12 * light; data[i + 2] = 10 * light; continue; } }
+        if (pic) { const pl = Math.max(0.85, Math.min(1.1, light)); data[i] = t[ti] * pl; data[i + 1] = t[ti + 1] * pl; data[i + 2] = t[ti + 2] * pl; continue; }
+        // A torch: its flame dances (2026-11-12: "are the torches animated?").
+        if (cell === 19 && tx >= 9 && tx <= 22 && ty >= 1 && ty <= 16) { const fc = torchFlame(tx, ty, x); if (fc) { data[i] = fc[0]; data[i + 1] = fc[1]; data[i + 2] = fc[2]; continue; } if (ty <= 15) { const si = (ty * T + tx) * 3, st = textures[17]; data[i] = st[si] * light + pal.fog[0] * (1 - light); data[i + 1] = st[si + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = st[si + 2] * light + pal.fog[2] * (1 - light); continue; } }
         if (cell === 25 && crackSt && T === tw) { const c = CRACK[ty * 32 + tx]; if (c && c <= crackSt) { const leak = crackSt >= 3 && Math.abs(tx - 16) + Math.abs(ty - 15) < 9; data[i] = leak ? 255 : 14; data[i + 1] = leak ? 196 : 10; data[i + 2] = leak ? 70 : 12; continue; } }
         if (cell === 24 && t[ti] === 255 && t[ti + 1] === 0 && t[ti + 2] === 255) { const c = windowSky(tx, ty, wx, x); data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2]; continue; }
         data[i] = t[ti] * light * (1 + wo * 0.5) + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light * (1 + wo * 0.05) + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light * (1 - wo * 0.3) + pal.fog[2] * (1 - light);
@@ -824,7 +841,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const mdl = !pd && models?.[base] ? models[base] : null;
       let shot = null;
       if (mdl) { const rel = Math.atan2(pose.y - s.y, pose.x - s.x) - (s.face ?? 0), k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, fr = named === 'rat2' || named === 'bat2' ? 1 : base === 'brazier' ? (tm * 6 | 0) % 2 : 0; shot = mdl.frames[Math.min(fr, mdl.frames.length - 1)][k]; }
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? (map.layout.arena ? 1.9 : 1.5) : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
+      if (pd && tY < 2.6 && Math.abs(tX / tY) < 0.5 && (!nearPic || tY < nearPic.d)) nearPic = { i: it.i, d: tY };
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? (map.layout.arena ? 1.9 : 1.5) : s.kind === 'eyes' ? 0.3 : pd ? 0.82 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
       const floorY = horizon + Math.floor(VH / tY / 2), top = (s.kind === 'eyes' ? horizon - size : floorY - size) - Math.floor((s.lift || 0) * VH / tY);
       const bl = bulbLight(s.x, s.y), warm = Math.min(1, litO * 0.6), light = Math.max(0.15, Math.min(1.3, Math.min(1, 2 / (1 + tY * 0.42)) * batt + bl * 0.45));
       // Its shadow on the floor (a soft dark oval under it; flyers cast a smaller one).
@@ -855,7 +873,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
           else if (shot) { const bi = (Math.min(shot.h - 1, Math.floor(v * shot.h)) * shot.w + Math.min(shot.w - 1, Math.floor(u * shot.w))) * 4; if (shot.data[bi + 3] > 110) { col = [shot.data[bi], shot.data[bi + 1], shot.data[bi + 2]]; glow = MODEL_GLOW.has(base) && shot.data[bi] > 200; } }
           else { const k0 = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind === 'pic' ? 'comics' : s.kind, kind = SPRITES[k0] ? k0 : FLAT[k0] || 'comics', rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
           if (!col) continue;
-          const i = (sy * VW + sx) * 4, l = glow || s.float || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
+          const i = (sy * VW + sx) * 4, l = glow || s.float || s.kind === 'eyes' || (pd && col && how !== 'sealed' && v < 0.95) || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           const wm = l === light ? warm : 0;
           data[i] = col[0] * l * (1 + wm * 0.25); data[i + 1] = col[1] * l; data[i + 2] = col[2] * l * (1 - wm * 0.2);
         }
@@ -969,6 +987,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const g = Math.min(1, b.f + 0.1);
       for (let yy = sy - r; yy <= sy + r; yy++) for (let xx = sx - r; xx <= sx + r; xx++) { if (xx < 0 || yy < 0 || xx >= VW || yy >= VH || (xx - sx) ** 2 + (yy - sy) ** 2 > r * r) continue; const i = (yy * VW + xx) * 4; data[i] = 255 * g; data[i + 1] = 236 * g; data[i + 2] = 170 * g; }
     }
+    seenPic = nearPic ? { ...nearPic, at: clockNow } : seenPic;
     // No dither (store, 2026-11-11: "the graphics need to not have that
     // texture on them -- can't tell what they are"): clean colours, so the
     // items on the walls read on camera.
@@ -979,6 +998,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The 3D props' photos (scripts/prop-models.mjs bakeProps); null keeps the flat sprites.
     setModels(m) { models = m || null; },
+    // The store item you're walking right past (its index in setPictures' list), for a sharp close-up.
+    nearItem() { return seenPic && clockNow - seenPic.at < 400 ? seenPic.i : -1; },
     // The boss's attack in the arena: 'fire' | 'flood' | 'barrage' | 'chomp' | 'snatch' | 'curse' | 'trash'.
     attack(move) { atk = { move: ['fire', 'flood', 'barrage', 'chomp', 'snatch', 'curse', 'trash'].includes(move) ? move : 'chomp', at: performance.now() }; },
     // Where the camera's looking right now (the props in front follow the hall, not the screen).

@@ -81,4 +81,14 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.match(fp, /kind: 'pic', float: true, idx: 990/, 'the vault\'s item over its pedestal');
   assert.match(fp, /grid\[y\]\[x\] === 23 && L\.arena/, 'trophies on the arena walls');
 }
+// 7. Clearer items and live torches (2026-11-12: "item images need to be clearer", "are the torches animated?").
+{
+  assert.match(fp, /if \(pic\) \{ const pl = Math\.max\(0\.85,/, 'item photos on walls stay lit, never lost in the fog');
+  assert.match(fp, /contrast\(1\.15\) saturate\(1\.25\)/);
+  assert.match(fp, /pd \? 0\.82 :/, 'bigger items on the stands');
+  assert.match(fp, /const torchFlame = \(tx, ty, sx\) =>/); assert.match(fp, /if \(cell === 19 && tx >= 9/);
+  assert.match(fp, /nearItem\(\) \{ return seenPic/);
+  const bg = read('scripts/shed-background.mjs'), html = read('shed-background.html');
+  assert.match(bg, /const i = fp\?\.nearItem\?\.\(\) \?\? -1/); assert.ok(html.includes('#shed-item.on{'), 'the sharp close-up card');
+}
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');

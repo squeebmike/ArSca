@@ -4,7 +4,11 @@
 html,body{margin:0;background:#000;overflow:hidden}
 body{width:1080px;height:1920px;position:relative}
 #shed{width:1080px;height:1920px;image-rendering:pixelated;image-rendering:crisp-edges;display:block;object-fit:fill}
+#shed-item{position:absolute;right:28px;top:28px;width:300px;padding:10px;background:#0b0612e6;border:4px solid #ffd84a;border-radius:14px;box-shadow:0 8px 0 #000a;opacity:0;transform:translateY(-20px) scale(.92);transition:opacity .25s,transform .25s;pointer-events:none}
+#shed-item.on{opacity:1;transform:none}
+#shed-item img{display:block;width:100%;max-height:360px;object-fit:contain;border-radius:6px;background:#000}
+#shed-item b{display:block;margin-top:8px;font:800 20px/1.2 system-ui,sans-serif;color:#fff;text-shadow:2px 2px 0 #000}
 #shed-label{position:absolute;left:24px;bottom:24px;font:700 28px monospace;color:#fff;text-shadow:3px 3px 0 #000}
 </style></head>
 <body><canvas id="shed" width="270" height="480" aria-label="Shed background"></canvas><div id="shed-label"></div>
-<script type="module" src="scripts/shed-background.mjs?v=19"></script></body></html>
+<script type="module" src="scripts/shed-background.mjs?v=20"></script></body></html>
