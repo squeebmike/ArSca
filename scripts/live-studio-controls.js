@@ -22,7 +22,7 @@
   </div>
   <h3>🕹️ Camera</h3>
   <small>Drag to look around the hall (up, down, left, right); let go and it eases back after 3 seconds. Works on the green screen, the crawl window and the preview.</small>
-  <div class="mana-joy-row"><div id="mana-joy" class="mana-joy" aria-label="Camera joystick"><i></i></div><div class="mana-joy-btns"><button type="button" id="mana-scout">🔭 SCOUT AHEAD</button><button type="button" id="mana-lookback">↩ LOOK BACK</button></div></div>
+  <div class="mana-joy-row"><div id="mana-joy" class="mana-joy" aria-label="Camera joystick"><i></i></div><div class="mana-joy-btns"><button type="button" id="mana-scout">🔭 SCOUT AHEAD</button><button type="button" id="mana-test-attack">⚔️ TEST BOSS ATTACK (preview)</button><button type="button" id="mana-lookback">↩ LOOK BACK</button></div></div>
   <h3>Now playing &amp; next up</h3>
   <small>What's on screen as NOW PLAYING and NEXT STAGE (and what goes in the chests). Show Prep's LINE IT UP fills it; or find items here.</small>
   <div class="mana-row"><input id="mana-find" placeholder="Find an item in inventory to add…" autocomplete="off"></div>
@@ -122,6 +122,8 @@
     pad.addEventListener('pointerup',up);pad.addEventListener('pointercancel',up);
     host.querySelector('#mana-scout').onclick=()=>camSend({action:'scout'});
     host.querySelector('#mana-lookback').onclick=()=>camSend({action:'back'});
+    // TEST A BOSS ATTACK (2026-11-12): the preview only -- into the arena, the boss pulls its move.
+    const ta=host.querySelector('#mana-test-attack');if(ta)ta.onclick=()=>{for(const f of host.querySelectorAll('.mana-preview iframe'))f.contentWindow?.postMessage({type:'mana-attack'},location.origin);};
   }
   setTimeout(wireJoystick,0);
   async function api(path,body){

@@ -40,4 +40,11 @@ assert.ok(['snow', 'clear', 'storm'].includes(F.weatherFor(1, Date.UTC(2026, 11,
 let wins = 0; for (let f = 1; f <= 7; f++) { const m = F.buildMap(f); m.lights.filter(l => l.win).forEach(l => { wins++; assert.equal(m.zone[Math.floor(l.y) * F.GRID + Math.floor(l.x)], 0, 'windows only in the shed, not underground'); }); }
 assert.ok(wins >= 7, 'windows: ' + wins);
 assert.ok(M.publicStats({ ...M.emptyStats('x'), orders: { a: { at: 5, amount: 1 }, b: { at: 3, amount: 1 } } }, { ...M.DEFAULT_STUDIO, showId: 'x' }).startedAt === 3, 'the show clock starts at its first sale');
+// 4. Boss attacks in the arena (2026-11-12: "do 4"): every boss's move plays in the room.
+const B = await import('../scripts/live-studio-bosses.mjs');
+for (const id of B.BOSS_IDS || Object.keys(B.BOSSES || {})) { const m = B.bossById(id).move; assert.ok(fp.includes("'" + m + "'"), 'the arena plays ' + m); }
+assert.match(fp, /attack\(move\) \{ atk = \{ move:/);
+assert.match(read('scripts/live-studio-overlay.mjs'), /fp\?\.attack\?\.\(move\);/);
+const bg = read('scripts/shed-background.mjs'); assert.match(bg, /stage > rage\.seen\) \{ rage\.seen = stage; fp\.attack\(bosses\.bossById\(d\.boss\.character\)\.move\); \}/); assert.match(bg, /type === 'mana-attack'/);
+assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');

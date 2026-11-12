@@ -132,7 +132,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=11').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=12').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=2').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -223,6 +223,7 @@ function bossMove(b,stage){
   else if(move==='trash'){for(let k=0;k<8;k++)add('junk',{left:(80+k*120)+'px',top:'0','--dx':((k%2?1:-1)*(40+k*12))+'px',animationDelay:(k*0.12)+'s',background:k%3?'#c98a3c':'#9ca3af'});document.body.classList.add('mana-shake');setTimeout(()=>document.body.classList.remove('mana-shake'),1100);}
   else if(move==='snatch'){const card=$('mana-card');if(card){card.classList.add('snatched');setTimeout(()=>card.classList.remove('snatched'),3000);}}
   else{add('jaw top');add('jaw bottom');document.body.classList.add('mana-shake');setTimeout(()=>document.body.classList.remove('mana-shake'),1100);}
+  fp?.attack?.(move); // the crawl window: the attack in the arena
   bossView?.hit();clearTimeout(bossMove.t);bossMove.t=setTimeout(()=>{box.innerHTML='';},3400);
 }
 // K.O.: the boss blows apart into comic pages and coins; K.O.! slams in.
@@ -565,4 +566,6 @@ apply(settings);draw();connect();
 // Local editor preview only; same-origin parent can show settings without network access.
 if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.origin!==location.origin)return;
   if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);return;}
+  // The remote's TEST A BOSS ATTACK (preview only).
+  if(ev.data?.type==='mana-attack'){const d=stats.dungeon,b=d?.boss?{name:d.boss.name,character:d.boss.character}:stats.boss;if(b)bossMove(b,2);return;}
   if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
