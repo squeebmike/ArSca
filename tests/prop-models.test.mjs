@@ -22,3 +22,12 @@ assert.match(bg, /import\('\.\/prop-models\.mjs\?v=1'\)/);
 assert.match(ov, /fp\.setModels\(baked\)/);
 assert.match(bg, /fp\.setModels\(baked\)/);
 console.log('prop-models: 3D props, long box variety, flat fallback and wiring passed');
+// 2026-11-12: "props in front seem to move with the camera, they should not move".
+assert.match(fp, /view\(\) \{ return \{ look, pitch: pitchNow, scout: scoutNow, fov: FOV \}; \}/);
+assert.match(ov, /x=\(side<0\?-1:1\)\*\(phase\*190-60\)\+fgCam\.x/);
+assert.match(ov, /if\(!p\|\|fgCam\.hide\)/);
+// "When I demo a sale it goes ahead, then comes back": the 8-second refresh no longer undoes the demo.
+const ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
+assert.match(ctl, /stats:demoStats\|\|\(Date\.now\(\)<demoUntil\?demoFake:null\)\|\|stats/);
+assert.match(ctl, /demoFake=fake;demoUntil=Date\.now\(\)\+120000;/);
+console.log('prop-models: props in front stay put, demo holds passed');

@@ -131,7 +131,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=9').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=10').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=1').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -259,7 +259,7 @@ function fgSide(cv,phase,kind,side,open,idx=0){
     const shot=baked[kind==='chest'&&open?'chestopen':kind].frames[0][side<0?Math.min(2,Math.floor(phase*3)):(8-Math.min(2,Math.floor(phase*3)))%8];
     k.clearRect(0,0,160,160);fgShot.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(shot.data),shot.w,shot.h),0,0);k.imageSmoothingEnabled=false;k.filter=`brightness(${0.55+0.45*phase})`;k.drawImage(fgShot,0,0,160,160);k.filter='none';}
   else fpLib.drawSprite(k,kind==='chest'&&open?'chestopen':kind,10,0.55+0.45*phase);
-  const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60),y=-phase*6;
+  const scale=0.6+phase*0.95,x=(side<0?-1:1)*(phase*190-60)+fgCam.x,y=-phase*6+fgCam.y;
   cv.style.transform=`translate(${x}px,${y}px) scale(${scale})`;cv.style.opacity=String(Math.min(1,phase*4,(1-phase)*5+0.15));
   cv.style.filter=`drop-shadow(8px 10px 0 #000a) brightness(${0.75+phase*0.35})`;
 }
@@ -267,19 +267,22 @@ function fgSide(cv,phase,kind,side,open,idx=0){
 // pop up past us and then disappear". The same props the 3D shed draws (its
 // floor, layout and eye), so whatever you walk past in the hall comes
 // past you in front and is gone once you've passed it.
-let fgCache={key:'',L:null,grid:null,props:[]};
+let fgCache={key:'',L:null,grid:null,props:[]},fgCam={x:0,y:0,hide:false};
 function fgFrame(now){
   requestAnimationFrame(fgFrame);
   if(now-fgLast<50||$('mana-fg').classList.contains('mana-hidden'))return;const dt=Math.min(0.2,(now-(fgLast||now))/1000);fgLast=now;
   if(fgShown<0)fgShown=fgTarget;if(fgShown<fgTarget){const L0=fpLib.layoutFor(fgFloor),len=L0.len||fpLib.routeLength(L0);fgShown=Math.min(fgTarget,fgShown+dt*Math.max(1.6/len,(fgTarget-fgShown)/12));}else fgShown=fgTarget;
   const d=dg(),key=fgFloor+'|'+(d?.fork||'');
   if(fgCache.key!==key){const L=fpLib.layoutFor(fgFloor);fgCache={key,L,grid:fpLib.buildMap(fgFloor,d?.fork||'').grid,props:fpLib.propsFor(L,fgFloor).filter(p=>p.kind!=='eyes')};}
-  const eye=fpLib.eyePose(fgCache.L,fgCache.grid,fgShown),dx=Math.cos(eye.ang),dy=Math.sin(eye.ang);
+  // The camera (joystick, scout, look back, the idle glance): the props in front stay put in the hall, the camera moves past them.
+  const cam=fp?.view?.()||{look:0,pitch:0,scout:0,fov:0.66},fpH=$('mana-fp')?.clientHeight||600;
+  const eye=fpLib.eyePose(fgCache.L,fgCache.grid,Math.min(0.99,fgShown+cam.scout)),dx=Math.cos(eye.ang),dy=Math.sin(eye.ang);
+  fgCam={x:Math.abs(cam.look)>1.2?0:-540*Math.tan(cam.look)/cam.fov,y:cam.pitch*fpH*0.28,hide:Math.abs(cam.look)>0.9};
   // Beside you and just ahead: fwd 0.15..1.6 cells, within a cell to the side.
   const near={'-1':null,'1':null};
   for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx,reach=p.kind==='chest'?3:1.6;if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
   for(const k of ['-1','1']){const cv=$(k==='-1'?'mana-fg-l':'mana-fg-r'),p=near[k];
-    if(!p){cv.style.opacity='0';continue;}
+    if(!p||fgCam.hide){cv.style.opacity='0';continue;}
     fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/(p.kind==='chest'?2.85:1.45))),p.kind,Number(k),p.kind==='chest'&&fgOpened.includes(p.idx),p.idx);}
 }
 requestAnimationFrame(fgFrame);
