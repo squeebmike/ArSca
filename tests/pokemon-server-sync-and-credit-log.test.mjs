@@ -151,6 +151,6 @@ console.log('pokemon server sync + credit log tests passed');
 {
   const sched = worker.slice(worker.indexOf('  async scheduled(event, env, ctx) {'), worker.indexOf('\n  },\n};', worker.indexOf('  async scheduled(event, env, ctx) {')));
   assert.doesNotMatch(sched, /ctx\.waitUntil\(/, 'no scheduled job is left to waitUntil');
-  assert.equal((sched.match(/await Promise\.allSettled\(\[/g) || []).length, 6, 'all schedules are awaited (the three price syncs -- PriceCharting, Pokemon, Magic -- one after the other, then the morning summary)');
+  assert.equal((sched.match(/await Promise\.allSettled\(\[/g) || []).length, 7, 'all schedules are awaited (the three price syncs -- PriceCharting, Pokemon, Magic -- one after the other, then the morning summary; and the Substack articles)');
 }
 
