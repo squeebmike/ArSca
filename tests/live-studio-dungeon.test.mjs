@@ -197,7 +197,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
     for (let t = 0; t <= 1.0001; t += 0.05) { const p = poseAt(layout, t); assert.equal(grid[Math.floor(p.y)][Math.floor(p.x)], 0, 'the walk stays in the open: floor ' + floor + ' t ' + t.toFixed(2)); }
     for (const pk of layout.peeks) assert.equal(grid[pk.cell[1]][pk.cell[0]], 0);
     const [bx, by] = layout.boss; assert.equal(grid[by][bx], 0);
-    assert.ok(grid.every(row => row[0] && row[15]) && grid[0].every(Boolean) && grid[15].every(Boolean), 'walled in');
+    assert.equal(grid.length, 40); assert.ok(grid.every(row => row[0] && row[39]) && grid[0].every(Boolean) && grid[39].every(Boolean), 'walled in');
   }
   const L = layoutFor(1), a0 = poseAt(L, 0), a1 = poseAt(L, 0.5);
   assert.ok(Math.hypot(a1.x - a0.x, a1.y - a0.y) > 1, 'mana walks you forward');
@@ -317,7 +317,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   }
   assert.ok(new Set([1, 2, 3, 4, 5, 6, 7, 8].map(f => JSON.stringify(fp.layoutFor(f).route))).size >= 7, 'the floors differ');
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
-  for (const k of ["'GARDEN SHED': { f: 'planks', c: 'rafters' }", 'function bulbsFor(layout)', 'rowDist = posZ / p']) assert.ok(src.includes(k), k);
+  for (const k of ["'GARDEN SHED': { f: 'planks', c: 'rafters' }", 'const lights = [];', 'rowDist = posZ / p']) assert.ok(src.includes(k), k);
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes('setPics(list) {') && room.includes('pics:state.pics || []') && api.includes("/live-studio/pics"));
   assert.ok(controls.includes("sendShedPics(d.pics).catch(()=>{});"), 'connecting sends the in-stock photos');
@@ -413,7 +413,7 @@ console.log('live-studio-dungeon: ok');
     L.rooms.forEach(r => names.add(fpm.ROOM_THEMES[r[4]].name));
     for (const r of L.rooms) assert.ok(g.some(row => row.some(c => (c >= 1000 ? c % 100 : c) === fpm.ROOM_THEMES[r[4]].tex)), 'the room has its walls');
     fpm.propsFor(L, f).forEach(p => props.add(p.kind));
-    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 16) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 16)), 'every wall has a texture');
+    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 21) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 21)), 'every wall has a texture');
   }
   assert.ok(names.size >= 6, 'room themes vary: ' + [...names]);
   for (const k of ['arcade', 'tv', 'gnome', 'skeleton', 'raccoon', 'crystal', 'lavalamp']) assert.ok(props.has(k), 'cool stuff: ' + k);
@@ -427,4 +427,37 @@ console.log('live-studio-dungeon: ok');
   assert.ok(room.includes("chestText: 'FREE GIVEAWAY!'") && room.includes('chestGiveaway: true'));
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(ov.includes("reach=p.kind==='chest'?3:1.6") && ov.includes('FREE TO ENTER IN THE WHATNOT APP'));
+}
+{
+  // 2026-11-12: "the bosses are lame" -- each shed its own boss, and real fights.
+  const { bossForFloor, SHEDS } = await import('../scripts/live-studio-dungeon.mjs');
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map(bossForFloor), ['mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon']);
+  assert.equal(SHEDS[6], 'THE SHED BENEATH THE SHED'); assert.equal(bossForFloor(8), 'hydra'); assert.equal(bossForFloor(9), 'scalper');
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
+  for (const k of ['function bossIntro(b,d)', 'function bossCombo()', 'function bossRage(b,d)', 'function bossMove(b,stage)', 'function bossKO()', "if(key!==rageKey){rageKey=key;rageSeen=stage;return;}", "setTimeout(()=>card.classList.remove('snatched'),3000)"]) assert.ok(ov.includes(k), k);
+  assert.ok(!/Math\.random/.test(ov.slice(ov.indexOf('function bossIntro'), ov.indexOf('function paintForeground'))), 'no chance in the fights');
+  const html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
+  for (const id of ['mana-boss-intro', 'mana-vs-art', 'mana-boss-combo', 'mana-move', 'mana-ko']) assert.ok(html.includes('id="' + id + '"'), id);
+}
+{
+  // 2026-11-12: "bigger dungeons ... sheds and dungeons, each thing walks farther ... more atmospheric, critters, particles, animated".
+  const fpm = await import('../scripts/shed-crawl-fp.mjs');
+  assert.equal(fpm.GRID, 40);
+  for (let f = 1; f <= 7; f++) {
+    const L = fpm.layoutFor(f), M = fpm.buildMap(f);
+    assert.ok(L.len >= 55, 'a long walk: floor ' + f + ' ' + L.len);
+    assert.ok(L.rooms.length >= 4, 'four to six rooms');
+    assert.ok(L.rooms.some(r => fpm.ROOM_THEMES[r[4]].dungeon) && L.rooms.some(r => !fpm.ROOM_THEMES[r[4]].dungeon), 'shed rooms up top, dungeon chambers below');
+    const start = fpm.poseAt(L, 0.05), end = fpm.poseAt(L, 0.95), z = (p) => M.zone[Math.floor(p.y) * fpm.GRID + Math.floor(p.x)];
+    assert.equal(z(start), 0, 'it starts in the shed'); assert.equal(z(end), 1, 'it ends in the dungeon');
+    assert.ok(M.lights.some(l => l.torch) && M.lights.some(l => !l.torch), 'bulbs up top, torches below');
+    assert.ok(M.grid.flat().some(c => c === 19), 'torches on the dungeon walls');
+    assert.ok(fpm.propsFor(L, f).some(p => p.kind === 'trapdoor'), 'the trapdoor down');
+  }
+  const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
+  for (const k of ["listeners.peek('DOWN THE TRAPDOOR INTO THE DUNGEON…')", 'dt * Math.max(1.6 / len, (target - shown) / 12)', "kind: (tm * 8 | 0) % 2 ? 'rat' : 'rat2'", "kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2'", "kind: 'spider'", "const AIR = {", 'Moths around the bulbs', "if (s.kind === 'eyes' && (tm / 5", 'const ANIM = {', "const glance = ph > 0.55", 'g < 128 && !cell'])
+    assert.ok(src.includes(k), k);
+  assert.ok(!/Math\.random/.test(src), 'nothing left to chance: the same on every screen');
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
+  assert.ok(ov.includes('fgShown+dt*Math.max(1.6/len,(fgTarget-fgShown)/12)'), 'the props in front walk at the same pace');
 }

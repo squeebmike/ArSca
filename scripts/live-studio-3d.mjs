@@ -73,7 +73,7 @@ function legs(parent, m, { y = -1.05, x = 0.32, len = 0.4 } = {}) {
   return out;
 }
 
-// ── the five bosses ─────────────────────────────────────────────────────────
+// ── the bosses ─────────────────────────────────────────────────────────
 // Each returns { root, tick(t) } -- tick runs the idle animation.
 const BUILD = {
   scalper(root) {
@@ -170,6 +170,133 @@ const BUILD = {
     for (const s of [-1, 1]) add(root, limb(dark, 0.5, 0.08), s * 0.95, -0.2, 0).rotation.z = s * 1.0;
     legs(root, mat(0x0b0612), { y: -0.8, x: 0.45 });
     return { tick(t) { flaps[0].rotation.z = 0.5 + Math.sin(t * 6) * 0.35; flaps[1].rotation.z = -0.5 - Math.sin(t * 6 + 1) * 0.35; crate.rotation.y = Math.sin(t * 0.8) * 0.25; } };
+  },
+  // ── The shed's own bosses (2026-11-12) ──
+  mimic(root) {
+    // A comic long box whose lid chomps open on rows of teeth.
+    const card = flat(0xefe9d8), lidM = flat(0xddd5bf), white = mat(0xffffff, { shininess: 120 });
+    const base = add(root, box(2.0, 0.8, 0.9, card), 0, -0.6, 0);
+    add(base, box(0.7, 0.32, 0.02, mat(0xffffff)), -0.45, 0, 0.46);
+    add(root, box(1.9, 0.12, 0.8, mat(0xb3122e)), 0, -0.22, 0); // the tongue-red inside
+    const hinge = new THREE.Group(); hinge.position.set(0, -0.2, -0.45); root.add(hinge);
+    const lid = add(hinge, box(2.05, 0.18, 0.95, lidM), 0, 0.05, 0.47);
+    for (let i = 0; i < 7; i++) { add(lid, cone(0.09, 0.22, white, 4), -0.84 + i * 0.28, -0.18, 0.4).rotation.x = Math.PI; add(base, cone(0.09, 0.22, white, 4), -0.84 + i * 0.28, 0.5, 0.4); }
+    eyes(lid, { y: 0.25, z: 0.3, x: 0.42, r: 0.2, angry: true });
+    legs(root, flat(0x7c5c2e), { y: -1.0, x: 0.6, len: 0.3 });
+    return { tick(t) { hinge.rotation.x = -0.25 - Math.abs(Math.sin(t * 3.4)) * 0.75; root.position.y = Math.abs(Math.sin(t * 3.4)) * 0.06; } };
+  },
+  golem(root) {
+    // A lumpy stone giant, a price gun for a hand, stickers stuck all over.
+    const stone = flat(0x8b8f99), dark = flat(0x6b7280);
+    const body = add(root, box(1.3, 1.2, 0.8, stone), 0, -0.25, 0); body.rotation.y = 0.08;
+    const head = add(root, box(0.85, 0.7, 0.7, flat(0x9aa0aa)), 0, 0.7, 0);
+    eyes(head, { y: 0.06, z: 0.36, x: 0.2, r: 0.14, angry: true });
+    for (const [x, y, c] of [[-0.3, 0.05, 0xfde047], [0.25, -0.35, 0xfb923c], [-0.1, -0.55, 0xfde047]]) add(body, box(0.3, 0.18, 0.02, mat(c)), x, y, 0.41);
+    add(root, box(0.36, 0.95, 0.36, stone), -0.9, -0.3, 0).rotation.z = 0.15;
+    const gun = new THREE.Group(); gun.position.set(0.95, -0.05, 0.2); root.add(gun);
+    add(gun, box(0.6, 0.34, 0.3, mat(0xf97316, { shininess: 90 })), 0.15, 0, 0);
+    add(gun, box(0.16, 0.42, 0.24, mat(0xf97316)), 0.05, -0.32, 0);
+    add(gun, box(0.12, 0.12, 0.2, mat(0xfde047)), 0.5, 0.05, 0);
+    for (const s2 of [-1, 1]) add(root, box(0.38, 0.4, 0.4, dark), s2 * 0.35, -1.05, 0);
+    return { tick(t) { gun.rotation.z = Math.sin(t * 2.2) * 0.25; head.rotation.y = Math.sin(t * 0.9) * 0.3; } };
+  },
+  kraken(root) {
+    // A purple beast up out of a puddle, tentacles waving.
+    const skin = mat(0x8b5cf6, { shininess: 90 }), deep = mat(0x6d28d9, { shininess: 90 });
+    add(root, cyl(1.5, 1.5, 0.08, mat(0x38bdf8, { transparent: true, opacity: 0.85, shininess: 160 }), 24), 0, -1.35, 0);
+    const head = add(root, ball(0.8, skin, 18), 0, 0.15, 0); head.scale.set(1, 1.25, 0.95);
+    add(head, ball(0.16, mat(0xc4b5fd)), -0.35, 0.45, 0.6); add(head, ball(0.1, mat(0xc4b5fd)), 0.4, -0.3, 0.68);
+    eyes(head, { y: 0, z: 0.68, x: 0.28, r: 0.2, angry: true });
+    const arms = [];
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU, g = new THREE.Group(); g.position.set(Math.cos(a) * 0.75, -1.0, Math.sin(a) * 0.5 + 0.2); root.add(g); const seg = add(g, cyl(0.07, 0.16, 1.1, i % 2 ? deep : skin, 8), 0, 0.5, 0); seg.rotation.z = Math.cos(a) * 0.5; arms.push(g); }
+    return { tick(t) { arms.forEach((g, i) => { g.rotation.z = Math.sin(t * 2.4 + i) * 0.45; g.rotation.x = Math.cos(t * 2 + i) * 0.25; }); head.position.y = 0.15 + Math.sin(t * 1.6) * 0.08; } };
+  },
+  lich(root) {
+    // A skull in a tattered green hood, holding up a glowing $1 bin.
+    const robe = flat(0x14532d), hood = flat(0x166534), bone = mat(0xf5f5dc, { shininess: 60 });
+    add(root, cone(0.85, 2.0, robe, 7), 0, -0.45, 0);
+    const head = new THREE.Group(); head.position.set(0, 0.85, 0); root.add(head);
+    add(head, ball(0.6, hood, 10), 0, 0.05, -0.08).scale.set(1, 1.15, 1);
+    add(head, ball(0.4, bone, 14), 0, -0.02, 0.2);
+    const glow = new THREE.MeshBasicMaterial({ color: 0x4ade80 });
+    for (const sx of [-1, 1]) add(head, ball(0.1, glow, 8), sx * 0.15, 0.04, 0.55);
+    add(head, box(0.3, 0.06, 0.04, mat(0x0b0612)), 0, -0.22, 0.56);
+    const bin = new THREE.Group(); bin.position.set(0, -0.15, 0.75); root.add(bin);
+    add(bin, box(1.0, 0.5, 0.5, flat(0xa16207)));
+    [[0xef4444, -0.28], [0x3b82f6, 0], [0xeab308, 0.28]].forEach(([c, x]) => add(bin, box(0.16, 0.36, 0.3, flat(c)), x, 0.3, 0));
+    add(bin, box(0.6, 0.24, 0.02, new THREE.MeshBasicMaterial({ map: textTexture('$1', { bg: '#4ade80', fg: '#0b0612', stroke: null }) })), 0, 0, 0.26);
+    for (const sx of [-1, 1]) add(root, limb(bone, 0.6, 0.06), sx * 0.55, -0.1, 0.5).rotation.z = sx * 1.1;
+    return { tick(t) { bin.position.y = -0.15 + Math.sin(t * 1.8) * 0.1; glow.color.setRGB(0.3, 0.6 + Math.sin(t * 5) * 0.3, 0.4); head.rotation.z = Math.sin(t * 0.8) * 0.12; } };
+  },
+  raccoonking(root) {
+    // A raccoon in a gold crown, on a throne of greasy pizza boxes.
+    const fur = flat(0x9ca3af), dark = flat(0x4b5563), gold = mat(0xfacc15, { shininess: 140, specular: 0xffffff });
+    for (let i = 0; i < 3; i++) add(root, box(1.7 - i * 0.1, 0.18, 1.3, flat(i % 2 ? 0xb07a3c : 0xc98a3c)), 0, -1.25 + i * 0.19, 0).rotation.y = i * 0.12;
+    const body = add(root, ball(0.75, fur, 14), 0, -0.35, 0); body.scale.set(1, 0.95, 0.85);
+    const head = new THREE.Group(); head.position.set(0, 0.6, 0.1); root.add(head);
+    add(head, ball(0.55, fur, 16));
+    const mask = add(head, box(0.9, 0.24, 0.1, mat(0x111827)), 0, 0.05, 0.46);
+    eyes(head, { y: 0.05, z: 0.52, x: 0.2, r: 0.13 });
+    add(head, ball(0.08, mat(0x0b0612)), 0, -0.15, 0.55);
+    for (const sx of [-1, 1]) add(head, cone(0.15, 0.3, dark, 5), sx * 0.35, 0.5, 0);
+    const crown = new THREE.Group(); crown.position.set(0, 0.62, 0); head.add(crown);
+    add(crown, cyl(0.3, 0.32, 0.16, gold, 10));
+    for (let i = 0; i < 5; i++) add(crown, cone(0.07, 0.2, gold, 4), Math.cos(i / 5 * TAU) * 0.28, 0.16, Math.sin(i / 5 * TAU) * 0.28);
+    const tail = new THREE.Group(); tail.position.set(0.7, -0.6, -0.2); root.add(tail);
+    for (let i = 0; i < 5; i++) add(tail, ball(0.2, i % 2 ? dark : fur, 8), i * 0.16, i * 0.16, 0);
+    return { tick(t) { tail.rotation.z = Math.sin(t * 2) * 0.3; crown.rotation.y = t * 0.8; mask.scale.x = 1; head.rotation.y = Math.sin(t * 1.1) * 0.25; } };
+  },
+  lowballer(root) {
+    // A smug guy in a polo, phone out, holding up a tiny $2 sign.
+    const polo = flat(0x0ea5e9), skin = mat(0xf2c38b);
+    add(root, cyl(0.5, 0.62, 1.2, polo, 9), 0, -0.4, 0);
+    const head = new THREE.Group(); head.position.set(0, 0.6, 0); root.add(head);
+    add(head, ball(0.52, skin, 16));
+    add(head, ball(0.54, flat(0x78350f), 12), 0, 0.22, -0.05).scale.set(1, 0.55, 1);
+    for (const sx of [-1, 1]) add(head, box(0.2, 0.05, 0.05, mat(0x0b0612)), sx * 0.18, 0.06, 0.48).rotation.z = sx * -0.15;
+    const smirk = add(head, box(0.3, 0.06, 0.05, mat(0x2b0710)), 0.06, -0.2, 0.48); smirk.rotation.z = 0.25;
+    const sign = new THREE.Group(); sign.position.set(-0.8, 0.4, 0.3); root.add(sign);
+    add(sign, cyl(0.03, 0.03, 0.7, mat(0x8b5a2b), 6), 0, -0.35, 0);
+    add(sign, box(0.5, 0.34, 0.04, new THREE.MeshPhongMaterial({ map: textTexture('$2', { bg: '#ffffff', fg: '#dc2626', stroke: null }) })));
+    const phone = add(root, box(0.26, 0.44, 0.05, mat(0x1f2937, { shininess: 140 })), 0.72, -0.1, 0.35);
+    add(phone, box(0.2, 0.14, 0.01, new THREE.MeshBasicMaterial({ color: 0xa3e635 })), 0, 0.1, 0.03);
+    for (const sx of [-1, 1]) add(root, limb(polo, 0.55, 0.1), sx * 0.6, -0.25, 0.2).rotation.z = sx * 0.6;
+    legs(root, flat(0x374151), { y: -1.05 });
+    return { tick(t) { sign.rotation.z = Math.sin(t * 3) * 0.15; sign.position.y = 0.4 + Math.abs(Math.sin(t * 3)) * 0.08; head.rotation.y = Math.sin(t) * 0.2; } };
+  },
+  dragon(root) {
+    // A red dragon curled on a hoard of gold and slabbed books, smoke puffing.
+    const red = mat(0xdc2626, { shininess: 80 }), dark = flat(0x7f1d1d), gold = mat(0xfacc15, { shininess: 150, specular: 0xffffff });
+    for (let i = 0; i < 9; i++) add(root, ball(0.22, gold, 8), -0.9 + (i % 5) * 0.45, -1.3 + Math.floor(i / 5) * 0.2, 0.3 - (i % 3) * 0.2);
+    for (const x of [-0.6, 0.55]) add(root, box(0.3, 0.42, 0.06, mat(0xdbeafe, { transparent: true, opacity: 0.7, shininess: 160 })), x, -1.05, 0.55).rotation.z = x * 0.3;
+    const body = add(root, ball(0.75, red, 14), 0, -0.45, -0.1); body.scale.set(1.3, 0.85, 1);
+    const neck = new THREE.Group(); neck.position.set(0.3, 0.05, 0.2); root.add(neck);
+    add(neck, cyl(0.2, 0.3, 0.8, red, 8), 0, 0.3, 0).rotation.z = -0.3;
+    const head = new THREE.Group(); head.position.set(0.3, 0.8, 0.1); neck.add(head);
+    add(head, box(0.7, 0.42, 0.5, red), 0.1, 0, 0);
+    add(head, box(0.4, 0.2, 0.4, red), 0.45, -0.1, 0);
+    eyes(head, { y: 0.12, z: 0.27, x: 0.16, r: 0.11, angry: true });
+    for (const sz of [-1, 1]) add(head, cone(0.08, 0.35, dark, 5), -0.1, 0.32, sz * 0.15).rotation.z = 0.4;
+    const wings = [];
+    for (const sz of [-1, 1]) { const w = new THREE.Group(); w.position.set(-0.2, -0.1, sz * 0.5); root.add(w); add(w, cone(0.55, 1.2, dark, 3), 0, 0.55, 0).rotation.x = sz * 0.5; wings.push(w); }
+    const puff = add(head, ball(0.12, mat(0xfb923c, { transparent: true, opacity: 0.8 }), 8), 0.75, -0.1, 0);
+    return { tick(t) { wings.forEach((w, i) => { w.rotation.x = (i ? 1 : -1) * (0.2 + Math.sin(t * 2.5) * 0.25); }); const p = (t * 0.7) % 1; puff.position.x = 0.75 + p * 0.6; puff.scale.setScalar(0.5 + p * 1.5); puff.material.opacity = 0.8 * (1 - p); head.rotation.z = Math.sin(t * 1.3) * 0.1; } };
+  },
+  hydra(root) {
+    // Three snake heads, each a clear top loader with a card glaring out.
+    const scale = flat(0x0f766e), clear = mat(0xe0f2fe, { transparent: true, opacity: 0.55, shininess: 180, specular: 0xffffff });
+    add(root, ball(0.8, scale, 12), 0, -0.85, 0).scale.set(1.3, 0.7, 1);
+    const heads = [];
+    for (const [x, h, tilt] of [[-0.75, 1.2, 0.35], [0, 1.6, 0], [0.75, 1.2, -0.35]]) {
+      const g = new THREE.Group(); g.position.set(x * 0.5, -0.5, 0); root.add(g);
+      add(g, cyl(0.12, 0.2, h, scale, 8), 0, h / 2, 0); g.rotation.z = tilt;
+      const loader = new THREE.Group(); loader.position.set(0, h + 0.25, 0); g.add(loader);
+      add(loader, box(0.42, 0.56, 0.08, clear));
+      add(loader, box(0.32, 0.44, 0.04, flat(0xf43f5e)));
+      for (const sx of [-1, 1]) add(loader, ball(0.05, mat(0xffffff)), sx * 0.08, 0.05, 0.05);
+      heads.push(g);
+    }
+    return { tick(t) { heads.forEach((g, i) => { g.rotation.x = Math.sin(t * 2 + i * 2) * 0.2; g.children[1].rotation.y = Math.sin(t * 1.5 + i) * 0.4; }); } };
   },
 };
 export const BOSS_3D_IDS = Object.keys(BUILD);

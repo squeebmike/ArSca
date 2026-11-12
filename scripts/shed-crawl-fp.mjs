@@ -16,7 +16,11 @@
 // shelf ("SEARCHING THE LONG BOXES..."). The boss waits in the last room.
 export const VIEW_W = 240, VIEW_H = 96;
 
-// ── Layouts: routes through a 16 x 16 grid. Walls are carved around them. ──
+// ── Layouts: routes through a GRID x GRID map. Walls are carved around them. ──
+// Store, 2026-11-12: "bigger dungeons ... more area to cover ... sheds and
+// dungeons, each thing walks farther": 40 x 40, a walk about three times as
+// long; the first half is the shed, then a trapdoor down into the dungeon under it.
+export const GRID = 40;
 // Each: the route (cell centers), the side rooms to peek into while
 // searching (a cell beside the route), and the boss room's corner.
 const LAYOUTS = [
@@ -43,36 +47,41 @@ const PEEK_POOL = [
   { tex: 3, label: 'DIGGING THROUGH THE LONG BOXES…' }, { tex: 8, label: 'FLIPPING THE BINDER PAGES…' }, { tex: 6, label: 'CHECKING THE SLAB WALL…' },
   { tex: 2, label: 'PICKING A PACK OFF THE PEGBOARD…' }, { tex: 4, label: 'SEARCHING THE BACK ISSUE RACK…' }, { tex: 7, label: 'READING THE FLYERS ON THE CORKBOARD…' },
 ];
+const DUNGEON_PEEKS = [
+  { tex: 18, label: 'PRYING OPEN A CRYPT…' }, { tex: 20, label: 'DIGGING THROUGH THE ROTTEN LONG BOXES…' }, { tex: 21, label: 'PULLING ON A RUSTY CHAIN…' },
+];
+// How far along the walk the shed ends and the dungeon begins.
+export const DUNGEON_AT = 0.5;
 const seeded = seed => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
 export function generateLayout(floor) {
-  const N = 16, lo = 2, hi = 13;
-  for (let attempt = 0; attempt < 60; attempt++) {
+  const N = GRID, lo = 2, hi = N - 3;
+  for (let attempt = 0; attempt < 200; attempt++) {
     const rnd = seeded(floor * 7919 + 101 + attempt * 31), used = new Set(), key = (x, y) => x + ',' + y;
-    const corners = [[2, 13], [13, 13], [2, 2], [13, 2]];
+    const corners = [[lo, hi], [hi, hi], [lo, lo], [hi, lo]];
     let [x, y] = corners[(floor - 1) % 4]; const route = [[x, y]]; used.add(key(x, y));
     let horiz = rnd() < 0.5, ok = true;
-    const segs = 4 + Math.floor(rnd() * 3);
+    const segs = 11 + Math.floor(rnd() * 5);
     for (let i = 0; i < segs && ok; i++) {
       let placed = false;
       for (const sign of rnd() < 0.5 ? [1, -1] : [-1, 1]) {
-        const len = 4 + Math.floor(rnd() * 5), nx = horiz ? x + sign * len : x, ny = horiz ? y : y + sign * len;
+        const len = 4 + Math.floor(rnd() * 7), nx = horiz ? x + sign * len : x, ny = horiz ? y : y + sign * len;
         if (nx < lo || nx > hi || ny < lo || ny > hi) continue;
         const cells = []; let clear = true;
         for (let k = 1; k <= len; k++) { const cx = horiz ? x + sign * k : x, cy = horiz ? y : y + sign * k; if (used.has(key(cx, cy)) || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => used.has(key(cx + dx, cy + dy)) && !(cx + dx === x && cy + dy === y) && k === 1 ? false : used.has(key(cx + dx, cy + dy)) && k > 1)) { clear = false; break; } cells.push([cx, cy]); }
         if (!clear) continue;
         cells.forEach(([cx, cy]) => used.add(key(cx, cy))); x = nx; y = ny; route.push([x, y]); placed = true; break;
       }
-      if (!placed) ok = i >= 4;
+      if (!placed) ok = i >= 9;
       if (!placed) break;
       horiz = !horiz;
     }
-    if (!ok || route.length < 5) continue;
+    if (!ok || route.length < 10) continue;
     // The boss room: 3 x 2 past the end of the hall, inside the walls.
     const [ex, ey] = route[route.length - 1], [px, py] = route[route.length - 2];
     const dx = Math.sign(ex - px), dy = Math.sign(ey - py);
     const boss = dx ? [Math.max(1, Math.min(N - 4, dx > 0 ? ex + 1 : ex - 3)), Math.max(1, Math.min(N - 3, ey - 1)), 3, 2] : [Math.max(1, Math.min(N - 4, ex - 1)), Math.max(1, Math.min(N - 3, dy > 0 ? ey + 1 : ey - 2)), 3, 2];
     if (boss[0] < 1 || boss[1] < 1 || boss[0] + boss[2] > N - 1 || boss[1] + boss[3] > N - 1) continue;
-    const L = { route, boss, peeks: [], rooms: [] };
+    const L = { route, boss, peeks: [], rooms: [], split: DUNGEON_AT };
     // Two rummaging spots: a cell beside the hall, about a third and two thirds in.
     const picks = [PEEK_POOL[floor % 6], PEEK_POOL[(floor + 3) % 6]];
     for (const [j, at] of [[0, 0.3], [1, 0.64]]) {
@@ -80,14 +89,16 @@ export function generateLayout(floor) {
       const sx = Math.round(-Math.sin(pose.ang)) * side, sy = Math.round(Math.cos(pose.ang)) * side;
       const cell = [cx + sx, cy + sy];
       if (cell[0] < 1 || cell[1] < 1 || cell[0] > N - 2 || cell[1] > N - 2 || used.has(key(...cell))) continue;
-      L.peeks.push({ at, cell, ...picks[j] });
+      L.peeks.push({ at, cell, ...(at > DUNGEON_AT ? DUNGEON_PEEKS[floor % DUNGEON_PEEKS.length] : picks[j]) });
     }
     if (L.peeks.length < 2) continue;
     // Rooms (store, 2026-11-12: "more variation, make the rooms better, other
     // random cool shit in there"): two or three, 3 to 4 cells a side, each with
     // a theme -- the arcade corner, the TV room, the poster room, the stock
     // room, the neon room, the garage, the lounge.
-    const nRooms = 2 + (rnd() < 0.5 ? 1 : 0), usedCorners = new Set();
+    // Bigger floors, more rooms: four to six -- the shed's in the first half,
+    // the dungeon's chambers (crypts, catacombs, a torch hall, a spider nest) in the second.
+    const nRooms = 4 + (rnd() < 0.5 ? 1 : 0) + (rnd() < 0.5 ? 1 : 0), usedCorners = new Set(); let shedN = 0, dunN = 0;
     for (let j = 0; j < nRooms * 3 && L.rooms.length < nRooms; j++) {
       const ci = 1 + Math.floor(rnd() * (route.length - 2)); if (usedCorners.has(ci)) continue;
       const r = route[ci], w = 3 + (rnd() < 0.5 ? 1 : 0), h = 3 + (rnd() < 0.5 ? 1 : 0);
@@ -96,20 +107,27 @@ export function generateLayout(floor) {
       const [bx0, by0, bw0, bh0] = boss;
       if (x0 < bx0 + bw0 + 1 && x0 + w > bx0 - 1 && y0 < by0 + bh0 + 1 && y0 + h > by0 - 1) continue;
       usedCorners.add(ci);
-      L.rooms.push([x0, y0, w, h, (floor * 3 + L.rooms.length * 2) % ROOM_THEMES.length]); // never the same theme twice on a floor
+      const below = routeFrac(route, ci) > DUNGEON_AT;
+      L.rooms.push([x0, y0, w, h, below ? SHED_THEMES + (floor + dunN++) % (ROOM_THEMES.length - SHED_THEMES) : (floor * 3 + shedN++ * 2) % SHED_THEMES]); // never the same theme twice on a floor
     }
     // Alcoves: a nook off the hall with a vending machine or a shelf of sealed.
     L.nooks = [];
-    for (const [at, side, tex] of [[0.14, -1, 10], [0.5, 1, 13], [0.86, -1, 10]]) {
+    for (const [at, side, tex0] of [[0.14, -1, 10], [0.33, 1, 13], [0.62, 1, 18], [0.86, -1, 20]]) {
+      const tex = at > DUNGEON_AT ? (tex0 === 10 ? 18 : tex0 === 13 ? 20 : tex0) : tex0;
       const pose = poseAt(L, at), cx = Math.floor(pose.x), cy = Math.floor(pose.y);
       const cell = [cx + Math.round(-Math.sin(pose.ang)) * side, cy + Math.round(Math.cos(pose.ang)) * side];
       if (cell[0] < 1 || cell[1] < 1 || cell[0] > N - 2 || cell[1] > N - 2 || used.has(key(...cell)) || L.peeks.some(pk => pk.cell[0] === cell[0] && pk.cell[1] === cell[1])) continue;
       L.nooks.push({ cell, tex });
     }
+    L.len = routeLength(L);
     return L;
   }
-  return LAYOUTS[(Math.max(1, floor) - 1) % LAYOUTS.length];
+  const F = LAYOUTS[(Math.max(1, floor) - 1) % LAYOUTS.length];
+  return { ...F, split: DUNGEON_AT, len: routeLength(F) };
 }
+// The walk's length in cells, and how far along it a corner sits (0..1).
+export function routeLength(L) { let n = 0; for (let i = 1; i < L.route.length; i++) n += Math.hypot(L.route[i][0] - L.route[i - 1][0], L.route[i][1] - L.route[i - 1][1]); return n || 1; }
+function routeFrac(route, ci) { let a = 0, all = 0; for (let i = 1; i < route.length; i++) { const d = Math.hypot(route[i][0] - route[i - 1][0], route[i][1] - route[i - 1][1]); all += d; if (i <= ci) a += d; } return all ? a / all : 0; }
 const layoutCache = new Map();
 // The rooms' themes: the wall all around it (a texture) and what's in it.
 export const ROOM_THEMES = [
@@ -120,7 +138,13 @@ export const ROOM_THEMES = [
   { name: 'NEON ROOM', tex: 14, props: ['gumball', 'lavalamp', 'arcade'] },
   { name: 'THE GARAGE', tex: 15, props: ['mower', 'cone', 'fridge'] },
   { name: 'THE LOUNGE', tex: 16, props: ['fridge', 'tv', 'pizza'] },
+  // Down in the dungeon under the shed.
+  { name: 'THE CRYPT', tex: 18, props: ['bones', 'coffin', 'candles'], dungeon: true },
+  { name: 'THE TORCH HALL', tex: 19, props: ['brazier', 'skeleton', 'brazier'], dungeon: true },
+  { name: 'THE LONG BOX CATACOMB', tex: 20, props: ['coffin', 'coffin', 'bones'], dungeon: true },
+  { name: 'THE SPIDER NEST', tex: 21, props: ['bones', 'crystal', 'candles'], dungeon: true },
 ];
+const SHED_THEMES = 7;
 // Each shed's floor and ceiling (2026-11-11: "PS1 graphics"): textured and
 // lit, not a flat fade. f: planks / concrete / wet / carpet / dirt / scorched /
 // stone; c: rafters / tin / tarp / drop tiles.
@@ -142,6 +166,8 @@ function surfaceTex(kind) {
       else if (kind === 'dirt') c = [78, 60, 40];
       else if (kind === 'scorched') { c = [52, 40, 34]; if ((x * y) % 13 === 0) c = [22, 16, 14]; }
       else if (kind === 'stone') { const bx = (x + ((y >> 3) % 2) * 8) & 15, by = y & 7; c = bx === 0 || by === 0 ? [30, 24, 40] : [70, 62, 84]; }
+      else if (kind === 'cobble') { const cx = (x + ((y >> 3) % 2) * 4) % 8, cy = y % 8, e = Math.hypot(cx - 3.5, cy - 3.5); c = e > 3.6 ? [26, 24, 30] : [74 - e * 6, 70 - e * 6, 78 - e * 5]; if ((x * 7 + y * 3) % 23 === 0) c = [52, 74, 40]; }
+      else if (kind === 'vault') { c = [36, 32, 40]; if ((y & 15) === 0 || (x & 15) === 0) c = [18, 16, 22]; if (((x + y) & 15) === 3) c = [44, 40, 50]; }
       else if (kind === 'rafters') { c = [34, 26, 20]; if ((x & 15) < 4) c = [92, 62, 38]; if ((x & 15) === 3) c = [50, 32, 20]; }
       else if (kind === 'tin') { c = (x >> 1) % 2 ? [92, 96, 104] : [70, 74, 80]; if ((x * 3 + y) % 29 === 0) c = [130, 74, 40]; }
       else if (kind === 'tarp') { c = [40, 70, 130]; if ((x + y) % 11 === 0) c = [30, 54, 104]; }
@@ -151,8 +177,6 @@ function surfaceTex(kind) {
     }
   });
 }
-// Bare bulbs hanging over the hall (warm light pools), every few cells along it.
-function bulbsFor(layout) { const out = []; for (let t = 0.08; t < 1; t += 0.17) { const p = poseAt(layout, t); out.push([p.x, p.y]); } for (const [rx, ry, rw, rh] of layout.rooms || []) out.push([rx + rw / 2, ry + rh / 2]); return out; }
 // PS1-style color: a 4 x 4 ordered dither, then 5 bits per channel.
 
 export const layoutFor = floor => { const f = Math.max(1, Math.floor(floor) || 1); if (!layoutCache.has(f)) layoutCache.set(f, generateLayout(f)); return layoutCache.get(f); };
@@ -160,17 +184,24 @@ export const layoutFor = floor => { const f = Math.max(1, Math.floor(floor) || 1
 // The grid: everything wall (1..5 = texture) except the route, the peek
 // cells and the boss room. Wall textures follow a fixed pattern.
 export function buildMap(floor, fork = '') {
-  const L = layoutFor(floor), N = 16, grid = Array.from({ length: N }, () => Array(N).fill(1));
+  const L = layoutFor(floor), N = GRID, grid = Array.from({ length: N }, () => Array(N).fill(1)), zone = new Uint8Array(N * N), split = L.split ?? DUNGEON_AT;
   const open = (x, y) => { if (x > 0 && y > 0 && x < N - 1 && y < N - 1) grid[y][x] = 0; };
+  // Each open cell is the shed (0) or the dungeon under it (1), by how far along the walk it is.
+  const total = L.len || routeLength(L), mark = (x, y, z) => { if (x > 0 && y > 0 && x < N - 1 && y < N - 1) zone[y * N + x] = z; };
+  let acc = 0;
   for (let i = 1; i < L.route.length; i++) {
     const [x0, y0] = L.route[i - 1], [x1, y1] = L.route[i];
-    for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) open(x, y);
+    for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) { open(x, y); mark(x, y, (acc + Math.hypot(x - x0, y - y0)) / total > split ? 1 : 0); }
+    acc += Math.hypot(x1 - x0, y1 - y0);
   }
   const [bx, by, bw, bh] = L.boss;
-  for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) open(x, y);
-  for (const p of L.peeks) open(...p.cell);
-  for (const [rx, ry, rw, rh] of L.rooms || []) for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) open(x, y);
-  for (const nk of L.nooks || []) open(...nk.cell);
+  for (let y = by; y < by + bh; y++) for (let x = bx; x < bx + bw; x++) { open(x, y); mark(x, y, 1); }
+  for (const p of L.peeks) { open(...p.cell); mark(...p.cell, p.at > split ? 1 : 0); }
+  for (const [rx, ry, rw, rh, th] of L.rooms || []) for (let y = ry; y < ry + rh; y++) for (let x = rx; x < rx + rw; x++) { open(x, y); mark(x, y, ROOM_THEMES[th ?? 0]?.dungeon ? 1 : 0); }
+  for (const nk of L.nooks || []) { open(...nk.cell); mark(...nk.cell, nk.tex >= 17 ? 1 : 0); }
+  // A wall is the dungeon's when every open cell beside it is.
+  const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if (grid[y][x]) { const side = N4.filter(([dx, dy]) => grid[y + dy][x + dx] === 0); if (side.length && side.every(([dx, dy]) => zone[(y + dy) * N + x + dx])) zone[y * N + x] = 1; }
   // Textures on a fixed pattern: duct-taped boards (1), booster pegboard (2),
   // long-box shelves (3), the comic rack (4), the slab wall (6), the flyer
   // corkboard (7), binder pages (8); each peek looks at its own; the boss room is 5.
@@ -180,7 +211,9 @@ export function buildMap(floor, fork = '') {
   // Each shed mixes its own extras into the walls (posters, garage doors, TVs, neon...).
   const EXTRA = [[12, 15], [15, 13], [12, 11], [12, 14], [16, 15], [15, 12], [14, 9]][(Math.max(1, floor) - 1) % 7];
   const pat = PATTERN.slice(); pat[floor % 12] = EXTRA[0]; pat[(floor + 6) % 12] = EXTRA[1];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = pat[(x * 3 + y * 5 + floor) % 12];
+  // The dungeon's walls: stone, crypt niches, rotten long boxes, cobwebs and chains.
+  const DPAT = [17, 17, 21, 17, 20, 17, 17, 21, 17, 18, 17, 17];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (grid[y][x]) grid[y][x] = zone[y * N + x] ? DPAT[(x * 3 + y * 5 + floor) % 12] : pat[(x * 3 + y * 5 + floor) % 12];
   // A themed room's walls all around it.
   for (const [rx, ry, rw, rh, th] of L.rooms || []) { const tx = ROOM_THEMES[th ?? 0]?.tex; if (tx) for (let y = ry - 1; y <= ry + rh; y++) for (let x = rx - 1; x <= rx + rw; x++) if (grid[y]?.[x]) grid[y][x] = tx; }
   for (const nk of L.nooks || []) { const [cx, cy] = nk.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = nk.tex; }
@@ -191,7 +224,17 @@ export function buildMap(floor, fork = '') {
   // shows when there are no photos).
   let n = 0;
   for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 12 && (x + y) % 2 === 0) || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 100 + grid[y][x];
-  return { grid, layout: L };
+  // Lights along the walk: bare bulbs in the shed, torches on the dungeon's walls.
+  const lights = [];
+  for (let k = 0, step = 5 / total; k * step < 0.985; k++) {
+    const t = 0.04 + k * step, p = poseAt(L, t), below = t > split;
+    if (!below) { lights.push({ x: p.x, y: p.y, torch: false }); continue; }
+    const side = k % 2 ? 1 : -1, wx = Math.floor(p.x + Math.round(-Math.sin(p.ang)) * side), wy = Math.floor(p.y + Math.round(Math.cos(p.ang)) * side);
+    if (grid[wy]?.[wx] && grid[wy][wx] < 1000 && grid[wy][wx] !== 5) grid[wy][wx] = 19; // the torch hangs on the wall beside the walk
+    lights.push({ x: p.x + (wx + 0.5 - p.x) * 0.55, y: p.y + (wy + 0.5 - p.y) * 0.55, torch: true });
+  }
+  for (const [rx, ry, rw, rh] of L.rooms || []) lights.push({ x: rx + rw / 2, y: ry + rh / 2, torch: !!zone[Math.floor(ry + rh / 2) * N + Math.floor(rx + rw / 2)] });
+  return { grid, layout: L, zone, lights };
 }
 
 // Where you stand at a point along the route (0..1): position and facing.
@@ -225,6 +268,8 @@ const fill = (px, x0, y0, w, h, col) => { for (let y = y0; y < y0 + h; y++) for 
 // A tiny 3x5 font for price stickers and flyers.
 const FONT = { '$': '011110010011110', '1': '010110010010111', '0': '111101101101111', 'F': '111100110100100', 'N': '101111111111101', 'M': '101111111101101', 'B': '110101111101110', 'U': '101101101101111', 'Y': '101101010010010', '2': '111001111100111', '5': '111100111001111', 'S': '111100111001111', 'A': '010101111101101', 'L': '100100100100111', 'E': '111100110100111', 'C': '111100100100111', 'G': '111100101101111', 'D': '110101101101110', 'R': '110101110101101', 'T': '111010010010010', 'P': '110101110100100', 'O': '111101101101111' };
 function text(px, x, y, str, col) { [...str].forEach((ch, k) => { const g = FONT[ch]; if (!g) return; for (let i = 0; i < 15; i++) if (g[i] === '1') px(x + k * 4 + (i % 3), y + Math.floor(i / 3), col); }); }
+// Stone brick for the dungeon (no chance: the speckle is a fixed hash).
+function stone(px) { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const bx = (x + ((y >> 3) % 2) * 8) & 15, by = y & 7, h = ((x * 73856093) ^ (y * 19349663)) >>> 0, k = (h % 17) - 8; px(x, y, bx === 0 || by === 0 ? [24, 22, 28] : [72 + k, 70 + k, 80 + k]); if (h % 61 === 0) px(x, y, [54, 80, 44]); } }
 function makeTextures(p) {
   const boards = px => { for (let x = 0; x < T; x++) for (let y = 0; y < T; y++) px(x, y, (x >> 3) % 2 ? p.a : p.b); for (let x = 7; x < T; x += 8) fill(px, x, 0, 1, T, p.gap); fill(px, 3, 6, 1, 1, [30, 30, 30]); fill(px, 19, 24, 1, 1, [30, 30, 30]); fill(px, 12, 15, 2, 2, p.gap); };
   // A made-up comic cover: a color, a title band, a hero blob.
@@ -262,6 +307,17 @@ function makeTextures(p) {
     15: tex(px => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(x, y, (y >> 2) % 2 ? [130, 134, 140] : [106, 110, 116]); for (let y = 3; y < T; y += 4) fill(px, 0, y, T, 1, [70, 72, 78]); for (let k = 0; k < 18; k++) { const x = 4 + k, y = 12 + Math.round(Math.sin(k / 2) * 3); fill(px, x, y, 2, 2, [40, 220, 120]); } for (let k = 0; k < 10; k++) fill(px, 8 + k * 2, 21 + (k % 2), 2, 2, [240, 70, 200]); fill(px, 13, 28, 6, 2, [50, 50, 54]); }),
     // 16 brick with string lights and a dartboard.
     16: tex(px => { for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) px(x, y, (y % 5 === 4 || (x + ((y / 5) | 0) % 2 * 5) % 10 === 9) ? [60, 40, 34] : [130, 66, 48]); const BUL = [[255, 80, 80], [255, 220, 60], [80, 220, 120], [80, 160, 255]]; for (let x = 0; x < T; x++) { const y = 4 + Math.round(Math.sin(x / 5) * 2); px(x, y, [30, 30, 30]); if (x % 4 === 1) fill(px, x, y + 1, 2, 2, BUL[(x >> 2) % 4]); } for (let r = 7; r > 0; r -= 2) for (let a = 0; a < 40; a++) px(16 + Math.round(Math.cos(a / 6.4) * r), 20 + Math.round(Math.sin(a / 6.4) * r), r % 4 === 1 ? [230, 220, 200] : [30, 30, 30]); px(16, 20, [220, 40, 40]); }),
+    // ── The dungeon under the shed ──
+    // 17 stone brick, a little moss.
+    17: tex(px => { stone(px); }),
+    // 18 crypt niches: two arches, a skull and bones in each.
+    18: tex(px => { stone(px); for (const x0 of [2, 18]) { fill(px, x0, 6, 12, 18, [14, 12, 16]); fill(px, x0 + 1, 4, 10, 2, [14, 12, 16]); fill(px, x0 + 3, 14, 6, 5, [222, 216, 196]); px(x0 + 4, 16, [20, 16, 16]); px(x0 + 7, 16, [20, 16, 16]); fill(px, x0 + 4, 18, 4, 1, [40, 34, 30]); fill(px, x0 + 1, 21, 10, 2, [205, 198, 178]); } }),
+    // 19 a torch in an iron bracket.
+    19: tex(px => { stone(px); fill(px, 14, 18, 4, 9, [60, 56, 62]); fill(px, 12, 16, 8, 2, [80, 76, 84]); fill(px, 14, 10, 4, 6, [255, 130, 30]); fill(px, 15, 8, 2, 4, [255, 220, 90]); px(15, 7, [255, 240, 160]); fill(px, 13, 12, 1, 3, [240, 90, 20]); fill(px, 18, 12, 1, 3, [240, 90, 20]); }),
+    // 20 a catacomb of rotting long boxes in stone niches.
+    20: tex(px => { stone(px); for (const y0 of [2, 17]) { fill(px, 1, y0, 30, 12, [16, 14, 18]); for (const x0 of [2, 16]) { fill(px, x0, y0 + 3, 13, 8, [150, 124, 84]); fill(px, x0, y0 + 3, 13, 1, [176, 150, 106]); fill(px, x0 + 3, y0 + 6, 5, 2, [214, 206, 180]); px(x0 + 10, y0 + 9, [90, 70, 40]); } } }),
+    // 21 cobwebs and a hanging chain.
+    21: tex(px => { stone(px); for (let k = 0; k < 12; k++) { px(k, k, [200, 200, 210]); px(k, Math.floor(k / 2), [180, 180, 190]); px(Math.floor(k / 2), k, [180, 180, 190]); } for (const r of [4, 8]) for (let a = 0; a <= r; a++) px(a, r - a, [170, 170, 180]); for (let y = 0; y < 26; y += 3) { fill(px, 22, y, 3, 2, [96, 92, 100]); px(23, y + 2, [60, 58, 64]); } }),
     8: tex(px => { fill(px, 0, 0, T, T, [30, 30, 36]); fill(px, 1, 1, 30, 30, [70, 70, 80]); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const x = 2 + c * 10, y = 2 + r * 10, k = COV[(r * 3 + c) % COV.length]; fill(px, x, y, 8, 9, [220, 210, 160]); fill(px, x + 1, y + 1, 6, 4, k); fill(px, x + 1, y + 6, 6, 1, [60, 60, 60]); fill(px, x + 1, y + 7, 4, 1, [120, 120, 120]); px(x, y, [255, 255, 255]); } }),
   };
 }
@@ -301,6 +357,16 @@ const SPRITES = {
   mower: ['h...............', '.h..............', '..h.............', '...h............', '....h...........', '.....aaaaaaaa...', '....arrrrrrrra..', '...arrrrrrrrrra.', '...kk.......kk..'],
   fridge: ['...aaaaaaaaaa...', '...awwwwwwwwa...', '...awwrwwwwwa...', '...awwwwwbwwa...', '...awwwwwwwwa...', '...aaaaaaaaaa...', '...awwwwwwwka...', '...awwywwwwka...', '...awwwwwwwka...', '...awwwwgwwka...', '...awwwwwwwka...', '...aaaaaaaaaa...', '....k......k....'],
   lavalamp: ['.......aa.......', '......aaaa......', '......lggl......', '......glgg......', '.....gglggg.....', '.....ggggll.....', '.....glllgg.....', '....gggggllg....', '....ggllgggg....', '....glllllgg....', '.....aaaaaa.....', '....aaaaaaaa....', '...aaaaaaaaaa...', '...aaaaaaaaaa...'],
+  // Down in the dungeon, and the critters that keep the place moving.
+  bones: ['.....wwww.......', '....wkwwkw......', '....wwwwww.ww...', '.ww..wkkw.wwwww.', 'wwwwwwwwwwww.ww.', '.ww.wwww..wwwww.'],
+  coffin: ['...aaaaaaaaaa...', '..abbbbbbbbbba..', '.abbbwwwwwbbbba.', '.abbbwkkkwbbbba.', '.abbbwwwwwbbbba.', '.abbbbbbbbbbbba.', '.abbbbbbbbbbbba.', '..abbbbbbbbbba..', '...aaaaaaaaaa...'],
+  brazier: ['......f.........', '.....fyf..f.....', '....fyyyffyf....', '...fyyyyyyyyf...', '...aaaaaaaaaa...', '....abbbbbba....', '.....abbbba.....', '......abba......', '.......aa.......', '.......aa.......', '......aaaa......', '.....aaaaaa.....'],
+  trapdoor: ['..aaaaaaaaaaaa..', '..abbbbbbbbbba..', '..abbbbccbbbba..', '..abbbbbbbbbba..', '..aaaaaaaaaaaa..'],
+  rat: ['..........aa....', '...bbbbbbbbbbe..', '..bbbbbbbbbbbbn.', 'tt.bbbbbbbbbbb..', '.t..f..f...f....'],
+  rat2: ['..........aa....', '...bbbbbbbbbbe..', '..bbbbbbbbbbbbn.', 'tt.bbbbbbbbbbb..', '.t...f..f..f....'],
+  bat: ['a..............a', '.aa....bb....aa.', '..aaa.bbbb.aaa..', '....aabrrbaa....', '......bbbb......'],
+  bat2: ['.......bb.......', '......bbbb......', '....aabrrbaa....', '..aaa.bbbb.aaa..', '.aa..........aa.', 'a..............a'],
+  spider: ['.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '.......w........', '...l...w...l....', '....l.bbb.l.....', '..llbbbbbbbll...', '....bbrbrbb.....', '..ll.bbbbb.ll...', '....l.....l.....'],
   cat: ['...k...k........', '...kk.kk........', '...kkkkk........', '...kykyk........', '...kkkkk........', '....kkk.........', '...kkkkkk.......', '..kkkkkkkk...k..', '..kkkkkkkk..k...', '..kkkkkkkkkk....'],
   // Treasure chests: shut, and open once chat hits its goal.
   chest: ['..aaaaaaaaaaaa..', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaayyaaaaaa.', '.abbbbbyybbbbba.', '.abbbbbbbbbbbba.', '.abccccccccccba.', '.aaaaaaaaaaaaaa.'],
@@ -331,12 +397,35 @@ const SPRITE_COLORS = {
   fridge: { a: [90, 90, 96], w: [220, 224, 230], k: [60, 60, 64], r: [230, 50, 50], b: [50, 120, 230], y: [250, 210, 40], g: [40, 190, 80] },
   lavalamp: { a: [160, 160, 170], g: [120, 30, 140], l: [255, 120, 40] },
   cat: { k: [24, 22, 28], y: [180, 255, 80] },
+  bones: { w: [225, 220, 200], k: [30, 25, 25] },
+  coffin: { a: [60, 45, 30], b: [150, 120, 80], w: [210, 200, 170], k: [40, 30, 20] },
+  brazier: { f: [255, 120, 20], y: [255, 230, 90], a: [50, 45, 50], b: [90, 80, 90] },
+  trapdoor: { a: [40, 30, 20], b: [100, 70, 40], c: [190, 190, 200] },
+  rat: { a: [200, 140, 150], b: [110, 100, 95], e: [20, 20, 20], n: [230, 140, 150], t: [190, 140, 140], f: [190, 140, 140] },
+  rat2: { a: [200, 140, 150], b: [110, 100, 95], e: [20, 20, 20], n: [230, 140, 150], t: [190, 140, 140], f: [190, 140, 140] },
+  bat: { a: [70, 50, 80], b: [44, 32, 54], r: [255, 70, 70] },
+  bat2: { a: [70, 50, 80], b: [44, 32, 54], r: [255, 70, 70] },
+  spider: { w: [190, 190, 200], l: [30, 25, 30], b: [44, 32, 44], r: [255, 50, 50] },
   chest: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 220, 60] },
   chestopen: { a: [30, 18, 8], b: [140, 82, 36], c: [230, 180, 40], y: [255, 250, 200], g: [255, 210, 40], d: [255, 250, 160] },
 };
+// Props that move (2026-11-12): TV static, cycling arcade screens, flowing
+// lava lamps, dancing flames, pulsing crystals. Pure functions of time.
+const hashN = (a, b, c) => (((a * 73856093) ^ (b * 19349663) ^ (c * 83492791)) >>> 0) % 1000 / 1000;
+const ANIM = {
+  tv: (ch, col, u, v, tm) => (ch === 's' || ch === 'z') ? (hashN(Math.floor(u * 16), Math.floor(v * 16), Math.floor(tm * 12)) > 0.55 ? [225, 230, 255] : [50 + 40 * Math.sin(tm), 80, 190]) : col,
+  arcade: (ch, col, u, v, tm) => ch === 's' ? [30 + 60 * (1 + Math.sin(tm * 2 + v * 6)), 140 + 50 * Math.sin(tm * 1.3), 220] : ch === 'm' ? (Math.floor(tm * 3 + u * 8) % 2 ? [255, 60, 170] : [255, 220, 60]) : col,
+  lavalamp: (ch, col, u, v, tm) => (ch === 'g' || ch === 'l') ? (Math.sin(v * 14 - tm * 1.6 + Math.sin(u * 6 + tm) * 1.5) > 0.35 ? [255, 120, 40] : [120, 30, 140]) : col,
+  candles: (ch, col, u, v, tm) => ch === 'f' ? col.map(c => c * (0.75 + 0.25 * Math.sin(tm * 17 + u * 13 + v * 7))) : col,
+  brazier: (ch, col, u, v, tm) => (ch === 'f' || ch === 'y') ? col.map(c => c * (0.7 + 0.3 * Math.sin(tm * 15 + u * 11 + v * 9))) : col,
+  barrel: (ch, col, u, v, tm) => (ch === 'f' || ch === 'y') ? col.map(c => c * (0.7 + 0.3 * Math.sin(tm * 15 + u * 11 + v * 9))) : col,
+  crystal: (ch, col, u, v, tm) => col.map(c => c * (0.8 + 0.2 * Math.sin(tm * 2 + v * 3))),
+};
 // What glows in the dark (screens, flames, crystals, eyes) and how big each prop stands.
-const SPRITE_GLOW = { arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y' };
-const SPRITE_SIZE = { arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4 };
+const SPRITE_GLOW = { arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y', brazier: 'fy', bat: 'r', bat2: 'r', spider: 'r' };
+const SPRITE_SIZE = { arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4, bones: 0.3, coffin: 0.5, brazier: 0.55, trapdoor: 0.45, rat: 0.16, rat2: 0.16, bat: 0.2, bat2: 0.2, spider: 0.5 };
+// Critters move on their own; they never hide for the props passing in front.
+const CRITTERS = new Set(['rat', 'rat2', 'bat', 'bat2', 'spider']);
 // One prop, drawn big and crisp on a 2D canvas (the overlay's props in front
 // of the hosts): kind is any SPRITES key; px is the size of one pixel.
 export const SPRITE_KINDS = Object.keys(SPRITES);
@@ -356,16 +445,22 @@ export function propsFor(layout, floor) {
   // raccoon one, skeletons and candles when it's haunted...); COOL: anywhere.
   const kinds = ['dollarbin', 'pic', 'THEME', 'comics', 'table', 'pic', 'COOL', 'comics', 'pic', 'THEME', 'cardbox', 'table', 'pic', 'figure', 'COOL', 'comics', 'THEME', 'pizza', 'eyes'], out = []; let picN = 0;
   const theme = SHED_PROPS[(Math.min(Math.max(1, floor), SHED_PROPS.length)) - 1], cool = ['arcade', 'tv', 'gumball', 'lavalamp', 'fridge', 'cat'];
+  const deep = ['bones', 'coffin', 'brazier', 'skeleton', 'candles', 'bones', 'crystal'], split = layout.split ?? DUNGEON_AT, total = layout.len || routeLength(layout); let acc = 0, deepN = floor;
   let themeN = 0, coolN = floor; // each in turn, so every one of them shows up
   const pick = k => k === 'THEME' ? theme[themeN++ % theme.length] : k === 'COOL' ? cool[coolN++ % cool.length] : k;
   for (let i = 1; i < layout.route.length; i++) {
     const [x0, y0] = layout.route[i - 1], [x1, y1] = layout.route[i], n = Math.max(1, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 2.5));
+    const segLen = Math.hypot(x1 - x0, y1 - y0);
     for (let k = 1; k <= n; k++) {
       const f = k / (n + 1), side = (i + k) % 2 ? 0.32 : -0.32, dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
-      const kind = pick(kinds[(i * 3 + k + floor) % kinds.length]);
+      const below = (acc + f * segLen) / total > split, k0 = kinds[(i * 3 + k + floor) % kinds.length];
+      const kind = below && (k0 === 'THEME' || k0 === 'COOL' || k0 === 'pizza' || k0 === 'figure' || k0 === 'dollarbin') ? deep[deepN++ % deep.length] : pick(k0);
       out.push({ x: x0 + 0.5 + dx * f + (-dy / len) * side, y: y0 + 0.5 + dy * f + (dx / len) * side, kind, idx: picN++ });
     }
+    acc += segLen;
   }
+  // The trapdoor down into the dungeon.
+  { const p = poseAt(layout, split); out.push({ x: p.x + Math.cos(p.ang) * 0.6, y: p.y + Math.sin(p.ang) * 0.6, kind: 'trapdoor', idx: picN++ }); }
   // Each room's own things, in its corners.
   for (const [rx, ry, rw, rh, th] of layout.rooms || []) {
     const things = ROOM_THEMES[th ?? 0]?.props || [];
@@ -424,8 +519,9 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
   let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0;
   let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
-  let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false;
+  let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false, dipAt = -99, fogMix = 0;
   const listeners = { peek: () => {} };
+  let clockNow = 0;
   function setBoss(sourceCanvas) {
     if (!sourceCanvas) { bossPx = null; return; }
     const c = sourceCanvas.getContext('2d'), d = c.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
@@ -436,10 +532,11 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const forkChanged = (next.fork || '') !== (state.fork || '');
     state = { ...state, ...next };
     if (forkChanged && !floorChanged) map = buildMap(state.floor, state.fork || '');
-    if (floorChanged) { surf = { f: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).f), c: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).c), r: surfaceTex((SURFACES[state.shed] || {}).f === 'carpet' ? 'planks' : 'carpet') }; bulbs = bulbsFor(layoutFor(state.floor)); }
     if (floorChanged) { map = buildMap(state.floor, state.fork || ''); textures = makeTextures(PALETTES[state.shed] || PALETTES['GARDEN SHED']); props = propsFor(map.layout, state.floor); shown = 0; done = new Set(); }
+    if (floorChanged) { surf = { f: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).f), c: surfaceTex((SURFACES[state.shed] || SURFACES['GARDEN SHED']).c), r: surfaceTex((SURFACES[state.shed] || {}).f === 'carpet' ? 'planks' : 'carpet'), df: surfaceTex('cobble'), dc: surfaceTex('vault') }; }
+    bulbs = map.lights || [];
     target = state.phase === 'boss' ? 1 : Math.max(0, Math.min(1, state.pct / 100));
-    if (floorChanged) shown = target;
+    if (floorChanged) { shown = target; if (shown >= (map.layout.split ?? DUNGEON_AT)) done.add('down'); }
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
@@ -448,27 +545,51 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     // Walk toward the floor's progress; stop to rummage at the peek spots.
     if (Date.now() < peekUntil) { look += (peek.turn - look) * Math.min(1, dt * 4); walking = false; }
     else {
-      look += (0 - look) * Math.min(1, dt * 4);
+      // Standing still, the camera never freezes (2026-11-12: "things need to feel
+      // animated when we aren't moving"): a slow sway, and every 13 seconds a
+      // glance to one side and back.
+      const tm = now / 1000, ph = (tm % 13) / 13, side = Math.floor(tm / 13) % 2 ? 1 : -1;
+      const glance = ph > 0.55 && ph < 0.8 ? Math.sin((ph - 0.55) / 0.25 * Math.PI) * 0.42 * side : 0;
+      const idle = walking ? 0 : Math.sin(tm * 0.31) * 0.06 + glance;
+      look += (idle - look) * Math.min(1, dt * (walking ? 4 : 1.6));
       walking = shown < target - 0.002;
       if (walking) {
-        const step = Math.min(target - shown, dt * 0.06);
+        // Steady footsteps (about 1.6 cells a second) on these long floors, a
+        // little quicker to catch up after a big sale.
+        const len = map.layout.len || routeLength(map.layout), step = Math.min(target - shown, dt * Math.max(1.6 / len, (target - shown) / 12));
+        const split = map.layout.split ?? DUNGEON_AT;
+        if (!done.has('down') && shown < split && shown + step >= split) { done.add('down'); dipAt = now; listeners.peek('DOWN THE TRAPDOOR INTO THE DUNGEON…'); }
         const hit = map.layout.peeks.find(p => !done.has(p.at) && shown < p.at && shown + step >= p.at);
         if (hit) { done.add(hit.at); shown = hit.at; const pose = poseAt(map.layout, shown); let turn = Math.atan2(hit.cell[1] + 0.5 - pose.y, hit.cell[0] + 0.5 - pose.x) - pose.ang; while (turn > Math.PI) turn -= 2 * Math.PI; while (turn < -Math.PI) turn += 2 * Math.PI; peek = { ...hit, turn }; peekUntil = Date.now() + 2600; listeners.peek(hit.label); }
         else shown += step;
       } else if (shown > target) shown = target;
     }
     bob = walking ? bob + dt * 9 : bob * 0.9;
+    clockNow = now;
     draw();
   }
   function draw() {
     // The eye sits a little behind the walker (when there's room), so the view looks down the hall, not into the wall.
     const pose = eyePose(map.layout, map.grid, shown), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
-    const pal = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5);
+    const tm = clockNow / 1000, N = GRID, zone = map.zone;
+    // Breathing while standing; a dip as you climb down the trapdoor.
+    const dip = (clockNow - dipAt) / 1600, breathe = walking ? 0 : Math.sin(tm * 1.3) * VH * 0.006;
+    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
+    // Down in the dungeon the fog turns colder and darker.
+    const inDeep = zone ? zone[Math.floor(pose.y) * N + Math.floor(pose.x)] : 0; fogMix += ((inDeep ? 1 : 0) - fogMix) * 0.05;
+    const pal = { ...pal0, fog: pal0.fog.map((c, k) => Math.round(c * (1 - fogMix) + [4, 3, 8][k] * fogMix)) };
     const boss = state.phase === 'boss', rooms = map.layout.rooms || [];
+    // The lights near you, each flickering: bulbs buzz and now and then dip;
+    // torches dance. (A fixed rhythm per light -- no chance, the same everywhere.)
+    const near = [];
+    for (let k = 0; k < bulbs.length; k++) { const b = bulbs[k]; if ((b.x - pose.x) ** 2 + (b.y - pose.y) ** 2 > 81) continue;
+      const f = b.torch ? 0.78 + 0.14 * Math.sin(tm * 9 + k * 1.7) + 0.08 * Math.sin(tm * 23 + k * 3.1) : ((Math.floor(tm * 4) + k * 13) % 53 === 0 ? 0.3 : 0.93 + 0.07 * Math.sin(tm * 3 + k));
+      near.push({ x: b.x, y: b.y, torch: b.torch, f: f * (b.torch ? 1.15 : 0.9) }); }
+    let litO = 0;
     // Floor and ceiling, textured (floor casting): each row is a distance;
     // lit by the flashlight and the bulbs, fading into the shed's fog.
-    const bulbLight = (wx, wy) => { let l = 0; for (const [bx, by] of bulbs) { const d2 = (wx - bx) ** 2 + (wy - by) ** 2; l += 0.9 / (1 + d2 * 1.6); } return l; };
+    const bulbLight = (wx, wy) => { let l = 0, o = 0; for (let k = 0; k < near.length; k++) { const b = near[k], v = b.f / (1 + ((wx - b.x) ** 2 + (wy - b.y) ** 2) * 1.6); l += v; if (b.torch) o += v; } litO = o; return l; };
     const rx0 = dirX - planeX, ry0 = dirY - planeY, rx1 = dirX + planeX, ry1 = dirY + planeY, posZ = 0.5 * VH;
     for (let y = 0; y < VH; y++) {
       const floorRow = y > horizon, p = floorRow ? y - horizon : horizon - y;
@@ -479,9 +600,10 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       for (let x = 0; x < VW; x++, fx += stepX, fy += stepY) {
         const tx = (Math.floor(fx * T) % T + T) % T, ty = (Math.floor(fy * T) % T + T) % T, ti = (ty * T + tx) * 3, i = (y * VW + x) * 4;
         // A rug down in each room.
-        const t = floorRow && rooms.length && rooms.some(([ax, ay, aw, ah]) => fx >= ax + 0.2 && fx < ax + aw - 0.2 && fy >= ay + 0.2 && fy < ay + ah - 0.2) ? surf.r : tRow;
-        const l = Math.min(1.25, base * (1 - Math.abs(2 * x / VW - 1) * 0.3) + bulbLight(fx, fy) * 0.55), fog = Math.max(0, Math.min(1, l));
-        data[i] = t[ti] * l * 1 + pal.fog[0] * (1 - fog); data[i + 1] = t[ti + 1] * l * 0.96 + pal.fog[1] * (1 - fog); data[i + 2] = t[ti + 2] * l * 0.88 + pal.fog[2] * (1 - fog); data[i + 3] = 255;
+        const deep = zone && zone[(fy | 0) * N + (fx | 0)];
+        const t = deep ? (floorRow ? surf.df : surf.dc) : floorRow && rooms.length && rooms.some(([ax, ay, aw, ah]) => fx >= ax + 0.2 && fx < ax + aw - 0.2 && fy >= ay + 0.2 && fy < ay + ah - 0.2) ? surf.r : tRow;
+        const l = Math.min(1.25, base * (deep ? 0.75 : 1) * (1 - Math.abs(2 * x / VW - 1) * 0.3) + bulbLight(fx, fy) * 0.55), fog = Math.max(0, Math.min(1, l)), o = litO * 0.5;
+        data[i] = t[ti] * l * (1 + o * 0.5) + pal.fog[0] * (1 - fog); data[i + 1] = t[ti + 1] * l * (0.96 + o * 0.08) + pal.fog[1] * (1 - fog); data[i + 2] = t[ti + 2] * l * (0.88 - o * 0.3) + pal.fog[2] * (1 - fog); data[i + 3] = 255;
       }
     }
     // Walls: one ray per column (DDA).
@@ -490,7 +612,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       let mx = Math.floor(pose.x), my = Math.floor(pose.y);
       const ddx = Math.abs(1 / rx), ddy = Math.abs(1 / ry), sx = rx < 0 ? -1 : 1, sy = ry < 0 ? -1 : 1;
       let sdx = rx < 0 ? (pose.x - mx) * ddx : (mx + 1 - pose.x) * ddx, sdy = ry < 0 ? (pose.y - my) * ddy : (my + 1 - pose.y) * ddy, side = 0, cell = 0;
-      for (let g = 0; g < 64 && !cell; g++) { if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; } cell = map.grid[my]?.[mx] ?? 1; }
+      for (let g = 0; g < 128 && !cell; g++) { if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; } cell = map.grid[my]?.[mx] ?? 1; }
       const dist = Math.max(0.05, side ? sdy - ddy : sdx - ddx); zbuf[x] = dist;
       const h = Math.floor(VH / dist), top = Math.max(0, horizon - (h >> 1)), bot = Math.min(VH - 1, horizon + (h >> 1));
       let wx = side ? pose.x + dist * rx : pose.y + dist * ry; wx -= Math.floor(wx);
@@ -502,23 +624,36 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       let tx = Math.floor(wx * tw); if (flip) tx = tw - 1 - tx;
       const t = pic || textures[cell >= 1000 ? cell % 100 : cell] || textures[1];
       // Flashlight + fog: bright in the middle and close, dark at the edges and far.
-      const light = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4);
+      const light = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4), wo = Math.min(1, litO * 0.6);
       for (let y = top; y <= bot; y++) {
         const ty = Math.min(th - 1, Math.floor((y - horizon + (h >> 1)) * th / h)), ti = (ty * tw + tx) * 3, i = (y * VW + x) * 4;
-        data[i] = t[ti] * light + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light + pal.fog[2] * (1 - light);
+        data[i] = t[ti] * light * (1 + wo * 0.5) + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light * (1 + wo * 0.05) + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light * (1 - wo * 0.3) + pal.fog[2] * (1 - light);
       }
     }
     // Props and the boss: sprites, farthest first, hidden behind walls.
-    const list = props.map(p => ({ ...p })); if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss; list.push({ x: bx + bw / 2, y: by + bh / 2, kind: 'boss' }); }
+    const list = props.map(p => ({ ...p }));
+    // Critters on their rounds (fixed paths and timings): rats dart along the
+    // walls, bats circle in the dungeon, spiders bob on their threads.
+    const R = map.layout.route, split = map.layout.split ?? DUNGEON_AT, total = map.layout.len || 1; let acc = 0;
+    for (let i = 1; i < R.length; i++) {
+      const [x0, y0] = R[i - 1], [x1, y1] = R[i], len = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / len, uy = (y1 - y0) / len, mid = (acc + len / 2) / total; acc += len;
+      if (Math.abs((x0 + x1) / 2 - pose.x) + Math.abs((y0 + y1) / 2 - pose.y) > 16) continue;
+      const cyc = (tm / 11 + i * 0.37) % 1;
+      if (i % 2 && cyc < 0.35) { const f = cyc / 0.35, a = i % 4 === 1 ? f : 1 - f; list.push({ x: x0 + 0.5 + ux * len * a - uy * 0.42, y: y0 + 0.5 + uy * len * a + ux * 0.42, kind: (tm * 8 | 0) % 2 ? 'rat' : 'rat2' }); }
+      if (mid > split && i % 2 === 0) { const cx = x0 + 0.5 + ux * len / 2, cy = y0 + 0.5 + uy * len / 2; list.push({ x: cx + Math.cos(tm * 1.3 + i) * 0.7, y: cy + Math.sin(tm * 1.7 + i) * 0.45, kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2', lift: 0.62 + Math.sin(tm * 2.3 + i) * 0.08 }); }
+      if (i % 3 === 0) list.push({ x: x0 + 0.5 - uy * 0.3, y: y0 + 0.5 + ux * 0.3, kind: 'spider', lift: 0.5 + Math.sin(tm * 0.8 + i) * 0.02 });
+    }
+    if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss; list.push({ x: bx + bw / 2, y: by + bh / 2, kind: 'boss' }); }
     const inv = 1 / (planeX * dirY - dirX * planeY);
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
-      if (tY <= 0.15) return;
+      if (tY <= 0.15 || (CRITTERS.has(s.kind) && tY < 0.8)) return; // a critter right in your face isn't drawn huge
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
-      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes') { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
+      if (s.kind === 'eyes' && (tm / 5 + (s.idx || 0) * 0.37) % 1 < 0.05) return; // they blink
+      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && !CRITTERS.has(s.kind)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
       const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : (SPRITE_SIZE[s.kind] || 0.55))));
-      const floorY = horizon + Math.floor(VH / tY / 2), top = s.kind === 'eyes' ? horizon - size : floorY - size;
+      const floorY = horizon + Math.floor(VH / tY / 2), top = (s.kind === 'eyes' ? horizon - size : floorY - size) - Math.floor((s.lift || 0) * VH / tY);
       const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
         if (tY > zbuf[sx]) continue;
@@ -536,22 +671,55 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
             else if (how === 'sealed' && v >= 0.66 && (Math.abs(u - 0.12) < 0.03 || Math.abs(u - 0.88) < 0.03)) col = [70, 70, 76];
             else if (how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
           }
-          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); } }
+          else { const kind = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
           if (!col) continue;
           const i = (sy * VW + sx) * 4, l = glow || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
         }
       }
     });
+    // The air (2026-11-12: "more atmospheric ... critters, particles"): dust in
+    // the light, fireflies in the garden shed, drips where it's flooded, embers
+    // where it burnt, spores down below -- around you, behind the walls hidden.
+    const AIR = { 'GARDEN SHED': 'firefly', 'FLOODED SHED': 'drip', 'BURNT-OUT SHED': 'ember', 'HAUNTED POTTING SHED': 'spore', 'THE SHED BENEATH THE SHED': 'spore' };
+    const cx0 = Math.floor(pose.x), cy0 = Math.floor(pose.y);
+    for (let gy = cy0 - 6; gy <= cy0 + 6; gy++) for (let gx = cx0 - 6; gx <= cx0 + 6; gx++) {
+      if (map.grid[gy]?.[gx] !== 0) continue;
+      const deepC = zone && zone[gy * N + gx];
+      for (let j = 0; j < 2; j++) {
+        const h = ((gx * 73856093) ^ (gy * 19349663) ^ (j * 83492791)) >>> 0, h1 = (h % 997) / 997, h2 = ((h >> 10) % 991) / 991, h3 = ((h >> 20) % 983) / 983;
+        const kind = deepC ? (j ? 'drip' : 'dust') : (j ? AIR[state.shed] || 'dust' : 'dust');
+        let x = gx + h1, y = gy + h2, z, col, a = 0.55, len = 1;
+        if (kind === 'firefly') { if (Math.sin(tm * 2 + h3 * 20) < 0.2) continue; x += Math.sin(tm * 0.6 + h3 * 9) * 0.3; y += Math.cos(tm * 0.5 + h1 * 9) * 0.3; z = 0.3 + Math.sin(tm * 0.7 + h2 * 9) * 0.15; col = [210, 255, 120]; a = 0.95; }
+        else if (kind === 'ember') { z = (h3 + tm * 0.22) % 1; x += Math.sin(tm * 1.7 + h1 * 9) * 0.12; col = [255, 140 + 80 * (1 - z), 40]; a = 0.9 * (1 - z); }
+        else if (kind === 'drip') { if (h3 > 0.45) continue; z = 1 - (h3 * 3 + tm * 0.9) % 1; col = [150, 200, 255]; len = 3; a = 0.7; }
+        else if (kind === 'spore') { z = (h3 + tm * 0.04) % 1; x += Math.sin(tm * 0.4 + h1 * 9) * 0.25; col = deepC ? [140, 220, 160] : [200, 150, 255]; a = 0.7; }
+        else { z = 0.2 + ((h3 + tm * 0.015) % 1) * 0.7; x += Math.sin(tm * 0.3 + h3 * 6) * 0.2; y += Math.cos(tm * 0.27 + h2 * 6) * 0.2; col = deepC ? [150, 160, 140] : [235, 225, 195]; a = 0.35; }
+        const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
+        if (tY <= 0.25 || tY > 7) continue;
+        const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY);
+        if (sx < 0 || sx >= VW || tY > zbuf[sx]) continue;
+        const k = a * Math.min(1, 1.6 - tY * 0.2), w = tY < 1.5 ? 2 : 1;
+        for (let yy = sy; yy < sy + len * w; yy++) for (let xx = sx; xx < sx + w; xx++) { if (xx >= VW || yy < 0 || yy >= VH) continue; const i = (yy * VW + xx) * 4; data[i] += (col[0] - data[i]) * k; data[i + 1] += (col[1] - data[i + 1]) * k; data[i + 2] += (col[2] - data[i + 2]) * k; }
+      }
+    }
+    // Moths around the bulbs.
+    for (let k = 0; k < near.length; k++) { const b = near[k]; if (b.torch) continue;
+      for (let m = 0; m < 3; m++) { const a = tm * (2.4 + m * 0.7) + m * 2.1 + k, x = b.x + Math.cos(a) * 0.28, y = b.y + Math.sin(a * 1.3) * 0.28, z = 0.86 + Math.sin(a * 2) * 0.05;
+        const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.25) continue;
+        const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY); if (sx < 0 || sx >= VW || sy < 0 || sy >= VH || tY > zbuf[sx]) continue;
+        const i = (sy * VW + sx) * 4; data[i] = 225; data[i + 1] = 215; data[i + 2] = 190; } }
     // A boss up: the room flushes red.
     if (boss) for (let i = 0; i < data.length; i += 4) data[i] = Math.min(255, data[i] * 1.18 + 10);
     // The bulbs themselves: little glowing dots up in the rafters.
-    for (const [bx, by] of bulbs) {
-      const rx = bx - pose.x, ry = by - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
+    for (const b of near) {
+      if (b.torch) continue; // a torch's flame is on its wall
+      const rx = b.x - pose.x, ry = b.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
       if (tY <= 0.2) continue;
       const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon - Math.floor(VH / tY * 0.42), r = Math.max(1, Math.floor(3 / tY));
       if (sx < 0 || sx >= VW || tY > zbuf[sx]) continue;
-      for (let yy = sy - r; yy <= sy + r; yy++) for (let xx = sx - r; xx <= sx + r; xx++) { if (xx < 0 || yy < 0 || xx >= VW || yy >= VH || (xx - sx) ** 2 + (yy - sy) ** 2 > r * r) continue; const i = (yy * VW + xx) * 4; data[i] = 255; data[i + 1] = 236; data[i + 2] = 170; }
+      const g = Math.min(1, b.f + 0.1);
+      for (let yy = sy - r; yy <= sy + r; yy++) for (let xx = sx - r; xx <= sx + r; xx++) { if (xx < 0 || yy < 0 || xx >= VW || yy >= VH || (xx - sx) ** 2 + (yy - sy) ** 2 > r * r) continue; const i = (yy * VW + xx) * 4; data[i] = 255 * g; data[i + 1] = 236 * g; data[i + 2] = 170 * g; }
     }
     // No dither (store, 2026-11-11: "the graphics need to not have that
     // texture on them -- can't tell what they are"): clean colours, so the

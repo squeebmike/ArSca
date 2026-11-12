@@ -9,11 +9,13 @@
 // last before Wednesday) has bigger goals the more stars the week earned.
 // Separately, per-show unlocks fire as a show's own sales pass set amounts.
 // No chance anywhere: every unlock is a goal reached, never a draw.
-import { BOSS_IDS, bossById } from './live-studio-bosses.mjs';
+import { BOSS_ORDER, bossById } from './live-studio-bosses.mjs';
 
 export const SHEDS = ['GARDEN SHED', 'RUSTY TOOL SHED', 'FLOODED SHED', 'HAUNTED POTTING SHED', 'RACCOON-INFESTED SHED', 'BURNT-OUT SHED', 'THE SHED BENEATH THE SHED'];
 export const shedFor = floor => SHEDS[Math.min(Math.max(1, floor), SHEDS.length) - 1];
-export const bossForFloor = floor => BOSS_IDS[(Math.max(1, floor) - 1) % BOSS_IDS.length];
+// Each shed has its own boss (the Long Box Mimic in the garden shed ... the
+// Grail Dragon in the shed beneath the shed), then all of them in turn.
+export const bossForFloor = floor => BOSS_ORDER[(Math.max(1, floor) - 1) % BOSS_ORDER.length];
 export const DUNGEON_RESET_DAY = 3; // Wednesday
 export const TAP_KINDS = ['follow', 'share', 'bookmark'];
 // Chat picks the path (store, 2026-11-05: "more adventure and exploration"):
