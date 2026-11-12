@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=3'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=4'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
       let fp = null, topH = 0;
       const build = y => {
         const h = Math.max(300, Math.min(1920, Math.round(Number(y) || 850)));

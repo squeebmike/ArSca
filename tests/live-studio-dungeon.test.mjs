@@ -402,3 +402,20 @@ console.log('live-studio-dungeon: ok');
   const bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
   assert.ok(bg.includes("canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''"));
 }
+{
+  // 2026-11-12: "more variation, make the rooms better, other random cool shit".
+  const fpm = await import('../scripts/shed-crawl-fp.mjs');
+  const names = new Set(), props = new Set();
+  for (let f = 1; f <= 7; f++) {
+    const L = fpm.layoutFor(f), g = fpm.buildMap(f).grid;
+    assert.ok(L.rooms.length >= 2, 'two or three rooms a floor: ' + f);
+    assert.equal(new Set(L.rooms.map(r => r[4])).size, L.rooms.length, 'no theme twice on a floor');
+    L.rooms.forEach(r => names.add(fpm.ROOM_THEMES[r[4]].name));
+    for (const r of L.rooms) assert.ok(g.some(row => row.some(c => (c >= 1000 ? c % 100 : c) === fpm.ROOM_THEMES[r[4]].tex)), 'the room has its walls');
+    fpm.propsFor(L, f).forEach(p => props.add(p.kind));
+    assert.ok(g.flat().every(c => c === 0 || (c >= 1 && c <= 16) || (c >= 1000 && c % 100 >= 1 && c % 100 <= 16)), 'every wall has a texture');
+  }
+  assert.ok(names.size >= 6, 'room themes vary: ' + [...names]);
+  for (const k of ['arcade', 'tv', 'gnome', 'skeleton', 'raccoon', 'crystal', 'lavalamp']) assert.ok(props.has(k), 'cool stuff: ' + k);
+  for (const k of fpm.SPRITE_KINDS) assert.ok(k, k);
+}
