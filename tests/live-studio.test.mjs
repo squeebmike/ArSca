@@ -112,7 +112,8 @@ assert.equal(boss.reward,live.bossReward);assert.equal('secret' in boss,false);a
   assert.throws(()=>validateSettings({bigArtY:1500}),/bigArtY/);
 }
 // Original bosses (store, 2026-11-02: "The scalpers. The flipper... The dinged corner. With original artwork").
-assert.deepEqual(BOSS_IDS,['scalper','flipper','dinged','grader','shipping']);
+assert.deepEqual(BOSS_IDS,['scalper','flipper','dinged','grader','shipping','mimic','golem','kraken','lich','raccoonking','lowballer','dragon','hydra']);
+for (const id of BOSS_IDS) assert.ok(['snatch','barrage','chomp','curse','trash','flood','fire'].includes(BOSSES[id].move), 'a move: '+id);
 for (const id of BOSS_IDS) { const b=BOSSES[id]; assert.match(b.svg,/^<svg [^>]*viewBox="0 0 64 64">/); assert.ok(b.name&&b.taunt); assert.equal(chanceWordIn(b.name+' '+b.taunt),'',id); assert.doesNotMatch(b.svg+b.name+b.taunt,/marvel|dc comics|spider-?man|batman|<image|href=/i,'drawn here, nobody else\'s art'); }
 assert.equal(bossById('nope'),BOSSES[DEFAULT_BOSS]);
 assert.equal(DEFAULT_STUDIO.bossCharacter,'scalper');assert.equal(DEFAULT_STUDIO.bossName,'THE SCALPER');

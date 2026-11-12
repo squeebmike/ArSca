@@ -12,7 +12,8 @@ assert.match(src, /from '\.\.\/assets\/vendor\/three-0\.160\.0\.module\.min\.js'
 for (const id of ['scalper', 'flipper', 'dinged', 'grader', 'shipping']) assert.match(src, new RegExp('\\n  ' + id + '\\(root\\) \\{'), 'a 3D model for ' + id);
 // Same boss list as the 2D sprites (the fallback) and the settings.
 const { BOSS_IDS } = await import('../scripts/live-studio-bosses.mjs');
-assert.deepEqual(BOSS_IDS, ['scalper', 'flipper', 'dinged', 'grader', 'shipping']);
+assert.deepEqual(BOSS_IDS, ['scalper', 'flipper', 'dinged', 'grader', 'shipping', 'mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon', 'hydra']);
+for (const id of BOSS_IDS) assert.match(src, new RegExp('\\n  ' + id + '\\(root\\) \\{'), 'a 3D model for ' + id);
 assert.match(src, /export function createBossView\(canvas/);
 assert.match(src, /export function createCoinLayer\(canvas/);
 assert.doesNotMatch(src, /Math\.random/, 'coin spreads come from a fixed sequence, not chance');
@@ -22,7 +23,7 @@ assert.match(src, /if \(!coins\.length && now >= rainUntil\) \{ cancelAnimationF
 const html = fs.readFileSync('arcade-overlay.html', 'utf8');
 for (const id of ['mana-boss-sprite', 'mana-boss-3d', 'mana-effect-boss', 'mana-coins-3d', 'mana-coins']) assert.match(html, new RegExp('id="' + id + '"'));
 assert.match(html, /family=Bangers&family=Luckiest\+Guy&family=Press\+Start\+2P/);
-assert.match(html, /live-studio-overlay\.mjs\?v=36/);
+assert.match(html, /live-studio-overlay\.mjs\?v=37/);
 
 const overlay = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8');
 // Loaded on the side: if WebGL or the module fails, the flat sprites stay.

@@ -79,7 +79,9 @@ function paintStats(next,fromSale) {
   // The boss's sprite and catchphrase, redrawn when the boss changes.
   if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // The boss bar's boss stomps in when the flask fills.
-  const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase)bossView?.enter();lastPhase=phase;
+  const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase){bossView?.enter();bossIntro(b,d);}lastPhase=phase;
+  bossRage(b,d);
+  if(b.defeated&&!lastDefeated&&b.show)bossKO();lastDefeated=!!b.defeated;
   paintDungeon(d);paintVote();
   $('mana-boss-name').textContent=b.name;
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
@@ -95,6 +97,7 @@ function paintStats(next,fromSale) {
     if(b.show){
       boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');bossView?.hit();
       const cr=$('mana-crawl');cr.classList.remove('hit');void cr.offsetWidth;cr.classList.add('hit');
+      bossCombo();
       const dmg=document.createElement('b');const wpn=d?.weapon;dmg.textContent=(wpn?wpn.icon+' '+wpn.hit+' ':'')+'-'+usd(stats.gross-before);$('mana-boss-hits').append(dmg);setTimeout(()=>dmg.remove(),1500);
     }
   }
@@ -180,6 +183,54 @@ const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic
 let fgImgs=[],fgUrls=[];
 function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgUrls=urls;fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
 let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgLast=0,fgIdx=0;
+// ── Boss fights (2026-11-12: "the bosses are lame") ──────────────────────
+// The entrance: lights flicker, a versus card slams in with the boss and its line.
+let lastDefeated=false,comboN=0,comboAt=0,rageKey='',rageSeen=-1;
+function bossIntro(b,d){
+  const el=$('mana-boss-intro');if(!el||!b)return;
+  $('mana-vs-floor').textContent='FLOOR '+(d?.floor||'')+' BOSS';$('mana-vs-name').textContent=b.name;$('mana-vs-taunt').textContent='"'+bossById(b.character).taunt+'"';
+  void drawBoss($('mana-vs-art'),b.character);
+  el.classList.remove('mana-hidden');el.querySelectorAll('*').forEach(n=>{n.style.animation='none';void n.offsetWidth;n.style.animation='';});
+  clearTimeout(bossIntro.t);bossIntro.t=setTimeout(()=>el.classList.add('mana-hidden'),3500);
+}
+// Hits within 25 seconds of each other chain into a combo.
+function bossCombo(){
+  const now=Date.now();comboN=now-comboAt<25000?comboN+1:1;comboAt=now;
+  if(comboN<2)return;
+  const el=$('mana-boss-combo');el.innerHTML='';const c=document.createElement('b');c.textContent=comboN+'-HIT COMBO!';el.append(c);
+}
+// At 2/3 and 1/3 of its HP the boss gets angry and pulls its move.
+function bossRage(b,d){
+  if(!b?.show||b.defeated||!d||d.phase!=='boss'){rageKey='';return;}
+  const key=b.character+'|'+d.floor,pct=b.pct??100,stage=pct<=33.4?2:pct<=66.7?1:0;
+  if(key!==rageKey){rageKey=key;rageSeen=stage;return;} // joining mid-fight: no replay
+  if(stage>rageSeen){rageSeen=stage;bossMove(b,stage);}
+}
+function bossMove(b,stage){
+  const box=$('mana-move');if(!box)return;box.innerHTML='';
+  const say=document.createElement('div');say.className='mana-rage';say.textContent=b.name+(stage>1?' IS FURIOUS!':' IS ANGRY!');box.append(say);
+  const move=bossById(b.character).move||'chomp',add=(cls,css={},text='')=>{const i=document.createElement('i');i.className=cls;Object.assign(i.style,css);if(text)i.textContent=text;box.append(i);return i;};
+  if(move==='barrage')for(let k=0;k<12;k++)add('st',{top:(140+((k*137)%1500))+'px',left:'0',animationDelay:(k*0.11)+'s'},'$'+(9+((k*7)%90))+'.99');
+  else if(move==='flood')add('water');
+  else if(move==='curse')add('curse');
+  else if(move==='fire'){add('fire');add('fire',{animationDelay:'.5s'});}
+  else if(move==='trash'){for(let k=0;k<8;k++)add('junk',{left:(80+k*120)+'px',top:'0','--dx':((k%2?1:-1)*(40+k*12))+'px',animationDelay:(k*0.12)+'s',background:k%3?'#c98a3c':'#9ca3af'});document.body.classList.add('mana-shake');setTimeout(()=>document.body.classList.remove('mana-shake'),1100);}
+  else if(move==='snatch'){const card=$('mana-card');if(card){card.classList.add('snatched');setTimeout(()=>card.classList.remove('snatched'),3000);}}
+  else{add('jaw top');add('jaw bottom');document.body.classList.add('mana-shake');setTimeout(()=>document.body.classList.remove('mana-shake'),1100);}
+  bossView?.hit();clearTimeout(bossMove.t);bossMove.t=setTimeout(()=>{box.innerHTML='';},3400);
+}
+// K.O.: the boss blows apart into comic pages and coins; K.O.! slams in.
+function bossKO(){
+  const el=$('mana-ko');if(!el)return;el.querySelectorAll('i').forEach(n=>n.remove());
+  const r=$('mana-boss')?.getBoundingClientRect(),cx=r?r.left+r.width/2:540,cy=r?r.top+r.height/2:500;
+  const COL=['#ef4444','#3b82f6','#facc15','#22c55e','#a855f7','#f97316'];
+  for(let k=0;k<24;k++){const a=k/24*Math.PI*2,dist=380+((k*97)%300),i=document.createElement('i');Object.assign(i.style,{left:cx+'px',top:cy+'px',background:COL[k%COL.length],'--dx':Math.round(Math.cos(a)*dist)+'px','--dy':Math.round(Math.sin(a)*dist+260)+'px','--rot':(((k*53)%720)-360)+'deg',animationDelay:(k%4)*0.04+'s'});el.append(i);}
+  el.classList.remove('on');void el.offsetWidth;el.classList.add('on');
+  if(coinLayer)coinLayer.burst(cx,cy,40);
+  clearTimeout(bossKO.t);bossKO.t=setTimeout(()=>el.classList.remove('on'),2800);
+}
+// Preview (the dashboard's): the fight moments on demand, to see them before a show.
+if(preview)window.manaBossFx={intro:bossIntro,move:bossMove,ko:bossKO,combo:bossCombo};
 function paintForeground(d,center){
   const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
   el.classList.toggle('mana-hidden',!on);if(!on)return;

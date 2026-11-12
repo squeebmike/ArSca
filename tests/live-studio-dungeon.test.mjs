@@ -428,3 +428,14 @@ console.log('live-studio-dungeon: ok');
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(ov.includes("reach=p.kind==='chest'?3:1.6") && ov.includes('FREE TO ENTER IN THE WHATNOT APP'));
 }
+{
+  // 2026-11-12: "the bosses are lame" -- each shed its own boss, and real fights.
+  const { bossForFloor, SHEDS } = await import('../scripts/live-studio-dungeon.mjs');
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map(bossForFloor), ['mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon']);
+  assert.equal(SHEDS[6], 'THE SHED BENEATH THE SHED'); assert.equal(bossForFloor(8), 'hydra'); assert.equal(bossForFloor(9), 'scalper');
+  const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
+  for (const k of ['function bossIntro(b,d)', 'function bossCombo()', 'function bossRage(b,d)', 'function bossMove(b,stage)', 'function bossKO()', "if(key!==rageKey){rageKey=key;rageSeen=stage;return;}", "setTimeout(()=>card.classList.remove('snatched'),3000)"]) assert.ok(ov.includes(k), k);
+  assert.ok(!/Math\.random/.test(ov.slice(ov.indexOf('function bossIntro'), ov.indexOf('function paintForeground'))), 'no chance in the fights');
+  const html = readFileSync(new URL('../arcade-overlay.html', import.meta.url), 'utf8');
+  for (const id of ['mana-boss-intro', 'mana-vs-art', 'mana-boss-combo', 'mana-move', 'mana-ko']) assert.ok(html.includes('id="' + id + '"'), id);
+}
