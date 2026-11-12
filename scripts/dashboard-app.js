@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.12.4-read-articles';
+const APP_VERSION = '2026.11.12.5-article-orders';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21895,7 +21895,7 @@ async function renderSubstackArticles(){
       <div style="min-width:0;flex:1;display:grid;gap:4px">
         <div style="font-weight:800;color:var(--text);font-size:12px">${escHtml(a.title)}</div>
         <div><span class="qpl-badge ${a.live?'good':'warn'}">${a.live?'ON THE SITE':'DRAFT'}</span> <span style="font-family:var(--font-mono);font-size:10px;color:var(--dim)">${a.publishedAt ? new Date(a.publishedAt).toLocaleDateString() : ''}</span></div>
-        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">👁 ${a.views} views · 👆 ${a.clicks} clicks on books · 📚 ${a.sold} sold ($${Number(a.soldTotal||0).toFixed(2)})</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text)">👁 ${a.views} views · 👆 ${a.clicks} clicks on books · 🛒 ${a.orders||0} website order${a.orders===1?'':'s'} from it · ${a.sold} book${a.sold===1?'':'s'} · $${Number(a.soldTotal||0).toFixed(2)}</div>
         ${a.summary ? `<div style="font-size:11px;color:var(--text);font-style:italic">${escHtml(a.summary)}</div>` : ''}
         <details class="sf-article-read" ontoggle="if(this.open&&!this.dataset.done){this.dataset.done=1;const f=this.querySelector('iframe');f.srcdoc=window._articleBodies[this.dataset.i];}" data-i="${i}"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--g);font-weight:700">📖 READ IT</summary>
           <iframe sandbox="allow-popups allow-popups-to-escape-sandbox" title="${escHtml(a.title)}" style="width:100%;height:70vh;border:1px solid var(--border);border-radius:6px;background:#fff;margin-top:6px"></iframe></details>
