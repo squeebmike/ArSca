@@ -458,3 +458,7 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 /* The merchant's wares (2026-11-12): each item's photo in the vote. */
 #mana-vote.merchant li img{width:64px;height:84px;object-fit:cover;border-radius:6px;border:3px solid #ffd84a;margin:0 10px 0 4px;vertical-align:middle;box-shadow:0 0 14px #ffd84a88}
 #mana-vote.merchant #mana-vote-title{color:#ffd84a}
+
+/* SHOW READY checklist (2026-11-12). */
+.mana-ready{list-style:none;margin:8px 0 14px;padding:0;display:grid;gap:4px;font-size:14px}
+.mana-ready li.ok{color:#9dff6a}.mana-ready li.no{color:#ffd84a}
