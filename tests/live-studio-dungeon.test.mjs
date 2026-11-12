@@ -358,7 +358,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(fp.propsFor(fp.layoutFor(1), 1).some(p => p.kind === 'pic' && Number.isInteger(p.idx)), 'the store\'s items stand in the hall');
   const L = fp.layoutFor(1), g = fp.buildMap(1).grid, e0 = fp.eyePose(L, g, 0.3); assert.equal(g[Math.floor(e0.y)][Math.floor(e0.x)], 0);
   const ov6 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
-  assert.ok(ov6.includes("const eye=fpLib.eyePose(fgCache.L,fgCache.grid,fgShown)") && ov6.includes('if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;'), 'props in front are the hall\'s props, beside and just ahead');
+  assert.ok(ov6.includes("const eye=fpLib.eyePose(fgCache.L,fgCache.grid,Math.min(0.99,fgShown+cam.scout))") && ov6.includes('if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;'), 'props in front are the hall\'s props, beside and just ahead');
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return;"), 'the hall hides what is passing in front');
   assert.ok(src.includes('export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H'), 'the window crawl has its default size');

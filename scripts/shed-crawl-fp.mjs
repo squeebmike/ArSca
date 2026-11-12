@@ -779,6 +779,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The 3D props' photos (scripts/prop-models.mjs bakeProps); null keeps the flat sprites.
     setModels(m) { models = m || null; },
+    // Where the camera's looking right now (the props in front follow the hall, not the screen).
+    view() { return { look, pitch: pitchNow, scout: scoutNow, fov: FOV }; },
     // The host's joystick: { yaw, pitch } (-1..1) to look; { action: 'scout' | 'back' }.
     setCamera(c = {}) { const now = performance.now(); if (c.action === 'scout') scoutAt = now; else if (c.action === 'back') backAt = now; else manual = { yaw: Math.max(-1, Math.min(1, Number(c.yaw) || 0)), pitch: Math.max(-1, Math.min(1, Number(c.pitch) || 0)), at: now }; },
     // The store's item photos for the walls (from loadPicture).
