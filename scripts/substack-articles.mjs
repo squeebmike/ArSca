@@ -190,11 +190,15 @@ export function articleReport({ items, stats = [], lines = [], sameComic, author
   }).sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
 }
 
+// A crawler, by its own name (Google, Bing, social previews, SEO tools, headless browsers).
+export const isBot = ua => !ua || /bot|crawl|spider|slurp|mediapartners|lighthouse|headless|preview|facebookexternalhit|embedly|quora link|whatsapp|python-requests|curl|wget|httpclient|ahrefs|semrush|bingpreview/i.test(String(ua));
 // Routes: the page's view/click beacon, the report, put on / take off the site, check Substack now.
 export async function handleArticleStudio(request, env, url, deps) {
   if (url.pathname === '/public/article-hit' && request.method === 'POST') {
     const slug = String(url.searchParams.get('s') || ''), kind = url.searchParams.get('k') === 'click' ? 'click' : 'view';
     if (!/^[a-z0-9-]{3,120}$/.test(slug)) return new Response(null, { status: 204 });
+    // Crawlers that run page scripts (Googlebot and friends) never count.
+    if (isBot(request.headers.get('User-Agent'))) return new Response(null, { status: 204 });
     const limited = await deps.enforceUsageLimit(env, 'article-hit:' + (request.headers.get('CF-Connecting-IP') || '') + ':' + slug + ':' + kind, kind === 'view' ? 3 : 10, 3600);
     if (!limited) await deps.supabaseAdminFetch(env, 'rpc/bump_article_stat', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ p_slug: slug, p_kind: kind }) }).catch(() => {});
     return new Response(null, { status: 204 });
