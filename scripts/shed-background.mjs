@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=15'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=16'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0, sharp = false;
@@ -222,30 +222,46 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const d = stats?.dungeon; if (!d) return;
         const last = Math.max(Number(stats.lastSaleAt) || 0, Number(d.lastAt) || 0), battery = last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / (6 * 60000))) : 1;
         const now = Date.now() + offset;
+        // The boss grabs the priciest item in NEXT UP and holds it up.
+        let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n;
+        const bossItem = grab ? picUrls.indexOf(grab.image) : -1;
+        taunt(d, grab);
         // BOSS ATTACKS (2026-11-12): at 2/3 and 1/3 of its HP the boss pulls its move in the arena.
-        const rk = d.boss.character + '|' + d.floor, stage = d.phase !== 'boss' ? -1 : d.pct <= 33.4 ? 2 : d.pct <= 66.7 ? 1 : 0;
-        if (rk !== rage.key) rage = { key: rk, seen: stage }; else if (stage > rage.seen) { rage.seen = stage; fp.attack(bosses.bossById(d.boss.character).move); }
-        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: Date.now() < testUntil ? 'boss' : d.phase, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), boxes: [0, 1].map(k => !!d.boxes?.[k]?.open), secret: d.secret ? { frac: d.secret.frac, broken: d.secret.broken } : null, merchant: stats.vote?.kind === 'merchant', day: fpm.dayPhase(stats.startedAt, now), weather: fpm.weatherFor(d.floor, now), battery, fork: d.fork || '', hideNear: hideNear });
+        const rk = d.boss.character + '|' + d.floor, rStage = d.phase !== 'boss' ? -1 : d.pct <= 33.4 ? 2 : d.pct <= 66.7 ? 1 : 0;
+        if (rk !== rage.key) rage = { key: rk, seen: rStage }; else if (rStage > rage.seen) { rage.seen = rStage; fp.attack(bosses.bossById(d.boss.character).move); }
+        fp.set({ floor: d.floor, shed: d.shed, pct: d.pct, phase: Date.now() < testUntil ? 'boss' : d.phase, bossItem, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), boxes: [0, 1].map(k => !!d.boxes?.[k]?.open), secret: d.secret ? { frac: d.secret.frac, broken: d.secret.broken } : null, merchant: stats.vote?.kind === 'merchant', day: fpm.dayPhase(stats.startedAt, now), weather: fpm.weatherFor(d.floor, now), battery, fork: d.fork || '', hideNear: hideNear });
         // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
         if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
         const urls = [...new Set([stage.now, ...(stage.next || []), ...shedPics].filter(x => x && x.image).map(x => x.image))].slice(0, 24), key = urls.join('|');
+        picUrls = urls;
         if (key !== picKey) { picKey = key; const all = [stage.now, ...(stage.next || []), ...shedPics]; picItems = urls.map(u => all.find(x => x && x.image === u) || null); const kinds = urls.map(u => all.find(x => x && x.image === u)?.kind || 'card'); Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list, kinds)); }
       };
       // THE CLOSE-UP (2026-11-12: "item images need to be clearer, so we can tell
       // what they are"): the item you're walking right past, sharp, with its name and price.
-      let picItems = [], cardAt = -1;
+      let picItems = [], cardAt = -1, picUrls = [], miniOn = true;
+      // THE MINI-MAP (2026-11-12): top left, filling in as you walk.
+      const mini = Object.assign(document.createElement('canvas'), { id: 'shed-mini' }), miniCtx = mini.getContext('2d'); document.body.append(mini);
+      setInterval(() => { mini.hidden = !miniOn || !stats?.dungeon; if (!mini.hidden) fp?.drawMap?.(miniCtx, { cell: 7 }); }, 300);
+      // THE BOSS'S TAUNT: a speech bubble -- the item it grabbed, then its own line, in turn.
+      const bubble = Object.assign(document.createElement('div'), { id: 'shed-taunt' }); document.body.append(bubble);
+      const taunt = (d, grab) => {
+        const up = d.phase === 'boss' || Date.now() < testUntil; bubble.classList.toggle('on', up && (Date.now() / 1000) % 14 < 7);
+        if (!up) return; const mine = grab && Math.floor(Date.now() / 14000) % 2 === 0;
+        bubble.textContent = d.boss.name + ': "' + (mine ? String(grab.title || 'THIS GRAIL').toUpperCase().slice(0, 48) + ' IS MINE!' : bosses.bossById(d.boss.character).taunt) + '"';
+      };
       const card = Object.assign(document.createElement('div'), { id: 'shed-item' }), cardImg = document.createElement('img'), cardTxt = document.createElement('b');
       cardImg.alt = ''; card.append(cardImg, cardTxt); document.body.append(card);
       setInterval(() => {
-        const i = fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null;
+        const boss = stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
         if (it && it.image) { if (cardAt !== i) { cardAt = i; cardImg.src = img(it.image); cardTxt.textContent = String(it.title || '').slice(0, 60) + (Number(it.price) > 0 ? '  ·  $' + Number(it.price).toFixed(2) : ''); cardTxt.hidden = !it.title; } card.classList.add('on'); }
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
       let hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
-        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { miniOn = m.settings.miniMap !== false; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
       setInterval(paint, 5000);
+      setInterval(() => { const d = stats?.dungeon; if (d) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
       if (pending) onState(pending);
