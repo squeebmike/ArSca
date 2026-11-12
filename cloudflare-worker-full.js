@@ -9149,6 +9149,11 @@ async function routeRequest(request, env, ctx) {
           return (data || []).map(shapeStorefrontItem).filter(isStorefrontItemAvailable);
         },
         listItems: e => optionalCatalogInventory(()=>fetchAllListableStorefrontItemsCached(e,ctx)), isAvailable: isStorefrontItemAvailable, itemSlug: itemDetailSlug,
+        listComicsForAlsoLove: async e => {
+          const { data, response } = await supabaseAdminFetch(e, `inventory_items?store_id=eq.${encodeURIComponent(ITEM_DETAIL_STORE_ID)}&status=eq.in_stock&data->>category=ilike.*comic*&select=id,data,status,created_at,updated_at&limit=1500`);
+          if (!response?.ok) throw new Error('Comics unavailable');
+          return (data || []).map(shapeStorefrontItem);
+        },
       });
       if (articleResponse) return articleResponse;
     }

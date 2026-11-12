@@ -7,6 +7,7 @@ import {catalogStoreCopyHtml,tcgplayerAffiliateUrl,marketplaceDisclosureHtml} fr
 import { renderBookAlertForm } from './book-alert-ui.mjs';
 import { afterFocAvailability } from './foc-preorders.mjs';
 import { articleStatsScript } from './substack-articles.mjs';
+import { fillImageAlts, linkBookMentions, alsoLove, quickAnswers, renderQuickAnswers } from './article-extras.mjs';
 // Comic articles at www.themanapocket.com/articles.
 //
 // Written in Webflow's CMS ("Comic Articles" collection) so they're edited in
@@ -485,7 +486,8 @@ export function renderArticlePage(article, statuses, related, deps) {
   const image = (main?.state === 'in_stock' ? main.cover : '') || article.image || main?.cover || '';
   const lead=dedupeArticleLeadImage(article.bodyHtml,image);
   const marketplace=renderArticleMarketplace(deps.articleMarketplace,affiliateTcgImages(refreshComicCoverFigures(lead.body,statuses,esc),esc),esc);
-  const contents=articleContents(marketplace.body,esc);
+  // Every image described, every book's first mention a link (2026-11-12).
+  const contents=articleContents(linkBookMentions(fillImageAlts(marketplace.body,article.title,main?.name||''),statuses),esc);
   const guide=releaseGuide(article.slug);
   const affiliateHero=tcgImageAffiliateUrl(image);
   const url = `https://www.themanapocket.com/articles/${article.slug}`;
@@ -496,6 +498,10 @@ export function renderArticlePage(article, statuses, related, deps) {
     ? `<section class="mp-books"><h2>More collector articles</h2>${related.map(a => `<div class="mp-book-row"><div><b><a href="/articles/${esc(a.slug)}" style="color:var(--wo-text,#fff);text-decoration:none">${esc(a.title)}</a></b><span>${esc(dateLabel(a.publishedAt))}</span></div></div>`).join('')}</section>`
     : '';
   const description = (article.summary || plainText(article.bodyHtml).slice(0, 180)).slice(0, 300);
+  // Quick answers (FAQ) and "You may also love" from the store's own catalog and stock.
+  const answers = renderQuickAnswers(quickAnswers(statuses), esc);
+  const picks = alsoLove({ text: article.title + ' ' + plainText(article.bodyHtml), statuses, comics: deps.alsoLoveComics || [] });
+  const loveHtml = picks.length ? `<section class="mp-books mp-also-love"><h2>You may also love</h2>` + renderStockCovers({ stock: picks.map(p => p.c) }, esc) + `<p class="mp-sub">${picks.map(p => esc(p.why)).filter((w, i, a) => a.indexOf(w) === i).slice(0, 4).join(' · ')}</p></section>` : '';
   return deps.pageShell({
     title: `${article.title} | The Mana Pocket`,
     description,
@@ -521,8 +527,8 @@ export function renderArticlePage(article, statuses, related, deps) {
       (image ? `<a href="${esc(affiliateHero||image)}" target="_blank" rel="${affiliateHero?'noopener sponsored':'noopener'}" aria-label="${affiliateHero?'View this card on TCGplayer':'Open full-size article image'}"><img class="mp-art-hero" width="660" height="1000" fetchpriority="high" decoding="async" src="${esc(image)}" alt="${esc(article.imageAlt || article.title)}"></a><p class="mp-art-meta">${affiliateHero?'Affiliate image link · View sellers on TCGplayer.':'Tap the image to see it full size.'}</p>` : '') +
       (image&&lead.caption?`<div class="mp-art-meta">${lead.caption}</div>`:'') + renderBuyBox(article, main, esc) +
       (main ? `<nav class="mp-art-shortcuts" aria-label="Book actions"><a href="#${bookAnchor(main)}">Covers &amp; availability</a><a href="/comics/search?q=${encodeURIComponent(comicKey(main.name).series)}">Find related comics</a><a href="#book-updates">Book updates</a></nav>` : '') +
-      `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + marketplace.after + facts + renderBooks(statuses, esc) + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
-      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : '') + (statuses.some(st=>st.stock?.length)?articleCartScript:'') + articleStatsScript(article.slug),
+      `<div class="mp-art-body">${contents.html}</div>` + (deps.releaseInventoryHtml || '') + marketplace.after + facts + renderBooks(statuses, esc) + answers + loveHtml + renderBookUpdates(article, deps.storeId, esc) + articleShoppingLinks(article) + more + `</article>` +
+      (statuses.some(st => st.options?.length) ? pickerScript(deps.storeId) : '') + ((statuses.some(st=>st.stock?.length)||picks.length)?articleCartScript:'') + articleStatsScript(article.slug),
   });
 }
 
@@ -578,6 +584,8 @@ export async function handleArticlesRequest(request, env, ctx, url, deps) {
       if(releaseGuide(slug)) pageDeps.releaseInventoryHtml=renderReleaseInventory(slug,await pageDeps.listItems(env).catch(()=>null),deps);
       pageDeps.articleMarketplace=await articleMarketplace(env,ctx,article,releaseGuide(slug),deps).catch(()=>null);
       const related = relatedArticles(article, articles);
+      // In-stock comics for "You may also love" (a light query, not the whole catalog).
+      pageDeps.alsoLoveComics = deps.listComicsForAlsoLove ? await deps.listComicsForAlsoLove(env).then(list => list.filter(i => deps.isAvailable(i) && Number(i.price) > 0).map(i => ({ id:i.id, name:i.name, category:i.category||'Comics', image:i.image||'', price:Number(i.price), available:i.quantity??i.qty, href:`/item/${encodeURIComponent(i.id)}/${encodeURIComponent(deps.itemSlug(i))}` }))).catch(() => []) : [];
       html = renderArticlePage(article, statuses, related, pageDeps);
     }
   }
