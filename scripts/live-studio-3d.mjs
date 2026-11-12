@@ -514,3 +514,29 @@ export function createCoinLayer(canvas, { width = 1080, height = 1920 } = {}) {
     get count() { return coins.length; },
   };
 }
+
+// ── the boss in the crawl's arena ───────────────────────────────────────────
+// The 3D boss photographed through one loop of its idle animation (8 frames),
+// facing you, so the first-person crawl can show it moving in the boss arena
+// (2026-11-12: "boss arenas"). Null without WebGL (the flat pixel boss stays).
+export function bakeBoss(id, { size = 96, frames = 8 } = {}) {
+  if (!BUILD[id]) id = 'scalper';
+  let r;
+  try { const c = document.createElement('canvas'); c.width = c.height = size; r = new THREE.WebGLRenderer({ canvas: c, alpha: true, antialias: false, preserveDrawingBuffer: true }); }
+  catch { return null; }
+  r.setPixelRatio(1); r.setSize(size, size, false); r.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene(); lights(scene);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.position.set(0, 0.2, 7.2); cam.lookAt(0, 0, 0);
+  const root = new THREE.Group(); scene.add(root);
+  const model = BUILD[id](root);
+  const out = document.createElement('canvas'); out.width = out.height = size; const ctx = out.getContext('2d', { willReadFrequently: true });
+  const shots = [], loop = TAU / 3.2;
+  for (let f = 0; f < frames; f++) {
+    const t = f / frames * loop, b = Math.sin(t * 3.2);
+    model.tick?.(t); root.position.y = b * 0.08; root.rotation.y = Math.sin(f / frames * TAU) * 0.15;
+    r.render(scene, cam); ctx.clearRect(0, 0, size, size); ctx.drawImage(r.domElement, 0, 0);
+    shots.push({ w: size, h: size, data: ctx.getImageData(0, 0, size, size).data });
+  }
+  r.dispose(); r.forceContextLoss?.();
+  return { frames: shots };
+}

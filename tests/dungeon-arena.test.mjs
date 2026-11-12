@@ -1,0 +1,43 @@
+// 2026-11-12: "Do 1 2 3" -- locked long boxes chat's taps open, boss arenas,
+// morning-to-night light with the weather only through open windows ("we're inside").
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const read = f => readFileSync(new URL('../' + f, import.meta.url), 'utf8');
+const D = await import('../scripts/live-studio-dungeon.mjs'), F = await import('../scripts/shed-crawl-fp.mjs'), M = await import('../scripts/live-studio-model.mjs');
+for (const f of ['scripts/shed-crawl-fp.mjs', 'scripts/live-studio-dungeon.mjs', 'scripts/prop-models.mjs']) assert.ok(!/Math\.random/.test(read(f)), 'no chance: ' + f);
+// 1. Locked long boxes: keys are chat's taps on this floor (never sales), opened once the crawl reaches them.
+assert.deepEqual(D.LOCKBOX_AT, F.LOCKBOX_AT, 'the crawl and the server agree where the boxes are');
+const s = { ...D.DUNGEON_DEFAULTS };
+let d = D.emptyDungeon();
+for (let i = 0; i < 5; i++) d = D.addTap(d, 'share', s).dungeon;
+assert.equal(d.floorTaps, 5);
+assert.deepEqual(D.boxesOf(d, s).map(b => [b.need, b.unlocked]), [[5, true], [10, false]]);
+assert.equal(D.boxesToOpen(d, s).length, 0, 'not reached yet');
+d = D.addMana(d, D.floorGoal(s, 1, d) * 0.7 - d.mana, s).dungeon;
+assert.deepEqual(D.boxesToOpen(d, s).map(b => b.k), [0], 'reached and unlocked');
+d = D.openBox(d, 0); assert.equal(D.boxesToOpen(d, s).length, 0);
+assert.equal(D.publicDungeon(d, s).boxes[0].open, true);
+const sales = D.addMana(D.emptyDungeon(), 60, s).dungeon; assert.equal(sales.floorTaps || 0, 0, 'sales are never keys');
+assert.equal(D.boxesOf(d, { ...s, lockboxTaps: 0 }).length, 0, 'off at 0');
+d = D.addMana(d, 100000, s).dungeon; assert.equal(d.floorTaps, 0, 'a new floor starts with no keys');
+const room = read('scripts/live-studio-room.mjs');
+assert.match(room, /openReachedBoxes\(s, now\) \{/);
+assert.match(room, /spot: 'THE LOCKED LONG BOX'/);
+assert.equal(M.makeEffect('found', { ...M.DEFAULT_STUDIO }, Date.now(), { spot: 'THE LOCKED LONG BOX', lockbox: 1 }).lockbox, 1);
+assert.ok(F.propsFor(F.layoutFor(3), 3).filter(p => p.kind === 'lockbox').length === 2);
+// 2. Boss arenas: most floors get the big room, torches and braziers; the 3D boss moves in it.
+let arenas = 0; for (let f = 1; f <= 20; f++) { const L = F.layoutFor(f); if (L.arena) { arenas++; assert.ok(L.bossAt && L.boss[2] >= 4); } }
+assert.ok(arenas >= 12, 'arenas: ' + arenas);
+const fp = read('scripts/shed-crawl-fp.mjs');
+assert.match(fp, /if \(sourceCanvas\.frames\?\.length\) \{ bossAnim = sourceCanvas;/);
+assert.match(read('scripts/live-studio-3d.mjs'), /export function bakeBoss\(id/);
+for (const f of ['scripts/live-studio-overlay.mjs', 'scripts/shed-background.mjs']) assert.match(read(f), /bakeBoss\?\.\(/, f);
+// 3. Morning to night by the show's clock; the weather is outside the windows.
+assert.equal(F.dayPhase(0), 'morning');
+const t0 = Date.UTC(2026, 10, 12, 18); assert.deepEqual([0.1, 0.5, 1.2, 2].map(h => F.dayPhase(t0, t0 + h * 3.6e6)), ['morning', 'day', 'sunset', 'night']);
+assert.equal(F.weatherFor(3, t0), F.weatherFor(3, t0), 'the same on every screen');
+assert.ok(['snow', 'clear', 'storm'].includes(F.weatherFor(1, Date.UTC(2026, 11, 20))), 'winter');
+let wins = 0; for (let f = 1; f <= 7; f++) { const m = F.buildMap(f); m.lights.filter(l => l.win).forEach(l => { wins++; assert.equal(m.zone[Math.floor(l.y) * F.GRID + Math.floor(l.x)], 0, 'windows only in the shed, not underground'); }); }
+assert.ok(wins >= 7, 'windows: ' + wins);
+assert.ok(M.publicStats({ ...M.emptyStats('x'), orders: { a: { at: 5, amount: 1 }, b: { at: 3, amount: 1 } } }, { ...M.DEFAULT_STUDIO, showId: 'x' }).startedAt === 3, 'the show clock starts at its first sale');
+console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');

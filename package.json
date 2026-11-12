@@ -3,7 +3,7 @@
   "version": "2026.07.14.2",
   "private": true,
   "scripts": {
-    "test": "node tests/deck-lab-payment.test.mjs && node tests/deck-lab-table-tools.test.mjs && node tests/deck-lab-pods.test.mjs && node tests/deck-lab-formats.test.mjs && node tests/deck-lab-battlefield.test.mjs && node tests/deck-lab-rooms.test.mjs && node tests/deck-lab-match.test.mjs && node tests/mtg-play-lessons.test.mjs && node tests/mtg-full-game.test.mjs && node tests/mtg-learning.test.mjs && node tests/november-releases.test.mjs && node tests/helpers/run-tests.mjs && node tests/secret-lair-prices.test.mjs && node tests/sports-checklist-shopping.test.mjs && node tests/sports-numbered-parallels.test.mjs && node tests/preorder-mobile-rollout.test.mjs && node tests/sports-archive-coverage.test.mjs && node tests/sports-card-number-search.test.mjs && node tests/sports-card-finder.test.mjs && node tests/substack-articles.test.mjs && node tests/article-extras.test.mjs && npm run test:prop-models && npm run test:articles-home-only",
+    "test": "node tests/deck-lab-payment.test.mjs && node tests/deck-lab-table-tools.test.mjs && node tests/deck-lab-pods.test.mjs && node tests/deck-lab-formats.test.mjs && node tests/deck-lab-battlefield.test.mjs && node tests/deck-lab-rooms.test.mjs && node tests/deck-lab-match.test.mjs && node tests/mtg-play-lessons.test.mjs && node tests/mtg-full-game.test.mjs && node tests/mtg-learning.test.mjs && node tests/november-releases.test.mjs && node tests/helpers/run-tests.mjs && node tests/secret-lair-prices.test.mjs && node tests/sports-checklist-shopping.test.mjs && node tests/sports-numbered-parallels.test.mjs && node tests/preorder-mobile-rollout.test.mjs && node tests/sports-archive-coverage.test.mjs && node tests/sports-card-number-search.test.mjs && node tests/sports-card-finder.test.mjs && node tests/substack-articles.test.mjs && node tests/article-extras.test.mjs && npm run test:prop-models && npm run test:articles-home-only && npm run test:dungeon-arena",
     "test:qa": "npm run test:parse",
     "test:card-lens-worker": "node tests/card-lens-worker-context.test.mjs",
     "test:smoke:manual": "playwright test --config=tests/playwright.config.js --workers=1",
@@ -274,7 +274,8 @@
     "test:catalog-tools": "node tests/reference-image-refresh.test.mjs && node tests/reference-price-refresh.test.mjs && node tests/catalog-highlights.test.mjs && node tests/collection-tools.test.mjs && node tests/catalog-availability.test.mjs && node tests/reference-set-cache.test.mjs && node tests/football-catalog-pages.test.mjs && node tests/secret-lair-pages.test.mjs && node tests/public-ebay-cache.test.mjs && node tests/pricecharting-collector.test.mjs && node tests/cloud-card-references.test.mjs && node tests/reference-validation.test.mjs && node tests/reference-coverage.test.mjs && node tests/reference-first-shopping.test.mjs",
     "test:licensed-sports": "node tests/licensed-sports-foundation.test.mjs && node tests/licensed-sports-pages.test.mjs",
     "test:prop-models": "node tests/prop-models.test.mjs",
-    "test:articles-home-only": "node tests/articles-home-only.test.mjs"
+    "test:articles-home-only": "node tests/articles-home-only.test.mjs",
+    "test:dungeon-arena": "node tests/dungeon-arena.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

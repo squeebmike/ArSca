@@ -52,6 +52,20 @@ const DUNGEON_PEEKS = [
 ];
 // How far along the walk the shed ends and the dungeon begins.
 export const DUNGEON_AT = 0.5;
+// Where the floor's two locked long boxes sit along the walk (live-studio-dungeon.mjs LOCKBOX_AT).
+export const LOCKBOX_AT = [0.62, 0.9];
+// TIME OF DAY (2026-11-12): the show starts in the morning and goes on into
+// the night -- by how long it's been since the show's first sale.
+export function dayPhase(startedAt, now = Date.now()) { if (!startedAt) return 'morning'; const h = (now - startedAt) / 3.6e6; return h < 0.4 ? 'morning' : h < 1 ? 'day' : h < 1.5 ? 'sunset' : 'night'; }
+// The weather outside the shed's windows: by the time of year and the floor
+// (a fixed pick, the same on every screen -- nothing drawn by chance).
+export function weatherFor(floor, now = Date.now()) {
+  const m = new Date(now).getMonth(), f = Math.max(1, floor | 0);
+  const pool = m === 11 || m <= 1 ? ['snow', 'clear', 'snow', 'storm'] : m <= 4 ? ['rain', 'clear', 'storm', 'clear'] : m <= 7 ? ['clear', 'storm', 'clear', 'rain'] : ['leaves', 'rain', 'clear', 'leaves'];
+  return pool[f % pool.length];
+}
+// The sky through a window, top to bottom, for the time of day.
+const SKY = { morning: [[255, 196, 150], [150, 196, 240]], day: [[110, 170, 245], [190, 225, 255]], sunset: [[90, 40, 110], [255, 130, 60]], night: [[8, 10, 30], [24, 30, 64]] };
 const seeded = seed => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
 export function generateLayout(floor) {
   const N = GRID, lo = 2, hi = N - 3;
@@ -79,9 +93,22 @@ export function generateLayout(floor) {
     // The boss room: 3 x 2 past the end of the hall, inside the walls.
     const [ex, ey] = route[route.length - 1], [px, py] = route[route.length - 2];
     const dx = Math.sign(ex - px), dy = Math.sign(ey - py);
-    const boss = dx ? [Math.max(1, Math.min(N - 4, dx > 0 ? ex + 1 : ex - 3)), Math.max(1, Math.min(N - 3, ey - 1)), 3, 2] : [Math.max(1, Math.min(N - 4, ex - 1)), Math.max(1, Math.min(N - 3, dy > 0 ? ey + 1 : ey - 2)), 3, 2];
+    let boss = dx ? [Math.max(1, Math.min(N - 4, dx > 0 ? ex + 1 : ex - 3)), Math.max(1, Math.min(N - 3, ey - 1)), 3, 2] : [Math.max(1, Math.min(N - 4, ex - 1)), Math.max(1, Math.min(N - 3, dy > 0 ? ey + 1 : ey - 2)), 3, 2];
     if (boss[0] < 1 || boss[1] < 1 || boss[0] + boss[2] > N - 1 || boss[1] + boss[3] > N - 1) continue;
-    const L = { route, boss, peeks: [], rooms: [], split: DUNGEON_AT };
+    // THE BOSS ARENA (2026-11-12: "boss arenas"): a big 5 x 5 hall past the
+    // end of the walk, when it fits without touching the hall.
+    // 5 x 5 if it fits (centred first, then slid to the side), else 4 x 4.
+    // Or pulled back over the end of the last stretch (you walk into it).
+    let big = false, bossAt = null; const lastSeg = new Set(); for (let k = 0; k <= Math.abs(ex - px) + Math.abs(ey - py); k++) lastSeg.add(key(ex - dx * k, ey - dy * k));
+    for (const sz of [5, 4]) for (const back of [0, 1, 2, 3]) for (const sh of [-(sz >> 1), -1, -(sz - 2), 0, -(sz - 1)]) {
+      if (big) break;
+      const A = dx ? [dx > 0 ? ex + 1 - back : ex - sz + back, ey + sh, sz, sz] : [ex + sh, dy > 0 ? ey + 1 - back : ey - sz + back, sz, sz];
+      let fits = A[0] >= 2 && A[1] >= 2 && A[0] + sz <= N - 2 && A[1] + sz <= N - 2;
+      for (let y = A[1] - 1; fits && y <= A[1] + sz; y++) for (let x = A[0] - 1; x <= A[0] + sz; x++) if (used.has(key(x, y)) && !lastSeg.has(key(x, y))) { fits = false; break; }
+      if (fits) { big = true; boss = A; }
+      if (fits) bossAt = [A[0] + sz / 2 + dx * (sz / 2 - 1.1), A[1] + sz / 2 + dy * (sz / 2 - 1.1)];
+    }
+    const L = { route, boss, arena: big, bossAt, peeks: [], rooms: [], split: DUNGEON_AT };
     // Two rummaging spots: a cell beside the hall, about a third and two thirds in.
     const picks = [PEEK_POOL[floor % 6], PEEK_POOL[(floor + 3) % 6]];
     for (const [j, at] of [[0, 0.3], [1, 0.64]]) {
@@ -219,14 +246,24 @@ export function buildMap(floor, fork = '') {
   for (const [rx, ry, rw, rh, th] of L.rooms || []) { const tx = ROOM_THEMES[th ?? 0]?.tex; if (tx) for (let y = ry - 1; y <= ry + rh; y++) for (let x = rx - 1; x <= rx + rw; x++) if (grid[y]?.[x]) grid[y][x] = tx; }
   for (const nk of L.nooks || []) { const [cx, cy] = nk.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = nk.tex; }
   for (const p of L.peeks) { const [cx, cy] = p.cell; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (grid[cy + dy]?.[cx + dx]) grid[cy + dy][cx + dx] = p.tex; }
-  for (let y = by - 1; y <= by + bh; y++) for (let x = bx - 1; x <= bx + bw; x++) if (grid[y]?.[x]) grid[y][x] = 5;
+  // The arena's walls: rune stone, a torch on every other one.
+  for (let y = by - 1; y <= by + bh; y++) for (let x = bx - 1; x <= bx + bw; x++) if (grid[y]?.[x]) grid[y][x] = L.arena ? ((x + y) % 2 ? 23 : 19) : 5;
   // Walls that face the walk and are racks or slab walls become frames for
   // the store's own item photos (1000 + n*100 + the wall's own texture, which
   // shows when there are no photos).
   let n = 0;
   for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) if ((grid[y][x] === 4 || grid[y][x] === 6 || (grid[y][x] === 12 && (x + y) % 2 === 0) || (grid[y][x] === 1 && (x * 7 + y * 3 + floor) % 3 === 0)) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => grid[y + dy][x + dx] === 0)) grid[y][x] = 1000 + (n++) * 100 + grid[y][x];
+  // WINDOWS (2026-11-12: "weather in the shed has to make sense, we're
+  // inside -- through open windows"): now and then a plain shed wall is an
+  // open window; the sky and the weather show through it, and daylight comes in.
+  const wins = [];
+  for (let y = 1; y < N - 1; y++) for (let x = 1; x < N - 1; x++) {
+    const c = grid[y][x]; if (zone[y * N + x] || !(c === 1 || c === 3 || c === 7) || (x * 5 + y * 7 + floor) % 7) continue;
+    const o = N4.find(([dx, dy]) => grid[y + dy][x + dx] === 0 && !zone[(y + dy) * N + x + dx]); if (!o) continue;
+    grid[y][x] = 24; wins.push({ x: x + 0.5 + o[0] * 0.8, y: y + 0.5 + o[1] * 0.8, win: true, nx: o[0], ny: o[1] });
+  }
   // Lights along the walk: bare bulbs in the shed, torches on the dungeon's walls.
-  const lights = [];
+  const lights = [...wins];
   for (let k = 0, step = 5 / total; k * step < 0.985; k++) {
     const t = 0.04 + k * step, p = poseAt(L, t), below = t > split;
     if (!below) { lights.push({ x: p.x, y: p.y, torch: false }); continue; }
@@ -235,6 +272,8 @@ export function buildMap(floor, fork = '') {
     lights.push({ x: p.x + (wx + 0.5 - p.x) * 0.55, y: p.y + (wy + 0.5 - p.y) * 0.55, torch: true });
   }
   for (const [rx, ry, rw, rh] of L.rooms || []) lights.push({ x: rx + rw / 2, y: ry + rh / 2, torch: !!zone[Math.floor(ry + rh / 2) * N + Math.floor(rx + rw / 2)] });
+  // The arena: a torch in each corner.
+  if (L.arena) for (const [cx, cy] of [[bx + 0.6, by + 0.6], [bx + bw - 0.6, by + 0.6], [bx + 0.6, by + bh - 0.6], [bx + bw - 0.6, by + bh - 0.6]]) lights.push({ x: cx, y: cy, torch: true, arena: true });
   return { grid, layout: L, zone, lights };
 }
 
@@ -321,6 +360,10 @@ function makeTextures(p) {
     21: tex(px => { stone(px); for (let k = 0; k < 12; k++) { px(k, k, [200, 200, 210]); px(k, Math.floor(k / 2), [180, 180, 190]); px(Math.floor(k / 2), k, [180, 180, 190]); } for (const r of [4, 8]) for (let a = 0; a <= r; a++) px(a, r - a, [170, 170, 180]); for (let y = 0; y < 26; y += 3) { fill(px, 22, y, 3, 2, [96, 92, 100]); px(23, y + 2, [60, 58, 64]); } }),
     // 22 a collapsed heap of long boxes in the stone, comics spilling out.
     22: tex(px => { stone(px); [[1, 18, 14, 7, 0], [15, 20, 16, 7, 1], [4, 11, 13, 7, 2], [17, 12, 12, 7, 0], [8, 4, 14, 7, 1]].forEach(([x, y, w, h, k]) => { fill(px, x, y, w, h, [196 - k * 14, 182 - k * 14, 150 - k * 12]); fill(px, x, y, w, 1, [222, 212, 186]); fill(px, x + 2, y + 3, 4, 2, [240, 236, 220]); }); [[3, 26], [12, 27], [21, 28], [27, 26]].forEach(([x, y], i) => fill(px, x, y, 5, 4, [[220, 50, 50], [50, 110, 220], [240, 190, 40], [60, 170, 80]][i])); }),
+    // 23 the arena: dark stone, a glowing red rune circle, an iron chain.
+    23: tex(px => { stone(px); for (let a = 0; a < 40; a++) { const r = a / 40 * Math.PI * 2; px(16 + Math.round(Math.cos(r) * 9), 15 + Math.round(Math.sin(r) * 9), [235, 44, 30]); } for (let k = -6; k <= 6; k++) { px(16 + k, 15 + Math.round(k * 0.6), [255, 90, 40]); px(16 + k, 15 - Math.round(k * 0.6), [255, 90, 40]); } for (let y = 0; y < 30; y += 3) { fill(px, 3, y, 3, 2, [96, 92, 100]); fill(px, 27, y + 1, 3, 2, [96, 92, 100]); } }),
+    // 24 an open window: a wooden frame and sill; the magenta is drawn as the sky outside.
+    24: tex(px => { boards(px); fill(px, 4, 4, 24, 20, [74, 46, 22]); fill(px, 6, 6, 20, 16, [255, 0, 255]); fill(px, 15, 6, 2, 16, [74, 46, 22]); fill(px, 3, 24, 26, 2, [120, 80, 42]); fill(px, 3, 26, 26, 1, [60, 36, 16]); }),
     8: tex(px => { fill(px, 0, 0, T, T, [30, 30, 36]); fill(px, 1, 1, 30, 30, [70, 70, 80]); for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const x = 2 + c * 10, y = 2 + r * 10, k = COV[(r * 3 + c) % COV.length]; fill(px, x, y, 8, 9, [220, 210, 160]); fill(px, x + 1, y + 1, 6, 4, k); fill(px, x + 1, y + 6, 6, 1, [60, 60, 60]); fill(px, x + 1, y + 7, 4, 1, [120, 120, 120]); px(x, y, [255, 255, 255]); } }),
   };
 }
@@ -433,10 +476,10 @@ const ANIM = {
 const SPRITE_GLOW = { chest: 'ygw', chestopen: 'ygwcs', arcade: 'msw', tv: 'sz', barrel: 'fy', crystal: 'cd', lavalamp: 'gl', candles: 'f', raccoon: 'w', cat: 'y', brazier: 'fy', bat: 'r', bat2: 'r', spider: 'r' };
 const SPRITE_SIZE = { chest: 0.85, chestopen: 0.85, arcade: 0.95, fridge: 0.7, skeleton: 0.85, tv: 0.6, gumball: 0.6, lavalamp: 0.5, duck: 0.3, candles: 0.4, cone: 0.45, mower: 0.55, gnome: 0.5, crystal: 0.6, barrel: 0.6, trashcan: 0.6, raccoon: 0.45, cat: 0.4, bones: 0.3, coffin: 0.5, brazier: 0.55, trapdoor: 0.45, rat: 0.16, rat2: 0.16, bat: 0.2, bat2: 0.2, spider: 0.5 };
 // The 3D-only props drawn flat when the 3D photos aren't there (no WebGL).
-const FLAT = { longbox: 'cardbox', longboxopen: 'comics', longboxstack: 'cardbox', shortbox: 'cardbox', crate: 'dollarbin' };
+const FLAT = { lockbox: 'cardbox', lockboxopen: 'comics', longbox: 'cardbox', longboxopen: 'comics', longboxstack: 'cardbox', shortbox: 'cardbox', crate: 'dollarbin' };
 // Each 3D prop's photo, as a share of the wall's height.
-const MODEL_SIZE = { chest: 0.95, chestopen: 0.95, rat: 0.55, bat: 0.6, spider: 0.75, longbox: 0.8, longboxopen: 0.85, longboxstack: 1.0, shortbox: 0.75, crate: 0.8, coffin: 0.85, bones: 0.6, brazier: 0.9 };
-const MODEL_GLOW = new Set(['chestopen', 'brazier']);
+const MODEL_SIZE = { lockbox: 0.85, lockboxopen: 0.9, chest: 0.95, chestopen: 0.95, rat: 0.55, bat: 0.6, spider: 0.75, longbox: 0.8, longboxopen: 0.85, longboxstack: 1.0, shortbox: 0.75, crate: 0.8, coffin: 0.85, bones: 0.6, brazier: 0.9 };
+const MODEL_GLOW = new Set(['chestopen', 'brazier', 'lockbox', 'lockboxopen']);
 // Critters move on their own; they never hide for the props passing in front.
 const CRITTERS = new Set(['rat', 'rat2', 'bat', 'bat2', 'spider']);
 // One prop, drawn big and crisp on a 2D canvas (the overlay's props in front
@@ -479,6 +522,10 @@ export function propsFor(layout, floor) {
     const things = ROOM_THEMES[th ?? 0]?.props || [];
     [[rx + 0.5, ry + 0.5], [rx + rw - 0.5, ry + rh - 0.5], [rx + rw - 0.5, ry + 0.5]].forEach(([x, y], j) => { if (things[j]) out.push({ x, y, kind: things[j], idx: picN++, face: Math.atan2(ry + rh / 2 - y, rx + rw / 2 - x) }); });
   }
+  // Two LOCKED long boxes down in the dungeon (chat's taps open them).
+  for (const [k, t] of LOCKBOX_AT.map((t, k) => [k, t])) { const p = poseAt(layout, t), side = k % 2 ? -0.36 : 0.36; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'lockbox', idx: k, face: Math.atan2(-Math.cos(p.ang) * side, Math.sin(p.ang) * side) }); }
+  // The arena: a brazier in each corner, bones on the floor.
+  if (layout.arena) { const [bx, by, bw, bh] = layout.boss; [[bx + 0.5, by + 0.5], [bx + bw - 0.5, by + 0.5], [bx + 0.5, by + bh - 0.5], [bx + bw - 0.5, by + bh - 0.5]].forEach(([x, y], j) => out.push({ x, y, kind: 'brazier', idx: 900 + j, face: Math.atan2(by + bh / 2 - y, bx + bw / 2 - x) })); out.push({ x: bx + 1.3, y: by + bh / 2 + 0.8, kind: 'bones', idx: 904, face: 0.6 }); }
   // Three treasure chests along the way (chat's goals open them).
   for (const [k, t] of [[0, 0.16], [1, 0.47], [2, 0.8]]) { const p = poseAt(layout, t), side = k % 2 ? 0.34 : -0.34; out.push({ x: p.x - Math.sin(p.ang) * side, y: p.y + Math.cos(p.ang) * side, kind: 'chest', idx: k, face: Math.atan2(-Math.cos(p.ang) * side, Math.sin(p.ang) * side) }); }
   return out;
@@ -530,13 +577,24 @@ export function eyePose(layout, grid, t) {
 export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null;
+  let pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0;
+  // The arena's spot: just inside it, from the end of the hall, looking at the boss.
+  function arenaPose(p, k) {
+    if (k < 0.002) return p;
+    const r = map.layout.route, [ex, ey] = r[r.length - 1], [bx, by] = map.layout.bossAt, d = Math.hypot(bx - ex - 0.5, by - ey - 0.5) || 1;
+    const ax = ex + 0.5 + (bx - ex - 0.5) / d * Math.max(0, d - 2.6), ay = ey + 0.5 + (by - ey - 0.5) / d * Math.max(0, d - 2.6), aang = Math.atan2(by - ay, bx - ax);
+    let da = aang - p.ang; while (da > Math.PI) da -= 2 * Math.PI; while (da < -Math.PI) da += 2 * Math.PI;
+    return { x: p.x + (ax - p.x) * k, y: p.y + (ay - p.y) * k, ang: p.ang + da * k };
+  }
   let state = { floor: 1, shed: 'GARDEN SHED', pct: 0, phase: 'floor', battery: 1, fork: '' }, map = buildMap(1), textures = makeTextures(PALETTES['GARDEN SHED']), props = propsFor(map.layout, 1);
   let first = true, shown = 0, target = 0, look = 0, peek = null, peekUntil = 0, done = new Set(), bossPx = null, raf = 0, last = 0, bob = 0, walking = false, dipAt = -99, fogMix = 0;
   const listeners = { peek: () => {} };
   let clockNow = 0, manual = { yaw: 0, pitch: 0, at: -1e9 }, scoutAt = -1e9, backAt = -1e9, pitchNow = 0, scoutNow = 0;
   function setBoss(sourceCanvas) {
+    bossAnim = null;
     if (!sourceCanvas) { bossPx = null; return; }
+    // The 3D boss, photographed through its idle animation (live-studio-3d.mjs bakeBoss).
+    if (sourceCanvas.frames?.length) { bossAnim = sourceCanvas; bossPx = sourceCanvas.frames[0]; return; }
     const c = sourceCanvas.getContext('2d'), d = c.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
     bossPx = { w: sourceCanvas.width, h: sourceCanvas.height, data: d.data };
   }
@@ -593,22 +651,32 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
   }
   function draw() {
     // The eye sits a little behind the walker (when there's room), so the view looks down the hall, not into the wall.
-    const pose = eyePose(map.layout, map.grid, Math.min(0.99, shown + scoutNow)), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
+    // A boss up: walk on into the arena and face it.
+    arenaK += ((state.phase === 'boss' && map.layout.arena && map.layout.bossAt ? 1 : 0) - arenaK) * 0.04;
+    const pose = arenaPose(eyePose(map.layout, map.grid, Math.min(0.99, shown + scoutNow)), arenaK), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
     const tm = clockNow / 1000, N = GRID, zone = map.zone;
     // Breathing while standing; a dip as you climb down the trapdoor.
     const dip = (clockNow - dipAt) / 1600, breathe = walking ? 0 : Math.sin(tm * 1.3) * VH * 0.006;
-    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
+    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + (state.phase === 'boss' ? Math.sin(tm * 37) * Math.max(0, Math.sin(tm * 0.9)) ** 3 * VH * 0.02 : 0) + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
     // Down in the dungeon the fog turns colder and darker.
     const inDeep = zone ? zone[Math.floor(pose.y) * N + Math.floor(pose.x)] : 0; fogMix += ((inDeep ? 1 : 0) - fogMix) * 0.05;
     const pal = { ...pal0, fog: pal0.fog.map((c, k) => Math.round(c * (1 - fogMix) + [4, 3, 8][k] * fogMix)) };
     const boss = state.phase === 'boss', rooms = map.layout.rooms || [];
+    // Daylight through the windows, the sky in them, the weather out there.
+    const day = state.day || 'day', wth = state.weather || 'clear', sky = SKY[day] || SKY.day, sunF = { morning: 0.9, day: 1.1, sunset: 0.6, night: 0 }[day] ?? 1;
+    const flash = wth === 'storm' && tm % 11 < 0.14;
+    if (bossAnim) bossPx = bossAnim.frames[Math.floor(tm * 8) % bossAnim.frames.length];
     // The lights near you, each flickering: bulbs buzz and now and then dip;
     // torches dance. (A fixed rhythm per light -- no chance, the same everywhere.)
     const near = [];
     for (let k = 0; k < bulbs.length; k++) { const b = bulbs[k]; if ((b.x - pose.x) ** 2 + (b.y - pose.y) ** 2 > 81) continue;
+      if (b.win) { if (sunF > 0 || flash) near.push({ ...b, f: flash ? 1.6 : sunF * (wth === 'clear' ? 1 : 0.7) }); continue; }
       const f = b.torch ? 0.78 + 0.14 * Math.sin(tm * 9 + k * 1.7) + 0.08 * Math.sin(tm * 23 + k * 3.1) : ((Math.floor(tm * 4) + k * 13) % 53 === 0 ? 0.3 : 0.93 + 0.07 * Math.sin(tm * 3 + k));
-      near.push({ x: b.x, y: b.y, torch: b.torch, f: f * (b.torch ? 1.15 : 0.9) }); }
+      // A boss up: the arena's torches roar.
+      near.push({ x: b.x, y: b.y, torch: b.torch, f: f * (b.torch ? (boss && b.arena ? 1.6 + 0.3 * Math.sin(tm * 13 + k) : 1.15) : 0.9) }); }
+    // Each locked long box's padlock glows a little.
+    for (const pr of props) if (pr.kind === 'lockbox' && !state.boxes?.[pr.idx] && (pr.x - pose.x) ** 2 + (pr.y - pose.y) ** 2 < 64) near.push({ x: pr.x, y: pr.y, torch: true, f: 0.55 + 0.15 * Math.sin(tm * 3 + pr.idx) });
     // Each chest glows: a warm gold pool of light around it, brighter while it's shut.
     for (const pr of props) if (pr.kind === 'chest' && (pr.x - pose.x) ** 2 + (pr.y - pose.y) ** 2 < 100) near.push({ x: pr.x, y: pr.y, torch: true, f: state.chests?.[pr.idx] ? 0.7 : 1.3 + 0.3 * Math.sin(tm * 2.4 + pr.idx) });
     let litO = 0;
@@ -631,6 +699,19 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         data[i] = t[ti] * l * (1 + o * 0.5) + pal.fog[0] * (1 - fog); data[i + 1] = t[ti + 1] * l * (0.96 + o * 0.08) + pal.fog[1] * (1 - fog); data[i + 2] = t[ti + 2] * l * (0.88 - o * 0.3) + pal.fog[2] * (1 - fog); data[i + 3] = 255;
       }
     }
+    // Out of the window: the sky's colour for the time of day, a tree line at
+    // the bottom, and the weather -- rain streaks, snow, leaves, lightning, stars.
+    const windowSky = (tx, ty, wx, x) => {
+      const v = (ty - 6) / 16, c = [0, 1, 2].map(k => sky[0][k] + (sky[1][k] - sky[0][k]) * v);
+      if (flash) return [235, 235, 255];
+      if (ty >= 18 && (ty >= 20 || (tx * 7 + Math.floor(wx * 9)) % 3)) return day === 'night' ? [6, 10, 12] : [30, 62, 34];
+      if (day === 'night' && (tx * 31 + ty * 17) % 23 === 0 && wth !== 'storm' && wth !== 'rain') return [240, 240, 210];
+      const g = tx + Math.floor(wx * 4) * 5;
+      if ((wth === 'rain' || wth === 'storm') && ((g + Math.floor(ty * 0.5 + tm * 30)) % 6 === 0)) return [c[0] * 0.6 + 90, c[1] * 0.6 + 100, c[2] * 0.6 + 120];
+      if (wth === 'snow' && (g * 13 + Math.floor(ty - tm * 8 + Math.sin(tm + g) * 2) * 7) % 11 === 0) return [250, 250, 255];
+      if (wth === 'leaves' && (g * 5 + Math.floor(ty - tm * 5) * 3 + Math.floor(tm * 3)) % 17 === 0) return [[214, 110, 30], [180, 60, 24], [230, 170, 40]][g % 3];
+      return wth === 'rain' || wth === 'storm' ? c.map(v2 => v2 * 0.62) : c;
+    };
     // Walls: one ray per column (DDA).
     for (let x = 0; x < VW; x++) {
       const cam = 2 * x / VW - 1, rx = dirX + planeX * cam, ry = dirY + planeY * cam;
@@ -652,6 +733,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const light = Math.min(1.2, Math.max(0.1, Math.min(1, 2 / (1 + dist * 0.42)) * (1 - Math.abs(cam) * 0.35) * (side ? 0.8 : 1) * batt) + bulbLight(pose.x + dist * rx, pose.y + dist * ry) * 0.4), wo = Math.min(1, litO * 0.6);
       for (let y = top; y <= bot; y++) {
         const ty = Math.min(th - 1, Math.floor((y - horizon + (h >> 1)) * th / h)), ti = (ty * tw + tx) * 3, i = (y * VW + x) * 4;
+        if (cell === 24 && t[ti] === 255 && t[ti + 1] === 0 && t[ti + 2] === 255) { const c = windowSky(tx, ty, wx, x); data[i] = c[0]; data[i + 1] = c[1]; data[i + 2] = c[2]; continue; }
         data[i] = t[ti] * light * (1 + wo * 0.5) + pal.fog[0] * (1 - light); data[i + 1] = t[ti + 1] * light * (1 + wo * 0.05) + pal.fog[1] * (1 - light); data[i + 2] = t[ti + 2] * light * (1 - wo * 0.3) + pal.fog[2] * (1 - light);
       }
     }
@@ -668,7 +750,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (mid > split && i % 2 === 0) { const cx = x0 + 0.5 + ux * len / 2, cy = y0 + 0.5 + uy * len / 2, a = tm * 1.3 + i; list.push({ x: cx + Math.cos(a) * 0.7, y: cy + Math.sin(tm * 1.7 + i) * 0.45, kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2', lift: (models ? 0.3 : 0.62) + Math.sin(tm * 2.3 + i) * 0.08, face: a + Math.PI / 2 }); }
       if (i % 3 === 0) list.push({ x: x0 + 0.5 - uy * 0.3, y: y0 + 0.5 + ux * 0.3, kind: 'spider', lift: (models ? 0.38 : 0.5) + Math.sin(tm * 0.8 + i) * 0.02, face: tm * 0.3 + i });
     }
-    if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss; list.push({ x: bx + bw / 2, y: by + bh / 2, kind: 'boss' }); }
+    if (boss && bossPx) { const [bx, by, bw, bh] = map.layout.boss; list.push({ x: map.layout.bossAt?.[0] ?? bx + bw / 2, y: map.layout.bossAt?.[1] ?? by + bh / 2, kind: 'boss', lift: map.layout.arena ? 0.06 + Math.sin(tm * 3.2) * 0.04 : 0 }); }
     const inv = 1 / (planeX * dirY - dirX * planeY);
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
@@ -678,11 +760,11 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && !CRITTERS.has(s.kind)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
       // A 3D prop: the photo taken from the angle you see it from (8 around), and its frame.
-      const named = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind, base = named === 'rat2' ? 'rat' : named === 'bat2' ? 'bat' : named;
+      const named = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind, base = named === 'rat2' ? 'rat' : named === 'bat2' ? 'bat' : named;
       const mdl = !pd && models?.[base] ? models[base] : null;
       let shot = null;
       if (mdl) { const rel = Math.atan2(pose.y - s.y, pose.x - s.x) - (s.face ?? 0), k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, fr = named === 'rat2' || named === 'bat2' ? 1 : base === 'brazier' ? (tm * 6 | 0) % 2 : 0; shot = mdl.frames[Math.min(fr, mdl.frames.length - 1)][k]; }
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? 1.5 : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? (map.layout.arena ? 1.9 : 1.5) : s.kind === 'eyes' ? 0.3 : pd ? 0.62 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
       const floorY = horizon + Math.floor(VH / tY / 2), top = (s.kind === 'eyes' ? horizon - size : floorY - size) - Math.floor((s.lift || 0) * VH / tY);
       const light = Math.max(0.15, Math.min(1, 2 / (1 + tY * 0.42)) * batt);
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
@@ -702,7 +784,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
             else if (how === 'card' && v >= 0.94 && uu >= 0 && uu < 1) col = [60, 60, 66];
           }
           else if (shot) { const bi = (Math.min(shot.h - 1, Math.floor(v * shot.h)) * shot.w + Math.min(shot.w - 1, Math.floor(u * shot.w))) * 4; if (shot.data[bi + 3] > 110) { col = [shot.data[bi], shot.data[bi + 1], shot.data[bi + 2]]; glow = MODEL_GLOW.has(base) && shot.data[bi] > 200; } }
-          else { const k0 = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'pic' ? 'comics' : s.kind, kind = SPRITES[k0] ? k0 : FLAT[k0] || 'comics', rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
+          else { const k0 = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind === 'pic' ? 'comics' : s.kind, kind = SPRITES[k0] ? k0 : FLAT[k0] || 'comics', rows = SPRITES[kind], row = rows[Math.floor(v * 16) - (16 - rows.length)], ch = row?.[Math.floor(u * 16)]; if (ch && ch !== '.') { col = SPRITE_COLORS[kind][ch]; glow = (SPRITE_GLOW[kind] || '').includes(ch); if (ANIM[kind]) col = ANIM[kind](ch, col, u, v, tm); } }
           if (!col) continue;
           const i = (sy * VW + sx) * 4, l = glow || s.kind === 'eyes' || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           data[i] = col[0] * l; data[i + 1] = col[1] * l; data[i + 2] = col[2] * l;
@@ -752,16 +834,36 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         ['#####', '.###.', '..#..'].forEach((row, ry2) => [...row].forEach((c, rx2) => { if (c !== '#') return; for (let yy = 0; yy < px; yy++) for (let xx = 0; xx < px; xx++) { const X = sx0 + (rx2 - 2) * px + xx, Y = sy0 + ry2 * px + yy; if (X < 0 || X >= VW || Y < 0 || Y >= VH || cTY > zbuf[X] + 0.2) continue; const i = (Y * VW + X) * 4; data[i] = 255; data[i + 1] = 210 + 40 * Math.sin(tm * 6); data[i + 2] = 60; } })); }
     }
     // Moths around the bulbs.
-    for (let k = 0; k < near.length; k++) { const b = near[k]; if (b.torch) continue;
+    for (let k = 0; k < near.length; k++) { const b = near[k]; if (b.torch || b.win) continue;
       for (let m = 0; m < 3; m++) { const a = tm * (2.4 + m * 0.7) + m * 2.1 + k, x = b.x + Math.cos(a) * 0.28, y = b.y + Math.sin(a * 1.3) * 0.28, z = 0.86 + Math.sin(a * 2) * 0.05;
         const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.25) continue;
         const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY); if (sx < 0 || sx >= VW || sy < 0 || sy >= VH || tY > zbuf[sx]) continue;
         const i = (sy * VW + sx) * 4; data[i] = 225; data[i + 1] = 215; data[i + 2] = 190; } }
+    // In through the open windows (we're inside): snow or leaves blowing in,
+    // dust floating in the sunbeam; rain stays out -- drips off the sill.
+    for (const b of near) {
+      if (!b.win) continue;
+      for (let m = 0; m < 6; m++) {
+        const rain = wth === 'rain' || wth === 'storm'; if (rain && m > 1) break;
+        if (!rain && wth === 'clear' && day !== 'morning' && day !== 'day') break;
+        const ph = (tm * (rain ? 0.9 : wth === 'leaves' ? 0.3 : 0.18) + m / 6) % 1, sw = Math.sin(tm * 1.7 + m * 2.3) * 0.18;
+        const x = b.x + b.nx * (rain ? 0.05 : ph * 1.6) + (b.ny ? sw : 0) - b.nx * 0.3, y = b.y + b.ny * (rain ? 0.05 : ph * 1.6) + (b.nx ? sw : 0) - b.ny * 0.3;
+        const z = rain ? 0.22 - ph * 0.22 : wth === 'clear' ? 0.45 + Math.sin(tm * 0.7 + m) * 0.15 : 0.62 - ph * 0.6;
+        const col = rain ? [150, 175, 210] : wth === 'snow' ? [240, 244, 255] : wth === 'leaves' ? [[206, 110, 30], [170, 60, 22], [226, 168, 40]][m % 3] : [255, 236, 170];
+        const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.25) continue;
+        const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY), w = tY < 2 ? 2 : 1;
+        for (let yy = sy; yy < sy + w; yy++) for (let xx = sx; xx < sx + w; xx++) { if (xx < 0 || xx >= VW || yy < 0 || yy >= VH || tY > zbuf[xx]) continue; const i = (yy * VW + xx) * 4; data[i] = col[0]; data[i + 1] = col[1]; data[i + 2] = col[2]; }
+      }
+    }
+    // The shed's light by the time of day: warm at sunset, dark and blue at
+    // night (the bulbs and the flashlight carry it). Down in the dungeon it's always night.
+    const shedK = 1 - fogMix;
+    if (shedK > 0.02 && (day === 'sunset' || day === 'night')) { const m = day === 'sunset' ? [1.1, 0.9, 0.72] : [0.52, 0.58, 0.82]; for (let i = 0; i < data.length; i += 4) { data[i] *= 1 + (m[0] - 1) * shedK; data[i + 1] *= 1 + (m[1] - 1) * shedK; data[i + 2] *= 1 + (m[2] - 1) * shedK; } }
     // A boss up: the room flushes red.
     if (boss) for (let i = 0; i < data.length; i += 4) data[i] = Math.min(255, data[i] * 1.18 + 10);
     // The bulbs themselves: little glowing dots up in the rafters.
     for (const b of near) {
-      if (b.torch) continue; // a torch's flame is on its wall
+      if (b.torch || b.win) continue; // a torch's flame is on its wall; a window is daylight
       const rx = b.x - pose.x, ry = b.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
       if (tY <= 0.2) continue;
       const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon - Math.floor(VH / tY * 0.42), r = Math.max(1, Math.floor(3 / tY));
