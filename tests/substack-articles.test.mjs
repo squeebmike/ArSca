@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { parseSubstackFeed, cleanSubstackHtml, isComicPost, suggestBooks, substackArticleFields, articleReport, articleStatsScript, SUBSTACK_FEEDS, runSubstackArticlesSync } from '../scripts/substack-articles.mjs';
+import { isBot, parseSubstackFeed, cleanSubstackHtml, isComicPost, suggestBooks, substackArticleFields, articleReport, articleStatsScript, SUBSTACK_FEEDS, runSubstackArticlesSync } from '../scripts/substack-articles.mjs';
 import { sameComic } from '../scripts/comic-articles.mjs';
 
 // A Substack feed the way Substack writes it (made-up posts).
@@ -78,4 +78,12 @@ assert.ok(page.includes('+ articleStatsScript(article.slug)'));
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.ok(worker.includes("runSubstackArticlesSync(env, articleStudioDeps(env))") && worker.includes("url.pathname === '/public/article-hit'"));
 assert.ok(fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8').includes('scripts/substack-articles.mjs'));
+// Crawlers don't count; people do.
+for (const ua of ['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0)', 'facebookexternalhit/1.1', 'Mozilla/5.0 HeadlessChrome/120', '', undefined]) assert.equal(isBot(ua), true, String(ua));
+for (const ua of ['Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36']) assert.equal(isBot(ua), false, ua);
+// Its own ARTICLES tab under MORE (2026-11-12), not inside Orders.
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), html = fs.readFileSync('dashboard.html', 'utf8');
+  assert.ok(app.includes("['articles', 'ARTICLES']") && app.includes("if(name === 'articles') setTimeout(()=>renderSubstackArticles(), 0);"));
+  const tab = html.slice(html.indexOf('<div id="tab-articles"'), html.indexOf('<!-- DATABASE VIEWER TAB'));
+  assert.ok(tab.includes('id="substack-articles-list"')); assert.equal(html.split('id="substack-articles-list"').length, 2, 'only in the ARTICLES tab'); }
 console.log('Substack articles: feed, clean-up, comic posts only, books, drafts, report and counters passed');

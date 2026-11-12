@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.12.2-sean-articles';
+const APP_VERSION = '2026.11.12.3-articles-tab';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -357,7 +357,7 @@ const SUBSCRIPTION_PLANS = {
   store:{ name:'Store', price:89, features:['Everything in Register','Inventory, buying and consignments','Staff, shows, tournaments and profit reporting'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists'] },
   pro:{ name:'Pro', price:149, features:['Everything in Store','Online listing tools','Advanced operations + multi-store'], capabilities:['research','checkout','sales','inventory','consignments','staff','shows','events','pulllists','marketplace','advanced'] }
 };
-const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',reports:'sales',orders:'sales',intake:'inventory',scout:'inventory',cardintake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',backlist:'pulllists',channels:'marketplace'};
+const TAB_CAPABILITY = {research:'research',sets:'research',wantlist:'research',display:'checkout',browse:'checkout',pos:'checkout',whatnot:'checkout',sales:'sales',reports:'sales',orders:'sales',articles:'sales',intake:'inventory',scout:'inventory',cardintake:'inventory',inventory:'inventory',locations:'inventory',restock:'inventory',grading:'inventory',consign:'consignments',shows:'shows',events:'events',pulllists:'pulllists',foc:'pulllists',backlist:'pulllists',channels:'marketplace'};
 function currentPlanCode(){ return SUBSCRIPTION_PLANS[window._subStatus?.plan_code] ? window._subStatus.plan_code : 'store'; }
 function hasPlanCapability(capability){ return !capability || SUBSCRIPTION_PLANS[currentPlanCode()].capabilities.includes(capability); }
 function planCanAccessTab(tab){ return hasPlanCapability(TAB_CAPABILITY[tab]); }
@@ -380,7 +380,7 @@ function roleCanAccessTab(tab){
 // have them. Not known yet, or the check failed = nothing hidden, so The
 // Mana Pocket never loses a tab to an outage; the Worker enforces the walls
 // on its own either way.
-const TAB_STORE_FEATURE = { foc:'comics', backlist:'comics', pulllists:'comics', channels:'ebay', orders:'website', phone:'sms', consign:'consignment', whatnot:'whatnot' };
+const TAB_STORE_FEATURE = { foc:'comics', backlist:'comics', pulllists:'comics', channels:'ebay', orders:'website', articles:'website', phone:'sms', consign:'consignment', whatnot:'whatnot' };
 const STORE_FEATURES_CACHE_KEY = 'store_features_v1';
 function currentStoreFeatures(){
   if(window._storeFeatures) return window._storeFeatures;
@@ -1612,6 +1612,7 @@ const MORE_TABS = [
   ['sales', 'SALES'],
   ['reports', 'REPORTS'],
   ['orders', 'ORDERS'],
+  ['articles', 'ARTICLES'],
   ['alerts', 'ALERTS'],
   ['wantlist', 'WANT LIST'],
   ['consign', 'CONSIGNMENT'],
@@ -18351,7 +18352,8 @@ function switchTab(name, btn){
   if(name === 'database') setTimeout(()=>window.ensureDatabasePanel?.(), 0);
   if(name === 'cardintake') setTimeout(()=>window.ensureCardIntakePanel?.(), 0);
   if(name === 'tasks') setTimeout(()=>window.ensureDailyTasksPanel?.(), 0);
-  if(name === 'orders') setTimeout(()=>{ renderOrdersBoard(); renderFocPreorderOrders(); renderStorefrontOrders(); renderSubstackArticles(); }, 0);
+  if(name === 'orders') setTimeout(()=>{ renderOrdersBoard(); renderFocPreorderOrders(); renderStorefrontOrders(); }, 0);
+  if(name === 'articles') setTimeout(()=>renderSubstackArticles(), 0);
   if(name === 'whatnot' && window.renderWhatnotBridge) setTimeout(()=>window.renderWhatnotBridge(), 0);
   if(name === 'sales' && window.renderExpensesPanel) setTimeout(()=>window.renderExpensesPanel(), 0);
   if(name === 'reports') setTimeout(ensureReportsPanel, 0);
