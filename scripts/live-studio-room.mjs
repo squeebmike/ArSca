@@ -186,6 +186,15 @@ export class ManaLiveStudio extends DurableObject {
   }
   // The store's in-stock item photos for the shed's walls and the props in
   // front (2026-11-11: "I don't see my items in the shed as we walk by").
+  // The host's camera (2026-11-12: "can I move the camera from the dashboard?
+  // joystick?"): look around, scout ahead, look back. Not saved -- only passed
+  // on to the screens; how far along the floor you are still comes from mana.
+  camera(input = {}) {
+    const clamp = v => Math.max(-1, Math.min(1, Number(v) || 0)), now = Date.now();
+    const cam = { yaw: clamp(input.yaw), pitch: clamp(input.pitch), action: ['scout', 'back'].includes(input.action) ? input.action : '', at: now };
+    this.broadcast({ type: 'camera', cam, serverNow: now });
+    return { cam };
+  }
   setPics(list) {
     const s = this.read();
     s.pics = validateStage({ now: null, next: (Array.isArray(list) ? list : []).slice(0, 24) }).next.filter(x => x.image).map(x => ({ title: x.title, image: x.image, ...(x.kind ? { kind: x.kind } : {}) }));

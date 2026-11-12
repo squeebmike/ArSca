@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=6'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=7'), import('./live-studio-bosses.mjs')]).then(([fpm, bosses]) => {
       let fp = null, topH = 0;
       const build = y => {
         const h = Math.max(300, Math.min(1920, Math.round(Number(y) || 850)));
@@ -223,7 +223,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (key !== picKey) { picKey = key; const all = [stage.now, ...(stage.next || []), ...shedPics], kinds = urls.map(u => all.find(x => x && x.image === u)?.kind || 'card'); Promise.all(urls.map(u => fpm.loadPicture(img(u)))).then(list => fp.setPictures(list, kinds)); }
       };
       let hideNear = true;
-      onState = m => { if (m.settings) { hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+      onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; } if (m.settings) { hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
       setInterval(paint, 5000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
@@ -242,6 +242,6 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     socket.onclose = ev => { if (ev.code === 1008) return; setTimeout(connect, Math.min(30000, 1000 * 2 ** Math.min(retry++, 5))); };
   }
   // Live Studio's preview: the dashboard sends the state (same page only), no socket.
-  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin || ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics }; onState(pending); });
+  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics }; onState(pending); });
   else if (!demo) connect();
 }

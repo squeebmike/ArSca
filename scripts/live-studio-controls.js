@@ -20,6 +20,9 @@
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button>
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
   </div>
+  <h3>🕹️ Camera</h3>
+  <small>Drag to look around the hall (up, down, left, right); let go and it eases back after 3 seconds. Works on the green screen, the crawl window and the preview.</small>
+  <div class="mana-joy-row"><div id="mana-joy" class="mana-joy" aria-label="Camera joystick"><i></i></div><div class="mana-joy-btns"><button type="button" id="mana-scout">🔭 SCOUT AHEAD</button><button type="button" id="mana-lookback">↩ LOOK BACK</button></div></div>
   <h3>Now playing &amp; next up</h3>
   <small>What's on screen as NOW PLAYING and NEXT STAGE (and what goes in the chests). Show Prep's LINE IT UP fills it; or find items here.</small>
   <div class="mana-row"><input id="mana-find" placeholder="Find an item in inventory to add…" autocomplete="off"></div>
@@ -100,6 +103,25 @@
   const form=host.querySelector('form'),status=host.querySelector('#mana-status'),frame=host.querySelector('iframe');
   let revision=0,connectedStore='',settings=null,stats=null,stage={now:null,next:[]},shedPicsCtl=[];
   function store(){return typeof getActiveStoreId==='function'?getActiveStoreId():'';}
+  // The camera joystick (2026-11-12): drag to look; sent a few times a second
+  // while dragging, to the show's screens and to the preview here.
+  function camSend(cam){
+    for(const f of host.querySelectorAll('.mana-preview iframe'))f.contentWindow?.postMessage({type:'mana-camera',cam},location.origin);
+    api('camera',cam).catch(e=>{if(!camSend.warned){camSend.warned=1;status.textContent='Camera: '+e.message;}});
+  }
+  function wireJoystick(){
+    const pad=host.querySelector('#mana-joy');if(!pad||pad.dataset.on)return;pad.dataset.on=1;const knob=pad.querySelector('i');let id=null,last=0,cur={yaw:0,pitch:0},timer=0;
+    const move=ev=>{const r=pad.getBoundingClientRect(),rad=r.width/2;let dx=(ev.clientX-r.left-rad)/rad,dy=(ev.clientY-r.top-rad)/rad;const m=Math.hypot(dx,dy);if(m>1){dx/=m;dy/=m;}
+      knob.style.transform=`translate(${dx*rad*0.62}px,${dy*rad*0.62}px)`;cur={yaw:Math.round(dx*100)/100,pitch:Math.round(-dy*100)/100};
+      const now=Date.now();if(now-last>220){last=now;camSend(cur);}else{clearTimeout(timer);timer=setTimeout(()=>{last=Date.now();camSend(cur);},230);}};
+    pad.addEventListener('pointerdown',ev=>{id=ev.pointerId;pad.setPointerCapture(id);pad.classList.add('on');move(ev);});
+    pad.addEventListener('pointermove',ev=>{if(ev.pointerId===id)move(ev);});
+    const up=ev=>{if(ev.pointerId!==id)return;id=null;pad.classList.remove('on');knob.style.transform='';clearTimeout(timer);camSend(cur);};
+    pad.addEventListener('pointerup',up);pad.addEventListener('pointercancel',up);
+    host.querySelector('#mana-scout').onclick=()=>camSend({action:'scout'});
+    host.querySelector('#mana-lookback').onclick=()=>camSend({action:'back'});
+  }
+  setTimeout(wireJoystick,0);
   async function api(path,body){
     if(typeof storeWorkerFetch!=='function')throw Error('Dashboard is still loading');
     // Not connected yet (a reload) or the dashboard switched stores: connect to
