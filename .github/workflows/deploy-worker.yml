@@ -52,6 +52,7 @@ on:
       - scripts/topps/bowman-prospect-sections.mjs
       - scripts/comic-articles.mjs
       - scripts/substack-articles.mjs
+      - scripts/article-extras.mjs
       - scripts/pull-list-page.mjs
       - scripts/cover-coming-soon.mjs
       - scripts/restock.mjs
