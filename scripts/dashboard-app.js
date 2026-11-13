@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.13.18-multi-show';
+const APP_VERSION = '2026.11.13.19-select-all';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18177,6 +18177,24 @@ function toggleInvBulkSelectAllPage(checked){
 // not just what's on the current page -- for a staffer who filtered down to
 // exactly what they want (e.g. Category=Pokemon, In Stock) and just wants
 // all of it, without paging through and checking each page by hand.
+// ONE TAP: unsold books from Whatnot shows that are over -> back in the shop as Buy It Now, at dashboard prices.
+async function endedAuctionsToBin(){
+  try {
+    const call = async preview => { const r = await storeWorkerFetch(WORKER + '/whatnot/ended-auctions-to-bin?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ preview }) }); const d = await r.json().catch(() => ({})); if(!r.ok || !d.ok) throw new Error(d.error || 'Could not reach Whatnot'); return d; };
+    const p = await call(true);
+    if(!p.count){ toast_dash('Nothing to move: no unsold books from Whatnot shows that are over.'); return; }
+    if(!confirm('Put ' + p.count + ' unsold book' + (p.count === 1 ? '' : 's') + ' from ended Whatnot shows back in your Whatnot shop as Buy It Now, at the dashboard price?\n\n' + p.names.join('\n') + (p.count > p.names.length ? '\n...and ' + (p.count - p.names.length) + ' more' : '') + '\n\nBooks lined up for a show still to come stay as auctions.')) return;
+    let done = 0; const problems = [];
+    for(let guard = 0; guard < 40; guard++){
+      toast_dash('Moving to Buy It Now: ' + done + ' of ' + p.count + '...');
+      const d = await call(false); done += Number(d.done || 0); problems.push(...(d.problems || []));
+      if(!d.left || !d.done) break;
+    }
+    if(typeof loadInventory === 'function'){ try { await loadInventory(); } catch(e) {} }
+    toast_dash(done + ' back in your Whatnot shop as Buy It Now' + (problems.length ? ' -- ' + problems.length + ' had a problem: ' + problems.slice(0, 2).join(' / ') : '.'));
+  } catch(e) { toast_dash(e.message || String(e)); }
+}
+window.endedAuctionsToBin = endedAuctionsToBin;
 function toggleInvBulkSelectAllFiltered(){
   filtered.forEach(i => inventoryBulkSelectedIds.add(i.id));
   renderTable();
@@ -18195,6 +18213,10 @@ function renderInvBulkBar(){
   const n = inventoryBulkSelectedIds.size;
   bar.style.display = n>0 ? '' : 'none';
   countEl.textContent = n>0 ? `${n} item${n===1?'':'s'} selected` : '';
+  // SELECT ALL MATCHING (store, 2026-11-13: "I click comics and not on Whatnot -- I should be able to select them all;
+  // the pagination makes me go to each page"): every item the filters show, across all pages, in one tap.
+  const allBtn = document.getElementById('inv-bulk-all-btn');
+  if(allBtn){ const total = (filtered || []).length, allIn = total > 0 && filtered.every(i => inventoryBulkSelectedIds.has(i.id)); allBtn.style.display = n>0 && total > 0 && !allIn ? '' : 'none'; allBtn.textContent = 'SELECT ALL ' + total + ' MATCHING'; }
 }
 
 // EXPORT TO WHATNOT CSV (Inventory bulk bar) hands the checked items to the

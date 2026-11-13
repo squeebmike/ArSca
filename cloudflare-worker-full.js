@@ -13795,6 +13795,40 @@ async function routeRequest(request, env, ctx) {
       const shows = await upcomingWhatnotShows(whatnotClient(env));
       return json({ ok: true, shows: shows.map(sh => ({ id: sh.id, title: sh.title, startsAt: sh.scheduled_start_at, url: sh.url || '' })) });
     }
+    // POST /whatnot/ended-auctions-to-bin { preview } -- ONE TAP (store, 2026-11-13: "add the 1 tap from last week's
+    // auctions to the bin ... and put them back to the prices in dashboard"): every book still in stock that's set to
+    // Whatnot auction (show only) and whose shows are all over -- not live, not scheduled -- goes back into the Whatnot
+    // shop as Buy It Now at its dashboard price. Books never added to a show, or lined up for one still to come, stay.
+    // preview: just the count and names. Up to 50 a call (the dashboard calls again until none are left).
+    if (url.pathname === '/whatnot/ended-auctions-to-bin' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const body = await request.json().catch(() => ({}));
+      const s = encodeURIComponent(storeId);
+      const rows = (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&data->>whatnotShowOnly=eq.true&status=eq.in_stock&select=id,status,data&limit=2000`)).data || [];
+      const inStock = rows.filter(r => Number(r.data?.quantity ?? r.data?.qty ?? 1) > 0);
+      const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
+      // Shows that aren't over: live now, or scheduled.
+      const active = new Set();
+      try { for (const sh of await upcomingWhatnotShows(deps.api)) active.add(String(sh.id)); } catch (e) { return json({ ok: false, error: 'Could not read your Whatnot shows: ' + e.message }, 502); }
+      try { const cur = await currentWhatnotShow(deps.api); if (cur?.live) active.add(String(cur.id)); } catch (_) {}
+      const ended = [];
+      for (const r of inStock) {
+        const link = await deps.kvGet(`whatnot-link:${storeId}:${r.id}`);
+        const shows = (link?.shows || []).map(String);
+        if (link?.productId && shows.length && shows.every(id => !active.has(id))) ended.push(r);
+      }
+      if (body.preview === true) return json({ ok: true, count: ended.length, names: ended.slice(0, 12).map(r => String(r.data?.name || r.data?.title || 'Item')) });
+      const batch = ended.slice(0, 50), now = new Date().toISOString();
+      // Buy It Now again: off show-only first (or the sync keeps it out of the shop), into the shop, then the
+      // dashboard's own price and count go out right away.
+      for (const r of batch) await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(r.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...(r.data || {}), whatnotShowOnly: false }, updated_at: now }) });
+      const results = await backToBuyItNow(batch.map(r => r.id), deps);
+      let pushed = null; try { pushed = await pushWhatnotItemsNow(env, ctx, storeId, batch.map(r => r.id)); } catch (e) { pushed = { error: e.message }; }
+      return json({ ok: true, done: results.filter(x => x.done).length, left: Math.max(0, ended.length - batch.length), problems: results.filter(x => x.error).map(x => { const r = batch.find(b => b.id === x.id); return (r?.data?.name || x.id) + ': ' + x.error; }).slice(0, 10), pushed: !!pushed && !pushed.error });
+    }
     // POST /whatnot/show-only { itemIds, showId } -- received FOC comics go
     // into the chosen show as auctions (50% of price or $4, whichever is
     // more) and are SHOW ONLY: never in the Buy It Now shop, and unsold ones

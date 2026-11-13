@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.11.13.18-multi-show">
+<meta name="version" content="2026.11.13.19-select-all">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1818,27 +1818,27 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/store-demand.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/buy-signal.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/query-routing.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/comic-demand.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/database-viewer.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/expenses.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.11.13.18-multi-show" defer></script>
+<script src="scripts/store-demand.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/buy-signal.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/query-routing.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/comic-demand.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/database-viewer.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/expenses.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.11.13.19-select-all" defer></script>
 <script src="scripts/research-loupe.js?v=b90e780e52" defer></script>
-<script src="scripts/card-compare.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.11.13.18-multi-show" defer></script>
+<script src="scripts/card-compare.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.11.13.19-select-all" defer></script>
 </head>
 <body>
 
@@ -1890,7 +1890,7 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.11.13.18-multi-show</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.11.13.19-select-all</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2092,6 +2092,7 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
   <!-- Bulk-action bar -- hidden until at least one row checkbox is checked. -->
   <div id="inv-bulk-bar" class="tc" style="display:none;align-items:center;gap:8px">
     <span id="inv-bulk-count" style="font-family:var(--font-mono);font-size:10px;color:var(--dim)"></span>
+    <button class="fb" id="inv-bulk-all-btn" style="color:var(--gold);font-weight:800" onclick="toggleInvBulkSelectAllFiltered(true)">SELECT ALL MATCHING FILTER</button>
     <span style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">WHATNOT:</span>
     <button class="fb" style="color:var(--g)" onclick="setWhatnotModeSelected('bin')" title="In your Whatnot shop as Buy It Now at the price here, kept 1:1">BUY IT NOW</button>
     <button class="fb" style="color:var(--purple)" onclick="setWhatnotModeSelected('auction')" title="Show only: out of your Buy It Now shop; sold as auctions in the shows you add them to">AUCTION</button>
@@ -2100,7 +2101,6 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
     <button class="fb" style="color:var(--purple)" onclick="addSelectedToWhatnotShowPicker()" title="Pick a scheduled Whatnot show: the selected items go in as auctions (set to Auction / show only)">ADD TO SHOW</button>
     <button class="fb" onclick="exportSelectedToWhatnotCsv()">EXPORT TO WHATNOT CSV</button>
     <button class="fb" onclick="clearWhatnotMarkSelected()" title="Took these down on Whatnot? Clears their 📺 WHATNOT mark">CLEAR WHATNOT MARK</button>
-    <button class="fb" onclick="toggleInvBulkSelectAllFiltered(true)">SELECT ALL MATCHING FILTER</button>
     <button class="fb" onclick="clearInvBulkSelection()">CLEAR SELECTION</button>
   </div>
   <!-- Table view -->
@@ -2976,14 +2976,15 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 </div>
 
 <!-- WHATNOT MODE TAB -->
-<link rel="stylesheet" href="assets/live-studio.css?v=2026.11.13.18-multi-show">
-<link rel="stylesheet" href="assets/byterider.css?v=2026.11.13.18-multi-show">
-<script src="scripts/live-studio-controls.js?v=2026.11.13.18-multi-show" defer></script>
+<link rel="stylesheet" href="assets/live-studio.css?v=2026.11.13.19-select-all">
+<link rel="stylesheet" href="assets/byterider.css?v=2026.11.13.19-select-all">
+<script src="scripts/live-studio-controls.js?v=2026.11.13.19-select-all" defer></script>
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
     <div style="font-family:var(--font-mono);font-size:10px;color:var(--dim);margin-bottom:10px">Listings, sales and stock sync with Whatnot automatically (1:1). Prep the show, run it in Live Studio, wrap it up after.</div>
     <div style="display:flex;gap:6px;margin-bottom:10px"><button class="hbtn" style="flex:1;padding:12px;color:var(--g)" onclick="openWhatnotShowPrep()">🎯 SHOW PREP</button><button class="hbtn" style="flex:1;padding:12px;color:var(--gold)" onclick="openWhatnotShowWrap()">📦 SHOW WRAP-UP</button></div>
+    <button class="hbtn" style="width:100%;margin-bottom:10px;padding:12px;color:var(--g)" onclick="endedAuctionsToBin()" title="Every book still in stock from Whatnot shows that are over goes back in your Whatnot shop as Buy It Now, at its dashboard price">↩ UNSOLD FROM ENDED SHOWS → BUY IT NOW</button>
     <button class="hbtn" style="width:100%;margin-bottom:10px;color:var(--purple)" onclick="openWhatnotLinkListings()" title="Tie listings you put on Whatnot by CSV to their inventory items, so they sync 1:1">🔗 LINK OLD WHATNOT LISTINGS</button>
     <div id="mana-live-studio"></div>
     <details id="whatnot-older-tools" class="panel" style="margin-top:14px" ontoggle="whatnotOlderToolsToggled(this.open)">
@@ -4145,9 +4146,9 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.11.13.18-multi-show"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.11.13.18-multi-show" defer></script>
-<script src="scripts/reference-audit-dashboard.js?v=2026.11.13.18-multi-show" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.11.13.19-select-all"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.11.13.19-select-all" defer></script>
+<script src="scripts/reference-audit-dashboard.js?v=2026.11.13.19-select-all" defer></script>
 </body>
 </html>
 
