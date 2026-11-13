@@ -656,7 +656,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
   let clockOffset = 0; const shared = () => ((Date.now() + clockOffset) % 3.6e6) / 1000;
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
-  let lastView = null, hitAt = -1e9, chestBurst = {}, revealed = new Uint8Array(GRID * GRID), lastPose = null, seenPic = null, pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
+  let koAt = -1e9, koUntil = 0, pendingSet = null, arriveAt = -1e9, bossRect = null, lastView = null, hitAt = -1e9, chestBurst = {}, revealed = new Uint8Array(GRID * GRID), lastPose = null, seenPic = null, pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
   // The arena's spot: just inside it, from the end of the hall, looking at the boss.
   function arenaPose(p, k) {
     if (k < 0.002) return p;
@@ -677,7 +677,13 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     const c = sourceCanvas.getContext('2d'), d = c.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
     bossPx = { w: sourceCanvas.width, h: sourceCanvas.height, data: d.data };
   }
-  function set(next) {
+  function set(next, afterKo = false) {
+    // THE BOSS GOES DOWN (2026-11-13: "keep going -- what else does it need?"):
+    // the arena holds for the knockout (2.6 s), then you go down to the next floor.
+    if (koUntil > performance.now()) { pendingSet = { ...(pendingSet || {}), ...next }; return; }
+    if (!afterKo && !first && state.phase === 'boss' && next.floor > state.floor && bossPx && map.layout.arena) { koAt = performance.now(); koUntil = koAt + 2600; pendingSet = next; setTimeout(() => { const n = pendingSet; pendingSet = null; koUntil = 0; if (n) set(n, true); }, 2650); return; }
+    // A new floor: you climb down and stand up in the dark, the light comes up.
+    if (!first && next.floor > state.floor) arriveAt = performance.now();
     const floorChanged = first || next.floor !== state.floor || next.shed !== state.shed; first = false;
     const forkChanged = (next.fork || '') !== (state.fork || '');
     // A chest that just opened bursts (not one already open when you join).
@@ -691,7 +697,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     target = state.phase === 'boss' ? 1 : Math.max(0, Math.min(1, state.pct / 100));
     // Joining partway (or a reload): what's already been walked shows on the map.
     if (floorChanged || forkChanged) for (let t = 0; t <= target; t += 0.004) { const p = poseAt(map.layout, t); for (let y = Math.floor(p.y) - 3; y <= Math.floor(p.y) + 3; y++) for (let x = Math.floor(p.x) - 3; x <= Math.floor(p.x) + 3; x++) if (x >= 0 && y >= 0 && x < GRID && y < GRID && (x + 0.5 - p.x) ** 2 + (y + 0.5 - p.y) ** 2 <= 10) revealed[y * GRID + x] = 1; }
-    if (floorChanged) { shown = target; if (shown >= (map.layout.split ?? DUNGEON_AT)) done.add('down'); }
+    if (floorChanged) { shown = target; arenaK = 0; look = 0; if (shown >= (map.layout.split ?? DUNGEON_AT)) done.add('down'); } // a new floor: not still standing in the old arena
   }
   function frame(now) {
     raf = requestAnimationFrame(frame);
@@ -751,7 +757,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     if (atk && atkA >= 1) atk = null;
     // Breathing while standing; a dip as you climb down the trapdoor.
     const dip = (clockNow - dipAt) / 1600, breathe = walking ? 0 : Math.sin(tm * 1.3) * VH * 0.006;
-    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + atkShake + (clockNow - hitAt < 420 ? Math.sin(tm * 61) * (1 - (clockNow - hitAt) / 420) * VH * 0.03 : 0) + (clockNow - crumbleAt < 1400 ? Math.sin(tm * 43) * (1 - (clockNow - crumbleAt) / 1400) * VH * 0.04 : 0) + (state.phase === 'boss' ? Math.sin(tm * 37) * Math.max(0, Math.sin(tm * 0.9)) ** 3 * VH * 0.02 : 0) + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
+    const pal0 = PALETTES[state.shed] || PALETTES['GARDEN SHED'], data = img.data, horizon = (VH >> 1) + Math.round(Math.sin(bob) * 1.5 + breathe + pitchNow * VH * 0.28 + atkShake + (clockNow - arriveAt < 1500 ? -((1 - (clockNow - arriveAt) / 1500) ** 2) * VH * 0.22 : 0) + (clockNow - koAt < 700 ? Math.sin(tm * 53) * (1 - (clockNow - koAt) / 700) * VH * 0.05 : 0) + (clockNow - hitAt < 420 ? Math.sin(tm * 61) * (1 - (clockNow - hitAt) / 420) * VH * 0.03 : 0) + (clockNow - crumbleAt < 1400 ? Math.sin(tm * 43) * (1 - (clockNow - crumbleAt) / 1400) * VH * 0.04 : 0) + (state.phase === 'boss' ? Math.sin(tm * 37) * Math.max(0, Math.sin(tm * 0.9)) ** 3 * VH * 0.02 : 0) + (dip > 0 && dip < 1 ? Math.sin(dip * Math.PI) * VH * 0.12 : 0));
     // Down in the dungeon the fog turns colder and darker.
     const inDeep = zone ? zone[Math.floor(pose.y) * N + Math.floor(pose.x)] : 0; fogMix += ((inDeep ? 1 : 0) - fogMix) * 0.05;
     const pal = { ...pal0, fog: pal0.fog.map((c, k) => Math.round(c * (1 - fogMix) + [4, 3, 8][k] * fogMix)) };
@@ -899,7 +905,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     lastView = { pose, dirX, dirY, planeX, planeY, inv, horizon };
     list.map(s => ({ ...s, d: (s.x - pose.x) ** 2 + (s.y - pose.y) ** 2 })).sort((a, b) => b.d - a.d).forEach(s => {
       const rx = s.x - pose.x, ry = s.y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry);
-      if (tY <= 0.15 || (CRITTERS.has(s.kind) && !s.swoop && tY < 0.8)) return; // a critter right in your face isn't drawn huge
+      if (tY <= 0.15 || (CRITTERS.has(s.kind) && !s.swoop && tY < 0.8)) return;
+      if (s.kind === 'boss' && clockNow - koAt < 2600) { const rx2 = s.x - pose.x, ry2 = s.y - pose.y; bossRect = { scx: Math.floor((VW / 2) * (1 + (inv * (dirY * rx2 - dirX * ry2)) / tY)), top: horizon + Math.floor(VH / tY / 2) - Math.floor(Math.floor(VH / tY) * (map.layout.arena ? 1.9 : 1.5)), size: Math.floor(Math.floor(VH / tY) * (map.layout.arena ? 1.9 : 1.5)), tY }; return; } // a critter right in your face isn't drawn huge
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
       if (s.kind === 'eyes' && (tm / 5 + (s.idx || 0) * 0.37) % 1 < 0.05) return; // they blink
       if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && (!CRITTERS.has(s.kind) || s.swoop)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05; if (FG ? !close : close) return; } else if (FG) return;
@@ -927,7 +934,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         const u = (sx - (scx - (size >> 1))) / size;
         for (let sy = Math.max(0, top); sy < Math.min(VH, top + size); sy++) {
           const v = (sy - top) / size; let col = null, glow = false;
-          if (s.kind === 'boss') { const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
+          if (s.kind === 'boss') { bossRect = { scx, top, size, tY }; const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
           else if (pd) {
             // The store's item, by what it is: a comic leaning in the hall, a
             // sealed box on a folding table, a card in a top loader on a stand.
@@ -1066,6 +1073,25 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const e2 = mv === 'snatch' ? 1 : env;
       if (tint && !FG) for (let i = 0; i < data.length; i += 4) { data[i] *= 1 + (tint[0] - 1) * e2; data[i + 1] *= 1 + (tint[1] - 1) * e2; data[i + 2] *= 1 + (tint[2] - 1) * e2; }
     }
+    // THE KNOCKOUT: the boss blows apart into pieces that tumble and fall; a
+    // spray of gold coins flies at you (in front of the hosts when it's close).
+    const kt = (clockNow - koAt) / 2600;
+    if (kt >= 0 && kt < 1 && bossRect && bossPx) {
+      const { scx, top, size, tY: bTY } = bossRect, bs = Math.max(2, Math.floor(size / 8)), T6 = kt * 6;
+      if (!FG) for (let gy = 0; gy < 8; gy++) for (let gx = 0; gx < 8; gx++) {
+        const ox = scx - (size >> 1) + gx * bs + (gx - 3.5) * bs * 0.9 * T6 * 0.6, oy = top + gy * bs - (8 - gy) * bs * 0.35 * T6 + 0.9 * bs * T6 * T6, fl = Math.max(0, 1 - kt * 4);
+        for (let yy = 0; yy < bs; yy++) for (let xx = 0; xx < bs; xx++) { const X = Math.floor(ox + xx), Y = Math.floor(oy + yy); if (X < 0 || X >= VW || Y < 0 || Y >= VH || bTY > zbuf[X] + 0.5) continue;
+          const bi = ((Math.floor((gy * bs + yy) / size * bossPx.h)) * bossPx.w + Math.floor((gx * bs + xx) / size * bossPx.w)) * 4; if (bossPx.data[bi + 3] < 128) continue;
+          const i = (Y * VW + X) * 4; data[i] = bossPx.data[bi] + (255 - bossPx.data[bi]) * fl; data[i + 1] = bossPx.data[bi + 1] + (255 - bossPx.data[bi + 1]) * fl; data[i + 2] = bossPx.data[bi + 2] + (255 - bossPx.data[bi + 2]) * fl; } }
+      const Bk = map.layout.bossAt || [map.layout.boss[0] + map.layout.boss[2] / 2, map.layout.boss[1] + map.layout.boss[3] / 2];
+      for (let k = 0; k < 36; k++) { const ph = Math.min(1, kt * 1.8 + (k % 6) * 0.03), wob = Math.sin(k * 2.4) * 1.1 * ph, z = 0.6 + Math.sin(ph * Math.PI) * 0.35 - ph * 0.3 + Math.cos(k * 1.7) * 0.1;
+        const x = Bk[0] + (pose.x - Bk[0]) * ph * 0.92 - Math.sin(pose.ang) * wob, y = Bk[1] + (pose.y - Bk[1]) * ph * 0.92 + Math.cos(pose.ang) * wob, rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.25) continue;
+        const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY), r = Math.max(1, Math.round(0.035 * VH / tY)), spin = Math.abs(Math.sin(tm * 9 + k));
+        for (let yy = -r; yy <= r; yy++) for (let xx = -Math.ceil(r * spin); xx <= Math.ceil(r * spin); xx++) { const X = sx + xx, Y = sy + yy; if (X < 0 || X >= VW || Y < 0 || Y >= VH || tY > zbuf[X] + 0.3) continue; fx((Y * VW + X) * 4, xx === 0 ? [255, 250, 200] : [255, 200, 40], 1, tY); } }
+      if (kt < 0.1) for (let i = 0; i < data.length; i += 4) scr(i, [255, 255, 255], 0.55 * (1 - kt / 0.1));
+    }
+    // Arriving on a new floor: the light comes up.
+    const arr = (clockNow - arriveAt) / 1500; if (!FG && arr >= 0 && arr < 1) { const k = arr * arr; for (let i = 0; i < data.length; i += 4) { data[i] *= k; data[i + 1] *= k; data[i + 2] *= k; } }
     // A boss up: the room flushes red.
     if (boss && !FG) for (let i = 0; i < data.length; i += 4) data[i] = Math.min(255, data[i] * 1.18 + 10);
     // A chest opening: a burst of gold flying up and out, and a flash of light (2.5 seconds).

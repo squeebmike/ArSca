@@ -149,4 +149,11 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   // Every polish piece is fixed (no chance) and keeps the same time on every screen.
   assert.ok(!/Math\.random/.test(fp));
 }
+// 12. The knockout and the next floor (2026-11-13: "keep going -- what else does it need?").
+{
+  assert.match(fp, /koUntil = koAt \+ 2600; pendingSet = next;/, 'the arena holds for the knockout');
+  assert.match(fp, /if \(n\) set\(n, true\); \}, 2650\)/, 'then the next floor -- once (no second knockout)');
+  assert.match(fp, /THE KNOCKOUT: the boss blows apart/); assert.match(fp, /Arriving on a new floor: the light comes up/);
+  assert.match(fp, /shown = target; arenaK = 0; look = 0;/, 'a new floor never starts in the old arena');
+}
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');
