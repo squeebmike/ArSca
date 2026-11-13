@@ -271,7 +271,7 @@ import('./beasts.mjs?v=4').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d)
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=2').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+import('./vending.mjs?v=3').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 function paintBeasts(d){

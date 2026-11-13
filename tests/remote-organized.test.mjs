@@ -7,7 +7,12 @@ assert.match(ctl, /function organize\(\)\{/); assert.match(ctl, /setTimeout\(org
 assert.match(ctl, /d\.addEventListener\('toggle',\(\)=>put\(name,d\.open\?'open':'closed'\)\)/, 'every section folds and remembers');
 assert.match(ctl, /'👁 SHOW \/ HIDE SECTIONS'/, 'any section can be hidden');
 assert.match(ctl, /host\.querySelectorAll\('\[data-click\*="mana-mascot"\]'\)\.forEach\(b=>\{b\.hidden=!!off;\}\)/, 'hiding ByteRider_97 hides his buttons too');
-assert.match(ctl, /for\(const n of \['🎬 Show ready','Now playing & next up','🎮 Game','🕹️ Camera','🥤 Vending machine'\]\)/, 'the remote in show order');
+assert.ok(ctl.includes("for(const n of ['🎮 Game','🗡 Dungeon controls','👾 Beasts controls','Now playing & next up','🥤 Vending machine'])"), 'the remote in show order');
+// Each game's controls in its own section (2026-11-13: "have each game in its own section for controls, buttons etc.").
+assert.ok(ctl.indexOf('<h3>🗡 Dungeon controls</h3>') < ctl.indexOf('id="mana-add-mana"') && ctl.indexOf('id="mana-add-mana"') < ctl.indexOf('<h3>👾 Beasts controls</h3>'), 'the dungeon\'s controls together');
+assert.ok(ctl.indexOf('<h3>👾 Beasts controls</h3>') < ctl.indexOf('id="beast-add-go"') && ctl.indexOf('id="beast-add-go"') < ctl.indexOf('<h3>Now playing &amp; next up</h3>'), 'Beasts\' controls together');
+assert.ok(ctl.indexOf('id="mana-show-ready"') > ctl.indexOf('<h3>🗡 Dungeon controls</h3>') && ctl.indexOf('id="mana-joy"') > ctl.indexOf('<h3>🗡 Dungeon controls</h3>'), 'show ready and the camera are the dungeon\'s');
+assert.ok(css.includes('.mana-controls [hidden]{display:none!important}'), 'phone-friendly: hidden is hidden');
 assert.ok(ctl.includes('id="game-dungeon"') && ctl.includes('id="game-beasts"'), 'the game in one tap');
 assert.ok(bg.includes("const d = settings0.gameMode === 'beasts' ? (stats?.beasts || { floor: 1, route: 1, pct: 0, phase: 'floor' }) : stats?.dungeon;"), 'the preview shows Beasts before Connect (its own track)');
 assert.ok(css.includes('details.mana-sec>summary'));

@@ -255,7 +255,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       // screen behind the hosts while it's on (the remote's VENDING MACHINE).
       // Now drawn by scripts/vending.mjs (2026-11-13 polish): small or full screen behind the hosts, a BID button on every slot.
       let drawMachine = () => {}, lastMachine = null; const vmLook = () => ({ theme: settings0.gameMode === 'beasts' ? 'gb' : '' });
-      import('./vending.mjs?v=2').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
+      import('./vending.mjs?v=3').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
       // THE BATTLE ON THE GREEN SCREEN (2026-11-13: "I may also want the pokemon game thing to also be the green screen ... I want the option"):
       // with WHERE THE BATTLE SHOWS on BEHIND US, the battle is drawn here, behind the hosts, instead of on the overlay.
       const bcv = Object.assign(document.createElement('canvas'), { id: 'shed-battle', hidden: true }); document.body.append(bcv);
