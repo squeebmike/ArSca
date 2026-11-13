@@ -20,6 +20,10 @@
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=merchant]">🧙 MERCHANT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button>
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
   </div>
+  <h3>🎬 Show ready</h3>
+  <small>One tap loads the dungeon from your comics in stock: comics on every wall and stand, NEXT UP (if it's empty -- SHOW PREP's lineup stays), the chests' and floors' rewards (free giveaways for everyone, low starts on your best books), and special books for the merchant.</small>
+  <button type="button" id="mana-show-ready" style="width:100%;min-height:58px;font-size:17px;font-weight:800">🎬 LOAD THE DUNGEON FROM STOCK (COMICS)</button>
+  <ul id="mana-ready" class="mana-ready"></ul>
   <h3>🕹️ Camera</h3>
   <small>Drag to look around the hall (up, down, left, right); let go and it eases back after 3 seconds. Works on the green screen, the crawl window and the preview.</small>
   <div class="mana-joy-row"><div id="mana-joy" class="mana-joy" aria-label="Camera joystick"><i></i></div><div class="mana-joy-btns"><button type="button" id="mana-scout">🔭 SCOUT AHEAD</button><button type="button" id="mana-test-attack">⚔️ TEST BOSS ATTACK (preview)</button><button type="button" id="mana-lookback">↩ LOOK BACK</button></div></div>
@@ -55,7 +59,7 @@
   <div class="mana-grid">${num('floorBase','Floor 1 goal ($)',1,1000000)}${num('floorGrowth','Each floor needs (+%)',0,500)}${num('bossShare','Floor boss HP (% of the floor goal)',1,500)}${num('manaFollow','Follow = mana',0,1000)}${num('manaShare','Share = mana',0,1000)}${num('manaBookmark','Bookmark = mana',0,1000)}${num('starsPerFloor','Stars per floor cleared',0,10)}${num('finaleBoost','Finale: +% goal per star',0,500)}</div>
   <label>Floor rewards (one per line, "3: Free giveaway in the Whatnot tool")<textarea name="floorRewards" maxlength="1200"></textarea></label>
   <label>Room rewards (when a floor has no reward of its own; rooms: vault, library, armory, forge, crypt, lab -- "vault: $1 start on a grail")<textarea name="roomRewards" maxlength="1200"></textarea></label>
-  <div class="mana-grid">${box('centerStage','CENTER STAGE: big mana bar across the middle, boss stands on it')}${box('miniMap','MINI-MAP: top-left corner of the green screen, fills in as you walk')}${box('crawlSharp','SHARPER DUNGEON: more pixels on the green screen (uses more of the streaming computer)')}${num('giveawayChests','Giveaway chests (the first N chests each floor are a free giveaway)',0,3)}${num('secretTaps','Cracked wall: comes down at N follows/shares/bookmarks on a floor; a secret vault behind it (0 = off)',0,500)}${num('lockboxTaps','Locked long boxes: open every N follows/shares/bookmarks on a floor (0 = off)',0,100)}${num('panelAlpha','Panel opacity % (0 = clear, 100 = solid: score board, card, map, sign)',0,100)}${box('crawlWindow','CRAWL WINDOW over the top camera (off: the crawl is the green-screen background)')}${box('foreground','PROPS IN FRONT: shed junk and chests slide past in front of you')}${num('triviaMana','Trivia mana',0,1000)}${box('showMap','Show the dungeon map + relic shelf')}${num('mapX','Map left',0,900)}${num('mapY','Map top',0,1700)}</div>
+  <div class="mana-grid">${box('centerStage','CENTER STAGE: big mana bar across the middle, boss stands on it')}${box('dungeonComics','COMICS ONLY: the walls and stands in the shed and dungeon show comics')}${box('miniMap','MINI-MAP: top-left corner of the green screen, fills in as you walk')}${box('crawlSharp','SHARPER DUNGEON: more pixels on the green screen (uses more of the streaming computer)')}${num('giveawayChests','Giveaway chests (the first N chests each floor are a free giveaway)',0,3)}${num('secretTaps','Cracked wall: comes down at N follows/shares/bookmarks on a floor; a secret vault behind it (0 = off)',0,500)}${num('lockboxTaps','Locked long boxes: open every N follows/shares/bookmarks on a floor (0 = off)',0,100)}${num('panelAlpha','Panel opacity % (0 = clear, 100 = solid: score board, card, map, sign)',0,100)}${box('crawlWindow','CRAWL WINDOW over the top camera (off: the crawl is the green-screen background)')}${box('foreground','PROPS IN FRONT: shed junk and chests slide past in front of you')}${num('triviaMana','Trivia mana',0,1000)}${box('showMap','Show the dungeon map + relic shelf')}${num('mapX','Map left',0,900)}${num('mapY','Map top',0,1700)}</div>
   <label>This show's unlocks (one per line, by the show's sales, "100: Shoutout to everyone in chat")<textarea name="showUnlocks" maxlength="1200"></textarea></label>
   <label>Treasure chests: chat goals this week, one per line (follows, shares, bookmarks or taps), e.g. "10 follows: Free giveaway in the Whatnot tool" or "25 taps: Open a box on stream"<textarea name="chestGoals" maxlength="1200" placeholder="10 follows: Free giveaway in the Whatnot tool"></textarea></label>
   <small>Chests open on chat's follows, shares and bookmarks -- never on sales -- and the prize is for everyone watching.</small>
@@ -122,6 +126,7 @@
     pad.addEventListener('pointerup',up);pad.addEventListener('pointercancel',up);
     host.querySelector('#mana-scout').onclick=()=>camSend({action:'scout'});
     host.querySelector('#mana-lookback').onclick=()=>camSend({action:'back'});
+    const sr=host.querySelector('#mana-show-ready');if(sr)sr.onclick=()=>{if(confirm('Load the dungeon from your comics in stock? It replaces the chest, floor and room rewards'+((stage.next||[]).length<5?' and fills NEXT UP':'')+'.'))run(showReady);};
     // TEST A BOSS ATTACK (2026-11-12): the preview only -- into the arena, the boss pulls its move.
     const ta=host.querySelector('#mana-test-attack');if(ta)ta.onclick=()=>{for(const f of host.querySelectorAll('.mana-preview iframe'))f.contentWindow?.postMessage({type:'mana-attack'},location.origin);};
   }
@@ -138,7 +143,7 @@
   }
   const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
   function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}preview();}
-  function took(d){if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}preview();}
+  function took(d){if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}preview();readyList();}
   // The dungeon's status line: floor, mana, stars, the week's reset.
   function paintDungeon(){
     const d=stats?.dungeon,el=host.querySelector('#mana-dungeon-status'),pick=host.querySelector('#mana-doors-pick');pick.replaceChildren();
@@ -158,7 +163,7 @@
   // The green-screen shed sits behind the top camera in the preview too (2026-11-11).
   function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined,effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
-  async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{});loadFacts();return d;}
+  async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
   host.querySelector('#mana-load').onclick=()=>run(connect);
   // Connect on its own once the dashboard is signed in.
   (function autoConnect(tries){if(connectedStore)return;if(typeof storeWorkerFetch==='function'&&store()){connect().catch(()=>{if(tries<5)setTimeout(()=>autoConnect(tries+1),4000);});}else if(tries<20)setTimeout(()=>autoConnect(tries+1),1500);})(0);
@@ -254,18 +259,53 @@
   }
   // The shed's walls show the store's own in-stock items: the most valuable
   // ones with photos, a different set each day; sent when you connect.
+  let chanceFn=()=>''; // Whatnot's rules: nothing that reads as a game of chance on screen
   async function sendShedPics(current){
     const day=Math.floor(Date.now()/86400000);
     // Comics, cards, sealed, collectibles -- every category takes turns (2026-11-11:
     // "we need comics and stuff too"); supplies stay out of the shed.
     const groups=new Map();
-    for(const i of inventory()){if(i.status!=='in_stock'||!(https(i.thumbnail)||https(i.imageUrl)))continue;const cat=String(i.category||'Other');if(/suppl|bcw|accessor/i.test(cat+' '+(i.vendor||'')))continue;const it=stageItem(i);if(!it.image||!it.title)continue;if(!groups.has(cat))groups.set(cat,[]);groups.get(cat).push(it);}
+    const comicsOnly=values().dungeonComics!==false;
+    for(const i of inventory()){if(i.status!=='in_stock'||!(https(i.thumbnail)||https(i.imageUrl)))continue;const cat=String(i.category||'Other');if(/suppl|bcw|accessor/i.test(cat+' '+(i.vendor||'')))continue;if(comicsOnly&&!/comic/i.test(cat))continue;const it=stageItem(i);if(!it.image||!it.title||chanceFn(it.title+' '+it.detail))continue;if(!groups.has(cat))groups.set(cat,[]);groups.get(cat).push(it);}
     const lists=[...groups.values()].map(l=>l.sort((a,b)=>(b.price||0)-(a.price||0)).slice(0,30));
     if(!lists.length)return;
-    const pick=[];for(let k=0;pick.length<24&&k<24*lists.length;k++){const l=lists[k%lists.length],n=Math.floor(k/lists.length);if(n<l.length)pick.push(l[(day*5+n*3)%l.length]);}
+    const pick=[];for(let k=0;pick.length<24&&k<24*lists.length;k++){const l=lists[k%lists.length],n=Math.floor(k/lists.length);if(n<l.length)pick.push(l[(day*7+n)%l.length]);} // each in turn, starting somewhere new each day (no repeats)
     const uniq=[...new Map(pick.map(p=>[p.image,p])).values()];
     if(JSON.stringify((current||[]).map(p=>p.image))===JSON.stringify(uniq.map(p=>p.image)))return;
     took(await api('pics',{pics:uniq}));
+  }
+  // SHOW READY (2026-11-12: "polish this up so I'm show ready -- pre load the
+  // dungeon rewards and items based on what I have in stock. Keep it comics").
+  const SPECIAL=/\b1\s*:\s*\d+|\bratio\b|incentive|glow|foil|holo|virgin|signed|autograph|sketch|1st app|first app|variant|\bcgc\b|\bcbcs\b/i;
+  const short=t=>String(t||'').replace(/\s+/g,' ').trim().slice(0,58);
+  function stockComics(){return inventory().filter(i=>i.status==='in_stock'&&/comic/i.test(String(i.category||''))&&(https(i.thumbnail)||https(i.imageUrl))&&Number(i.qty??1)>0).map(stageItem).filter(c=>c.title&&c.image);}
+  function readyList(){
+    const el=host.querySelector('#mana-ready');if(!el)return;const v=values(),d=stats?.dungeon,n=(stage.next||[]).length;
+    const rows=[[!!connectedStore,'Remote connected to the show'],[v.dungeonOn!==false,'The dungeon is on'],[!!v.showId,'Whatnot show picked (Show: CURRENT SHOW)'],[n>=10,'NEXT UP: '+n+' items'+(n<10?' (10+ is best -- SHOW PREP or LOAD)':'')],[shedPicsCtl.length>=12,'Item photos on the walls: '+shedPicsCtl.length],[!!String(v.chestGoals||'').trim(),'Chest rewards set'],[!!String(v.floorRewards||'').trim(),'Floor rewards set'],[(stage.next||[]).some(x=>SPECIAL.test(x.title+' '+(x.detail||''))),'Special books in NEXT UP for the merchant'],[!!d,'The overlay has the dungeon ('+(d?'floor '+d.floor:'not yet')+')']];
+    el.replaceChildren(...rows.map(([ok,t])=>{const li=document.createElement('li');li.className=ok?'ok':'no';li.textContent=(ok?'✅ ':'⚠️ ')+t;return li;}));
+  }
+  async function showReady(){
+    // Nothing that reads as a game of chance goes on screen (Whatnot's rules).
+    const comics=stockComics().filter(c=>!chanceFn(c.title+' '+c.detail));
+    if(comics.length<6)throw Error('Need at least 6 comics in stock with photos.');
+    const byPrice=[...comics].sort((a,b)=>(b.price||0)-(a.price||0)),grails=byPrice.slice(0,8);
+    const cheap=comics.filter(c=>c.price>0&&c.price<=8).sort((a,b)=>a.price-b.price),gifts=cheap.length>=3?cheap:[...byPrice].reverse().slice(0,6);
+    const g=k=>short(gifts[k%gifts.length].title),top=k=>short(grails[k%grails.length].title);
+    // NEXT UP: SHOW PREP's lineup stays; empty, it's 20 comics -- a few specials for the merchant, big books spread through.
+    let next=stage.next||[],fill=false;
+    if(next.length<5){fill=true;const specials=byPrice.filter(c=>SPECIAL.test(c.title+' '+c.detail)).slice(0,6),rest=byPrice.filter(c=>!specials.includes(c)),mid=rest.slice(Math.floor(rest.length/3)),out=[];
+      for(let k=0;out.length<20&&k<60;k++){const src=k%3===2&&specials.length?specials:k%2?mid:rest;const c=src.shift();if(c&&!out.includes(c))out.push(c);}
+      next=out;}
+    const f=form.elements;
+    f.namedItem('chestGoals').value=['5 follows: Free giveaway for everyone -- '+g(0),'10 shares: Free giveaway for everyone -- '+g(1),'25 taps: Low start on '+top(0)].join('\n');
+    f.namedItem('floorRewards').value=[1,2,3,4,5,6,7].map(n=>n+': '+(n%2?'Free giveaway for everyone -- '+g(n+1):'Low start on '+top(n>>1))).join('\n');
+    f.namedItem('roomRewards').value=['vault: Low start on '+top(1),'library: Free giveaway for everyone -- '+g(5),'armory: Low start on '+top(2),'forge: Free giveaway for everyone -- '+g(6),'crypt: Free giveaway for everyone -- '+g(7),'lab: Low start on '+top(3)].join('\n');
+    if(f.namedItem('dungeonComics'))f.namedItem('dungeonComics').checked=true;
+    const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);
+    if(fill)await saveStage({now:stage.now||next[0]||null,next:stage.now?next:next.slice(1)});
+    await sendShedPics(null);
+    readyList();
+    status.textContent='Show ready: '+comics.length+' comics in stock'+(fill?', NEXT UP filled with '+next.length:'')+', rewards and wall photos loaded.';
   }
   async function saveStage(next){const d=await api('stage',{stage:next});took(d);status.textContent=next.now?'Now playing: '+next.now.title:'Now playing cleared.';}
   const find=host.querySelector('#mana-find'),found=host.querySelector('#mana-found');
@@ -303,5 +343,5 @@
   host.querySelector('#mana-revoke').onclick=()=>run(async()=>{await api('revoke',{});host.querySelector('#mana-url').value='';host.querySelector('#mana-shed-url').value='';status.textContent='OBS links revoked.';});
   const resize=new ResizeObserver(()=>{frame.style.setProperty('--preview-scale',frame.parentElement.clientWidth/1080);});resize.observe(frame.parentElement);
   frame.onload=()=>{if(settings)preview();};
-  import('./live-studio-model.mjs').then(m=>paint({...m.DEFAULT_STUDIO})).catch(()=>{});
+  import('./live-studio-model.mjs').then(m=>{chanceFn=m.chanceWordIn;paint({...m.DEFAULT_STUDIO});}).catch(()=>{});
 })();

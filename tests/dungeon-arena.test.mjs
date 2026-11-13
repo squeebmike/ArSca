@@ -103,4 +103,19 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.match(ov, /function bossGrab\(st\)/);
   assert.equal(D.DUNGEON_DEFAULTS.miniMap, true);
 }
+// 9. SHOW READY (2026-11-12: "pre load the dungeon rewards and items based on what I have in stock. Keep it comics").
+{
+  const ctl = read('scripts/live-studio-controls.js');
+  assert.ok(ctl.includes('id="mana-show-ready"') && ctl.includes('id="mana-ready"'), 'the button and the checklist');
+  assert.match(ctl, /async function showReady\(\)/); assert.match(ctl, /function stockComics\(\)\{return inventory\(\)\.filter\(i=>i\.status==='in_stock'&&\/comic\/i/);
+  assert.match(ctl, /if\(next\.length<5\)\{fill=true;/, 'SHOW PREP\'s lineup stays');
+  assert.match(ctl, /chanceFn\(it\.title\+' '\+it\.detail\)/, 'nothing that reads as chance on the walls');
+  assert.match(ctl, /if\(comicsOnly&&!\/comic\/i\.test\(cat\)\)continue;/);
+  assert.match(ctl, /pick\.push\(l\[\(day\*7\+n\)%l\.length\]\)/, 'no repeats on the walls');
+  assert.equal(D.DUNGEON_DEFAULTS.dungeonComics, true);
+  // The rewards it writes parse as the dungeon reads them.
+  const chest = '5 follows: Free giveaway for everyone -- Bone #1\n10 shares: Free giveaway for everyone -- Saga #1\n25 taps: Low start on Amazing Spider-Man #300';
+  assert.equal(D.parseChestLines(chest).length, 3);
+  assert.equal(M.chanceWordIn(chest), '');
+}
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');

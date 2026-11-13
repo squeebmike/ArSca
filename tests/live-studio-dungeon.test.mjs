@@ -320,7 +320,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   for (const k of ["'GARDEN SHED': { f: 'planks', c: 'rafters' }", 'const lights = [...wins];', 'rowDist = posZ / p']) assert.ok(src.includes(k), k);
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes('setPics(list) {') && room.includes('pics:state.pics || []') && api.includes("/live-studio/pics"));
-  assert.ok(controls.includes("sendShedPics(d.pics).catch(()=>{});"), 'connecting sends the in-stock photos');
+  assert.ok(controls.includes("sendShedPics(d.pics).catch(()=>{}).then(readyList);"), 'connecting sends the in-stock photos');
   const ov4 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), bg4 = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
   assert.ok(ov4.includes("if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}") && bg4.includes('if (Array.isArray(m.pics)) shedPics = m.pics;'));
   assert.ok(ov4.includes("const FG_KINDS=['comics','pic',"), 'items pass by in front, in top loaders');

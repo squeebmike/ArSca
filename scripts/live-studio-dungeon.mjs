@@ -66,6 +66,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
   showMap: true,       // the dungeon map + relic shelf panel
   centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
+  dungeonComics: true, // the shed's and dungeon's walls and stands show comics only (store, 2026-11-12: "keep it comics")
   miniMap: true,       // the mini-map in the green screen's corner, filling in as the crawl walks
   crawlSharp: false,   // the green-screen crawl at 480 pixels across instead of 360 (sharper; harder on the streaming computer)
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
