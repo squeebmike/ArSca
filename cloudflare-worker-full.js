@@ -12569,7 +12569,21 @@ async function routeRequest(request, env, ctx) {
       }
 
       const locationKey = env.EBAY_LOCATION_KEY || 'walkoff-main';
-      const offerBody = buildEbayOfferBody(b, sku, locationKey, env);
+      // Store report (2026-11-13): "the FOC eBay shipping is going back to Ground Advantage sometimes, even with
+      // FOC selected." eBay's offer PUT is a full replace, and the dashboard's MANAGE EBAY LISTING update never
+      // sends a shipping policy -- so buildEbayOfferBody filled in the store's default (Ground Advantage) and every
+      // edit of a live FOC presale silently swapped its FOC handling-time policy out. The live offer's own
+      // shipping policy (and store categories) now carry through unless the caller names a different one.
+      let liveOffer = null;
+      if (!b.fulfillmentPolicyId || !Array.isArray(b.storeCategoryNames)) {
+        const liveRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, { headers: { 'Authorization': 'Bearer ' + ebayToken, 'Accept': 'application/json' } });
+        liveOffer = liveRes.ok ? await liveRes.json().catch(() => null) : null;
+      }
+      const keep = {
+        ...(b.fulfillmentPolicyId ? {} : liveOffer?.listingPolicies?.fulfillmentPolicyId ? { fulfillmentPolicyId: liveOffer.listingPolicies.fulfillmentPolicyId } : {}),
+        ...(Array.isArray(b.storeCategoryNames) ? {} : Array.isArray(liveOffer?.storeCategoryNames) ? { storeCategoryNames: liveOffer.storeCategoryNames } : {}),
+      };
+      const offerBody = buildEbayOfferBody({ ...b, ...keep }, sku, locationKey, env);
       delete offerBody.sku; // sku is the path param below, not a body field on update
       const offerRes = await fetch(`https://api.ebay.com/sell/inventory/v1/offer/${encodeURIComponent(offerId)}`, {
         method: 'PUT',
