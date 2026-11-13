@@ -43,4 +43,17 @@ assert.ok(!/fightsdemo\+\+/.test(ctl));
 assert.ok(ctl.includes("const STUDIO_V='") && !/import\('\.\/(beasts|vending|live-studio-dungeon)\.mjs'\)/.test(ctl), 'versioned imports');
 assert.ok(ctl.includes("try{demoSale();}catch(e){status.textContent='Demo: '"), 'a failing demo says so');
 const bsrc = read('scripts/beasts.mjs'); assert.ok(bsrc.includes("drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);") && !/validFace\(face\)\) drawPerson/.test(bsrc), 'always the chibi walkers');
+// 7. (2026-11-13: "change directions when walking up down left right ... we never get hit ... what happens if we lose? ... longer route, varying scenery")
+const rt = B.routeFor(3); assert.equal(B.MAP_H, 128); assert.ok(rt.len > 140, 'a longer walk');
+assert.ok(rt.walk.every((p, i) => !i || p[0] === rt.walk[i - 1][0] || p[1] === rt.walk[i - 1][1]), 'straight runs only (so you face the way you walk)');
+const dirs = new Set(); for (let t = 0; t <= 1; t += 0.002) { const p = B.posAt(rt, t); dirs.add(p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : p.dy < 0 ? 'up' : 'down'); }
+assert.ok(dirs.has('up') && (dirs.has('left') || dirs.has('right')), 'up, and across on the turns');
+assert.equal(B.biomesFor(3).length, 3); assert.equal(new Set(B.biomesFor(3)).size, 3, 'three different stretches');
+const seen = new Set(); for (let f = 1; f <= 12; f++) for (const b of B.biomesFor(f)) seen.add(b); assert.ok(seen.size >= 5, 'the scenery varies route to route');
+assert.deepEqual(B.routeFor(3).grid, B.routeFor(3).grid, 'the same route on every screen');
+assert.equal(B.battleFrom({ floor: 1, pct: 25, phase: 'floor' }, { battery: 0 }).mine.hp, 0, 'your beast can faint');
+assert.equal(B.beastHpFrom(0), 1); assert.equal(B.beastHpFrom(1000, 1000 + B.BEAST_DRAIN_MS), 0); assert.ok(B.beastHpFrom(1000, 1000 + B.BEAST_DRAIN_MS / 2) === 0.5);
+assert.ok(B.FOE_MOVES.includes(B.foeMoveFor('SLEEVEMOTH')));
+const bsrc2 = read('scripts/beasts.mjs'); for (const k of ["foeAnim = { kind: moveAnim(mv), at: performance.now() }; msg = (next.kind === 'wild' ? 'WILD ' : 'FOE ')", "' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE'", "' IS BACK ON ITS FEET!'"]) assert.ok(bsrc2.includes(k), k);
+assert.ok(!/Math\.random/.test(bsrc2));
 console.log('Long Box Beasts, a separate game: passed');

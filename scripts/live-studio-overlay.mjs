@@ -267,7 +267,7 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=5').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=6').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
@@ -276,7 +276,7 @@ function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 function paintBeasts(d){
   const cv=$('beast-battle');if(!cv)return;
-  const b=beastMode()&&settings.beastsBattle!=='green'&&beastsLib&&d?beastsLib.battleFrom(d,{battery:batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
+  const b=beastMode()&&settings.beastsBattle!=='green'&&beastsLib&&d?beastsLib.battleFrom(d,{battery:beastsLib.beastHpFrom?beastsLib.beastHpFrom(Math.max(Number(stats.lastSaleAt)||0,Number(d.lastAt)||0),Date.now()+offset):batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
   cv.classList.toggle('mana-hidden',!b);
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   if(!battle)battle=beastsLib.createBattle(cv,{scale:3});
@@ -354,6 +354,8 @@ function fgFrame(now){
 }
 requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
+// Beasts: your beast's HP drains between sales (the foe hits back) -- the battle is refreshed every 5 seconds.
+setInterval(()=>{if(beastMode()){const g=gd();if(g)paintBeasts(g);}},5000);
 setInterval(()=>{const d=dg();if(d&&document.body.classList.contains('mana-center'))paintCrawl(d,true);if(d)paintFront(d,document.body.classList.contains('mana-center'));},5000);
 // A revealed item (a chest, or where chat said to dig): its photo spins in 3D.
 function revealItem(e){
