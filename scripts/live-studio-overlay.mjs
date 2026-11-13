@@ -115,7 +115,7 @@ function paintDungeon(d){
   if(center&&boss.parentElement!==arena)arena.append(boss);
   else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
   arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));
-  paintCrawl(d,center);paintForeground(d,center);
+  paintCrawl(d,center);paintForeground(d,center);paintBeasts(d);
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
@@ -152,7 +152,7 @@ let fpLib=null,peekPct=-1,peekFloor=0;
 function paintCrawl(d,center){
   // The window over the top camera only when CRAWL WINDOW is on; otherwise the
   // crawl is the green-screen background (shed-background.html) and this is a slim bar.
-  const el=$('mana-crawl'),show=!!d&&center,win=show&&settings.crawlWindow===true;
+  const el=$('mana-crawl'),show=!!d&&center&&!beastMode(),win=show&&settings.crawlWindow===true;
   el.classList.toggle('mana-hidden',!show);el.classList.toggle('bar',show&&!win);el.classList.toggle('boss',!!d&&d.phase==='boss');
   if(!win&&fpOn){fp?.stop();fpOn=false;}
   if(!show)return;
@@ -248,8 +248,28 @@ if(preview)window.manaBossFx={intro:bossIntro,move:bossMove,ko:bossKO,combo:boss
 let front=null,frontW=0,frontKey='',frontOn=false,frontHp=NaN;
 // Soft footsteps while the crawl walks (2026-11-13 polish): a low thud every half second, quiet.
 setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.now()/500|0)%2*12,.07,0,'triangle',.35);},480);
+// LONG BOX BEASTS (2026-11-13): in BEASTS mode the green screen is the top-down
+// route (shed-background.mjs) and the battle shows here, over the hosts, in four
+// greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
+// every sale fires it.
+let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
+import('./beasts.mjs?v=1').then(m=>{beastsLib=m;const d=dg();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+const beastMode=()=>settings.gameMode==='beasts';
+function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
+function paintBeasts(d){
+  const cv=$('beast-battle');if(!cv)return;
+  const b=beastMode()&&beastsLib&&d?beastsLib.battleFrom(d,{battery:batteryNow(d),bossName:d.boss?.name}):null;
+  cv.classList.toggle('mana-hidden',!b);
+  if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
+  if(!battle)battle=beastsLib.createBattle(cv,{scale:3});
+  battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0});
+  // The rival trainer: the boss's own art, in four greens.
+  if(b.kind==='rival'&&rivalArt!==d.boss.character){rivalArt=d.boss.character;const c=document.createElement('canvas');void drawBoss(c,rivalArt,{size:48}).then(ok=>{if(ok)battle?.setRival(c);});}
+  cv.style.top=Math.max(0,Number(settings.y)-560)+'px';
+  if(!beastsOn){battle.start();beastsOn=true;}
+}
 function paintFront(d,center){
-  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.foreground!==false&&settings.crawlWindow!==true);
+  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.foreground!==false&&settings.crawlWindow!==true&&!beastMode());
   if(cv)cv.classList.toggle('mana-hidden',!on);
   if(!on){if(frontOn){front?.stop();frontOn=false;}return false;}
   const W=settings.crawlSharp===true?480:360;
@@ -264,7 +284,7 @@ function paintFront(d,center){
   return true;
 }
 function paintForeground(d,center){
-  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib&&!paintFront(d,center);
+  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib&&!beastMode()&&!paintFront(d,center);
   el.classList.toggle('mana-hidden',!on);if(!on)return;
   const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
   if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}
@@ -503,6 +523,10 @@ function receiveEffect(e,initial=false) {
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
   // A ByteRider reaction or line from the dashboard: just him, no burst.
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
+  // BEASTS: chat picked an attack -- your beast uses it now.
+  if(e.kind==='move'){if(beastsOn&&battle){battle.attack(e.move);if(!initial)tone(660,.06);}return;}
+  // A sale in a battle fires chat's attack.
+  if(beastsOn&&battle&&['sold','jackpot','boss'].includes(e.kind)){const mv=beastMoves();battle.attack(mv[Number(stats.beastMove)||0]||mv[0]);}
   // A follow / share / bookmark: a float on the flask and a line, no burst.
   if(e.kind==='tap'){react(e);const m=document.createElement('b');m.textContent='+'+(e.mana||0)+' '+(TAP_WORDS[e.tapKind]||'MANA');$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);if(!initial)SOUNDS.tap();return;}
   react(e);revealItem(e);

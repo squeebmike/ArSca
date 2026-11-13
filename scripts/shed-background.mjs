@@ -203,7 +203,9 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=1').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+      // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
+      let world = null, beastsOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0, sharp = false;
@@ -220,6 +222,12 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       const img = u => { try { return endpoint ? new URL(endpoint).origin + '/public/studio-img?u=' + encodeURIComponent(u) : u; } catch { return u; } };
       const paint = () => {
         const d = stats?.dungeon; if (!d) return;
+        if (beasts && settings0.gameMode === 'beasts') {
+          if (!beastsOn) { fp?.stop(); world = beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world.start(); beastsOn = true; mini.hidden = true; }
+          world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '' });
+          return;
+        }
+        if (beastsOn) { world?.stop(); world = null; beastsOn = false; topH = 0; build(850); bossId = ''; picKey = ''; }
         const now = Date.now() + offset;
         fp.setClock?.(offset);
         // The photos and the hall's state: the same recipe as the overlay's front layer (shed-crawl-fp.mjs).
@@ -257,10 +265,10 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (it && it.image) { if (cardAt !== i) { cardAt = i; cardImg.src = img(it.image); cardTxt.textContent = String(it.title || '').slice(0, 60) + (Number(it.price) > 0 ? '  ·  $' + Number(it.price).toFixed(2) : ''); cardTxt.hidden = !it.title; } card.classList.add('on'); }
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
-      let lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
+      let settings0 = {}, lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
-        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { miniOn = m.settings.miniMap !== false; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode !== 'beasts'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
       setInterval(paint, 5000);
       setInterval(() => { const d = stats?.dungeon; if (d) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
       build(850);

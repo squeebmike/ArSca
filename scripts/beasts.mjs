@@ -1,0 +1,329 @@
+// LONG BOX BEASTS (working name) -- the Shed Dungeon's other mode (store,
+// 2026-11-13: "is there a pokemon version we can make? like the overworld in
+// the handheld games ... start in one that's green ... walking around, same as
+// the dungeon, and then we can battle ... make it funny. Not actually Nintendo
+// IP"). An ORIGINAL monster-battler in the retro-handheld style: our own town,
+// our own creatures (collector jokes, drawn here from their names), our own
+// battle screen (side by side), our own moves. Phase 1: the top-down
+// overworld in four shades of green. Phase 2: battles.
+//
+// How it plays: the floor's mana walks you up the route from your shop to the
+// rival's shop; wild beasts jump out of the tall grass at fixed spots (a slice
+// of the floor's mana is each one's HP -- sales knock it out); the boss phase
+// is the rival's beast. Chat picks the attack (CHAT PICKS); every sale fires
+// it. Chat can invent attacks: the name picks its animation. Nothing is drawn
+// by chance -- the same name makes the same beast and the same move on every
+// screen, and nothing is won by buying.
+
+// The handheld's four greens, lightest to darkest.
+export const GB = [[155, 188, 15], [139, 172, 15], [48, 98, 48], [15, 56, 15]];
+export const T = 16; // one tile, 16 x 16
+// Where on the floor the wild beasts wait, and how much of the floor's mana each takes to knock out.
+export const ENCOUNTERS = [[0.22, 0.3], [0.48, 0.56], [0.74, 0.82]];
+export const STARTER = 'SLABBIT';
+export const DEFAULT_MOVES = ['LOWBALL', 'PRICE CHECK', 'SLEEVE UP', 'BENT CORNER'];
+
+// A fixed number sequence from a word or a number (the same every time).
+export function hashOf(str) { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+export function seq(seed) { let s = seed >>> 0 || 1; return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296); }
+
+// ── the beasts ───────────────────────────────────────────────────────────────
+const PRE = ['SLAB', 'FOIL', 'MINT', 'BULK', 'PENNY', 'GRAIL', 'VARI', 'TOPLOAD', 'BENT', 'CENTER', 'SLEEVE', 'KEY', 'HOLO', 'NEWS', 'RATIO', 'CREASE'];
+const SUF = ['BIT', 'LING', 'OON', 'AROO', 'OX', 'ISH', 'MOTH', 'TOAD', 'IMP', 'PUP', 'OWL', 'SNAIL'];
+// The wild beast at encounter k on a floor.
+export function wildName(floor, k) { const f = Math.max(1, floor | 0); return PRE[(f * 5 + k * 7) % PRE.length] + SUF[(f * 3 + k * 5) % SUF.length]; }
+// A beast's look, made from its name: a 20 x 20 sprite in shades 0-3 (-1: see-through).
+// Symmetric body, big eyes, and the collector bits its name asks for.
+export function makeBeast(name) {
+  const N = 20, px = Array.from({ length: N }, () => Array(N).fill(-1)), r = seq(hashOf(name)), nm = String(name).toUpperCase();
+  const w = 0.55 + r() * 0.3, hgt = 0.6 + r() * 0.3, cy = 11 + Math.floor(r() * 2);
+  // The body: a lumpy oval, mirrored.
+  for (let y = 0; y < N; y++) for (let x = 0; x < 10; x++) {
+    const dx = (9.5 - x) / (10 * w), dy = (y - cy) / (9 * hgt), lump = 0.12 * Math.sin(y * 1.3 + r() * 0.01 + (hashOf(nm) % 7));
+    if (dx * dx + dy * dy < 1 + lump) { px[y][x] = 1; px[y][N - 1 - x] = 1; }
+  }
+  // Ears or horns or antennae.
+  const top = px.findIndex(row => row.includes(1)), kind = hashOf(nm + 'e') % 3;
+  for (let k = 0; k < 4; k++) { const y = top - 1 - k; if (y < 0) break; const x = kind === 0 ? 5 - (k >> 1) : kind === 1 ? 6 + k : 4; if (kind === 2 && k > 2) continue; px[y][x] = 2; px[y][N - 1 - x] = 2; if (kind === 2 && k === 2) { px[y][x - 1] = 3; px[y][N - x] = 3; } }
+  // Shading: darker belly band, the outline.
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (px[y][x] === 1 && y > cy + 2 && Math.abs(x - 9.5) < 4) px[y][x] = 0;
+  const out = px.map(row => row.slice());
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (px[y][x] >= 0 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (px[y + b]?.[x + a] ?? -1) < 0)) out[y][x] = 3;
+  // Eyes: big, googly, a glint; a mouth.
+  const ey = Math.max(top + 3, cy - 3), ex = 6 + Math.floor(r() * 2);
+  for (const x of [ex, N - 1 - ex]) { out[ey][x] = 3; out[ey + 1][x] = 3; out[ey][x + (x < 10 ? 1 : -1)] = 3; out[ey + 1][x + (x < 10 ? 1 : -1)] = 3; out[ey][x] = 0; }
+  const mw = 1 + Math.floor(r() * 3); for (let x = 10 - mw; x < 10 + mw; x++) out[ey + 4][x] = 3; if (r() < 0.5) { out[ey + 5][9] = 0; out[ey + 5][10] = 0; } // a tooth or two
+  // The collector bits.
+  if (/SLAB|GRAIL|KEY/.test(nm)) { for (let x = 1; x < N - 1; x++) { out[1][x] = 3; out[N - 1][x] = 3; } for (let y = 1; y < N; y++) { out[y][1] = 3; out[y][N - 2] = 3; } for (let x = 3; x < 9; x++) out[2][x] = 2; }
+  if (/FOIL|HOLO/.test(nm)) for (const [x, y] of [[3, 4], [16, 6], [4, 15], [15, 16], [9, 2]]) { out[y][x] = 0; if (out[y + 1]) out[y + 1][x] = 2; }
+  if (/SLEEVE|TOPLOAD/.test(nm)) for (let y = 3; y < N - 2; y++) { if (out[y][2] < 0) out[y][2] = 2; if (out[y][N - 3] < 0) out[y][N - 3] = 2; }
+  if (/BENT|CREASE/.test(nm)) { out[top][14] = -1; out[top + 1][15] = -1; out[top][15] = -1; }
+  if (/MINT/.test(nm)) { out[Math.max(0, top - 2)][10] = 2; out[Math.max(0, top - 3)][11] = 2; out[Math.max(0, top - 3)][12] = 2; }
+  if (/PENNY/.test(nm)) for (let k = 0; k < 3; k++) { out[N - 3][3 + k] = 2; out[N - 4][3 + k] = 0; }
+  return { name: nm, px: out };
+}
+
+// ── the moves ────────────────────────────────────────────────────────────────
+// Any move's animation, from its name (chat can invent one on the spot).
+const ANIMS = [
+  [/FIRE|FLAME|BURN|HOT|SPICY|ROAST/, 'flame'], [/WATER|SOAK|FLOOD|RAIN|SPILL|DRIP|LEAK/, 'water'],
+  [/PRICE|MONEY|CASH|COIN|FLIP|PROFIT|SELL|DOLLAR|\$/, 'coins'], [/LOWBALL|BALL|BOUNCE/, 'ball'],
+  [/SLAB|CARD|SLEEVE|TOPLOAD|GRADE|COMIC|HOLO|FOIL/, 'card'], [/BENT|CREASE|PUNCH|SLAM|SMASH|HIT|DENT|BONK/, 'slam'],
+  [/SHIP|DELAY|BOX|PACKAGE|MAIL/, 'box'], [/SHOUT|YELL|HYPE|ROAST|TROLL|DM|CHAT/, 'shout'], [/ZAP|SHOCK|POWER|STATIC|ELECTR/, 'zap'],
+];
+export function moveAnim(name) { const n = String(name || '').toUpperCase(); const hit = ANIMS.find(([re]) => re.test(n)); return hit ? hit[1] : ['card', 'slam', 'zap', 'shout', 'ball'][hashOf(n) % 5]; }
+export function movesFrom(text) { const list = String(text || '').split(/\r?\n/).map(s => s.replace(/[^A-Za-z0-9 '!?$&.-]/g, '').trim().toUpperCase().slice(0, 16)).filter(Boolean); return [...list, ...DEFAULT_MOVES].slice(0, 4); }
+
+// ── your face (and your buddy's): 12 x 12 in the four greens ─────────────────
+// Stored in the settings as 144 digits 0-3 (no image hosting). The remote makes it from a photo.
+export function faceFromImage(img, size = 12) {
+  const c = document.createElement('canvas'); c.width = c.height = size; const x = c.getContext('2d', { willReadFrequently: true });
+  const s = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height); x.drawImage(img, ((img.naturalWidth || img.width) - s) / 2, ((img.naturalHeight || img.height) - s) / 2.4, s, s, 0, 0, size, size);
+  const d = x.getImageData(0, 0, size, size).data, lum = []; for (let i = 0; i < d.length; i += 4) lum.push(d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11);
+  const sorted = [...lum].sort((a, b) => a - b), q = k => sorted[Math.floor(sorted.length * k)];
+  const t1 = q(0.25), t2 = q(0.5), t3 = q(0.78); // spread the photo across the four shades
+  return lum.map(v => (v > t3 ? 0 : v > t2 ? 1 : v > t1 ? 2 : 3)).join('');
+}
+export const validFace = s => typeof s === 'string' && /^[0-3]{144}$/.test(s);
+
+// ── the town and the route (a floor) ────────────────────────────────────────
+// Tiles: 0 grass, 1 path, 2 tall grass, 3 tree, 4 water, 5 house wall, 6 roof,
+// 7 door, 8 fence, 9 flowers, 10 sign, 11 your shop's sign, 12 the rival's sign.
+export const MAP_W = 24, MAP_H = 64;
+const mapCache = new Map();
+export function routeFor(floor) {
+  const f = Math.max(1, floor | 0); if (mapCache.has(f)) return mapCache.get(f);
+  const r = seq(hashOf('route' + f)), W = MAP_W, H = MAP_H, g = Array.from({ length: H }, () => Array(W).fill(0));
+  // Trees all round; the path winds north from your shop (bottom) to the rival's (top).
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x < 2 || x >= W - 2) g[y][x] = 3;
+  const pts = []; let x = 12;
+  for (let y = H - 9; y >= 8; y--) { if (y % 7 === 0) x = Math.max(5, Math.min(W - 6, x + Math.round((r() - 0.5) * 10))); pts.push([x, y]); }
+  // The path: two wide, following x (with the bends filled in).
+  let px0 = pts[0][0];
+  for (const [x1, y] of pts) { for (let xx = Math.min(px0, x1); xx <= Math.max(px0, x1); xx++) { g[y][xx] = 1; g[y][xx + 1] = 1; } px0 = x1; }
+  // Woods along the route (not on the path), a pond, flowers.
+  for (let y = 10; y < H - 12; y++) for (let x2 = 2; x2 < W - 2; x2++) if (g[y][x2] === 0) { const v = r(); if (v < 0.16) g[y][x2] = 3; else if (v < 0.2) g[y][x2] = 9; }
+  const pond = [3 + Math.floor(r() * 4), 22 + Math.floor(r() * 20)]; for (let y = pond[1]; y < pond[1] + 3; y++) for (let x2 = pond[0]; x2 < pond[0] + 4; x2++) if (g[y][x2] !== 1) g[y][x2] = 4;
+  // Tall grass where the wild beasts wait (around the path at each encounter).
+  const along = t => pts[Math.min(pts.length - 1, Math.floor(t * (pts.length - 1)))];
+  ENCOUNTERS.forEach(([a, b]) => { const [ex, ey] = along(walkAt((a + b) / 2)); for (let y = ey - 3; y <= ey + 3; y++) for (let x2 = ex - 3; x2 <= ex + 4; x2++) if (g[y]?.[x2] !== undefined && x2 >= 2 && x2 < W - 2 && g[y][x2] !== 4) g[y][x2] = g[y][x2] === 1 ? 2 : 2; });
+  // Your shop's town at the bottom: the shop, two houses, a fence, a sign.
+  const house = (hx, hy, sign) => { for (let x2 = hx; x2 < hx + 5; x2++) { g[hy][x2] = 6; g[hy + 1][x2] = 6; g[hy + 2][x2] = 5; g[hy + 3][x2] = 5; } g[hy + 3][hx + 2] = 7; if (sign) g[hy + 1][hx + 2] = sign; };
+  for (let y = H - 9; y < H - 1; y++) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = g[y][x2] === 1 ? 1 : 0;
+  house(9, H - 8, 11); house(3, H - 7, 0); house(16, H - 7, 0);
+  for (let x2 = 2; x2 < W - 2; x2++) if (g[H - 2][x2] === 0) g[H - 2][x2] = 8;
+  g[H - 4][14] = 10; g[H - 4][12] = 1; g[H - 4][13] = 1; g[H - 5][11] = 1; g[H - 5][12] = 1;
+  // The rival's shop at the top.
+  for (let y = 1; y < 8; y++) for (let x2 = 2; x2 < W - 2; x2++) if (g[y][x2] !== 1) g[y][x2] = y < 2 ? 3 : 0;
+  house(pts[pts.length - 1][0] - 2, 2, 12);
+  // The walk: your shop's door, up the path, to the rival's door.
+  const walk = [[11, H - 4], ...pts.map(([px, py]) => [px, py]), [pts[pts.length - 1][0], 6]];
+  const out = { floor: f, grid: g, walk, len: walk.reduce((n, p, i) => i ? n + Math.hypot(p[0] - walk[i - 1][0], p[1] - walk[i - 1][1]) : 0, 0) };
+  mapCache.set(f, out); return out;
+}
+// How far along the walk you are for the floor's progress: you stand still in
+// the tall grass while a wild beast is up.
+export function walkAt(pct) { let gone = 0, total = 0; for (const [a, b] of ENCOUNTERS) { total += b - a; gone += Math.max(0, Math.min(pct, b) - a); } return Math.max(0, Math.min(1, (pct - gone) / (1 - total))); }
+export function posAt(route, t) {
+  let d = Math.max(0, Math.min(1, t)) * route.len; const w = route.walk;
+  for (let i = 1; i < w.length; i++) { const L = Math.hypot(w[i][0] - w[i - 1][0], w[i][1] - w[i - 1][1]); if (d <= L || i === w.length - 1) { const f = L ? Math.min(1, d / L) : 0; return { x: w[i - 1][0] + (w[i][0] - w[i - 1][0]) * f, y: w[i - 1][1] + (w[i][1] - w[i - 1][1]) * f, dx: Math.sign(w[i][0] - w[i - 1][0]), dy: Math.sign(w[i][1] - w[i - 1][1]) }; } d -= L; }
+  return { x: w[0][0], y: w[0][1], dx: 0, dy: -1 };
+}
+
+// ── the battle, from the show's state ───────────────────────────────────────
+// A wild beast while the floor's mana is inside an encounter (its HP is what's
+// left of that slice); the rival's beast while a boss is up. Your beast's HP is
+// the flashlight battery (sales keep it up). Beaten beasts join your shelf.
+export function battleFrom(d, { battery = 1, bossName = '' } = {}) {
+  if (!d) return null;
+  const mine = { name: STARTER, hp: Math.max(0.08, Math.min(1, battery)) };
+  if (d.phase === 'boss') { const rival = makeBeast((bossName || d.boss?.name || 'RIVAL').replace(/^THE\s+/, '') + 'MON').name; return { kind: 'rival', k: 3, mine, foe: { name: rival.slice(0, 12), hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: d.boss?.name || 'THE RIVAL' }; }
+  const pct = Math.max(0, Math.min(1, (d.pct || 0) / 100));
+  for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k), hp: 1 - (pct - a) / (b - a) } }; }
+  return null;
+}
+export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1; f <= d.floor; f++) for (let k = 0; k < ENCOUNTERS.length; k++) if (f < d.floor || (d.phase === 'boss' || (d.pct || 0) / 100 >= ENCOUNTERS[k][1])) out.push(wildName(f, k)); return out; }
+
+// ── drawing ──────────────────────────────────────────────────────────────────
+const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = GB[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
+// One tile's pixel (shade) at (u, v) inside it; tm for the waving grass and water.
+function tileShade(t, u, v, tx, ty, tm) {
+  const h = (hashOf(tx * 131 + ty * 7919 + u * 17 + v) % 100);
+  switch (t) {
+    case 1: return h < 5 ? 1 : (u === 0 || v === 0) && h < 40 ? 1 : 0;               // path: light, pebbles
+    case 2: { const sway = Math.floor(tm * 2 + tx * 0.7) % 2; const blade = (u + sway + (v >> 2) * 2) % 4; return v % 8 < 6 && blade < 2 ? 2 : v % 8 === 7 ? 3 : 1; } // tall grass, swaying
+    case 3: { const cx = u - 7.5, cy = v - 6; if (v > 11 && Math.abs(cx) < 2) return 3; const d = cx * cx / 56 + cy * cy / 40; return d < 1 ? (d > 0.75 || (u + v) % 5 === 0 ? 3 : (u * 3 + v) % 7 === 0 ? 1 : 2) : 1; } // tree
+    case 4: { const w = Math.floor(tm * 3 + tx) % 4; return (u + w * 2 + (v >> 2) * 3) % 8 === 0 && v % 4 === 1 ? 0 : 1; } // water, rippling
+    case 5: return u === 0 || u === 15 ? 3 : v % 6 === 5 ? 2 : (u > 3 && u < 7 && v > 3 && v < 9) || (u > 9 && u < 13 && v > 3 && v < 9) ? 2 : 0; // wall with windows
+    case 6: return v % 4 === 3 ? 3 : (u + (v >> 2)) % 3 === 0 ? 3 : 2;              // roof
+    case 7: return u < 3 || u > 12 ? 0 : v < 2 ? 3 : u === 10 && v === 9 ? 0 : 3;     // door
+    case 8: return (u % 8 === 3 || u % 8 === 4) && v > 3 ? 3 : (v === 6 || v === 11) ? 3 : 1; // fence
+    case 9: { const b = Math.floor(tm * 1.5 + tx + ty) % 2; return (u % 6 === 2 && v % 6 === 2) || (b && u % 6 === 3 && v % 6 === 3) ? 3 : (u % 6 === 2 && v % 6 === 3) ? 0 : 1; } // flowers, nodding
+    case 10: return (v > 9 && (u === 7 || u === 8)) ? 3 : v > 2 && v < 10 && u > 1 && u < 14 ? (v === 3 || v === 9 || u === 2 || u === 13 ? 3 : (v === 5 || v === 7) && u > 3 && u < 12 ? 2 : 0) : 0; // signpost
+    case 11: case 12: return v > 1 && v < 14 ? (v === 2 || v === 13 || u === 0 || u === 15 ? 3 : 0) : 2; // a shop sign (letters drawn on top)
+    default: return h < 7 ? 2 : h < 12 ? 0 : 1;                                       // grass: a shade darker than the path, tufts
+  }
+}
+// A tiny 3 x 5 font (the shop signs, the "!" over your head).
+const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', P: '110101110100100', R: '110101110110101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', '!': '010010010000010', ' ': '000000000000000' };
+function text3(img, W, x, y, str, s) { [...str].forEach((ch, k) => { const g = FONT[ch] || FONT[' ']; for (let i = 0; i < 15; i++) if (g[i] === '1') put(img, W, x + k * 4 + (i % 3), y + Math.floor(i / 3), s); }); }
+
+// THE HOST AND CHAMP, hand-drawn in four greens (store, 2026-11-13: "put us in
+// there recognizable ... more like this generic style"): chibi overworld people,
+// 16 x 16 -- big head, short body, dark outline, seen from a little above. The
+// host in a backwards cap, a beard and his jersey (MP on the front, 24 on the
+// back); Champ bald and shiny, glasses, a full beard, a big hoodie. Two walk
+// frames each way ('.' see-through, '0' lightest .. '3' darkest); facing left
+// is facing right, mirrored. Our own pixels, drawn here.
+export const PEOPLE = {"host":{"down":[["....33333333....","...3333333333...","..333333323333..","..333330033333..","..300000000003..","..303300003303..","..303000000303..","..330001100033..","..333300003333..","...3333333333...","..331303303133..","..301300003103..","...3333333333...","....32222223....","....32233223....","....333..333...."],["....33333333....","...3333333333...","..333333323333..","..333330033333..","..300000000003..","..303300003303..","..303000000303..","..330001100033..","..333300003333..","...3333333333...","..331303303133..","..301300003103..","...3333333333...","....32222223....","....3223.223....","...333...333...."]],"up":[["....33333333....","...3333333333...","..333333333333..",".33333333333333.","..300000000003..","..300000000003..","..300000000003..","..330000000033..","..333300003333..","...3333333333...","..331003300133..","..301330033103..","...3333333333...","....32222223....","....32233223....","....333..333...."],["....33333333....","...3333333333...","..333333333333..",".33333333333333.","..300000000003..","..300000000003..","..300000000003..","..330000000033..","..333300003333..","...3333333333...","..331003300133..","..301330033103..","...3333333333...","....32222223....","....3223.223....","...333...333...."]],"side":[[".....33333333...","....3333333333..","...33333333333..",".333332333333...","....3000000003..","....3000003303..","....3000000303..","....30000000003.","....3333000333..",".....33333333...",".....33313333...",".....33310333...",".....33333333...",".....3222223....","....322223......","....33.33......."],[".....33333333...","....3333333333..","...33333333333..",".333332333333...","....3000000003..","....3000003303..","....3000000303..","....30000000003.","....3333000333..",".....33333333...",".....33313333...",".....33310333...",".....33333333...",".....3222223....","....32223.......","....333.33......"]]},"champ":{"down":[["....33333333....","...3000000003...","..300001100003..","..300000000003..","..333330033333..","..311130031113..","..333330033333..","..322000000223..","..322220022223..","...3222222223...",".33333333333333.",".30333222233303.",".33333333333333.","....32222223....","....32233223....","....333..333...."],["....33333333....","...3000000003...","..300001100003..","..300000000003..","..333330033333..","..311130031113..","..333330033333..","..322000000223..","..322220022223..","...3222222223...",".33333333333333.",".30333222233303.",".33333333333333.","....32222223....","....3223.223....","...333...333...."]],"up":[["....33333333....","...3000000003...","..300001100003..","..300000000003..","..330000000033..","..300000000003..","..300000000003..","..322000000223..","..322200002223..","...3332222333...",".33333333333333.",".30333333333303.",".33333333333333.","....32222223....","....32233223....","....333..333...."],["....33333333....","...3000000003...","..300001100003..","..300000000003..","..330000000033..","..300000000003..","..300000000003..","..322000000223..","..322200002223..","...3332222333...",".33333333333333.",".30333333333303.",".33333333333333.","....32222223....","....3223.223....","...333...333...."]],"side":[[".....33333333...","....3000000003..","...30000110003..","...30033333333..","...30003111133..","...30033333333..","...300000000003.","...32200000223..","...32222202223..","....322222223...","...33333333333..","...33333033333..","...33333333333..",".....3222223....","....322223......","....33.33......."],[".....33333333...","....3000000003..","...30000110003..","...30033333333..","...30003111133..","...30033333333..","...300000000003.","...32200000223..","...32222202223..","....322222223...","...33333333333..","...33333033333..","...33333333333..",".....3222223....","....32223.......","....333.33......"]]}};
+export function drawSprite(img, W, x0, y0, who, dir, step) {
+  const s = PEOPLE[who] || PEOPLE.host, rows = (dir === 'up' ? s.up : dir === 'down' ? s.down : s.side)[step ? 1 : 0], flip = dir === 'left';
+  rows.forEach((row, y) => { for (let x = 0; x < 16; x++) { const ch = row[flip ? 15 - x : x]; if (ch !== '.') put(img, W, x0 + x, y0 + y, +ch); } });
+}
+// THE TRAINERS in a battle, bigger (40 x 48): the host and Champ side by side
+// at the start of every battle; drawn from shapes here (original, not traced).
+export function drawTrainer(img, W, x0, y0, who) {
+  const P = (x, y, s) => put(img, W, x0 + Math.round(x), y0 + Math.round(y), s), champ = who === 'champ';
+  const hx = 20, hy = champ ? 15 : 14, rx = champ ? 11 : 9.5, ry = champ ? 11.5 : 10.5;
+  // The body first: the jersey (host) or the big hoodie (Champ), an arm out front.
+  const bw = champ ? 15 : 11;
+  for (let y = 26; y < 48; y++) for (let x = hx - bw - (y > 34 && champ ? 2 : 0); x <= hx + bw + (y > 34 && champ ? 2 : 0); x++) { const edge = x === hx - bw - (y > 34 && champ ? 2 : 0) || x === hx + bw + (y > 34 && champ ? 2 : 0) || y === 26; P(x, y, edge ? 3 : champ ? (y > 36 && y < 42 && Math.abs(x - hx) < 6 ? 2 : 3) : 3); }
+  if (!champ) { for (let x = hx - bw + 1; x < hx - bw + 4; x++) for (const y of [33, 34]) P(x, y, 1); for (let x = hx + bw - 3; x < hx + bw; x++) for (const y of [33, 34]) P(x, y, 1); text3(img, W, x0 + hx - 4, y0 + 31, 'MP', 0); }
+  for (let k = 0; k < 9; k++) { P(hx + bw - 1 + k, 30 - (k >> 1), 3); P(hx + bw - 1 + k, 31 - (k >> 1), 3); P(hx + bw - 1 + k, 32 - (k >> 1), k > 6 ? 0 : 3); } // the arm, reaching out
+  for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1], [2, 0]]) P(hx + bw + 8 + a, 26 + b, 0); // the hand
+  // The head.
+  for (let y = 0; y < 30; y++) for (let x = 0; x < 40; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d > 1) continue; P(x, y, d > 0.84 ? 3 : 0); }
+  if (champ) {
+    for (let y = hy - 8; y < hy - 5; y++) for (let x = hx - 5; x < hx - 1; x++) P(x, y, 1); // the shine on his head
+    for (const gx of [hx - 9, hx + 1]) { for (let x = gx; x < gx + 8; x++) { P(x, hy - 1, 3); P(x, hy + 4, 3); } for (let y = hy - 1; y <= hy + 4; y++) { P(gx, y, 3); P(gx + 7, y, 3); } for (let y = hy; y < hy + 4; y++) for (let x = gx + 1; x < gx + 7; x++) P(x, y, 1); P(gx + 4, hy + 2, 3); } // glasses
+    for (let x = hx - 1; x <= hx + 1; x++) P(x, hy, 3);
+    for (let y = hy + 5; y < hy + 13; y++) for (let x = 0; x < 40; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1.08 && y > hy + 5 - (Math.abs(x - hx) > 7 ? 3 : 0)) P(x, y, (y === hy + 7 && Math.abs(x - hx) < 4) ? 0 : 2); } // the beard, a grin in it
+  } else {
+    // The backwards cap: the crown over the top, the brim out the back.
+    for (let y = 0; y < 30; y++) for (let x = 0; x < 40; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1 && y < hy - 3) P(x, y, (y === hy - 4) ? 2 : (x === hx && y < hy - 6) ? 2 : 3); }
+    for (let x = hx - rx - 6; x < hx - rx + 3; x++) { P(Math.round(x), hy - 4, 3); P(Math.round(x), hy - 3, 3); }
+    for (let x = hx - 6; x < hx - 1; x++) P(x, hy - 1, 3); for (let x = hx + 2; x < hx + 7; x++) P(x, hy - 1, 3); // brows
+    P(hx - 4, hy + 1, 3); P(hx - 3, hy + 1, 3); P(hx + 4, hy + 1, 3); P(hx + 5, hy + 1, 3); // eyes
+    for (let y = hy + 4; y < hy + 12; y++) for (let x = 0; x < 40; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1.12 && (y > hy + 5 || Math.abs(x - hx) > 6)) P(x, y, (y === hy + 6 && Math.abs(x - hx) < 3) ? 0 : 3); } // the beard, a grin
+    P(hx - rx + 1, hy + 1, 1); P(hx - rx + 1, hy + 2, 1); // an ear
+  }
+}
+// You (or your buddy): a big chibi head (your face, 12 x 12) on a small body,
+// two-frame walk, four directions. Facing up you see the back of your head.
+function drawPerson(img, W, x0, y0, face, dir, step, small = false) {
+  const hx = x0 + 2, hy = y0;
+  for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) {
+    const round = (x - 5.5) ** 2 / 38 + (y - 5.5) ** 2 / 40 < 1; if (!round) continue;
+    let s; if (dir === 'up') s = (x + y) % 5 === 0 ? 2 : 3; else { const fx = dir === 'left' ? 11 - x : x; s = validFace(face) ? +face[y * 12 + fx] : (y === 5 && (fx === 3 || fx === 8)) || (y === 8 && fx > 3 && fx < 8) ? 3 : y < 3 ? 3 : 0; }
+    if ((x - 5.5) ** 2 / 38 + (y - 5.5) ** 2 / 40 > 0.82) s = 3; // the outline
+    put(img, W, hx + x, hy + y, s);
+  }
+  // A light hoodie with a dark outline (so you never read as a tree), arms swinging, dark jeans, sneakers.
+  const by = y0 + 12, bw = small ? 6 : 8, bx = x0 + 8 - bw / 2, bh = small ? 5 : 7, a = step ? 1 : 0;
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) put(img, W, bx + x, by + y, x === 0 || x === bw - 1 || y === bh - 1 ? 3 : y === 0 && (x === 1 || x === bw - 2) ? 3 : x === (bw >> 1) && y > 1 ? 1 : 0);
+  for (let y = 1; y < bh - 1; y++) { put(img, W, bx - 1, by + y + (y > 2 ? a : 0), y === bh - 2 ? 1 : 3); put(img, W, bx + bw, by + y + (y > 2 ? 1 - a : 0), y === bh - 2 ? 1 : 3); } // arms
+  const legY = by + bh;
+  for (let y = 0; y < 3; y++) { put(img, W, bx + 1 + (y === 2 ? -a : 0), legY + y, 2); put(img, W, bx + 2 + (y === 2 ? -a : 0), legY + y, y === 2 ? 3 : 2); put(img, W, bx + bw - 3 + (y === 2 ? a : 0), legY + y, 2); put(img, W, bx + bw - 2 + (y === 2 ? a : 0), legY + y, y === 2 ? 3 : 2); }
+}
+
+// THE OVERWORLD on a canvas: the route, you walking it, your buddy a step behind.
+export function createWorld(canvas, { w = 240, h = 189 } = {}) {
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
+  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9;
+  function set(s) {
+    if (first || s.floor !== state.floor) { route = routeFor(s.floor); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); first = false; }
+    const wasBattle = battleOf(state), isBattle = battleOf(s);
+    if (isBattle && !wasBattle) exclaim = performance.now(); // a "!" over your head as the beast jumps out
+    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy;
+  }
+  const battleOf = s => s.phase === 'boss' || ENCOUNTERS.some(([a, b]) => (s.pct || 0) / 100 >= a && (s.pct || 0) / 100 < b);
+  function frame(now) {
+    raf = requestAnimationFrame(frame); if (now - last < 33) return; const dt = Math.min(0.2, (now - (last || now)) / 1000); last = now; const tm = now / 1000;
+    const target = state.phase === 'boss' ? 1 : walkAt((state.pct || 0) / 100);
+    const walking = shown < target - 0.0005; if (walking) shown = Math.min(target, shown + dt * Math.max(3.2 / route.len, (target - shown) / 10)); else if (shown > target) shown = target;
+    const p = posAt(route, shown), q = posAt(route, Math.max(0, shown - 1.3 / route.len));
+    if (walking) { step = Math.floor(tm * 6) % 2; dir = p.dy < 0 ? 'up' : p.dy > 0 ? 'down' : p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : dir; } else step = 0;
+    // The camera follows you (kept inside the map).
+    const camX = Math.max(0, Math.min(MAP_W * T - w, (p.x + 0.5) * T - w / 2)), camY = Math.max(0, Math.min(MAP_H * T - h, (p.y + 0.5) * T - h * 0.58));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; put(img, w, x, y, tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm)); }
+    // The shop signs.
+    route.grid.forEach((row, ty) => row.forEach((t, tx) => { if (t === 11 || t === 12) text3(img, w, tx * T - camX + 8 - (t === 11 ? 12 : 10), ty * T - camY + 5, t === 11 ? 'COMICS' : 'RIVAL', 3); }));
+    // Your buddy, then you (you're in front).
+    const sx = x => Math.round((x + 0.5) * T - camX - 8), sy = y => Math.round((y + 0.5) * T - camY - 18);
+    if (validFace(buddy)) drawPerson(img, w, sx(q.x), sy(q.y) + 4, buddy, dir, walking ? 1 - step : 0, true); else drawSprite(img, w, sx(q.x), sy(q.y) + 6, 'champ', dir, walking ? 1 - step : 0);
+    if (validFace(face)) drawPerson(img, w, sx(p.x), sy(p.y), face, dir, step); else drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);
+    if (performance.now() - exclaim < 1400) text3(img, w, sx(p.x) + 7, sy(p.y) - 14, '!', 3);
+    ctx.putImageData(img, 0, 0);
+  }
+  return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };
+}
+
+// THE BATTLE on a canvas (the overlay's handheld screen): your beast on the
+// left facing right, theirs on the right facing left, HP bars over each, the
+// four moves under them, the move chat picked lit up, and the attack itself.
+export function createBattle(canvas, { scale = 3 } = {}) {
+  const W = 240, H = 160; canvas.width = W * scale; canvas.height = H * scale;
+  const ctx = canvas.getContext('2d'), low = document.createElement('canvas'); low.width = W; low.height = H; const lx = low.getContext('2d'), img = lx.createImageData(W, H);
+  let b = null, moves = DEFAULT_MOVES, pick = 0, anim = null, raf = 0, last = 0, msg = '', shownFoe = 1, beastCache = new Map(), introAt = -1e9, key = '', rival = null;
+  const beast = n => { if (!beastCache.has(n)) beastCache.set(n, makeBeast(n)); return beastCache.get(n); };
+  const fill = (x0, y0, w, h, s) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(img, W, x, y, s); };
+  const drawBeast = (bt, x0, y0, flip, flash, k = 2) => { for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) { const s = bt.px[y][flip ? 19 - x : x]; if (s < 0) continue; for (let a = 0; a < k; a++) for (let c = 0; c < k; c++) put(img, W, x0 + x * k + c, y0 + y * k + a, flash ? 3 - s : s); } };
+  // The intro's line of text, and its box, over the trainers.
+  function words(line) { const S = scale; ctx.fillStyle = `rgb(${GB[3]})`; ctx.fillRect(0, 98 * S, W * S, 62 * S); ctx.fillStyle = `rgb(${GB[0]})`; ctx.fillRect(2 * S, 100 * S, (W - 4) * S, 58 * S); ctx.fillStyle = `rgb(${GB[3]})`; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(line, 10 * S, 120 * S); }
+  function frame(now) {
+    raf = requestAnimationFrame(frame); if (now - last < 33) return; last = now; const tm = now / 1000;
+    for (let i = 0; i < img.data.length; i += 4) { img.data[i] = GB[0][0]; img.data[i + 1] = GB[0][1]; img.data[i + 2] = GB[0][2]; img.data[i + 3] = 255; }
+    if (!b) { lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); return; }
+    // The ground: a long stage line both stand on.
+    fill(0, 86, W, 1, 3); for (let x = 0; x < W; x += 6) fill(x + (Math.floor(tm * 8) % 6), 88, 3, 1, 2);
+    const a = anim ? (now - anim.at) / 1300 : -1, hitT = a >= 0.55 && a < 0.85, shake = hitT ? Math.round(Math.sin(now / 18) * 3) : 0;
+    const bob = k => Math.round(Math.sin(tm * 3 + k) * 1.5);
+    // THE INTRO (2.4 s): the host and Champ on the left, the rival on the right
+    // (a wild beast just jumps out), then the trainers step back and the beasts are out.
+    const it = (now - introAt) / 2400;
+    if (it >= 0 && it < 1) {
+      const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
+      drawTrainer(img, W, 2 - slide, 38, 'host'); drawTrainer(img, W, 40 - slide, 38, 'champ');
+      if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 180 + slide + x, 40 + y, v); }
+      if (it < 0.62) { lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+    }
+    drawBeast(beast(b.mine.name), 26 + (a >= 0 && a < 0.25 ? Math.round(a * 40) : 0), 44 + bob(0), false, false);
+    if (shownFoe > 0.001 || b.kind === 'rival') drawBeast(beast(b.foe.name), 174 + shake, 44 + bob(1), true, hitT && Math.floor(now / 60) % 2 === 0);
+    // The attack: from your beast to theirs.
+    if (a >= 0 && a < 1) { const kind = anim.kind, f = Math.min(1, a / 0.6), x = 70 + f * 100, y = 60 - Math.sin(f * Math.PI) * 24;
+      if (kind === 'coins') for (let k = 0; k < 7; k++) { const cx = 176 + k * 6 - 18, cy = 20 + ((a * 120 + k * 13) % 60); fill(cx, cy, 3, 3, 3); fill(cx + 1, cy + 1, 1, 1, 0); }
+      else if (kind === 'water') for (let k = 0; k < 9; k++) { const cx = 168 + (k * 7) % 30, cy = 18 + ((a * 140 + k * 11) % 64); fill(cx, cy, 1, 3, 2); }
+      else if (kind === 'flame') for (let k = 0; k < 6; k++) { const fx = x + Math.sin(k * 2 + a * 20) * 4, fy = y - k * 2; fill(Math.round(fx), Math.round(fy), 3 + (k % 2), 3, k % 2 ? 2 : 3); }
+      else if (kind === 'zap') { let zx = 70, zy = 56; for (let k = 0; k < 10 && zx < x; k++) { const nx = zx + 10, ny = 56 + (k % 2 ? -6 : 6); for (let t = 0; t <= 10; t++) put(img, W, Math.round(zx + (nx - zx) * t / 10), Math.round(zy + (ny - zy) * t / 10), 3); zx = nx; zy = ny; } }
+      else if (kind === 'shout') for (let k = 0; k < 3; k++) { const r = ((a * 3 + k * 0.33) % 1) * 30; for (let t = 0; t < 24; t++) { const ang = -0.6 + t * 0.05; put(img, W, Math.round(70 + Math.cos(ang) * r * 3), Math.round(56 + Math.sin(ang) * r), 3); } }
+      else if (kind === 'box') { const by = Math.min(52, -10 + a * 120); fill(178, Math.round(by), 18, 14, 2); fill(178, Math.round(by), 18, 1, 3); fill(178, Math.round(by) + 13, 18, 1, 3); fill(186, Math.round(by), 2, 14, 3); }
+      else if (kind === 'slam') { if (a > 0.45 && a < 0.8) for (let k = 0; k < 8; k++) { const ang = k * Math.PI / 4, r = (a - 0.45) * 60; fill(Math.round(194 + Math.cos(ang) * r), Math.round(62 + Math.sin(ang) * r), 2, 2, 3); } }
+      else if (kind === 'ball') { const bx = x, by2 = 70 - Math.abs(Math.sin(f * Math.PI * 2)) * 26; fill(Math.round(bx) - 2, Math.round(by2) - 2, 5, 5, 3); fill(Math.round(bx) - 1, Math.round(by2) - 1, 2, 2, 0); }
+      else { const spin = Math.abs(Math.cos(a * 18)); const cw = Math.max(1, Math.round(6 * spin)); fill(Math.round(x - cw / 2), Math.round(y - 5), cw, 10, 3); if (cw > 2) fill(Math.round(x - cw / 2) + 1, Math.round(y - 4), cw - 2, 8, 0); }
+      if (a > 0.55 && a < 0.62) for (let i = 0; i < img.data.length; i += 4 * 3) if ((i / 4) % W > 150) { img.data[i] = GB[0][0]; img.data[i + 1] = GB[0][1]; img.data[i + 2] = GB[0][2]; } // the hit's flash
+    }
+    if (anim && a >= 1) anim = null;
+    shownFoe += ((b.foe.hp) - shownFoe) * 0.12;
+    // The boxes: names and HP over each beast; the moves and the line of text below.
+    fill(8, 8, 96, 22, 3); fill(9, 9, 94, 20, 0); fill(136, 8, 96, 22, 3); fill(137, 9, 94, 20, 0);
+    const bar = (x0, y0, f) => { fill(x0, y0, 72, 5, 3); fill(x0 + 1, y0 + 1, 70, 3, 0); fill(x0 + 1, y0 + 1, Math.max(0, Math.round(70 * f)), 3, f < 0.25 ? 3 : 2); };
+    bar(26, 21, b.mine.hp); bar(154, 21, Math.max(0, shownFoe));
+    fill(0, 98, W, 62, 3); fill(2, 100, W - 4, 58, 0); fill(4, 102, W - 8, 1, 2);
+    lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale);
+    // Words in a crisp pixel font, at the screen's size.
+    const S = scale, tx = (s, x, y, size = 7, c = GB[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
+    if (it >= 0 && it < 1 && it >= 0.62) tx(STARTER + ', GO!', 10, 114, 6);
+    tx(b.mine.name, 14, 18); tx(b.foe.name.slice(0, 11), 142, 18); tx('HP', 13, 26, 5); tx('HP', 141, 26, 5);
+    tx(msg || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'), 10, 114, 6);
+    moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 132 + Math.floor(i / 2) * 16; if (i === pick) { ctx.fillStyle = `rgb(${GB[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 12 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? GB[0] : GB[3]); });
+  }
+  return {
+    set(next, { moves: mv, pick: p } = {}) { const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; } key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (!b) { msg = ''; shownFoe = 1; } },
+    // The rival trainer, from any picture (the boss's art), turned into four greens at 44 x 44.
+    setRival(src) { if (!src) { rival = null; return; } const c = document.createElement('canvas'); c.width = c.height = 44; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0, 44, 44); const d = x.getImageData(0, 0, 44, 44).data; rival = new Int8Array(44 * 44); for (let i = 0; i < rival.length; i++) { const a = d[i * 4 + 3], l = d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11; rival[i] = a < 120 ? -1 : l > 190 ? 0 : l > 130 ? 1 : l > 70 ? 2 : 3; } },
+    // A move fired (chat's pick, on a sale): its animation and the line of text.
+    attack(name) { const i = moves.indexOf(String(name).toUpperCase()); if (i >= 0) pick = i; anim = { kind: moveAnim(name), at: performance.now() }; msg = STARTER + ' USED ' + String(name).toUpperCase() + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); },
+    start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; },
+  };
+}
