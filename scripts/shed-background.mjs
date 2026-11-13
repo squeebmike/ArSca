@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=5').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=7').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false, vendOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -271,14 +271,14 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       let battle = null, battleOn = false, rivalArt = '';
       const batteryOf = d => { const last = Math.max(Number(stats?.lastSaleAt) || 0, Number(d?.lastAt) || 0); return last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / 360000)) : 1; };
       const paintBattle = d => {
-        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: batteryOf(d), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
+        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
         if (!battle) battle = beasts.createBattle(bcv, { scale: 3 });
         battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0 });
         if (!battleOn) { battle.start(); battleOn = true; }
       };
       // Its attacks: the one the host taps, and every sale fires the one chat picked.
-      const battleFx = e => { if (!battleOn || !battle || !e) return; if (e.kind === 'move') battle.attack(e.move); else if (['sold', 'jackpot', 'boss'].includes(e.kind)) { const mv = beasts.movesFrom(settings0.beastsMoves); battle.attack(mv[Number(stats?.beastMove) || 0] || mv[0]); } };
+      const battleFx = e => { if (!battleOn || !battle || !e) return; if (e.kind === 'beast' && e.beastEvent === 'evolve') battle.evolve?.(e.fromName, e.beastName); else if (e.kind === 'beast' && e.beastEvent === 'learn') battle.levelUp?.(e.beastName, e.level); else if (e.kind === 'move') battle.attack(e.move); else if (['sold', 'jackpot', 'boss'].includes(e.kind)) { const mv = beasts.movesFrom(settings0.beastsMoves); battle.attack(mv[Number(stats?.beastMove) || 0] || mv[0]); } };
       // THE MINI-MAP (2026-11-12): top left, filling in as you walk.
       const mini = Object.assign(document.createElement('canvas'), { id: 'shed-mini' }), miniCtx = mini.getContext('2d'); document.body.append(mini);
       setInterval(() => { mini.hidden = !miniOn || !stats?.dungeon; if (!mini.hidden) fp?.drawMap?.(miniCtx, { cell: 7 }); }, 300);

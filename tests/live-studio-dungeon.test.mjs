@@ -288,7 +288,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
 }
 // The setup preview shows the green-screen shed behind the top camera (2026-11-11).
 {
-  assert.ok(controls.includes('<iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" src="shed-background.html#preview=1"></iframe>'));
+  assert.ok(controls.includes('<iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" data-src="shed-background.html#preview=1" src="about:blank"></iframe>'));
   assert.ok(controls.includes("host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);"));
   const bg2 = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
   assert.ok(bg2.includes("if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera')") && bg2.includes("if (ev.data?.type !== 'mana-preview') return;"), 'only its own dashboard can drive the preview');

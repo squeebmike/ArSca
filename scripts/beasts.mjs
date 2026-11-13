@@ -42,10 +42,13 @@ export function wildName(floor, k) { const f = Math.max(1, floor | 0); return PR
 // The three starters are drawn on purpose. Original; nothing by chance.
 export const BEAST_SIZE = 32;
 const TYPES = ['blob', 'biped', 'quad', 'bird', 'bug', 'serpent'];
-export function beastType(name) { const nm = String(name).toUpperCase(); if (nm === 'SLABBIT') return 'biped'; if (nm === 'TOPLOADON') return 'quad'; if (nm === 'SLEEVIL') return 'biped'; if (/MOTH|OWL/.test(nm)) return 'bird'; if (/SNAIL|TOAD/.test(nm)) return 'blob'; if (/IMP|PUP/.test(nm)) return 'biped'; if (/OX|AROO/.test(nm)) return 'quad'; return TYPES[hashOf(nm + 't') % TYPES.length]; }
+const lineOf = nm => Object.values(EVOLUTIONS).find(l => l.includes(nm));
+export function beastType(name) { const nm0 = String(name).toUpperCase(), line = lineOf(nm0), nm = line ? line[0] : nm0; if (nm === 'SLABBIT') return 'biped'; if (nm === 'TOPLOADON') return 'quad'; if (nm === 'SLEEVIL') return 'biped'; if (/MOTH|OWL/.test(nm)) return 'bird'; if (/SNAIL|TOAD/.test(nm)) return 'blob'; if (/IMP|PUP/.test(nm)) return 'biped'; if (/OX|AROO/.test(nm)) return 'quad'; return TYPES[hashOf(nm + 't') % TYPES.length]; }
 export function makeBeast(name, { back = false } = {}) {
   const nm = String(name).toUpperCase(), type = beastType(nm), r = seq(hashOf(nm)), N = BEAST_SIZE;
   const shape = { w: 0.9 + r() * 0.25, h: 0.9 + r() * 0.2, ear: Math.floor(r() * 3), tail: r() < 0.7, spots: r() < 0.5, horn: r() < 0.3 };
+  // An evolved form: bigger, and at the last stage a horn and markings (the line keeps its look).
+  const ln = lineOf(nm), st = ln ? ln.indexOf(nm) : 0; if (st) { shape.w = Math.min(1.2, shape.w + 0.08 * st); shape.h = Math.min(1.15, shape.h + 0.06 * st); shape.tail = true; if (st >= 2) { shape.horn = true; shape.spots = true; } }
   const frames = [0, 1, 2, 3].map(f => drawFrame(nm, type, shape, f, back));
   return { name: nm, type, frames, blink: back ? frames[0] : drawFrame(nm, type, shape, 0, back, true), px: frames[0] };
 }
@@ -149,37 +152,73 @@ export const validFace = s => typeof s === 'string' && /^[0-3]{144}$/.test(s);
 
 // ── the town and the route (a floor) ────────────────────────────────────────
 // Tiles: 0 grass, 1 path, 2 tall grass, 3 tree, 4 water, 5 house wall, 6 roof,
-// 7 door, 8 fence, 9 flowers, 10 sign, 11 your shop's sign, 12 the rival's sign.
-export const MAP_W = 24, MAP_H = 64;
+// 7 door, 8 fence, 9 flowers, 10 sign, 11 your shop's sign, 12 the rival's sign,
+// 13 boulder, 14 sand, 15 bridge, 16 ledge.
+// LONGER, AND NEVER THE SAME TWICE (store, 2026-11-13: "we also need longer
+// route. Varying scenery"): 128 tiles from your shop to the rival's, in three
+// stretches, each its own kind of country -- open meadow, deep woods, a lake
+// with a sandy shore, a river with a bridge, rocky ledges, a flower field --
+// picked by the route's number (the same route looks the same on every screen;
+// nothing by chance). A rest stop halfway: a little house and a sign. The path
+// turns in straight runs, so you walk (and face) up, left or right.
+export const MAP_W = 28, MAP_H = 128;
+export const BIOMES = ['meadow', 'woods', 'lake', 'river', 'rocky', 'flowers'];
+export function biomesFor(floor) { const f = Math.max(1, floor | 0), h = hashOf('biomes' + f), out = []; for (let k = 0; k < 3; k++) { let b = BIOMES[(h >>> (k * 5)) % BIOMES.length]; if (out.includes(b)) b = BIOMES[(BIOMES.indexOf(b) + 1 + k) % BIOMES.length]; out.push(b); } return out; }
 const mapCache = new Map();
 export function routeFor(floor) {
   const f = Math.max(1, floor | 0); if (mapCache.has(f)) return mapCache.get(f);
   const r = seq(hashOf('route' + f)), W = MAP_W, H = MAP_H, g = Array.from({ length: H }, () => Array(W).fill(0));
-  // Trees all round; the path winds north from your shop (bottom) to the rival's (top).
+  const inMap = (x, y) => y >= 0 && y < H && x >= 2 && x < W - 2;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x < 2 || x >= W - 2) g[y][x] = 3;
-  const pts = []; let x = 12;
-  for (let y = H - 9; y >= 8; y--) { if (y % 7 === 0) x = Math.max(5, Math.min(W - 6, x + Math.round((r() - 0.5) * 10))); pts.push([x, y]); }
-  // The path: two wide, following x (with the bends filled in).
-  let px0 = pts[0][0];
-  for (const [x1, y] of pts) { for (let xx = Math.min(px0, x1); xx <= Math.max(px0, x1); xx++) { g[y][xx] = 1; g[y][xx + 1] = 1; } px0 = x1; }
-  // Woods along the route (not on the path), a pond, flowers.
-  for (let y = 10; y < H - 12; y++) for (let x2 = 2; x2 < W - 2; x2++) if (g[y][x2] === 0) { const v = r(); if (v < 0.16) g[y][x2] = 3; else if (v < 0.2) g[y][x2] = 9; }
-  const pond = [3 + Math.floor(r() * 4), 22 + Math.floor(r() * 20)]; for (let y = pond[1]; y < pond[1] + 3; y++) for (let x2 = pond[0]; x2 < pond[0] + 4; x2++) if (g[y][x2] !== 1) g[y][x2] = 4;
+  // The path's corners: straight runs north, then across (never diagonal).
+  const TOP = 8, BOT = H - 10, corners = [[13, BOT]]; let x = 13;
+  for (let y = BOT - 6; y > TOP + 2; y -= 6 + Math.floor(r() * 5)) { const nx = Math.max(5, Math.min(W - 7, x + Math.round((r() - 0.5) * 16))); corners.push([x, y]); if (nx !== x) corners.push([nx, y]); x = nx; }
+  corners.push([x, TOP]);
+  const pathTiles = new Set(), lay = (x0, y0, x1, y1) => { for (let yy = Math.min(y0, y1); yy <= Math.max(y0, y1); yy++) for (let xx = Math.min(x0, x1); xx <= Math.max(x0, x1); xx++) for (const [ax, ay] of [[0, 0], [1, 0]]) if (inMap(xx + ax, yy + ay)) { g[yy + ay][xx + ax] = 1; pathTiles.add((xx + ax) + ',' + (yy + ay)); } };
+  for (let i = 1; i < corners.length; i++) lay(corners[i - 1][0], corners[i - 1][1], corners[i][0], corners[i][1]);
+  const nearPath = (x2, y2, d = 1) => { for (let yy = -d; yy <= d; yy++) for (let xx = -d; xx <= d; xx++) if (pathTiles.has((x2 + xx) + ',' + (y2 + yy))) return true; return false; };
+  // Three stretches of country.
+  const biomes = biomesFor(f), zoneOf = y => y < TOP + (BOT - TOP) / 3 ? 2 : y < TOP + 2 * (BOT - TOP) / 3 ? 1 : 0;
+  for (let y = TOP + 1; y < BOT; y++) for (let x2 = 2; x2 < W - 2; x2++) {
+    if (g[y][x2] !== 0) continue; const v = r(), bio = biomes[zoneOf(y)], close = nearPath(x2, y);
+    if (bio === 'meadow') g[y][x2] = v < 0.08 && !close ? 3 : v < 0.12 ? 9 : 0;
+    else if (bio === 'woods') g[y][x2] = !close && v < 0.55 ? 3 : v < 0.6 ? 9 : 0;
+    else if (bio === 'rocky') g[y][x2] = !close && v < 0.16 ? 13 : !close && v < 0.22 ? 3 : 0;
+    else if (bio === 'flowers') g[y][x2] = v < 0.38 ? 9 : !close && v < 0.42 ? 3 : 0;
+    else g[y][x2] = !close && v < 0.1 ? 3 : 0;
+  }
+  biomes.forEach((bio, z) => {
+    const y0 = Math.round(TOP + (2 - z) * (BOT - TOP) / 3), y1 = Math.round(TOP + (3 - z) * (BOT - TOP) / 3), mid = Math.round((y0 + y1) / 2);
+    if (bio === 'lake') { // a lake beside the path, a sandy shore
+      const side = corners.find(c => c[1] <= mid)?.[0] > W / 2 ? 4 : W - 12; for (let y = y0 + 3; y < y1 - 3; y++) for (let x2 = side; x2 < side + 8; x2++) { if (!inMap(x2, y) || nearPath(x2, y)) continue; const d = ((x2 - side - 3.5) / 4.5) ** 2 + ((y - mid) / ((y1 - y0) / 2 - 3)) ** 2; if (d < 0.8) g[y][x2] = 4; else if (d < 1.1) g[y][x2] = 14; }
+    }
+    if (bio === 'river') { // a river across, a bridge where the path crosses
+      for (const y of [mid, mid + 1]) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = pathTiles.has(x2 + ',' + y) ? 15 : 4;
+      for (const y of [mid - 1, mid + 2]) for (let x2 = 2; x2 < W - 2; x2++) if (g[y][x2] !== 1 && g[y][x2] !== 15) g[y][x2] = 14;
+    }
+    if (bio === 'rocky') { // ledges across the hill, the path cut through
+      for (let y = y0 + 4; y < y1 - 2; y += 7) for (let x2 = 2; x2 < W - 2; x2++) if (!pathTiles.has(x2 + ',' + y) && g[y][x2] !== 4) g[y][x2] = 16;
+    }
+  });
   // Tall grass where the wild beasts wait (around the path at each encounter).
-  const along = t => pts[Math.min(pts.length - 1, Math.floor(t * (pts.length - 1)))];
-  ENCOUNTERS.forEach(([a, b]) => { const [ex, ey] = along(walkAt((a + b) / 2)); for (let y = ey - 3; y <= ey + 3; y++) for (let x2 = ex - 3; x2 <= ex + 4; x2++) if (g[y]?.[x2] !== undefined && x2 >= 2 && x2 < W - 2 && g[y][x2] !== 4) g[y][x2] = g[y][x2] === 1 ? 2 : 2; });
+  const walk = [[11, H - 4], [13, H - 4], ...corners];
+  const len = walk.reduce((n, p, i) => i ? n + Math.abs(p[0] - walk[i - 1][0]) + Math.abs(p[1] - walk[i - 1][1]) : 0, 0);
+  const route0 = { walk, len };
+  ENCOUNTERS.forEach(([a, b]) => { const p = posAt(route0, walkAt((a + b) / 2)), ex = Math.round(p.x), ey = Math.round(p.y); for (let y = ey - 4; y <= ey + 4; y++) for (let x2 = ex - 4; x2 <= ex + 5; x2++) if (inMap(x2, y) && ![4, 15, 16].includes(g[y][x2])) g[y][x2] = 2; });
   // Your shop's town at the bottom: the shop, two houses, a fence, a sign.
   const house = (hx, hy, sign) => { for (let x2 = hx; x2 < hx + 5; x2++) { g[hy][x2] = 6; g[hy + 1][x2] = 6; g[hy + 2][x2] = 5; g[hy + 3][x2] = 5; } g[hy + 3][hx + 2] = 7; if (sign) g[hy + 1][hx + 2] = sign; };
-  for (let y = H - 9; y < H - 1; y++) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = g[y][x2] === 1 ? 1 : 0;
-  house(9, H - 8, 11); house(3, H - 7, 0); house(16, H - 7, 0);
+  for (let y = BOT + 1; y < H - 1; y++) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = 0;
+  house(9, H - 8, 11); house(3, H - 7, 0); house(18, H - 7, 0);
+  lay(11, H - 4, 13, H - 4); lay(13, H - 4, 13, BOT);
   for (let x2 = 2; x2 < W - 2; x2++) if (g[H - 2][x2] === 0) g[H - 2][x2] = 8;
-  g[H - 4][14] = 10; g[H - 4][12] = 1; g[H - 4][13] = 1; g[H - 5][11] = 1; g[H - 5][12] = 1;
+  g[H - 4][16] = 10;
+  // A rest stop halfway (route 2 on): a little house by the path, a sign.
+  if (f >= 2) { const c = corners[Math.floor(corners.length / 2)], hx = c[0] > W / 2 ? 3 : W - 9, hy = c[1] - 2; if (inMap(hx, hy) && inMap(hx + 5, hy + 4)) { house(hx, hy, 0); g[hy + 4] && (g[hy + 4][hx + 2] = 1); g[hy + 4] && (g[hy + 4][hx + 5] = 10); } }
   // The rival's shop at the top.
-  for (let y = 1; y < 8; y++) for (let x2 = 2; x2 < W - 2; x2++) if (g[y][x2] !== 1) g[y][x2] = y < 2 ? 3 : 0;
-  house(pts[pts.length - 1][0] - 2, 2, 12);
-  // The walk: your shop's door, up the path, to the rival's door.
-  const walk = [[11, H - 4], ...pts.map(([px, py]) => [px, py]), [pts[pts.length - 1][0], 6]];
-  const out = { floor: f, grid: g, walk, len: walk.reduce((n, p, i) => i ? n + Math.hypot(p[0] - walk[i - 1][0], p[1] - walk[i - 1][1]) : 0, 0) };
+  for (let y = 1; y < TOP; y++) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = y < 2 ? 3 : 0;
+  lay(x, TOP, x, TOP - 1); house(x - 2, 2, 12);
+  walk.push([x, 6]);
+  const out = { floor: f, grid: g, walk, biomes, len: walk.reduce((n, p, i) => i ? n + Math.abs(p[0] - walk[i - 1][0]) + Math.abs(p[1] - walk[i - 1][1]) : 0, 0) };
   mapCache.set(f, out); return out;
 }
 // How far along the walk you are for the floor's progress: you stand still in
@@ -187,7 +226,7 @@ export function routeFor(floor) {
 export function walkAt(pct) { let gone = 0, total = 0; for (const [a, b] of ENCOUNTERS) { total += b - a; gone += Math.max(0, Math.min(pct, b) - a); } return Math.max(0, Math.min(1, (pct - gone) / (1 - total))); }
 export function posAt(route, t) {
   let d = Math.max(0, Math.min(1, t)) * route.len; const w = route.walk;
-  for (let i = 1; i < w.length; i++) { const L = Math.hypot(w[i][0] - w[i - 1][0], w[i][1] - w[i - 1][1]); if (d <= L || i === w.length - 1) { const f = L ? Math.min(1, d / L) : 0; return { x: w[i - 1][0] + (w[i][0] - w[i - 1][0]) * f, y: w[i - 1][1] + (w[i][1] - w[i - 1][1]) * f, dx: Math.sign(w[i][0] - w[i - 1][0]), dy: Math.sign(w[i][1] - w[i - 1][1]) }; } d -= L; }
+  for (let i = 1; i < w.length; i++) { const dx = w[i][0] - w[i - 1][0], dy = w[i][1] - w[i - 1][1], L = Math.abs(dx) + Math.abs(dy); if (d <= L || i === w.length - 1) { const f = L ? Math.min(1, d / L) : 0; return { x: w[i - 1][0] + dx * f, y: w[i - 1][1] + dy * f, dx: Math.sign(dx), dy: Math.sign(dy) }; } d -= L; }
   return { x: w[0][0], y: w[0][1], dx: 0, dy: -1 };
 }
 
@@ -202,9 +241,17 @@ export const RIVALS = [['SCALPER STEVE', 'FLIPWRAITH'], ['BAGGER BEV', 'POLYBAGG
 export const PLACES = { vault: ['🪙', 'GOLDEN GROTTO'], library: ['📚', 'READING MEADOW'], armory: ['🛡️', 'SLAB RIDGE'], forge: ['🔥', 'EMBER TRAIL'], crypt: ['🕯️', 'BARGAIN BOG'], lab: ['🧪', 'VARIANT WOODS'] };
 export function placeFor(room) { const p = PLACES[room?.id || room]; return p ? { icon: p[0], name: p[1] } : { icon: room?.icon || '🌿', name: 'TALL GRASS' }; }
 export function rivalFor(floor) { const [name, beast] = RIVALS[(Math.max(1, Math.floor(Number(floor) || 1)) - 1) % RIVALS.length]; return { name, beast }; }
+// THE FOE HITS BACK (store, 2026-11-13: "we never get hit by the other monster? What happens if we lose a battle?"):
+// while no sales come in, your beast's HP drains and the other beast attacks (a hit for each tenth lost); at 0 it
+// faints -- nothing is lost, but it can't fight until chat revives it (a follow, share or bookmark) or a sale comes in.
+export const FOE_MOVES = ['PAPER CUT', 'DOG EAR', 'SPINE ROLL', 'SUN FADE', 'STATIC CLING', 'RUSTY STAPLE', 'PRICE HIKE', 'WATER SPOT', 'COFFEE RING', 'BENT STAPLE'];
+export const foeMoveFor = (name, n = 0) => FOE_MOVES[(hashOf(String(name)) + n) % FOE_MOVES.length];
+export const BEAST_DRAIN_MS = 5 * 60000;
+// Your beast's HP from the last sale or chat tap (lastAt): full, draining to 0 over BEAST_DRAIN_MS.
+export function beastHpFrom(lastAt, now = Date.now()) { const l = Number(lastAt) || 0; if (!l) return 1; return Math.max(0, Math.min(1, 1 - (now - l) / BEAST_DRAIN_MS)); }
 export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {}) {
   if (!d) return null;
-  const mine = { name: STARTERS.includes(starter) ? starter : STARTER, hp: Math.max(0.08, Math.min(1, battery)) };
+  const lv = Number(d.level) || 1, mine = { name: formName(starter, lv), level: lv, hp: Math.max(0, Math.min(1, battery)) };
   if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name }; }
   const pct = Math.max(0, Math.min(1, (d.pct || 0) / 100));
   for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k), hp: 1 - (pct - a) / (b - a) } }; }
@@ -223,13 +270,46 @@ export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1
 const r2b = n => Math.round(n * 100) / 100;
 export const beastGoal = (s, route) => Math.max(1, Math.round((Number(s.beastsGoal) || 100) * Math.pow(1 + (Number(s.beastsGrowth) || 0) / 100, Math.max(0, route - 1))));
 export const rivalMax = (s, route) => Math.max(1, Math.round(beastGoal(s, route) / 2));
-export function emptyBeasts(week = '') { return { week, route: 1, phase: 'route', xp: 0, rivalHp: 0, caught: [], badges: [], lastAt: 0 }; }
+// LEVELS AND EVOLUTION (store, 2026-11-13: "can our monster level up and evolve? We need more to this game ...
+// tie into us selling on Whatnot and keeping the viewers watching"): every dollar sold (and chat's follows, shares,
+// bookmarks) is XP; levels come at 10, 30, 60, 100 ... XP; a new attack to learn every 5 levels (chat names it);
+// at LV 10 and LV 20 your beast evolves -- each starter has its own line, our own names. The level lasts the week.
+export const EVOLUTIONS = { SLABBIT: ['SLABBIT', 'SLABBUNNY', 'GRADEZILLA'], TOPLOADON: ['TOPLOADON', 'TOPLOADRAKE', 'TITANLOADER'], SLEEVIL: ['SLEEVIL', 'SLEEVILLAIN', 'OVERSLEEVOR'] };
+export const EVOLVE_AT = [10, 20], LEARN_EVERY = 5, MAX_LEVEL = 50;
+export const xpFor = level => 5 * (level - 1) * level; // the XP a level starts at (LV 2: 10, LV 5: 100, LV 10: 450, LV 20: 1900)
+export function levelFor(exp) { let l = 1; while (l < MAX_LEVEL && xpFor(l + 1) <= (Number(exp) || 0)) l++; return l; }
+export const stageFor = level => EVOLVE_AT.filter(a => level >= a).length;
+export function formName(starter, level) { const line = EVOLUTIONS[STARTERS.includes(starter) ? starter : STARTER]; return line[Math.min(line.length - 1, stageFor(level))]; }
+// The moment a batch of events puts on screen (the server and the preview demo alike): an evolution, a badge,
+// the rival stepping up, a new move to learn, a wild beast beaten. A plain level up returns null (the sale keeps its moment).
+export function beastMoment(events, starter = '', reward = '') {
+  const st = STARTERS.includes(starter) ? starter : STARTER, ev = events.filter(x => x.kind === 'evolve').pop();
+  if (ev) { const line = EVOLUTIONS[st]; return { kind: 'beast', beastEvent: 'evolve', beastName: line[ev.stage] || '', fromName: line[ev.stage - 1] || '', level: ev.level, reward: reward || '' }; }
+  const lv = events.filter(x => x.kind === 'level').pop(), big = events.filter(x => x.kind === 'badge').pop() || events.filter(x => x.kind === 'rival').pop();
+  const e = big || (lv?.learn ? lv : null) || events.filter(x => x.kind === 'caught').pop();
+  if (!e) return null;
+  if (e.kind === 'level') return { kind: 'beast', beastEvent: 'learn', beastName: formName(st, e.level), level: e.level };
+  return { kind: 'beast', beastEvent: e.kind, beastName: e.kind === 'caught' ? e.name : e.beast, trainer: e.trainer || '', route: e.route, badges: e.badges, ...(lv ? { level: lv.level } : {}) };
+}
+// THE BEASTDEX SHELF: the beasts you've beaten this week, in a row (newest last), with the count.
+export function drawShelf(canvas, names = [], { count = 0, scale = 2 } = {}) {
+  const list = names.slice(-10), N = BEAST_SIZE, W = 10 * (N + 4) + 120, H = N + 8; canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d'), img = ctx.createImageData(W, H);
+  for (let i = 0; i < img.data.length; i += 4) { img.data[i] = GB[1][0]; img.data[i + 1] = GB[1][1]; img.data[i + 2] = GB[1][2]; img.data[i + 3] = 255; }
+  for (let x = 0; x < W; x++) { put(img, W, x, 0, 3); put(img, W, x, H - 1, 3); } for (let y = 0; y < H; y++) { put(img, W, 0, y, 3); put(img, W, W - 1, y, 3); }
+  text3(img, W, 6, 8, 'BEASTDEX', 3); const n = String(count || list.length); [...n].forEach((d, k) => text3(img, W, 6 + k * 4, 18, d, 3));
+  list.forEach((nm, k) => { const px = makeBeast(nm).frames[0], x0 = 116 + k * (N + 4), y0 = 4; px.forEach((row, y) => row.forEach((v, x) => { if (v >= 0) put(img, W, x0 + x, y0 + y, v); })); });
+  ctx.putImageData(img, 0, 0); canvas.style.imageRendering = 'pixelated'; canvas.style.width = W * scale + 'px'; canvas.style.height = H * scale + 'px';
+}
+export function emptyBeasts(week = '') { return { week, route: 1, phase: 'route', xp: 0, rivalHp: 0, exp: 0, caught: [], badges: [], lastAt: 0 }; }
 export function ensureBeasts(b, week = '') { if (b && b.week === week) return b; const fresh = emptyBeasts(week); if (b?.week) fresh.lastWeek = { week: b.week, route: b.route, badges: (b.badges || []).length, caught: (b.caught || []).length }; return fresh; }
 // Dollars in: walk the route (passing the wild beasts), then the rival's HP; leftovers carry on.
 // Returns { beasts, events } -- { kind:'caught', name }, { kind:'rival', trainer, beast }, { kind:'badge', route, trainer, beast }.
 export function addBeastXp(bIn, amount, s, now = Date.now()) {
   const b = { ...bIn, caught: [...(bIn.caught || [])], badges: [...(bIn.badges || [])] }, events = [];
   if (!(amount > 0)) return { beasts: b, events };
+  const lv0 = levelFor(b.exp || 0); b.exp = r2b((b.exp || 0) + amount); const lv1 = levelFor(b.exp);
+  if (lv1 > lv0) { const learn = Math.floor(lv1 / LEARN_EVERY) > Math.floor(lv0 / LEARN_EVERY); events.push({ kind: 'level', level: lv1, learn }); const st0 = stageFor(lv0), st1 = stageFor(lv1); if (st1 > st0) events.push({ kind: 'evolve', level: lv1, stage: st1 }); }
   let left = r2b(amount);
   for (let guard = 0; left > 0 && guard < 60; guard++) {
     if (b.phase === 'route') {
@@ -256,9 +336,9 @@ export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.n
   return { ...bIn, route: n, phase: 'route', xp: 0, rivalHp: 0, lastAt: now };
 }
 // What the screens see (floor and pct keep the drawing code's names: floor is the route).
-export function publicBeasts(bIn, s) {
-  const b = bIn || emptyBeasts(), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
-  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, badges: (b.badges || []).length, lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+export function publicBeasts(bIn, s, starter = '') {
+  const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
 }
 
 // ── drawing ──────────────────────────────────────────────────────────────────
@@ -277,12 +357,16 @@ function tileShade(t, u, v, tx, ty, tm) {
     case 8: return (u % 8 === 3 || u % 8 === 4) && v > 3 ? 3 : (v === 6 || v === 11) ? 3 : 1; // fence
     case 9: { const b = Math.floor(tm * 1.5 + tx + ty) % 2; return (u % 6 === 2 && v % 6 === 2) || (b && u % 6 === 3 && v % 6 === 3) ? 3 : (u % 6 === 2 && v % 6 === 3) ? 0 : 1; } // flowers, nodding
     case 10: return (v > 9 && (u === 7 || u === 8)) ? 3 : v > 2 && v < 10 && u > 1 && u < 14 ? (v === 3 || v === 9 || u === 2 || u === 13 ? 3 : (v === 5 || v === 7) && u > 3 && u < 12 ? 2 : 0) : 0; // signpost
+    case 13: { const cx = u - 7.5, cy = v - 8.5, d = cx * cx / 42 + cy * cy / 30; return d < 1 ? (d > 0.72 ? 3 : cx + cy < -4 ? 0 : (u * 5 + v * 3) % 11 === 0 ? 3 : 2) : 1; } // boulder
+    case 14: return (hashOf(tx * 31 + ty * 17 + u * 7 + v * 3) % 9) === 0 ? 1 : 0;   // sand, speckled
+    case 15: return v === 0 || v === 15 ? 3 : u % 4 === 3 ? 2 : 1;                     // bridge planks
+    case 16: return v >= 11 ? (v === 11 ? 3 : 2) : (hashOf(tx * 13 + u + v * 5) % 9 === 0 ? 2 : 1); // a ledge (you hop down it)
     case 11: case 12: return v > 1 && v < 14 ? (v === 2 || v === 13 || u === 0 || u === 15 ? 3 : 0) : 2; // a shop sign (letters drawn on top)
     default: return h < 7 ? 2 : h < 12 ? 0 : 1;                                       // grass: a shade darker than the path, tufts
   }
 }
 // A tiny 3 x 5 font (the shop signs, the "!" over your head).
-const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', P: '110101110100100', R: '110101110110101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', '!': '010010010000010', ' ': '000000000000000' };
+const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', P: '110101110100100', R: '110101110110101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', X: '101101010101101', G: '011100101101011', H: '101101111101101', W: '101101111111101', Y: '101101010010010', '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111', '4': '101101111001001', '5': '111100111001111', '6': '111100111101111', '7': '111001001010010', '8': '111101111101111', '9': '111101111001111', '!': '010010010000010', ' ': '000000000000000' };
 function text3(img, W, x, y, str, s) { [...str].forEach((ch, k) => { const g = FONT[ch] || FONT[' ']; for (let i = 0; i < 15; i++) if (g[i] === '1') put(img, W, x + k * 4 + (i % 3), y + Math.floor(i / 3), s); }); }
 
 // THE HOST AND CHAMP, hand-drawn in four greens (store, 2026-11-13: "put us in
@@ -360,7 +444,8 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     const target = state.phase === 'boss' ? 1 : walkAt((state.pct || 0) / 100);
     const walking = shown < target - 0.0005; if (walking) shown = Math.min(target, shown + dt * Math.max(3.2 / route.len, (target - shown) / 10)); else if (shown > target) shown = target;
     const p = posAt(route, shown), q = posAt(route, Math.max(0, shown - 1.3 / route.len));
-    if (walking) { step = Math.floor(tm * 6) % 2; dir = p.dy < 0 ? 'up' : p.dy > 0 ? 'down' : p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : dir; } else step = 0;
+    // Facing the way you're walking (2026-11-13: "change directions"): across on a turn, up on a straight run.
+    if (walking) { step = Math.floor(tm * 6) % 2; dir = p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : p.dy < 0 ? 'up' : p.dy > 0 ? 'down' : dir; } else step = 0;
     // The camera follows you (kept inside the map).
     const camX = Math.max(0, Math.min(MAP_W * T - w, (p.x + 0.5) * T - w / 2)), camY = Math.max(0, Math.min(MAP_H * T - h, (p.y + 0.5) * T - h * 0.58));
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; put(img, w, x, y, tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm)); }
@@ -387,7 +472,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
   // and the line of text in the box along the bottom. Our own boxes and art.
   const W = 240, H = 160; canvas.width = W * scale; canvas.height = H * scale;
   const ctx = canvas.getContext('2d'), low = document.createElement('canvas'); low.width = W; low.height = H; const lx = low.getContext('2d'), img = lx.createImageData(W, H);
-  let b = null, moves = DEFAULT_MOVES, pick = 0, anim = null, raf = 0, last = 0, msg = '', shownFoe = 1, beastCache = new Map(), introAt = -1e9, key = '', rival = null;
+  let b = null, moves = DEFAULT_MOVES, pick = 0, anim = null, foeAnim = null, evo = null, foeHits = 0, lastTenth = 10, faintAt = 0, raf = 0, last = 0, msg = '', shownFoe = 1, beastCache = new Map(), introAt = -1e9, key = '', rival = null;
   const beast = (n, back = false) => { const k = n + (back ? '|back' : ''); if (!beastCache.has(k)) beastCache.set(k, makeBeast(n, { back })); return beastCache.get(k); };
   const fill = (x0, y0, w, h, s) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(img, W, x, y, s); };
   // A beast, animated: its idle frames (4 a second), a blink now and then; sinking out of sight when it's knocked out.
@@ -412,9 +497,19 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;
-    drawBeast(beast(b.mine.name, true), 28 + lunge, 42 + bob(0) - lunge, false, 2);
+    const fa = foeAnim ? (now - foeAnim.at) / 1300 : -1, gotHit = fa >= 0.45 && fa < 0.8, myShake = gotHit ? Math.round(Math.sin(now / 18) * 3) : 0, foeLunge = fa >= 0 && fa < 0.25 ? Math.round(fa * 32) : 0;
+    if (foeAnim && fa >= 1) foeAnim = null;
+    const fainted = b.mine.hp <= 0, mySink = fainted ? Math.min(1, (now - faintAt) / 900) : 0;
+    // EVOLVING (3.2 s): the old and new forms flicker, faster and faster, a flash, then the new one.
+    const et = evo ? (now - evo.at) / 3200 : -1; if (evo && et >= 1.6) evo = null;
+    const evoName = et >= 0 && et < 1 ? (Math.floor((now - evo.at) / Math.max(40, 220 * (1 - et))) % 2 ? evo.to : evo.from) : null;
+    drawBeast(beast(evoName || b.mine.name, true), 28 + lunge + myShake, 42 + bob(0) - lunge, gotHit && Math.floor(now / 60) % 2 === 0, 2, mySink);
+    if (et >= 0.86 && et < 1.05) for (let yy = 0; yy < 106; yy++) for (let xx = 0; xx < W; xx++) put(img, W, xx, yy, 0); // the flash
     const faint = b.foe.hp <= 0.002 ? Math.min(1, Math.max(0, 1 - shownFoe * 50)) : 0;
-    drawBeast(beast(b.foe.name), 152 + shake, 4 + bob(1), hitT && Math.floor(now / 60) % 2 === 0, 2, faint);
+    drawBeast(beast(b.foe.name), 152 + shake - foeLunge, 4 + bob(1) + foeLunge, hitT && Math.floor(now / 60) % 2 === 0, 2, faint);
+    // The foe's attack: from theirs (top right) down to yours (bottom left).
+    if (fa >= 0 && fa < 0.6) { const f = fa / 0.6, x = 182 - f * 112, y = 30 + f * 40 - Math.sin(f * Math.PI) * 14; fill(Math.round(x) - 2, Math.round(y) - 2, 5, 5, 3); fill(Math.round(x) - 1, Math.round(y) - 1, 3, 3, 0); }
+    if (fa > 0.45 && fa < 0.52) for (let yy = 40; yy < 106; yy++) for (let xx = 0; xx < 120; xx += 2) put(img, W, xx, yy, 0); // the hit's flash
     // The attack: from yours (bottom left) up to theirs (top right).
     if (a >= 0 && a < 1) { const kind = anim.kind, f = Math.min(1, a / 0.6), x = 70 + f * 112, y = 74 - f * 30 - Math.sin(f * Math.PI) * 18, FX = 184, FY = 44;
       if (kind === 'coins') for (let k = 0; k < 7; k++) { const cx = FX - 18 + k * 6, cy = 4 + ((a * 120 + k * 13) % 50); fill(cx, cy, 3, 3, 3); fill(cx + 1, cy + 1, 1, 1, 0); }
@@ -436,15 +531,22 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale);
     // Words in a crisp pixel font, at the screen's size.
     const S = scale, tx = (s, x, y, size = 7, c = GB[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
-    tx(b.foe.name.slice(0, 11), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5);
-    tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
+    tx(b.foe.name.slice(0, 11), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5); tx('L' + (b.mine.level || 1), 214, 87, 6);
+    tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
     moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${GB[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? GB[0] : GB[3]); });
   }
   return {
-    set(next, { moves: mv, pick: p } = {}) { const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; } key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (!b) { msg = ''; shownFoe = 1; } },
+    set(next, { moves: mv, pick: p } = {}) { const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); } key = k;
+      // The foe hits back: a hit for every tenth of HP your beast loses; at 0 it faints; back up, it's back.
+      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 2400) { const mv = foeMoveFor(next.foe.name, foeHits++); foeAnim = { kind: moveAnim(mv), at: performance.now() }; msg = (next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + mv + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } if (next.mine.hp <= 0 && (b.mine?.hp ?? 1) > 0) faintAt = performance.now(); if (next.mine.hp > 0 && (b.mine?.hp ?? 1) <= 0) { msg = next.mine.name + ' IS BACK ON ITS FEET!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } lastTenth = tenth; }
+      b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (!b) { msg = ''; shownFoe = 1; } },
     // The rival trainer, from any picture (the boss's art), turned into four greens at 44 x 44.
     setRival(src) { if (!src) { rival = null; return; } const c = document.createElement('canvas'); c.width = c.height = 44; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0, 44, 44); const d = x.getImageData(0, 0, 44, 44).data; rival = new Int8Array(44 * 44); for (let i = 0; i < rival.length; i++) { const a = d[i * 4 + 3], l = d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11; rival[i] = a < 120 ? -1 : l > 190 ? 0 : l > 130 ? 1 : l > 70 ? 2 : 3; } },
     // A move fired (chat's pick, on a sale): its animation and the line of text.
+    // The evolution: the cutscene and its lines.
+    evolve(from, to) { evo = { from: String(from || '').toUpperCase(), to: String(to || '').toUpperCase(), at: performance.now() }; msg = 'WHAT? ' + evo.from.slice(0, 11) + ' IS EVOLVING!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = evo ? evo.from.slice(0, 10) + ' EVOLVED INTO ' + evo.to.slice(0, 11) + '!' : ''; this.t = setTimeout(() => { msg = ''; }, 3500); }, 3300); },
+    // A level up: a line in the box.
+    levelUp(name, level) { msg = String(name).slice(0, 11) + ' GREW TO LV ' + level + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); },
     attack(name) { const i = moves.indexOf(String(name).toUpperCase()); if (i >= 0) pick = i; anim = { kind: moveAnim(name), at: performance.now() }; msg = (b?.mine?.name || STARTER) + ' USED ' + String(name).toUpperCase() + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); },
     start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; },
   };

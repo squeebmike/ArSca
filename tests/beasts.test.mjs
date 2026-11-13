@@ -57,7 +57,7 @@ assert.deepEqual(B.STARTERS, ['SLABBIT', 'TOPLOADON', 'SLEEVIL']);
 assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'SLEEVIL' }).mine.name, 'SLEEVIL');
 assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'NOPE' }).mine.name, B.STARTER, 'only a real starter');
 assert.notDeepEqual(B.makeBeast('SLABBIT', { back: true }).px, B.makeBeast('SLABBIT').px, 'yours from behind');
-assert.match(src, /drawBeast\(beast\(b\.mine\.name, true\), 28 \+ lunge, 42/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name\), 152 \+ shake, 4/, 'theirs top right');
+assert.match(src, /drawBeast\(beast\(evoName \|\| b\.mine\.name, true\), 28 \+ lunge \+ myShake, 42/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name\), 152 \+ shake - foeLunge, 4/, 'theirs top right');
 assert.match(room, /else if \(kind === 'starter'\) options = STARTERS\.map/); assert.match(room, /if \(v\.kind === 'starter'\) \{ s\.beastStarter = opt\.id;/);
 assert.match(room, /setMachine\(input = \{\}\) \{/); assert.match(room, /this\.machineSold\(s, event\.data, moved \? wasNow : null\)/, 'a sale marks its item SOLD OUT');
 assert.match(read('scripts/live-studio-api.mjs'), /room\.setMachine\(body\)/);

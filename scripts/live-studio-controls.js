@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.13.14';
+  const STUDIO_V='2026.11.13.17';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -74,6 +74,7 @@
   <small data-beasts>ATTACK NOW: tap one -- it's used right away (works in the preview too). Or let chat vote.</small>
   <div class="mana-row beast-moves" id="beast-moves"></div>
   <div class="mana-row" data-beasts><input id="beast-new-move" maxlength="16" placeholder="CHAT'S NEW ATTACK (e.g. MOM'S BASEMENT)"><button type="button" id="beast-add-move">➕ ADD CHAT'S ATTACK</button><button type="button" data-click="#mana-vote-open [data-vote=move]">⚔️ CHAT PICKS THE ATTACK</button><button type="button" data-click="#mana-vote-open [data-vote=starter]">🥚 CHAT PICKS THE STARTER</button></div>
+  <div class="mana-row"><button type="button" id="beast-preview-evo">✨ PREVIEW AN EVOLUTION</button></div>
   <div class="mana-row"><input id="beast-add" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="beast-add-go">+ $ UP THE ROUTE</button><button type="button" id="beast-route">🔢 SET ROUTE…</button><button type="button" id="beast-reset">⏮ START BEASTS OVER</button></div>
   <h3>Now playing &amp; next up</h3>
   <small>What's on screen as NOW PLAYING and NEXT STAGE (and what goes in the chests). Show Prep's LINE IT UP fills it; or find items here.</small>
@@ -96,6 +97,8 @@
   <label>WHICH GAME<select name="gameMode"><option value="dungeon">THE SHED DUNGEON (first person)</option><option value="beasts">LONG BOX BEASTS (top-down, battles)</option><option value="vending">VENDING ONLY (no game: the machine)</option></select></label>
   <h3>👾 Beasts settings</h3>
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
+  <label>WHEN YOUR BEAST EVOLVES (LV 10 and LV 20), everyone watching gets<input name="beastsEvolveReward" maxlength="120" placeholder="e.g. Free giveaway in the Whatnot tool"></label>
+  <small>Levels: every $1 sold is 1 XP (follows, shares and bookmarks count too); a new attack to learn every 5 levels -- chat names it (➕ ADD CHAT'S ATTACK). The level lasts the week. The reward is for the whole room, never buyers only.</small>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
   <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) (the chibi walkers are always used now; the face photos below are kept but no longer replace them).</small>
   <div class="mana-row beast-faces"><label>YOUR FACE (a photo)<input type="file" accept="image/*" id="beast-face-file"></label><canvas id="beast-face-view" width="12" height="12"></canvas><label>CHAMP'S FACE<input type="file" accept="image/*" id="beast-buddy-file"></label><canvas id="beast-buddy-view" width="12" height="12"></canvas></div>
@@ -149,10 +152,12 @@
   <div class="mana-grid">${box('visible','Show sign')}${box('marqueeOn','Scrolling marquee on the sign')}${box('showHud','Show score board')}${box('showCard','Show now playing')}${box('showQueue','Show next up')}${box('showCombo','Show combos')}${box('attract','INSERT COIN when nothing is playing')}${box('muted','Mute sound')}${box('showBuyerNames','Show buyer usernames ("THANKS @name")')}</div>
   <small>Buyer usernames are off unless you turn them on. Whatnot shows the winner's username in the app already; check Whatnot's seller rules before showing them. Only the username is ever shown, and there's no "top spender" board.</small>
   <button type="submit">Save live settings</button></form></details>
-  <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" src="arcade-overlay.html#preview=1"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" src="shed-background.html#preview=1"></iframe></div>
+  <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" data-src="arcade-overlay.html#preview=1" src="about:blank"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" data-src="shed-background.html#preview=1" src="about:blank"></iframe></div>
   <div class="mana-row"><button type="button" id="mana-demo">DEMO A SALE (preview only)</button></div><small>Preview is silent. Both camera areas are placeholders; camera sources stay in OBS.</small>
   <button id="mana-link">Create / replace OBS link</button><button id="mana-revoke">Revoke OBS link</button><label>Private OBS Browser Source URL<input id="mana-url" readonly></label><label>Shed background URL (green screen)<input id="mana-shed-url" readonly></label><div class="mana-row"><a href="shed-background.html#demo=1" target="_blank" rel="noopener">PREVIEW ALL SHEDS ↗</a></div><small>Green screen: put the shed background as a Browser Source (1080 × 1920) <b>under</b> your camera, and add OBS's Chroma Key filter to the camera. The shed follows the dungeon's floor, shows the room chat picked, and glows red while a boss is up.</small><small>Link expires after 12 hours. Replacing it disconnects old overlays. OBS: Browser Source 1080 × 1920 above both cameras, enable “Control audio via OBS”. If sound is blocked, use OBS Interact and click the overlay once.</small>`;
   const form=host.querySelector('form'),status=host.querySelector('#mana-status'),frame=host.querySelector('iframe');
+  // The studio is on screen: the page is showing and its tab is open (a closed tab panel has no layout).
+  const studioOnScreen=()=>!document.hidden&&host.getClientRects().length>0;
   // A demo sale holds the preview where the demo left it for 2 minutes (the 8-second refresh used to snap it back).
   let demoFake=null,demoUntil=0;
   let machineCtl={on:false,items:[]};
@@ -189,6 +194,8 @@
     // BEASTS' OWN BUTTONS (its section): taps, + $, the route, start over -- the server sends them to Beasts while it's on.
     host.querySelectorAll('[data-beast-tap]').forEach(b=>{b.onclick=()=>host.querySelector('#mana-taps [data-tap="'+b.dataset.beastTap+'"]')?.click();});
     const ba=host.querySelector('#beast-add-go');if(ba)ba.onclick=()=>{host.querySelector('#mana-add-mana').value=host.querySelector('#beast-add').value;host.querySelector('#beast-add').value='';host.querySelector('#mana-add-mana-go').click();};
+    // See the evolution cutscene in the preview (nothing changes in the show).
+    const be=host.querySelector('#beast-preview-evo');if(be)be.onclick=()=>run(async()=>{const B=beastsLib||await import('./beasts.mjs?v='+STUDIO_V);const st=stats?.beastStarter||'',now=Date.now();preview({id:'evo-'+now,kind:'beast',beastEvent:'evolve',fromName:B.formName(st,1),beastName:B.formName(st,10),level:10,reward:values().beastsEvolveReward||'',startsAt:now,endsAt:now+7000});status.textContent='Preview: '+B.formName(st,1)+' evolves into '+B.formName(st,10)+'.';});
     const br=host.querySelector('#beast-route');if(br)br.onclick=()=>host.querySelector('#quick-floor')?.click();
     const bz=host.querySelector('#beast-reset');if(bz)bz.onclick=()=>host.querySelector('#mana-reset-week')?.click();
     // Where the battle shows: over the hosts (the overlay) or behind them (the green screen).
@@ -262,7 +269,7 @@
     host.querySelector('.mana-trivia-who').hidden=stats?.vote?.kind!=='trivia';
     host.querySelector('.mana-remote').classList.toggle('voting',!!(stats?.vote||d?.doors));
     const bs=stats?.beasts,bst=host.querySelector('#beast-status');
-    const beastLine=bs?'Route '+bs.route+' · '+(bs.stage==='rival'?bs.rival.name+'\'s '+bs.rival.beast+' HP '+usd(bs.rival.hp)+' / '+usd(bs.rival.max):usd(bs.xp)+' / '+usd(bs.goal)+' to '+bs.rival.name)+' · badges '+bs.badges+' · beasts beaten '+bs.caughtCount:'Connect to see the route.';
+    const beastLine=bs?(bs.form||'')+' LV '+(bs.level||1)+(bs.toEvo?' ('+usd(bs.toEvo)+' to evolve)':'')+' · Route '+bs.route+' · '+(bs.stage==='rival'?bs.rival.name+'\'s '+bs.rival.beast+' HP '+usd(bs.rival.hp)+' / '+usd(bs.rival.max):usd(bs.xp)+' / '+usd(bs.goal)+' to '+bs.rival.name)+' · badges '+bs.badges+' · beasts beaten '+bs.caughtCount:'Connect to see the route.';
     if(bst)bst.textContent=beastLine;
     if(values().gameMode==='beasts'){el.textContent=beastLine;return;}
     if(!d){el.textContent='Connect to see the floor.';return;}
@@ -278,7 +285,8 @@
   async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
   host.querySelector('#mana-load').onclick=()=>run(connect);
   // Connect on its own once the dashboard is signed in.
-  (function autoConnect(tries){if(connectedStore)return;if(typeof storeWorkerFetch==='function'&&store()){connect().catch(()=>{if(tries<5)setTimeout(()=>autoConnect(tries+1),4000);});}else if(tries<20)setTimeout(()=>autoConnect(tries+1),1500);})(0);
+  (function autoConnect(tries){if(connectedStore)return;if(!studioOnScreen()){setTimeout(()=>autoConnect(tries),3000);return;} // waits until you open the Whatnot tab
+    if(typeof storeWorkerFetch==='function'&&store()){connect().catch(()=>{if(tries<5)setTimeout(()=>autoConnect(tries+1),4000);});}else if(tries<20)setTimeout(()=>autoConnect(tries+1),1500);})(0);
   // What ByteRider knows on the website (Worker: /byterider/facts).
   const factsBox=host.querySelector('#mana-br-facts'),factsStatus=host.querySelector('#mana-br-facts-status');
   async function factsCall(body){const res=await storeWorkerFetch('/byterider/facts?store_id='+encodeURIComponent(store()),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Could not reach ByteRider');return d;}
@@ -307,8 +315,8 @@
   new MutationObserver(()=>{const m=host.querySelector('#mana-remote-msg');if(m)m.textContent=status.textContent;}).observe(status,{childList:true,characterData:true,subtree:true});
   // While connected, pick up what happened on stream (doors opening, chests,
   // the floor) every 8 seconds, so the winner buttons are always current.
-  setInterval(()=>{if(!connectedStore||document.hidden||connectedStore!==store())return;api('state').then(d=>{if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});else{revision=d.revision;took(d);}}).catch(()=>{});},8000);
-  setInterval(()=>{const f=host.querySelector('#mana-remote-floor'),sc=host.querySelector('#mana-remote-score');if(!f)return;const d=host.querySelector('#mana-dungeon-status')?.textContent||'';f.textContent=connectedStore?d:'Tap CONNECT to start';sc.textContent=connectedStore?host.querySelector('#mana-score')?.textContent||'':'';},1000);
+  setInterval(()=>{if(!connectedStore||!studioOnScreen()||connectedStore!==store())return;api('state').then(d=>{if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});else{revision=d.revision;took(d);}}).catch(()=>{});},8000);
+  setInterval(()=>{if(!studioOnScreen())return;const f=host.querySelector('#mana-remote-floor'),sc=host.querySelector('#mana-remote-score');if(!f)return;const d=host.querySelector('#mana-dungeon-status')?.textContent||'';f.textContent=connectedStore?d:'Tap CONNECT to start';sc.textContent=connectedStore?host.querySelector('#mana-score')?.textContent||'':'';},1000);
   try{const all=host.querySelector('#mana-all');all.open=localStorage.getItem('mana-all-open')==='1';all.ontoggle=()=>{try{localStorage.setItem('mana-all-open',all.open?'1':'0');}catch(_){}};}catch(_){}
   host.querySelector('#mana-trivia').onclick=()=>run(async()=>{const q=host.querySelector('#mana-trivia-q').value.trim(),a=host.querySelector('#mana-trivia-a').value.trim();if(q&&!a)throw Error('Type the answer too');const x=await api('trivia',{question:q,answer:a});took(x);host.querySelector('#mana-trivia-q').value='';host.querySelector('#mana-trivia-a').value='';status.textContent='Trivia is on screen'+(x.stats?.vote?.question?': '+x.stats.vote.question:'')+(x.triviaAnswer?' (answer: '+x.triviaAnswer+')':'')+'. Tap CHAT GOT IT when someone does.';});
   host.querySelector('#mana-floor-name-go').onclick=()=>run(async()=>{const n=host.querySelector('#mana-floor-name').value.trim();const x=await api('floor-name',{name:n});took(x);status.textContent=n?'Floor named "'+n.toUpperCase()+'".':'Floor name cleared.';});
@@ -492,10 +500,10 @@
     let kind=!v.dungeonOn&&wasAlive&&hp<=0&&v.showBoss?'boss':amount>=v.jackpotAmount?'jackpot':'sold',extra={};
     // BEASTS: its own track in the preview too (the dungeon doesn't move).
     if(v.gameMode==='beasts'&&beastsLib){
-      if(demo===1){const p=stats?.beasts;demoBeasts=p?{week:p.week,route:p.route,phase:p.stage==='rival'?'rival':'route',xp:p.xp,rivalHp:p.stage==='rival'?p.rival.hp:0,caught:[],badges:[]}:beastsLib.emptyBeasts();}
-      const r=beastsLib.addBeastXp(demoBeasts,amount,v);demoBeasts=r.beasts;fake.beasts=beastsLib.publicBeasts(demoBeasts,v);fake.dungeon=stats?.dungeon;
-      const e=r.events.filter(x=>x.kind==='badge').pop()||r.events.filter(x=>x.kind==='rival').pop()||r.events.filter(x=>x.kind==='caught').pop();
-      if(e){kind='beast';extra={beastEvent:e.kind,beastName:e.kind==='caught'?e.name:e.beast,trainer:e.trainer||'',route:e.route,badges:e.badges};}
+      if(demo===1){const p=stats?.beasts;demoBeasts=p?{week:p.week,route:p.route,phase:p.stage==='rival'?'rival':'route',xp:p.xp,exp:p.exp||0,rivalHp:p.stage==='rival'?p.rival.hp:0,caught:(p.caught||[]).map(name=>({name})),badges:[]}:beastsLib.emptyBeasts();}
+      const r=beastsLib.addBeastXp(demoBeasts,amount,v);demoBeasts=r.beasts;fake.beasts=beastsLib.publicBeasts(demoBeasts,v,stats?.beastStarter||'');fake.dungeon=stats?.dungeon;
+      const mo=beastsLib.beastMoment(r.events,stats?.beastStarter||'',v.beastsEvolveReward||'');
+      if(mo){kind='beast';const {kind:_k,...rest}=mo;extra=rest;}
     }
     // The dungeon moves too (preview only).
     else if(dungeonLib){
@@ -511,5 +519,14 @@
   host.querySelector('#mana-revoke').onclick=()=>run(async()=>{await api('revoke',{});host.querySelector('#mana-url').value='';host.querySelector('#mana-shed-url').value='';status.textContent='OBS links revoked.';});
   const resize=new ResizeObserver(()=>{frame.style.setProperty('--preview-scale',frame.parentElement.clientWidth/1080);});resize.observe(frame.parentElement);
   frame.onload=()=>{if(settings)preview();};
+  host.querySelector('.mana-preview-bg').onload=()=>{if(settings)preview();};
+  // ASLEEP UNLESS ON SCREEN (store, 2026-11-13: "make sure the Whatnot tab isn't using resources while we
+  // aren't using it ... is it running in the background all the time?"): the two previews (the overlay and the
+  // green-screen game, drawing every frame) load only while the studio is on screen and are emptied 20 seconds
+  // after it goes out of view (another tab, the app in the background); the server isn't asked anything meanwhile.
+  let previewOffAt=null;
+  const previewsOn=on=>{for(const f of host.querySelectorAll('iframe[data-src]')){const want=on?f.dataset.src:'about:blank';if(on?f.getAttribute('src')!==want:f.getAttribute('src')!=='about:blank')f.setAttribute('src',want);}};
+  const watchView=()=>{const v=studioOnScreen();if(v){clearTimeout(previewOffAt);previewOffAt=null;previewsOn(true);}else if(!previewOffAt)previewOffAt=setTimeout(()=>{previewOffAt=null;if(!studioOnScreen())previewsOn(false);},20000);};
+  document.addEventListener('visibilitychange',watchView);setInterval(watchView,2000);watchView();
   import('./live-studio-model.mjs').then(m=>{chanceFn=m.chanceWordIn;paint({...m.DEFAULT_STUDIO});}).catch(()=>{});
 })();
