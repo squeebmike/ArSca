@@ -518,3 +518,8 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 .mana-controls details.mana-sec .mana-row>input,.mana-controls details.mana-sec .mana-row>select{min-height:48px;margin:0;width:100%;box-sizing:border-box;min-width:0}
 .mana-controls details.mana-sec .mana-remote-grid{margin:8px 0}
 .mana-controls .vm-wn{border:2px solid #ffd400;border-radius:10px;padding:8px 10px;margin:10px 0;display:grid;gap:6px}
+
+/* Beasts: the beastdex shelf over the battle, and the evolve countdown (2026-11-13). */
+#beast-shelf{position:absolute;left:180px;z-index:7;border:4px solid #0f380f;border-radius:10px;box-shadow:0 6px 0 #000a}
+#mana-cbar-sub.evo-soon{color:#9bbc0f;animation:vm-blink 1s infinite;text-shadow:0 0 10px #9bbc0f}
+@keyframes vm-blink{50%{opacity:.55}}

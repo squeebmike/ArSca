@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { movesFrom, STARTERS, ensureBeasts, addBeastXp, adjustBeasts, publicBeasts } from './beasts.mjs';
+import { movesFrom, STARTERS, ensureBeasts, addBeastXp, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
@@ -41,7 +41,7 @@ export class ManaLiveStudio extends DurableObject {
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
   publicStats(state) {
-    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), beasts: publicBeasts(state.beasts, state.settings), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
+    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), beasts: publicBeasts(state.beasts, state.settings, state.beastStarter || ''), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
   }
   publicState(state = this.read()) {
     return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], machine:this.pubMachine(state), serverNow:Date.now() };
@@ -51,14 +51,12 @@ export class ManaLiveStudio extends DurableObject {
   // VENDING ONLY: no game; sales move nothing but the score and the machine.
   vendingOnly(s) { return s.settings.gameMode === 'vending'; }
   // Beasts' biggest moment in a batch of events: a badge beats the rival stepping up, which beats a catch.
-  beastEffect(events) {
-    const e = events.filter(x => x.kind === 'badge').pop() || events.filter(x => x.kind === 'rival').pop() || events.filter(x => x.kind === 'caught').pop();
-    return e ? { kind: 'beast', beastEvent: e.kind, beastName: e.kind === 'caught' ? e.name : e.beast, trainer: e.trainer || '', route: e.route, badges: e.badges } : null;
-  }
+  beastEffect(events, s) { return beastMoment(events, s?.beastStarter || '', s?.settings?.beastsEvolveReward || ''); }
+
   // Dollars (a tap, a manual + $, trivia) into Beasts: its own effect, or the fallback.
   beastsIn(s, amount, now, fallback) {
     const m = addBeastXp(s.beasts, amount, s.settings, now); s.beasts = m.beasts;
-    const fx = this.beastEffect(m.events) || fallback;
+    const fx = this.beastEffect(m.events, s) || fallback;
     if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast(fx ? { type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now } : { type:'stats', stats:this.publicStats(s), serverNow:now });
@@ -399,7 +397,7 @@ export class ManaLiveStudio extends DurableObject {
         // Beasts: the sale walks the route (the dungeon stays where it is).
         const m = addBeastXp(s.beasts, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
         s.beasts = m.beasts;
-        if (r.effect) dfx = this.beastEffect(m.events);
+        if (r.effect) dfx = this.beastEffect(m.events, s);
       } else if (s.stats.gross > grossBefore && !this.vendingOnly(s)) {
         const m = addMana(s.dungeon, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
         s.dungeon = m.dungeon;

@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.13.15';
+  const STUDIO_V='2026.11.13.17';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -74,6 +74,7 @@
   <small data-beasts>ATTACK NOW: tap one -- it's used right away (works in the preview too). Or let chat vote.</small>
   <div class="mana-row beast-moves" id="beast-moves"></div>
   <div class="mana-row" data-beasts><input id="beast-new-move" maxlength="16" placeholder="CHAT'S NEW ATTACK (e.g. MOM'S BASEMENT)"><button type="button" id="beast-add-move">➕ ADD CHAT'S ATTACK</button><button type="button" data-click="#mana-vote-open [data-vote=move]">⚔️ CHAT PICKS THE ATTACK</button><button type="button" data-click="#mana-vote-open [data-vote=starter]">🥚 CHAT PICKS THE STARTER</button></div>
+  <div class="mana-row"><button type="button" id="beast-preview-evo">✨ PREVIEW AN EVOLUTION</button></div>
   <div class="mana-row"><input id="beast-add" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="beast-add-go">+ $ UP THE ROUTE</button><button type="button" id="beast-route">🔢 SET ROUTE…</button><button type="button" id="beast-reset">⏮ START BEASTS OVER</button></div>
   <h3>Now playing &amp; next up</h3>
   <small>What's on screen as NOW PLAYING and NEXT STAGE (and what goes in the chests). Show Prep's LINE IT UP fills it; or find items here.</small>
@@ -96,6 +97,8 @@
   <label>WHICH GAME<select name="gameMode"><option value="dungeon">THE SHED DUNGEON (first person)</option><option value="beasts">LONG BOX BEASTS (top-down, battles)</option><option value="vending">VENDING ONLY (no game: the machine)</option></select></label>
   <h3>👾 Beasts settings</h3>
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
+  <label>WHEN YOUR BEAST EVOLVES (LV 10 and LV 20), everyone watching gets<input name="beastsEvolveReward" maxlength="120" placeholder="e.g. Free giveaway in the Whatnot tool"></label>
+  <small>Levels: every $1 sold is 1 XP (follows, shares and bookmarks count too); a new attack to learn every 5 levels -- chat names it (➕ ADD CHAT'S ATTACK). The level lasts the week. The reward is for the whole room, never buyers only.</small>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
   <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) (the chibi walkers are always used now; the face photos below are kept but no longer replace them).</small>
   <div class="mana-row beast-faces"><label>YOUR FACE (a photo)<input type="file" accept="image/*" id="beast-face-file"></label><canvas id="beast-face-view" width="12" height="12"></canvas><label>CHAMP'S FACE<input type="file" accept="image/*" id="beast-buddy-file"></label><canvas id="beast-buddy-view" width="12" height="12"></canvas></div>
@@ -191,6 +194,8 @@
     // BEASTS' OWN BUTTONS (its section): taps, + $, the route, start over -- the server sends them to Beasts while it's on.
     host.querySelectorAll('[data-beast-tap]').forEach(b=>{b.onclick=()=>host.querySelector('#mana-taps [data-tap="'+b.dataset.beastTap+'"]')?.click();});
     const ba=host.querySelector('#beast-add-go');if(ba)ba.onclick=()=>{host.querySelector('#mana-add-mana').value=host.querySelector('#beast-add').value;host.querySelector('#beast-add').value='';host.querySelector('#mana-add-mana-go').click();};
+    // See the evolution cutscene in the preview (nothing changes in the show).
+    const be=host.querySelector('#beast-preview-evo');if(be)be.onclick=()=>run(async()=>{const B=beastsLib||await import('./beasts.mjs?v='+STUDIO_V);const st=stats?.beastStarter||'',now=Date.now();preview({id:'evo-'+now,kind:'beast',beastEvent:'evolve',fromName:B.formName(st,1),beastName:B.formName(st,10),level:10,reward:values().beastsEvolveReward||'',startsAt:now,endsAt:now+7000});status.textContent='Preview: '+B.formName(st,1)+' evolves into '+B.formName(st,10)+'.';});
     const br=host.querySelector('#beast-route');if(br)br.onclick=()=>host.querySelector('#quick-floor')?.click();
     const bz=host.querySelector('#beast-reset');if(bz)bz.onclick=()=>host.querySelector('#mana-reset-week')?.click();
     // Where the battle shows: over the hosts (the overlay) or behind them (the green screen).
@@ -264,7 +269,7 @@
     host.querySelector('.mana-trivia-who').hidden=stats?.vote?.kind!=='trivia';
     host.querySelector('.mana-remote').classList.toggle('voting',!!(stats?.vote||d?.doors));
     const bs=stats?.beasts,bst=host.querySelector('#beast-status');
-    const beastLine=bs?'Route '+bs.route+' · '+(bs.stage==='rival'?bs.rival.name+'\'s '+bs.rival.beast+' HP '+usd(bs.rival.hp)+' / '+usd(bs.rival.max):usd(bs.xp)+' / '+usd(bs.goal)+' to '+bs.rival.name)+' · badges '+bs.badges+' · beasts beaten '+bs.caughtCount:'Connect to see the route.';
+    const beastLine=bs?(bs.form||'')+' LV '+(bs.level||1)+(bs.toEvo?' ('+usd(bs.toEvo)+' to evolve)':'')+' · Route '+bs.route+' · '+(bs.stage==='rival'?bs.rival.name+'\'s '+bs.rival.beast+' HP '+usd(bs.rival.hp)+' / '+usd(bs.rival.max):usd(bs.xp)+' / '+usd(bs.goal)+' to '+bs.rival.name)+' · badges '+bs.badges+' · beasts beaten '+bs.caughtCount:'Connect to see the route.';
     if(bst)bst.textContent=beastLine;
     if(values().gameMode==='beasts'){el.textContent=beastLine;return;}
     if(!d){el.textContent='Connect to see the floor.';return;}
@@ -495,10 +500,10 @@
     let kind=!v.dungeonOn&&wasAlive&&hp<=0&&v.showBoss?'boss':amount>=v.jackpotAmount?'jackpot':'sold',extra={};
     // BEASTS: its own track in the preview too (the dungeon doesn't move).
     if(v.gameMode==='beasts'&&beastsLib){
-      if(demo===1){const p=stats?.beasts;demoBeasts=p?{week:p.week,route:p.route,phase:p.stage==='rival'?'rival':'route',xp:p.xp,rivalHp:p.stage==='rival'?p.rival.hp:0,caught:[],badges:[]}:beastsLib.emptyBeasts();}
-      const r=beastsLib.addBeastXp(demoBeasts,amount,v);demoBeasts=r.beasts;fake.beasts=beastsLib.publicBeasts(demoBeasts,v);fake.dungeon=stats?.dungeon;
-      const e=r.events.filter(x=>x.kind==='badge').pop()||r.events.filter(x=>x.kind==='rival').pop()||r.events.filter(x=>x.kind==='caught').pop();
-      if(e){kind='beast';extra={beastEvent:e.kind,beastName:e.kind==='caught'?e.name:e.beast,trainer:e.trainer||'',route:e.route,badges:e.badges};}
+      if(demo===1){const p=stats?.beasts;demoBeasts=p?{week:p.week,route:p.route,phase:p.stage==='rival'?'rival':'route',xp:p.xp,exp:p.exp||0,rivalHp:p.stage==='rival'?p.rival.hp:0,caught:(p.caught||[]).map(name=>({name})),badges:[]}:beastsLib.emptyBeasts();}
+      const r=beastsLib.addBeastXp(demoBeasts,amount,v);demoBeasts=r.beasts;fake.beasts=beastsLib.publicBeasts(demoBeasts,v,stats?.beastStarter||'');fake.dungeon=stats?.dungeon;
+      const mo=beastsLib.beastMoment(r.events,stats?.beastStarter||'',v.beastsEvolveReward||'');
+      if(mo){kind='beast';const {kind:_k,...rest}=mo;extra=rest;}
     }
     // The dungeon moves too (preview only).
     else if(dungeonLib){

@@ -8,12 +8,13 @@ const B = await import('../scripts/beasts.mjs'), M = await import('../scripts/li
 const S = { ...M.DEFAULT_STUDIO, beastsGoal: 100, beastsGrowth: 10 };
 // 1. The engine: dollars walk the route, the three wild beasts fall as you pass, the rival steps up, a badge.
 let b = B.emptyBeasts('2026-11-11');
-let r = B.addBeastXp(b, 25, S, 1); assert.equal(r.events.length, 0); b = r.beasts; assert.equal(b.xp, 25);
-r = B.addBeastXp(b, 10, S, 2); assert.deepEqual(r.events.map(e => e.kind), ['caught']); assert.equal(r.events[0].name, B.wildName(1, 0)); b = r.beasts;
-r = B.addBeastXp(b, 70, S, 3); assert.deepEqual(r.events.map(e => e.kind), ['caught', 'caught', 'rival']); b = r.beasts;
+const onRoute = r => ({ ...r, events: r.events.filter(e => e.kind !== 'level' && e.kind !== 'evolve') }); // levels: tests/beasts-levels.test.mjs
+let r = onRoute(B.addBeastXp(b, 25, S, 1)); assert.equal(r.events.length, 0); b = r.beasts; assert.equal(b.xp, 25);
+r = onRoute(B.addBeastXp(b, 10, S, 2)); assert.deepEqual(r.events.map(e => e.kind), ['caught']); assert.equal(r.events[0].name, B.wildName(1, 0)); b = r.beasts;
+r = onRoute(B.addBeastXp(b, 70, S, 3)); assert.deepEqual(r.events.map(e => e.kind), ['caught', 'caught', 'rival']); b = r.beasts;
 assert.equal(b.phase, 'rival'); assert.equal(b.rivalHp, 45, 'leftover $5 hits the rival (HP 50)');
 assert.equal(r.events[2].trainer, B.rivalFor(1).name);
-r = B.addBeastXp(b, 50, S, 4); assert.deepEqual(r.events.map(e => e.kind), ['badge']); b = r.beasts;
+r = onRoute(B.addBeastXp(b, 50, S, 4)); assert.deepEqual(r.events.map(e => e.kind), ['badge']); b = r.beasts;
 assert.equal(b.route, 2); assert.equal(b.phase, 'route'); assert.equal(b.xp, 5, 'leftovers carry on'); assert.equal(b.badges.length, 1); assert.equal(b.caught.length, 3);
 assert.equal(B.beastGoal(S, 2), 110, 'each route needs more');
 const pub = B.publicBeasts(b, S); assert.equal(pub.route, 2); assert.equal(pub.floor, 2); assert.equal(pub.phase, 'floor'); assert.equal(pub.badges, 1); assert.equal(pub.caughtCount, 3); assert.equal(pub.rival.name, B.rivalFor(2).name);
@@ -22,7 +23,7 @@ assert.equal(B.ensureBeasts(b, 'next-week').route, 1, 'a new week starts at rout
 assert.ok(!/Math\.random/.test(read('scripts/beasts.mjs')), 'nothing by chance');
 // 2. The server: Beasts on, sales/taps/+$/trivia go to Beasts only; the dungeon's votes are refused; and the other way round.
 const room = read('scripts/live-studio-room.mjs');
-for (const k of ["s.beasts = ensureBeasts(s.beasts, weekKey());", "beasts: publicBeasts(state.beasts, state.settings),", "if (s.stats.gross > grossBefore && this.beastsOn(s)) {", "} else if (s.stats.gross > grossBefore && !this.vendingOnly(s)) {", "if (this.beastsOn(s)) return this.beastsIn(s, tapMana(s.settings, kind), now,", "if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw", "if (!this.beastsOn(s) && ['move', 'starter'].includes(kind)) throw", "s.beasts = adjustBeasts(s.beasts, { route: input.floor, reset: !!input.resetWeek }, weekKey(now), now);", "if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana)"]) assert.ok(room.includes(k), k);
+for (const k of ["s.beasts = ensureBeasts(s.beasts, weekKey());", "beasts: publicBeasts(state.beasts, state.settings, state.beastStarter || ''),", "if (s.stats.gross > grossBefore && this.beastsOn(s)) {", "} else if (s.stats.gross > grossBefore && !this.vendingOnly(s)) {", "if (this.beastsOn(s)) return this.beastsIn(s, tapMana(s.settings, kind), now,", "if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw", "if (!this.beastsOn(s) && ['move', 'starter'].includes(kind)) throw", "s.beasts = adjustBeasts(s.beasts, { route: input.floor, reset: !!input.resetWeek }, weekKey(now), now);", "if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana)"]) assert.ok(room.includes(k), k);
 assert.ok(!/I CHOOSE YOU/.test(room), 'no one else\'s catchphrases');
 // 3. Its own effect.
 const fx = M.makeEffect('beast', S, 1, { beastEvent: 'badge', beastName: 'flipwraith', trainer: 'scalper steve', route: 1, badges: 1 });

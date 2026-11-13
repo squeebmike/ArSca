@@ -107,7 +107,7 @@ export function validateSettings(input) {
   if (!['overlay', 'green'].includes(full.beastsBattle)) throw new Error('Invalid beastsBattle');
   for (const k of ['beastsFace', 'beastsBuddy']) if (full[k] && !/^[0-3]{144}$/.test(full[k])) throw new Error('Invalid ' + k);
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
-  const WHERE = { beastsMoves: 'attacks', message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' };
+  const WHERE = { beastsMoves: 'attacks', beastsEvolveReward: 'evolution reward', message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' };
   for (const key of Object.keys(WHERE)) {
     const word = chanceWordIn(full[key]);
     if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those. Reword the ${WHERE[key]}.`);
@@ -244,7 +244,7 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (kind === 'found') safe.spot = txt(extra.spot, 40);
   if (kind === 'move') safe.move = txt(extra.move, 16).toUpperCase();
   // Beasts' own moments: a wild beast beaten, the rival steps up, a badge won.
-  if (kind === 'beast') { safe.beastEvent = ['caught', 'rival', 'badge'].includes(extra.beastEvent) ? extra.beastEvent : 'caught'; safe.beastName = txt(extra.beastName, 16).toUpperCase(); safe.trainer = txt(extra.trainer, 20).toUpperCase(); for (const k of ['route', 'badges']) if (Number.isFinite(extra[k])) safe[k] = extra[k]; }
+  if (kind === 'beast') { safe.beastEvent = ['caught', 'rival', 'badge', 'level', 'learn', 'evolve'].includes(extra.beastEvent) ? extra.beastEvent : 'caught'; safe.beastName = txt(extra.beastName, 16).toUpperCase(); safe.fromName = txt(extra.fromName, 16).toUpperCase(); safe.trainer = txt(extra.trainer, 20).toUpperCase(); safe.reward = txt(extra.reward, 120); for (const k of ['route', 'badges', 'level']) if (Number.isFinite(extra[k])) safe[k] = extra[k]; }
   if (kind === 'found' && Number.isInteger(extra.lockbox)) safe.lockbox = extra.lockbox;
   if (kind === 'trivia') { safe.answer = txt(extra.answer, 80); safe.who = txt(extra.who, 30); }
   if (TAP_KINDS.includes(extra.tapKind)) safe.tapKind = extra.tapKind;
