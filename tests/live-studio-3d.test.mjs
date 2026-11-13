@@ -23,7 +23,7 @@ assert.match(src, /if \(!coins\.length && now >= rainUntil\) \{ cancelAnimationF
 const html = fs.readFileSync('arcade-overlay.html', 'utf8');
 for (const id of ['mana-boss-sprite', 'mana-boss-3d', 'mana-effect-boss', 'mana-coins-3d', 'mana-coins']) assert.match(html, new RegExp('id="' + id + '"'));
 assert.match(html, /family=Bangers&family=Luckiest\+Guy&family=Press\+Start\+2P/);
-assert.match(html, /live-studio-overlay\.mjs\?v=50/);
+assert.match(html, /live-studio-overlay\.mjs\?v=51/);
 
 const overlay = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8');
 // Loaded on the side: if WebGL or the module fails, the flat sprites stay.

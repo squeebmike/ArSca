@@ -455,7 +455,7 @@ console.log('live-studio-dungeon: ok');
     assert.ok(fpm.propsFor(L, f).some(p => p.kind === 'trapdoor'), 'the trapdoor down');
   }
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
-  for (const k of ["listeners.peek('DOWN THE TRAPDOOR INTO THE DUNGEON…')", 'dt * Math.max(1.6 / len, (target - shown) / 12)', "kind: (tm * 8 | 0) % 2 ? 'rat' : 'rat2'", "kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2'", "kind: 'spider'", "const AIR = {", 'Moths around the bulbs', "if (s.kind === 'eyes' && (tm / 5", 'const ANIM = {', "const glance = ph > 0.55", 'g < 128 && !cell'])
+  for (const k of ["listeners.peek('DOWN THE TRAPDOOR INTO THE DUNGEON…')", 'dt * Math.max(1.6 / len, (target - shown) / 12)', "kind: (tm * (sniff ? 3 : 8) | 0) % 2 ? 'rat' : 'rat2'", "kind: (tm * 9 | 0) % 2 ? 'bat' : 'bat2'", "kind: 'spider'", "const AIR = {", 'Moths around the bulbs', "if (s.kind === 'eyes' && (tm / 5", 'const ANIM = {', "const glance = ph > 0.55", 'g < 128 && !cell'])
     assert.ok(src.includes(k), k);
   assert.ok(!/Math\.random/.test(src), 'nothing left to chance: the same on every screen');
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');

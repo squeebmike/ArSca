@@ -132,7 +132,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=17').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=18').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked){fp.setModels(baked);front?.setModels(baked);}}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -245,7 +245,9 @@ if(preview)window.manaBossFx={intro:bossIntro,move:bossMove,ko:bossKO,combo:boss
 // camera"): the green screen's own hall, same camera, same clock -- only the
 // props close in front of you, drawn over the hosts and lined up with the
 // background (its top 850 pixels). Old sliding stickers stay as the fallback.
-let front=null,frontW=0,frontKey='',frontOn=false;
+let front=null,frontW=0,frontKey='',frontOn=false,frontHp=NaN;
+// Soft footsteps while the crawl walks (2026-11-13 polish): a low thud every half second, quiet.
+setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.now()/500|0)%2*12,.07,0,'triangle',.35);},480);
 function paintFront(d,center){
   const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.foreground!==false&&settings.crawlWindow!==true);
   if(cv)cv.classList.toggle('mana-hidden',!on);
@@ -256,6 +258,8 @@ function paintFront(d,center){
   const pics=fpLib.crawlPictures(stage,shedPics),key=pics.urls.join('|');
   if(key!==frontKey){frontKey=key;Promise.all(pics.urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>front?.setPictures(list,pics.kinds));}
   const st=fpLib.crawlStateFrom({stats,stage,urls:pics.urls,now:Date.now()+offset,hideNear:true});if(st)front.set(st);
+  // A sale landing on the boss: the flash over the hosts and the shake (the green screen shakes with it).
+  const hp=d.phase==='boss'?Number(d.boss?.hp):NaN;if(hp<frontHp)front.hit();frontHp=hp;
   if(!frontOn){front.start();frontOn=true;}
   return true;
 }
@@ -330,6 +334,11 @@ function revealItem(e){
   if(isChest){$('mana-reveal-label').textContent=giveaway?'CHEST OPENED!':'YOU GOT IT!';$('mana-reveal-price').textContent=giveaway?'FREE TO ENTER IN THE WHATNOT APP':(e.chestText&&e.chestText!=='LOW START!'?e.chestText+' · ':'')+'LOW START!';
     const k=cv.getContext('2d');k.imageSmoothingEnabled=false;if(fpLib){fpLib.drawSprite(k,'chest',10);clearTimeout(revealItem.lid);revealItem.lid=setTimeout(()=>fpLib.drawSprite(k,'chestopen',10),650);}}
   el.style.top=Math.max(0,settings.y-(isChest?700:610))+'px';
+  // OUT OF THE CHEST (2026-11-13: "and the thing inside spinning when it comes out -- is it in front of the hosts?"):
+  // with the hall's front layer on, the item flies out of the real chest (or long box, or vault) where it stands in the room.
+  const d0=dg(),src=front&&frontOn?(isChest?front.screenOf('chest',(d0?.opened||[]).slice(-1)[0]):e.lockbox?front.screenOf('lockbox',e.lockbox-1):e.spot==='THE SECRET VAULT'?front.screenOf('pedestal',950):null):null;
+  el.classList.toggle('from-chest',!!src);
+  if(src){const top=parseFloat(el.style.top)||0,cx=src.x*1080/src.w,cy=src.y*850/src.h;el.style.setProperty('--fx',(cx-540)+'px');el.style.setProperty('--fy',(cy-(top+(isChest?260:240)))+'px');}
   el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
   clearTimeout(revealItem.t);revealItem.t=setTimeout(()=>el.classList.add('mana-hidden'),7600);
 }
