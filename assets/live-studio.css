@@ -502,3 +502,10 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 .mana-controls .beast-moves{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .mana-controls .beast-moves button{min-height:52px;margin:0;font-weight:800}
 .mana-controls .beast-moves button.on{outline:3px solid #9bbc0f;background:#306230;color:#e8ffc0}
+
+/* The vending machine's controls (2026-11-13 polish): sizes, the slot UP NOW, spots. */
+.mana-controls .vm-modes button.on{outline:3px solid #ffd84a;background:#3b1670;color:#ffd84a}
+.vm-list .vm-item.up{outline:3px solid #9dff6a}
+.mana-controls details.vm-spots{border:2px dashed #6b3fbf;border-radius:10px;padding:6px 10px;margin:8px 0}
+.mana-controls details.vm-spots>summary{cursor:pointer;font-weight:800;min-height:40px;display:flex;align-items:center}
+.mana-controls #battle-front.on,.mana-controls #battle-green.on{outline:3px solid #9bbc0f;background:#306230;color:#e8ffc0}

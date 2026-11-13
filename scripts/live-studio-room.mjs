@@ -1,6 +1,9 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
 import { movesFrom, STARTERS } from './beasts.mjs';
+import { makeSpots, upIndex } from './vending.mjs';
+// The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
+const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
 import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
 
@@ -252,9 +255,16 @@ export class ManaLiveStudio extends DurableObject {
   // (loaded from NOW PLAYING + NEXT UP, or sent in), each sold out or not; on or off.
   setMachine(input = {}) {
     const s = this.read(), m = { on: false, items: [], ...(s.machine || {}) };
-    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 30)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold }); } return out; };
-    if (input.load === 'stage') m.items = clean([s.stage?.now, ...(s.stage?.next || [])].filter(Boolean));
-    if (Array.isArray(input.items)) m.items = clean(input.items);
+    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 120)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold }); } return out; };
+    if (input.load === 'stage') { m.items = clean([s.stage?.now, ...(s.stage?.next || [])].filter(Boolean)); m.kind = 'items'; m.up = 0; }
+    if (Array.isArray(input.items)) { m.items = clean(input.items); m.kind = 'items'; m.up = 0; }
+    // SPOTS for a break or a surprise set: "75 at $5" or one name a line -- in the machine only, never in inventory.
+    if (input.spots && typeof input.spots === 'object') { m.items = clean(makeSpots(input.spots)); if (!m.items.length) throw new Error('How many spots? (or one name a line)'); m.kind = 'spots'; m.up = 0; }
+    if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;
+    // The slot UP NOW: set it, step to the next/previous open one, or mark it sold and move on.
+    if (Number.isInteger(input.up) && m.items[input.up]) m.up = input.up;
+    if (input.step === 1 || input.step === -1) m.up = openFrom(m.items, upIndex(m), input.step);
+    if (input.soldUp === true) { const u = upIndex(m); if (u >= 0) { m.items[u] = { ...m.items[u], sold: true }; m.up = openFrom(m.items, u, 1); } }
     if (Number.isInteger(input.toggle) && m.items[input.toggle]) m.items[input.toggle] = { ...m.items[input.toggle], sold: !m.items[input.toggle].sold };
     if (typeof input.on === 'boolean') m.on = input.on;
     if (typeof input.title === 'string') m.title = input.title.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 30).toUpperCase();
@@ -266,6 +276,8 @@ export class ManaLiveStudio extends DurableObject {
   // A sale marks its item sold out in the machine (by our item id, or the item that was NOW PLAYING).
   machineSold(s, order, wasNow) {
     if (!s.machine?.items?.length) return false;
+    // Spots (a break, a surprise set) have no item ids: a sale while the machine is up takes the spot UP NOW.
+    if (s.machine.kind === 'spots') { if (!s.machine.on) return false; const u = upIndex(s.machine); if (u < 0) return false; s.machine.items[u] = { ...s.machine.items[u], sold: true }; s.machine.up = openFrom(s.machine.items, u, 1); return true; }
     const ids = new Set((order?.items || []).flatMap(it => [it.product_external_id, it.variant_external_id]).filter(Boolean).map(String));
     let changed = false;
     s.machine.items = s.machine.items.map(it => { const hit = !it.sold && ((it.id && ids.has(it.id)) || (wasNow && ((wasNow.id && it.id === wasNow.id) || (!wasNow.id && it.title === wasNow.title)))); if (hit) changed = true; return hit ? { ...it, sold: true } : it; });

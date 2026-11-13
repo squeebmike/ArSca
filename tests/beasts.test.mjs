@@ -61,7 +61,7 @@ assert.match(src, /drawBeast\(beast\(b\.mine\.name, true\), 28 \+ lunge, 42/, 'y
 assert.match(room, /else if \(kind === 'starter'\) options = STARTERS\.map/); assert.match(room, /if \(v\.kind === 'starter'\) \{ s\.beastStarter = opt\.id;/);
 assert.match(room, /setMachine\(input = \{\}\) \{/); assert.match(room, /this\.machineSold\(s, event\.data, moved \? wasNow : null\)/, 'a sale marks its item SOLD OUT');
 assert.match(read('scripts/live-studio-api.mjs'), /room\.setMachine\(body\)/);
-assert.match(bg, /const drawMachine = mc =>/); assert.ok(read('shed-background.html').includes('#shed-vend .vm-slot.sold .vm-lamp{display:block}'));
+assert.match(bg, /drawMachine = v\.createVending\(document, \{ img, where: 'green' \}\)/); // the machine itself: tests/vending.test.mjs
 assert.ok(ctl.includes('id="vm-load"') && ctl.includes('data-vote="starter"'));
 // Better, animated beasts (2026-11-13: "need better and animated sprites for the mons"): body types, 32 x 32, four frames.
 for (const n of B.STARTERS) assert.ok(['biped', 'quad'].includes(B.beastType(n)), n);

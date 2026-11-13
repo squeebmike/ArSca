@@ -76,13 +76,14 @@ function paintStats(next,fromSale) {
   const before=shownGross;stats=next||stats;
   $('mana-gross').textContent=usd(stats.gross);$('mana-sold').textContent=String(stats.sold);$('mana-biggest').textContent=usd(stats.biggest);
   const b=curBoss(),d=dg();
-  boss.classList.toggle('mana-hidden',!b.show);
   // The boss's sprite and catchphrase, redrawn when the boss changes.
   if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // The boss bar's boss stomps in when the flask fills.
-  const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase){bossView?.enter();bossIntro(b,d);}lastPhase=phase;
-  bossRage(b,d);
-  if(b.defeated&&!lastDefeated&&b.show)bossKO();lastDefeated=!!b.defeated;
+  // BEASTS (2026-11-13: "are you crossing some things from the shed game across?"): the battle is the rival fight -- no dungeon boss card, intro, rage or K.O.
+  const bm=beastMode();boss.classList.toggle('mana-hidden',!b.show||bm);
+  const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase&&!bm){bossView?.enter();bossIntro(b,d);}lastPhase=phase;
+  if(!bm)bossRage(b,d);
+  if(b.defeated&&!lastDefeated&&b.show&&!bm)bossKO();lastDefeated=!!b.defeated;
   paintDungeon(d);paintVote();
   $('mana-boss-name').textContent=b.name;
   $('mana-boss-hp').textContent=b.defeated?'DEFEATED':'HP '+usd(b.hp);
@@ -114,15 +115,16 @@ function paintDungeon(d){
   document.body.classList.toggle('mana-center',center);
   if(center&&boss.parentElement!==arena)arena.append(boss);
   else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
-  arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));
+  arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false&&!beastMode()));
   paintCrawl(d,center);paintForeground(d,center);paintBeasts(d);
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
-  $('mana-title-text').textContent='FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
-  $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
-  $('mana-cbar-sub').textContent=d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
-  $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
+  const bm=beastMode();
+  $('mana-title-text').textContent=bm?'ROUTE '+d.floor+' · LONG BOX BEASTS':'FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
+  $('mana-flask-meter').textContent=d.phase==='boss'?(bm?'RIVAL HP ':'BOSS HP ')+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
+  $('mana-cbar-sub').textContent=bm?(d.phase==='boss'?'EVERY SALE IS AN ATTACK ON '+d.boss.name+'\'S BEAST!':usd(Math.max(0,d.goal-d.mana))+' MORE TO BATTLE '+d.boss.name+'!'):d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
+  $('mana-dungeon-floor').textContent=(bm?'ROUTE ':'FLOOR ')+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
@@ -255,10 +257,14 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
 import('./beasts.mjs?v=3').then(m=>{beastsLib=m;const d=dg();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
+// THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
+let vendDraw=null,machine=null;
+import('./vending.mjs?v=1').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)vendDraw(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m);}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 function paintBeasts(d){
   const cv=$('beast-battle');if(!cv)return;
-  const b=beastMode()&&beastsLib&&d?beastsLib.battleFrom(d,{battery:batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
+  const b=beastMode()&&settings.beastsBattle!=='green'&&beastsLib&&d?beastsLib.battleFrom(d,{battery:batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
   cv.classList.toggle('mana-hidden',!b);
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   if(!battle)battle=beastsLib.createBattle(cv,{scale:3});
@@ -350,9 +356,11 @@ function revealItem(e){
   // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
   // shows shut, the lid pops open in a burst of light, the item rises out of
   // it spinning and hangs there -- YOU GOT IT!
-  const isChest=e.kind==='chest',cv=$('mana-reveal-chest');el.classList.toggle('chest-mode',isChest);
+  const bm=beastMode(),isChest=e.kind==='chest'&&!bm,cv=$('mana-reveal-chest');el.classList.toggle('chest-mode',isChest);
   if(isChest){$('mana-reveal-label').textContent=giveaway?'CHEST OPENED!':'YOU GOT IT!';$('mana-reveal-price').textContent=giveaway?'FREE TO ENTER IN THE WHATNOT APP':(e.chestText&&e.chestText!=='LOW START!'?e.chestText+' · ':'')+'LOW START!';
     const k=cv.getContext('2d');k.imageSmoothingEnabled=false;if(fpLib){fpLib.drawSprite(k,'chest',10);clearTimeout(revealItem.lid);revealItem.lid=setTimeout(()=>fpLib.drawSprite(k,'chestopen',10),650);}}
+  // In Beasts there's no chest or vault: you find it on the route.
+  if(bm)$('mana-reveal-label').textContent=e.kind==='chest'?(giveaway?'A FREE GIVEAWAY ON THE ROUTE!':'ITEM GET! '+(e.chestText||'LOW START!')):e.spot==='THE MERCHANT'?'THE SHOPKEEPER SELLS IT! UP NOW!':'FOUND IT IN THE TALL GRASS!';
   el.style.top=Math.max(0,settings.y-(isChest?700:610))+'px';
   // OUT OF THE CHEST (2026-11-13: "and the thing inside spinning when it comes out -- is it in front of the hosts?"):
   // with the hall's front layer on, the item flies out of the real chest (or long box, or vault) where it stands in the room.
@@ -372,7 +380,8 @@ function paintVote(){
   el.classList.toggle('trivia',show.kind==='trivia');el.style.top=Math.max(0,settings.y-330)+'px';
   el.querySelector('.mana-vote-foot').textContent=show.kind==='trivia'?'TYPE YOUR ANSWER IN CHAT':'TYPE THE NUMBER IN CHAT';
   el.querySelector('.mana-vote-head').textContent=show.kind==='trivia'?'BYTERIDER TRIVIA!':'CHAT PICKS!';
-  $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':show.kind==='dig'?'WHERE DO WE DIG?':show.kind==='fork'?'A FORK IN THE HALL!':show.kind==='trivia'?show.question:show.kind==='merchant'?'🧙 THE MERCHANT HAS WARES!':'PICK A DOOR';
+  if(beastMode()&&['door','fork','dig','merchant'].includes(show.kind)){$('mana-vote-title').textContent={door:'WHICH PATH?',fork:'A FORK IN THE ROUTE!',dig:'WHERE DO WE SEARCH?',merchant:'🏪 THE SHOPKEEPER HAS WARES!'}[show.kind];}
+  else $('mana-vote-title').textContent=show.kind==='weapon'?'PICK THE HERO\'S WEAPON':show.kind==='next'?'WHAT COMES UP NEXT?':show.kind==='dig'?'WHERE DO WE DIG?':show.kind==='fork'?'A FORK IN THE HALL!':show.kind==='trivia'?show.question:show.kind==='merchant'?'🧙 THE MERCHANT HAS WARES!':'PICK A DOOR';
   if(show.kind==='trivia'){$('mana-vote-list').replaceChildren();return;}
   el.classList.toggle('merchant',show.kind==='merchant');
   $('mana-vote-list').replaceChildren(...show.options.map((o,i)=>{const li=document.createElement('li');const n=document.createElement('b');n.textContent=String(i+1);li.append(n);if(o.image){const im=document.createElement('img');im.src=studioImg(o.image);im.alt='';li.append(im);}li.append(document.createTextNode(o.label));return li;}));
@@ -382,8 +391,8 @@ function paintVote(){
 // on, and the relic shelf.
 let mapKey='';
 function paintMap(d){
-  const el=$('mana-map');el.classList.toggle('mana-hidden',!d||settings.showMap===false);
-  if(!d)return;
+  const el=$('mana-map');el.classList.toggle('mana-hidden',!d||settings.showMap===false||beastMode()); // the dungeon's map stays out of Beasts
+  if(!d||beastMode())return;
   // Center stage: the map moves under the sign, out of the crawl's way.
   const centered=document.body.classList.contains('mana-center');
   el.style.left=(centered?800:Number(settings.mapX)||0)+'px';el.style.top=(centered?settings.y+225:Number(settings.mapY)||0)+'px';
@@ -593,6 +602,7 @@ function connect() {
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
+    if(m.machine)paintMachine(m.machine);
     if(m.stats)paintStats(m.stats,m.type==='effect'||m.type==='stats');
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};
   socket.onclose=ev=>{if(ev.code===1008)return;setTimeout(connect,Math.min(30000,1000*2**Math.min(retry++,5)));};
@@ -623,4 +633,4 @@ if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.o
   if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);front?.setCamera?.(ev.data.cam);return;}
   // The remote's TEST A BOSS ATTACK (preview only).
   if(ev.data?.type==='mana-attack'){const d=stats.dungeon,b=d?.boss?{name:d.boss.name,character:d.boss.character}:stats.boss;if(b)bossMove(b,2);return;}
-  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
+  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.machine)paintMachine(ev.data.machine);if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
