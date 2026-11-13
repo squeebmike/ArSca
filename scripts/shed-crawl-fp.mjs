@@ -56,6 +56,21 @@ export const DUNGEON_AT = 0.5;
 export const LOCKBOX_AT = [0.62, 0.9];
 // Where the floor's CRACKED WALL is (live-studio-dungeon.mjs SECRET_AT): chat's taps smash it; a vault is behind it.
 export const SECRET_AT = 0.76;
+// The crawl's photos and state from the show (one recipe for the green screen
+// and the overlay's front layer, so both draw the same hall at the same spot).
+export function crawlPictures(stage = {}, shedPics = []) {
+  const all = [stage.now, ...(stage.next || []), ...(shedPics || [])].filter(x => x && x.image);
+  const urls = [...new Set(all.map(x => x.image))].slice(0, 24);
+  const items = urls.map(u => all.find(x => x.image === u) || null);
+  return { urls, items, kinds: items.map(x => x?.kind || 'card') };
+}
+export function bossGrabFrom(stage = {}) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; return grab; }
+export function crawlStateFrom({ stats, stage = {}, urls = [], now = Date.now(), testUntil = 0, hideNear = true }) {
+  const d = stats?.dungeon; if (!d) return null;
+  const last = Math.max(Number(stats.lastSaleAt) || 0, Number(d.lastAt) || 0), battery = last ? Math.max(0.15, Math.min(1, 1 - (now - last) / (6 * 60000))) : 1;
+  const grab = bossGrabFrom(stage);
+  return { floor: d.floor, shed: d.shed, pct: d.pct, phase: Date.now() < testUntil ? 'boss' : d.phase, bossItem: grab ? urls.indexOf(grab.image) : -1, chests: [0, 1, 2].map(k => (d.opened || []).includes(k)), boxes: [0, 1].map(k => !!d.boxes?.[k]?.open), secret: d.secret ? { frac: d.secret.frac, broken: d.secret.broken } : null, merchant: stats.vote?.kind === 'merchant', day: dayPhase(stats.startedAt, now), weather: weatherFor(d.floor, now), battery, fork: d.fork || '', hideNear };
+}
 // TIME OF DAY (2026-11-12): the show starts in the morning and goes on into
 // the night -- by how long it's been since the show's first sale.
 export function dayPhase(startedAt, now = Date.now()) { if (!startedAt) return 'morning'; const h = (now - startedAt) / 3.6e6; return h < 0.4 ? 'morning' : h < 1 ? 'day' : h < 1.5 ? 'sunset' : 'night'; }
@@ -610,7 +625,15 @@ export function eyePose(layout, grid, t) {
 
 // ── The renderer ──
 // w x h: 240 x 96 for the overlay window; tall (180 x 320) for the green-screen background.
-export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66 } = {}) {
+// layer 'front' (2026-11-13: "the props look like they're on the screen, not in
+// the dungeon, and they move with the camera"): the same hall from the same
+// camera, but only the props close in front of you, on a see-through canvas --
+// the overlay puts it over the hosts, lined up with the green screen behind them.
+export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: FOV = 0.66, layer = '' } = {}) {
+  const FG = layer === 'front';
+  // One clock for every screen (the green screen and the overlay): the camera's
+  // sway and glances, the torches and critters all keep the same time.
+  let clockOffset = 0; const shared = () => ((Date.now() + clockOffset) % 3.6e6) / 1000;
   canvas.width = VW; canvas.height = VH;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(VW, VH), zbuf = new Float32Array(VW);
   let revealed = new Uint8Array(GRID * GRID), lastPose = null, seenPic = null, pics = [], picKinds = [], surf = null, bulbs = [], tick = 0, models = null, bossAnim = null, arenaK = 0, atk = null, crumbleAt = -1e9, first2 = true;
@@ -658,7 +681,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       // Standing still, the camera never freezes (2026-11-12: "things need to feel
       // animated when we aren't moving"): a slow sway, and every 13 seconds a
       // glance to one side and back.
-      const tm = now / 1000, ph = (tm % 13) / 13, side = Math.floor(tm / 13) % 2 ? 1 : -1;
+      const tm = shared(), ph = (tm % 13) / 13, side = Math.floor(tm / 13) % 2 ? 1 : -1;
       const glance = ph > 0.55 && ph < 0.8 ? Math.sin((ph - 0.55) / 0.25 * Math.PI) * 0.42 * side : 0;
       let idle = walking ? 0 : Math.sin(tm * 0.31) * 0.06 + glance;
       // The host's joystick wins for 3 seconds after it last moved; LOOK BACK
@@ -685,7 +708,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       } else if (shown > target) shown = target;
     }
     const scoutWalk = now - scoutAt < 7000 && (now - scoutAt < 2450 || now - scoutAt > 4550); // footsteps out and back
-    bob = walking || scoutWalk ? bob + dt * 9 : bob * 0.9;
+    bob = walking || scoutWalk ? shared() * 9 : bob * 0.9;
     clockNow = now;
     draw();
   }
@@ -695,7 +718,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     arenaK += ((state.phase === 'boss' && map.layout.arena && map.layout.bossAt ? 1 : 0) - arenaK) * 0.04;
     const pose = arenaPose(eyePose(map.layout, map.grid, Math.min(0.99, shown + scoutNow)), arenaK), ang = pose.ang + look, fov = FOV, batt = 0.25 + 0.75 * Math.max(0, Math.min(1, state.battery ?? 1));
     const dirX = Math.cos(ang), dirY = Math.sin(ang), planeX = -dirY * fov, planeY = dirX * fov;
-    const tm = clockNow / 1000, N = GRID, zone = map.zone;
+    const tm = shared(), N = GRID, zone = map.zone;
     // BOSS ATTACKS in the arena (2026-11-12): 3.6 seconds each, all show.
     const atkA = atk ? (clockNow - atk.at) / 3600 : -1, atkOn = atkA >= 0 && atkA < 1, mv = atkOn ? atk.move : '';
     const env = atkOn ? Math.min(1, atkA / 0.15, (1 - atkA) / 0.2) : 0; // in, hold, out
@@ -737,7 +760,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     // lit by the flashlight and the bulbs, fading into the shed's fog.
     const bulbLight = (wx, wy) => { let l = 0, o = 0; for (let k = 0; k < near.length; k++) { const b = near[k], v = b.f / (1 + ((wx - b.x) ** 2 + (wy - b.y) ** 2) * 1.6); l += v; if (b.torch) o += v; } litO = o; return l; };
     const rx0 = dirX - planeX, ry0 = dirY - planeY, rx1 = dirX + planeX, ry1 = dirY + planeY, posZ = 0.5 * VH;
-    for (let y = 0; y < VH; y++) {
+    if (FG) data.fill(0); else for (let y = 0; y < VH; y++) {
       const floorRow = y > horizon, p = floorRow ? y - horizon : horizon - y;
       if (p <= 0 || !surf) { for (let x = 0; x < VW; x++) { const i = (y * VW + x) * 4; data[i] = pal.fog[0]; data[i + 1] = pal.fog[1]; data[i + 2] = pal.fog[2]; data[i + 3] = 255; } continue; }
       const rowDist = posZ / p, stepX = rowDist * (rx1 - rx0) / VW, stepY = rowDist * (ry1 - ry0) / VW, tRow = floorRow ? surf.f : surf.c;
@@ -789,7 +812,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const ddx = Math.abs(1 / rx), ddy = Math.abs(1 / ry), sx = rx < 0 ? -1 : 1, sy = ry < 0 ? -1 : 1;
       let sdx = rx < 0 ? (pose.x - mx) * ddx : (mx + 1 - pose.x) * ddx, sdy = ry < 0 ? (pose.y - my) * ddy : (my + 1 - pose.y) * ddy, side = 0, cell = 0;
       for (let g = 0; g < 128 && !cell; g++) { if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; } cell = map.grid[my]?.[mx] ?? 1; }
-      const dist = Math.max(0.05, side ? sdy - ddy : sdx - ddx); zbuf[x] = dist;
+      const dist = Math.max(0.05, side ? sdy - ddy : sdx - ddx); zbuf[x] = dist; if (FG) continue;
       const h = Math.floor(VH / dist), top = Math.max(0, horizon - (h >> 1)), bot = Math.min(VH - 1, horizon + (h >> 1));
       let wx = side ? pose.x + dist * rx : pose.y + dist * ry; wx -= Math.floor(wx);
       // Flip on the walls seen from the other side, so signs read the right way.
@@ -842,7 +865,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (tY <= 0.15 || (CRITTERS.has(s.kind) && tY < 0.8)) return; // a critter right in your face isn't drawn huge
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
       if (s.kind === 'eyes' && (tm / 5 + (s.idx || 0) * 0.37) % 1 < 0.05) return; // they blink
-      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && !CRITTERS.has(s.kind)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return; }
+      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && !CRITTERS.has(s.kind)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05; if (FG ? !close : close) return; } else if (FG) return;
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
       // A 3D prop: the photo taken from the angle you see it from (8 around), and its frame.
       const named = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind, base = named === 'rat2' ? 'rat' : named === 'bat2' ? 'bat' : named;
@@ -859,7 +882,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         for (let yy = Math.floor(floorY - ry2); yy <= floorY + ry2; yy++) for (let xx = Math.floor(scx - rx2); xx <= scx + rx2; xx++) {
           if (xx < 0 || yy < 0 || xx >= VW || yy >= VH || tY > zbuf[xx]) continue;
           const dd = ((xx - scx) / rx2) ** 2 + ((yy - floorY) / ry2) ** 2; if (dd > 1) continue;
-          const k = 0.45 + 0.55 * dd, i = (yy * VW + xx) * 4; data[i] *= k; data[i + 1] *= k; data[i + 2] *= k;
+          const k = 0.45 + 0.55 * dd, i = (yy * VW + xx) * 4; data[i] *= k; data[i + 1] *= k; data[i + 2] *= k; if (FG && data[i + 3] < 200) data[i + 3] = Math.max(data[i + 3], (1 - k) * 230);
         }
       }
       for (let sx = Math.max(0, scx - (size >> 1)); sx < Math.min(VW, scx + (size >> 1)); sx++) {
@@ -883,10 +906,12 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
           if (!col) continue;
           const i = (sy * VW + sx) * 4, l = glow || s.float || s.kind === 'eyes' || (pd && col && how !== 'sealed' && v < 0.95) || s.kind === 'boss' || (s.kind === 'chest' && state.chests?.[s.idx]) ? 1 : light;
           const wm = l === light ? warm : 0;
-          data[i] = col[0] * l * (1 + wm * 0.25); data[i + 1] = col[1] * l; data[i + 2] = col[2] * l * (1 - wm * 0.2);
+          data[i] = col[0] * l * (1 + wm * 0.25); data[i + 1] = col[1] * l; data[i + 2] = col[2] * l * (1 - wm * 0.2); data[i + 3] = 255;
         }
       }
     });
+    // The front layer is just those props.
+    if (FG) { tick++; ctx.putImageData(img, 0, 0); return; }
     // The air (2026-11-12: "more atmospheric ... critters, particles"): dust in
     // the light, fireflies in the garden shed, drips where it's flooded, embers
     // where it burnt, spores down below -- around you, behind the walls hidden.
@@ -1006,6 +1031,8 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     set, setBoss, onPeek: fn => { listeners.peek = fn; },
     // The 3D props' photos (scripts/prop-models.mjs bakeProps); null keeps the flat sprites.
     setModels(m) { models = m || null; },
+    // The server's clock minus this computer's (ms), so every screen's camera keeps the same time.
+    setClock(offsetMs) { clockOffset = Number(offsetMs) || 0; },
     // The mini-map, sharp, on any 2D canvas: what you've seen of this floor,
     // you (an arrow), the chests, locked long boxes, the cracked wall, the arena.
     drawMap(ctx, { cell = 6 } = {}) {

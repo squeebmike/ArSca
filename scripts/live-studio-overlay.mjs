@@ -132,9 +132,9 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=16').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=17').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
-  import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked)fp.setModels(baked);}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
+  import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked){fp.setModels(baked);front?.setModels(baked);}}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
   fpOn=false;paintStats(stats,false);}).catch(e=>console.warn('[studio] crawl off:',e?.message||e));
 // The flashlight battery (2026-11-11): it runs down when the show goes quiet
@@ -240,8 +240,27 @@ function bossKO(){
 }
 // Preview (the dashboard's): the fight moments on demand, to see them before a show.
 if(preview)window.manaBossFx={intro:bossIntro,move:bossMove,ko:bossKO,combo:bossCombo};
+// PROPS IN FRONT, IN THE SCENE (2026-11-13: "the props still look like they're
+// on the screen and not in the dungeon as they pass us, and they move with the
+// camera"): the green screen's own hall, same camera, same clock -- only the
+// props close in front of you, drawn over the hosts and lined up with the
+// background (its top 850 pixels). Old sliding stickers stay as the fallback.
+let front=null,frontW=0,frontKey='',frontOn=false;
+function paintFront(d,center){
+  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.foreground!==false&&settings.crawlWindow!==true);
+  if(cv)cv.classList.toggle('mana-hidden',!on);
+  if(!on){if(frontOn){front?.stop();frontOn=false;}return false;}
+  const W=settings.crawlSharp===true?480:360;
+  if(!front||frontW!==W){front?.stop();frontW=W;front=fpLib.createShedCrawl(cv,{w:W,h:Math.round(W*850/1080),fov:0.66,layer:'front'});if(baked)front.setModels(baked);frontKey='';frontOn=false;}
+  front.setClock(offset);
+  const pics=fpLib.crawlPictures(stage,shedPics),key=pics.urls.join('|');
+  if(key!==frontKey){frontKey=key;Promise.all(pics.urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>front?.setPictures(list,pics.kinds));}
+  const st=fpLib.crawlStateFrom({stats,stage,urls:pics.urls,now:Date.now()+offset,hideNear:true});if(st)front.set(st);
+  if(!frontOn){front.start();frontOn=true;}
+  return true;
+}
 function paintForeground(d,center){
-  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib;
+  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib&&!paintFront(d,center);
   el.classList.toggle('mana-hidden',!on);if(!on)return;
   const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
   if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}
@@ -294,7 +313,7 @@ function fgFrame(now){
 }
 requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
-setInterval(()=>{const d=dg();if(d&&document.body.classList.contains('mana-center'))paintCrawl(d,true);},5000);
+setInterval(()=>{const d=dg();if(d&&document.body.classList.contains('mana-center'))paintCrawl(d,true);if(d)paintFront(d,document.body.classList.contains('mana-center'));},5000);
 // A revealed item (a chest, or where chat said to dig): its photo spins in 3D.
 function revealItem(e){
   // A giveaway chest: the chest pops open, FREE GIVEAWAY rises out of it.
@@ -537,7 +556,7 @@ function connect() {
   socket=new WebSocket(url);
   socket.onopen=()=>socket.send(JSON.stringify({token}));
   socket.onmessage=ev=>{try {const m=JSON.parse(ev.data);offset=m.serverNow-Date.now();retry=0;
-    if(m.type==='camera'){fp?.setCamera?.(m.cam);return;}
+    if(m.type==='camera'){fp?.setCamera?.(m.cam);front?.setCamera?.(m.cam);return;}
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
@@ -568,7 +587,7 @@ setInterval(()=>{
 apply(settings);draw();connect();
 // Local editor preview only; same-origin parent can show settings without network access.
 if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.origin!==location.origin)return;
-  if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);return;}
+  if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);front?.setCamera?.(ev.data.cam);return;}
   // The remote's TEST A BOSS ATTACK (preview only).
   if(ev.data?.type==='mana-attack'){const d=stats.dungeon,b=d?.boss?{name:d.boss.name,character:d.boss.character}:stats.boss;if(b)bossMove(b,2);return;}
   if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
