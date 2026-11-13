@@ -368,8 +368,9 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     route.grid.forEach((row, ty) => row.forEach((t, tx) => { if (t === 11 || t === 12) text3(img, w, tx * T - camX + 8 - (t === 11 ? 12 : 10), ty * T - camY + 5, t === 11 ? 'COMICS' : 'RIVAL', 3); }));
     // Your buddy, then you (you're in front).
     const sx = x => Math.round((x + 0.5) * T - camX - 8), sy = y => Math.round((y + 0.5) * T - camY - 18);
-    if (validFace(buddy)) drawPerson(img, w, sx(q.x), sy(q.y) + 4, buddy, dir, walking ? 1 - step : 0, true); else drawSprite(img, w, sx(q.x), sy(q.y) + 6, 'champ', dir, walking ? 1 - step : 0);
-    if (validFace(face)) drawPerson(img, w, sx(p.x), sy(p.y), face, dir, step); else drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);
+    // Always the chibi walkers (2026-11-13: "why no chibi?" -- a saved face photo used to swap in the old face sprite).
+    drawSprite(img, w, sx(q.x), sy(q.y) + 6, 'champ', dir, walking ? 1 - step : 0);
+    drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);
     if (performance.now() - exclaim < 1400) text3(img, w, sx(p.x) + 7, sy(p.y) - 14, '!', 3);
     ctx.putImageData(img, 0, 0);
   }

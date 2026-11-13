@@ -35,4 +35,12 @@ assert.ok(bg.includes("const d = settings0.gameMode === 'beasts' ? (stats?.beast
 // 5. The remote: Beasts' own section; the other game's sections step aside; the preview demo plays Beasts on its own track.
 for (const k of ['<h3>👾 Beasts controls</h3>', '<h3>👾 Beasts settings</h3>', 'id="beast-status"', 'id="beast-add-go"', 'id="beast-route"', 'id="beast-reset"', "num('beastsGoal'", "const DUNGEON_ONLY=['🗡 Dungeon controls','🗡 Dungeon settings','Boss battle'],BEASTS_ONLY=['👾 Beasts controls','👾 Beasts settings'];", 'const r=beastsLib.addBeastXp(demoBeasts,amount,v);']) assert.ok(ctl.includes(k), k);
 assert.ok(ctl.indexOf('<h3>👾 Beasts settings</h3>') < ctl.indexOf('name="beastsMoves"') && ctl.indexOf('name="beastsMoves"') < ctl.indexOf('<h3>🗡 Dungeon settings</h3>'), 'Beasts settings live in its own section');
+// 6. (2026-11-13: "the pokemon doesn't respond to demo sale... still has old graphics. Why no chibi?")
+// The demo counts each sale (it sat in a comment, so the Beasts demo crashed on its empty start); the remote's
+// game modules are versioned (a phone kept an old beasts.mjs); the route always draws the chibi walkers.
+assert.ok(/amount=v\.gameMode==='beasts'\?\[4,3,5,4,6\]\[demo%5\]:\[12,45,8,150,25\]\[demo%5\];demo\+\+;/.test(ctl.replace(/ /g, '')), 'the demo counts its sales');
+assert.ok(!/fightsdemo\+\+/.test(ctl));
+assert.ok(ctl.includes("const STUDIO_V='") && !/import\('\.\/(beasts|vending|live-studio-dungeon)\.mjs'\)/.test(ctl), 'versioned imports');
+assert.ok(ctl.includes("try{demoSale();}catch(e){status.textContent='Demo: '"), 'a failing demo says so');
+const bsrc = read('scripts/beasts.mjs'); assert.ok(bsrc.includes("drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);") && !/validFace\(face\)\) drawPerson/.test(bsrc), 'always the chibi walkers');
 console.log('Long Box Beasts, a separate game: passed');
