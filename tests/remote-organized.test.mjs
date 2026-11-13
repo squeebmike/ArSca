@@ -1,0 +1,14 @@
+// The remote, organized (2026-11-13: "I want to be able to close a dropdown for different sections. I don't use
+// ByteRider_97 much and like to hide certain sections. Organize it better") -- and the preview switches to Beasts before Connect.
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8'), bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8'), css = readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8');
+assert.match(ctl, /function organize\(\)\{/); assert.match(ctl, /setTimeout\(organize,0\);/);
+assert.match(ctl, /d\.addEventListener\('toggle',\(\)=>put\(name,d\.open\?'open':'closed'\)\)/, 'every section folds and remembers');
+assert.match(ctl, /'👁 SHOW \/ HIDE SECTIONS'/, 'any section can be hidden');
+assert.match(ctl, /host\.querySelectorAll\('\[data-click\*="mana-mascot"\]'\)\.forEach\(b=>\{b\.hidden=!!off;\}\)/, 'hiding ByteRider_97 hides his buttons too');
+assert.match(ctl, /for\(const n of \['🎬 Show ready','Now playing & next up','🎮 Game','🕹️ Camera','🥤 Vending machine'\]\)/, 'the remote in show order');
+assert.ok(ctl.includes('id="game-dungeon"') && ctl.includes('id="game-beasts"'), 'the game in one tap');
+assert.match(bg, /const d = stats\?\.dungeon \|\| \(settings0\.gameMode === 'beasts' \? \{ floor: 1, pct: 0, phase: 'floor' \} : null\)/, 'the preview shows Beasts before Connect');
+assert.ok(css.includes('details.mana-sec>summary'));
+console.log('remote organized: folding sections, show/hide, show order, one-tap game, Beasts preview passed');
