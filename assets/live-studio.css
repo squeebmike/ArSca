@@ -472,3 +472,14 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 #mana-reveal.from-chest .mana-reveal-stage{animation:mana-from-chest 1s cubic-bezier(.2,1.25,.4,1) both}
 #mana-reveal.from-chest #mana-reveal-chest{display:none}
 @keyframes mana-from-chest{0%{transform:translate(var(--fx),var(--fy)) scale(.12);opacity:.3;filter:brightness(3)}60%{opacity:1;filter:brightness(1.6)}100%{transform:none;opacity:1;filter:none}}
+
+/* LONG BOX BEASTS: the battle screen, a handheld's (2026-11-13). */
+#beast-battle{position:absolute;left:180px;width:720px;height:480px;z-index:7;border:10px solid #2a2f2a;border-radius:18px;box-shadow:0 0 0 6px #0b0d0b,0 14px 0 #000a;image-rendering:pixelated;background:#9bbc0f}
+
+.beast-faces{align-items:center;gap:10px}
+.beast-faces canvas{width:72px;height:72px;image-rendering:pixelated;border:3px solid #306230;border-radius:8px;background:#9bbc0f}
+
+/* The vending machine's list in the remote (2026-11-13). */
+.vm-list{display:grid;gap:6px;margin:6px 0 14px}
+.vm-list .vm-item{text-align:left;min-height:44px;margin:0;font-size:14px}
+.vm-list .vm-item.sold{opacity:.6;text-decoration:line-through}

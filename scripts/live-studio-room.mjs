@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
+import { movesFrom, STARTERS } from './beasts.mjs';
 import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
 
@@ -35,10 +36,10 @@ export class ManaLiveStudio extends DurableObject {
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
   publicStats(state) {
-    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null };
+    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
   }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], machine:state.machine || { on:false, items:[] }, serverNow:Date.now() };
   }
   // A follow / share / bookmark the host tapped in fills the flask.
   dungeonTap(kind) {
@@ -86,6 +87,10 @@ export class ManaLiveStudio extends DurableObject {
     else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
     else if (kind === 'door') { if (!s.dungeon.doors?.length) throw new Error('Vote: no doors are open right now'); options = s.dungeon.doors.map(id => { const r = roomById(id); return { id, label: r.icon + ' ' + r.name }; }); }
     else if (kind === 'fork') options = FORKS.map(f => ({ id: f.id, label: f.label }));
+    // BEASTS: chat picks your beast's attack; every sale fires it.
+    else if (kind === 'move') options = movesFrom(s.settings.beastsMoves).map((m, i) => ({ id: String(i), label: '⚔️ ' + m }));
+    // BEASTS: chat picks your starter.
+    else if (kind === 'starter') options = STARTERS.map(n => ({ id: n, label: '🥚 ' + n }));
     // THE MERCHANT (2026-11-12): two items, what makes each special; chat picks, it runs.
     else if (kind === 'merchant') { const picks = merchantPicks(s.stage.next || []); if (picks.length < 2) throw new Error('The merchant needs two items in NEXT UP'); options = picks.map(p => ({ id: String(p.i), label: p.tag + ': ' + String(p.item.title || '').slice(0, 60), ...(p.item.image ? { image: p.item.image } : {}) })); }
     // FOUND IT!: each spot holds one of the next lineup items.
@@ -108,6 +113,8 @@ export class ManaLiveStudio extends DurableObject {
     let fx = null;
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
     if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
+    if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! I CHOOSE YOU... TO SELL COMICS!' }); }
+    if (v.kind === 'move') { s.beastMove = index; fx = makeEffect('move', s.settings, now, { move: opt.label.replace(/^\S+\s/, '') }); }
     if (v.kind === 'trivia') { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
     s.effect = fx || makeEffect('mascot', s.settings, now, { mascotState: 'happy', say: 'CHAT PICKED: ' + opt.label.replace(/^\S+\s/, '') });
@@ -229,6 +236,31 @@ export class ManaLiveStudio extends DurableObject {
     this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);
   }
+  // THE VENDING MACHINE (store, 2026-11-13: "a vending machine with the items
+  // we have for sale scrolling in the back, or when we do breaks or surprise
+  // sets -- it shows what's sold out and what's still available"): its items
+  // (loaded from NOW PLAYING + NEXT UP, or sent in), each sold out or not; on or off.
+  setMachine(input = {}) {
+    const s = this.read(), m = { on: false, items: [], ...(s.machine || {}) };
+    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 30)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold }); } return out; };
+    if (input.load === 'stage') m.items = clean([s.stage?.now, ...(s.stage?.next || [])].filter(Boolean));
+    if (Array.isArray(input.items)) m.items = clean(input.items);
+    if (Number.isInteger(input.toggle) && m.items[input.toggle]) m.items[input.toggle] = { ...m.items[input.toggle], sold: !m.items[input.toggle].sold };
+    if (typeof input.on === 'boolean') m.on = input.on;
+    if (typeof input.title === 'string') m.title = input.title.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 30).toUpperCase();
+    s.machine = m;
+    this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
+    return this.publicState(s);
+  }
+  // A sale marks its item sold out in the machine (by our item id, or the item that was NOW PLAYING).
+  machineSold(s, order, wasNow) {
+    if (!s.machine?.items?.length) return false;
+    const ids = new Set((order?.items || []).flatMap(it => [it.product_external_id, it.variant_external_id]).filter(Boolean).map(String));
+    let changed = false;
+    s.machine.items = s.machine.items.map(it => { const hit = !it.sold && ((it.id && ids.has(it.id)) || (wasNow && ((wasNow.id && it.id === wasNow.id) || (!wasNow.id && it.title === wasNow.title)))); if (hit) changed = true; return hit ? { ...it, sold: true } : it; });
+    return changed;
+  }
   // Now playing / next up, from the dashboard.
   setStage(input) {
     const s = this.read();
@@ -306,8 +338,11 @@ export class ManaLiveStudio extends DurableObject {
       }
       if (r.effect && eventIsFresh(event, s.settings, now)) effect = dfx || r.effect;
       // A fresh auction sale moves NOW PLAYING to the next item.
+      const wasNow = s.stage?.now || null;
       const moved = effect && r.effect.kind !== 'winner' ? advanceStage(s.stage, event.data, s.settings) : null;
       if (moved) { s.stage = moved; statsChanged = true; stageMoved = true; }
+      // The vending machine: what just sold is SOLD OUT.
+      if (r.effect && r.effect.kind !== 'winner' && this.machineSold(s, event.data, moved ? wasNow : null)) { statsChanged = true; stageMoved = true; }
     } else if (!isOrder) effect = whatnotEffect(event,s.settings,now);
     let emitted=false;
     this.ctx.storage.transactionSync(()=>{
@@ -321,8 +356,8 @@ export class ManaLiveStudio extends DurableObject {
       if (emitted || statsChanged || followed) this.write(s);
     });
     if (followed) this.broadcast({ type:'state', ...this.publicState(s) });
-    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage}:{}),serverNow:now});
-    else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),serverNow:now});
+    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage,machine:s.machine||{on:false,items:[]}}:{}),serverNow:now});
+    else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),...(stageMoved?{stage:s.stage,machine:s.machine||{on:false,items:[]}}:{}),serverNow:now});
     return {ok:true, ...this.takeChest(s)};
   }
   async fetch(request) {

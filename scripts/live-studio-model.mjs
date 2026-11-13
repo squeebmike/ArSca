@@ -53,7 +53,7 @@ export const DEFAULT_STUDIO = Object.freeze({
   ...DUNGEON_DEFAULTS,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
-export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room', 'chest', 'found', 'trivia'];
+export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room', 'chest', 'found', 'trivia', 'move'];
 export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!', room: 'CHAT PICKED A DOOR!', chest: 'TREASURE CHEST!', found: 'FOUND IT!', trivia: 'TRIVIA!' };
 // Comic sound effects for a sale (a cycle, not chance -- the next one in line).
 export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', 'KA-CHING!', 'THWIP!', 'SNIKT!', 'BOOM!'];
@@ -103,8 +103,10 @@ export function validateSettings(input) {
   if (!/^[A-Z]{3}$/.test(full.currency)) throw new Error('Use a three-letter currency');
   if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
   if (!['ps1', 'n64'].includes(full.bossStyle)) throw new Error('Invalid bossStyle');
+  if (!['dungeon', 'beasts'].includes(full.gameMode)) throw new Error('Invalid gameMode');
+  for (const k of ['beastsFace', 'beastsBuddy']) if (full[k] && !/^[0-3]{144}$/.test(full[k])) throw new Error('Invalid ' + k);
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
-  const WHERE = { message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' };
+  const WHERE = { beastsMoves: 'attacks', message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' };
   for (const key of Object.keys(WHERE)) {
     const word = chanceWordIn(full[key]);
     if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those. Reword the ${WHERE[key]}.`);
@@ -239,6 +241,7 @@ export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   // A lineup item revealed (a chest, or where chat said to dig): its photo spins on screen.
   if (extra.item && typeof extra.item === 'object') { const im = String(extra.item.image || ''); safe.item = { title: txt(extra.item.title, 90), image: /^https:\/\/[^\s"'<>]{1,600}$/.test(im) ? im : '', price: Number.isFinite(Number(extra.item.price)) ? Number(extra.item.price) : 0 }; }
   if (kind === 'found') safe.spot = txt(extra.spot, 40);
+  if (kind === 'move') safe.move = txt(extra.move, 16).toUpperCase();
   if (kind === 'found' && Number.isInteger(extra.lockbox)) safe.lockbox = extra.lockbox;
   if (kind === 'trivia') { safe.answer = txt(extra.answer, 80); safe.who = txt(extra.who, 30); }
   if (TAP_KINDS.includes(extra.tapKind)) safe.tapKind = extra.tapKind;
