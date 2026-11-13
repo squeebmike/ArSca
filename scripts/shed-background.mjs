@@ -221,7 +221,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       let stats = null, stage = { now: null, next: [] }, shedPics = [], offset = 0, bossId = '', picKey = '';
       const img = u => { try { return endpoint ? new URL(endpoint).origin + '/public/studio-img?u=' + encodeURIComponent(u) : u; } catch { return u; } };
       const paint = () => {
-        const d = stats?.dungeon || (settings0.gameMode === 'beasts' ? { floor: 1, pct: 0, phase: 'floor' } : null); if (!d) return;
+        const d = settings0.gameMode === 'beasts' ? (stats?.beasts || { floor: 1, route: 1, pct: 0, phase: 'floor' }) : stats?.dungeon; if (!d) return; // Beasts keeps its own track
         if (beasts && settings0.gameMode === 'beasts') {
           if (!beastsOn) { fp?.stop(); world = beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world.start(); beastsOn = true; mini.hidden = true; }
           world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '' });

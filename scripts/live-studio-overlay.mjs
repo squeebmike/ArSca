@@ -36,6 +36,8 @@ import('./live-studio-3d.mjs').then(m=>{
 }).catch(e=>console.warn('[studio] 3D off:',e?.message||e));
 // The Shed Dungeon (scripts/live-studio-dungeon.mjs), when it's on.
 const dg=()=>settings.dungeonOn&&stats.dungeon?.on?stats.dungeon:null;
+// The game on screen: Beasts' own track while it's on, else the dungeon's.
+const gd=()=>settings.gameMode==='beasts'?(stats.beasts||null):dg();
 // The boss on screen: the dungeon floor's, or the show's boss bar.
 function curBoss(){
   const d=dg();
@@ -75,7 +77,7 @@ function apply(s) {
 function paintStats(next,fromSale) {
   const before=shownGross;stats=next||stats;
   $('mana-gross').textContent=usd(stats.gross);$('mana-sold').textContent=String(stats.sold);$('mana-biggest').textContent=usd(stats.biggest);
-  const b=curBoss(),d=dg();
+  const b=curBoss(),d=gd();
   // The boss's sprite and catchphrase, redrawn when the boss changes.
   if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // The boss bar's boss stomps in when the flask fills.
@@ -96,7 +98,7 @@ function paintStats(next,fromSale) {
     if(coinLayer&&settings.showHud){const r=$('mana-gross').getBoundingClientRect();coinLayer.burst(r.left+r.width/2,r.top+r.height/2,Math.min(16,6+Math.round((stats.gross-before)/25)));}
     // In the dungeon, a sale before the boss shows up fills the flask.
     if(d&&!b.show){const m=document.createElement('b');m.textContent='+'+usd(stats.gross-before);$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);}
-    if(b.show){
+    if(b.show&&!beastMode()){
       boss.classList.remove('hit');void boss.offsetWidth;boss.classList.add('hit');bossView?.hit();
       const cr=$('mana-crawl');cr.classList.remove('hit');void cr.offsetWidth;cr.classList.add('hit');
       bossCombo();
@@ -120,12 +122,21 @@ function paintDungeon(d){
   paintMap(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
-  const bm=beastMode();
-  $('mana-title-text').textContent=bm?'ROUTE '+d.floor+' · LONG BOX BEASTS':'FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
-  $('mana-flask-meter').textContent=d.phase==='boss'?(bm?'RIVAL HP ':'BOSS HP ')+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
-  const rv=bm&&beastsLib?beastsLib.rivalFor(d.floor):{name:'THE RIVAL'};
-  $('mana-cbar-sub').textContent=bm?(d.phase==='boss'?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S BEAST!':usd(Math.max(0,d.goal-d.mana))+' MORE TO BATTLE '+rv.name+'!'):d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
-  $('mana-dungeon-floor').textContent=(bm?'ROUTE ':'FLOOR ')+d.floor;const rm=d.room&&bm&&beastsLib?beastsLib.placeFor(d.room):d.room;$('mana-dungeon-shed').textContent=(bm?'LONG BOX BEASTS':d.shed)+(rm?' · '+rm.icon+' '+rm.name:'')+(d.finale?' · FINALE':'');
+  // LONG BOX BEASTS, its own game (2026-11-13: "they should be totally separate games"): its route, its rival, its badges.
+  if(beastMode()){
+    const rv=d.rival||{name:'THE RIVAL',beast:'',hp:0},atRival=d.stage==='rival';
+    $('mana-title-text').textContent='ROUTE '+d.route+' · LONG BOX BEASTS';
+    $('mana-flask-meter').textContent=atRival?'RIVAL HP '+usd(rv.hp):usd(d.xp)+' / '+usd(d.goal);
+    $('mana-cbar-sub').textContent=atRival?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!';
+    $('mana-dungeon-floor').textContent='ROUTE '+d.route;$('mana-dungeon-shed').textContent='LONG BOX BEASTS';
+    $('mana-dungeon-stars').textContent=d.badges?'BADGES '+d.badges:'';
+    $('mana-dungeon-next').textContent=d.caughtCount?'BEASTS BEATEN: '+d.caughtCount:'';
+    return;
+  }
+  $('mana-title-text').textContent='FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
+  $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
+  $('mana-cbar-sub').textContent=d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
+  $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
@@ -256,7 +267,7 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=4').then(m=>{beastsLib=m;const d=dg();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=4').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
@@ -373,7 +384,7 @@ function revealItem(e){
 // CHAT PICKS: the numbered choices chat votes on (the host taps the winner).
 // An open door vote shows on its own.
 function paintVote(){
-  const v=stats.vote,d=dg(),el=$('mana-vote');
+  const v=stats.vote,d=beastMode()?null:dg(),el=$('mana-vote');
   const pl=r=>beastMode()&&beastsLib?beastsLib.placeFor(r):r,doors=!v&&d&&d.doors?{kind:'door',options:d.doors.map(r=>({label:pl(r).icon+' '+pl(r).name}))}:null,show=v||doors;
   el.classList.toggle('mana-hidden',!show||settings.visible===false);
   if(!show)return;
@@ -538,9 +549,10 @@ function receiveEffect(e,initial=false) {
   if(beastsOn&&battle&&['sold','jackpot','boss'].includes(e.kind)){const mv=beastMoves();battle.attack(mv[Number(stats.beastMove)||0]||mv[0]);}
   // A follow / share / bookmark: a float on the flask and a line, no burst.
   if(e.kind==='tap'){react(e);const m=document.createElement('b');m.textContent='+'+(e.mana||0)+' '+(TAP_WORDS[e.tapKind]||'MANA');$('mana-sign-hits').append(m);setTimeout(()=>m.remove(),1500);if(!initial)SOUNDS.tap();return;}
+  // Beasts: a beast beaten / the rival / a badge -- the battle shows it too.
   react(e);revealItem(e);
   effect=e;lastBeep=-1;coins.replaceChildren();
-  if(['jackpot','boss','unlock','chest','found','trivia'].includes(e.kind)) rain(e.kind==='boss'?36:24);
+  if(['jackpot','boss','unlock','chest','found','trivia','beast'].includes(e.kind)) rain(e.kind==='boss'?36:24);
   if(!initial && e.kind!=='countdown') (SOUNDS[e.kind]||SOUNDS.coin)();
 }
 function words(e) {
@@ -562,7 +574,9 @@ function words(e) {
     case 'winner': return ['WINNER!',e.buyer?'@'+e.buyer:'','GIVEAWAY WINNER — PICKED BY WHATNOT'];
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
     // Show start: a boss-fight intro card.
-    case 'ready': {const d=dg();if(d)return ['FLOOR '+d.floor,d.shed,d.phase==='boss'?'BOSS FIGHT: '+d.boss.name:'FILL THE MANA FLASK!'];}
+    // Beasts' own moments.
+    case 'beast': return e.beastEvent==='badge'?['ROUTE '+(e.route||'')+' BADGE!','BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];
+    case 'ready': {if(beastMode()&&stats.beasts){const bs=stats.beasts;return ['ROUTE '+bs.route,'LONG BOX BEASTS',bs.stage==='rival'?'RIVAL: '+bs.rival.name:'WALK THE ROUTE!'];}const d=dg();if(d)return ['FLOOR '+d.floor,d.shed,d.phase==='boss'?'BOSS FIGHT: '+d.boss.name:'FILL THE MANA FLASK!'];}
       if(!settings.showBoss)return ['PLAYER 1 READY','',''];
       return ['BOSS FIGHT!','VS',(settings.bossName||'')+' — "'+bossById(settings.bossCharacter).taunt+'"'];
     default: return [EFFECT_LABELS[e.kind]||'','',''];

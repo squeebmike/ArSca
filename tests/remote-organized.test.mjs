@@ -9,7 +9,7 @@ assert.match(ctl, /'👁 SHOW \/ HIDE SECTIONS'/, 'any section can be hidden');
 assert.match(ctl, /host\.querySelectorAll\('\[data-click\*="mana-mascot"\]'\)\.forEach\(b=>\{b\.hidden=!!off;\}\)/, 'hiding ByteRider_97 hides his buttons too');
 assert.match(ctl, /for\(const n of \['🎬 Show ready','Now playing & next up','🎮 Game','🕹️ Camera','🥤 Vending machine'\]\)/, 'the remote in show order');
 assert.ok(ctl.includes('id="game-dungeon"') && ctl.includes('id="game-beasts"'), 'the game in one tap');
-assert.match(bg, /const d = stats\?\.dungeon \|\| \(settings0\.gameMode === 'beasts' \? \{ floor: 1, pct: 0, phase: 'floor' \} : null\)/, 'the preview shows Beasts before Connect');
+assert.ok(bg.includes("const d = settings0.gameMode === 'beasts' ? (stats?.beasts || { floor: 1, route: 1, pct: 0, phase: 'floor' }) : stats?.dungeon;"), 'the preview shows Beasts before Connect (its own track)');
 assert.ok(css.includes('details.mana-sec>summary'));
 // ATTACK NOW, and resets in reach (2026-11-13: "nothing to let me reset the dungeon ... I need to select an attack? I'm in preview").
 assert.ok(ctl.includes('id="beast-moves"') && ctl.includes('id="demo-reset"') && ctl.includes('data-click="#mana-reset-week"') && ctl.includes('id="quick-floor"'));

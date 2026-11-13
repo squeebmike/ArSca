@@ -212,6 +212,55 @@ export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {})
 }
 export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1; f <= d.floor; f++) for (let k = 0; k < ENCOUNTERS.length; k++) if (f < d.floor || (d.phase === 'boss' || (d.pct || 0) / 100 >= ENCOUNTERS[k][1])) out.push(wildName(f, k)); return out; }
 
+// ── THE GAME ITSELF, ITS OWN (store, 2026-11-13: "they should be totally separate games") ──
+// Beasts keeps its own progress -- the route, the dollars toward the rival, the
+// rival's HP, the beasts you've beaten, the badges -- apart from the dungeon's
+// floors, chests and doors. Sales (and chat's follows / shares / bookmarks) walk
+// you up the route; the three wild beasts on it fall as you pass their patch of
+// grass; at the top the route's rival sends out their beast; beat it for the
+// route's badge and the next route opens. Week by week, like the dungeon, but
+// on its own track. Nothing by chance; nothing won by buying.
+const r2b = n => Math.round(n * 100) / 100;
+export const beastGoal = (s, route) => Math.max(1, Math.round((Number(s.beastsGoal) || 100) * Math.pow(1 + (Number(s.beastsGrowth) || 0) / 100, Math.max(0, route - 1))));
+export const rivalMax = (s, route) => Math.max(1, Math.round(beastGoal(s, route) / 2));
+export function emptyBeasts(week = '') { return { week, route: 1, phase: 'route', xp: 0, rivalHp: 0, caught: [], badges: [], lastAt: 0 }; }
+export function ensureBeasts(b, week = '') { if (b && b.week === week) return b; const fresh = emptyBeasts(week); if (b?.week) fresh.lastWeek = { week: b.week, route: b.route, badges: (b.badges || []).length, caught: (b.caught || []).length }; return fresh; }
+// Dollars in: walk the route (passing the wild beasts), then the rival's HP; leftovers carry on.
+// Returns { beasts, events } -- { kind:'caught', name }, { kind:'rival', trainer, beast }, { kind:'badge', route, trainer, beast }.
+export function addBeastXp(bIn, amount, s, now = Date.now()) {
+  const b = { ...bIn, caught: [...(bIn.caught || [])], badges: [...(bIn.badges || [])] }, events = [];
+  if (!(amount > 0)) return { beasts: b, events };
+  let left = r2b(amount);
+  for (let guard = 0; left > 0 && guard < 60; guard++) {
+    if (b.phase === 'route') {
+      const goal = beastGoal(s, b.route), before = b.xp / goal, need = r2b(goal - b.xp);
+      const take = Math.min(left, need); b.xp = r2b(b.xp + take); left = r2b(left - take);
+      const after = b.xp / goal;
+      ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const name = wildName(b.route, k); b.caught.push({ name, route: b.route, at: now }); events.push({ kind: 'caught', name, route: b.route }); } });
+      if (b.xp >= goal) { b.phase = 'rival'; b.rivalHp = rivalMax(s, b.route); const rv = rivalFor(b.route); events.push({ kind: 'rival', route: b.route, trainer: rv.name, beast: rv.beast }); }
+    } else {
+      if (left < b.rivalHp) { b.rivalHp = r2b(b.rivalHp - left); left = 0; break; }
+      left = r2b(left - b.rivalHp); const rv = rivalFor(b.route);
+      b.badges.push({ route: b.route, trainer: rv.name, at: now }); events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length });
+      b.route += 1; b.phase = 'route'; b.xp = 0; b.rivalHp = 0;
+    }
+  }
+  b.lastAt = now;
+  return { beasts: b, events };
+}
+// The host's fixes: set the route, or start Beasts' week over.
+export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.now()) {
+  if (reset) return { ...emptyBeasts(week), lastAt: now };
+  const n = Math.floor(Number(route));
+  if (!Number.isFinite(n) || n < 1 || n > 99) throw new Error('Route 1 to 99');
+  return { ...bIn, route: n, phase: 'route', xp: 0, rivalHp: 0, lastAt: now };
+}
+// What the screens see (floor and pct keep the drawing code's names: floor is the route).
+export function publicBeasts(bIn, s) {
+  const b = bIn || emptyBeasts(), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, badges: (b.badges || []).length, lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+}
+
 // ── drawing ──────────────────────────────────────────────────────────────────
 const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = GB[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
 // One tile's pixel (shade) at (u, v) inside it; tm for the waving grass and water.
