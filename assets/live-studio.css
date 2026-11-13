@@ -498,3 +498,7 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 /* Settings: the same folding box as the other sections (2026-11-13). */
 .mana-controls details.mana-all.mana-sec>summary{border:0;margin:0;padding:14px 0;color:inherit;font-size:17px;font-weight:800}
 .mana-controls details.mana-all.mana-sec{border-color:#9457d3}
+
+.mana-controls .beast-moves{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mana-controls .beast-moves button{min-height:52px;margin:0;font-weight:800}
+.mana-controls .beast-moves button.on{outline:3px solid #9bbc0f;background:#306230;color:#e8ffc0}

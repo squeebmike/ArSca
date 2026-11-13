@@ -101,6 +101,16 @@ export class ManaLiveStudio extends DurableObject {
     this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:now });
     return this.publicState(s);
   }
+  // BEASTS: the host picks the attack straight away (no vote) -- it's used now.
+  pickMove(index) {
+    const s = this.read(), now = Date.now(), list = movesFrom(s.settings.beastsMoves);
+    if (!Number.isInteger(index) || !list[index]) throw new Error('Invalid attack');
+    s.beastMove = index;
+    s.effect = makeEffect('move', s.settings, now, { move: list[index] });
+    this.write(s);
+    this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now });
+    return this.publicState(s);
+  }
   pickVote(index, who = '') {
     const s = this.read(), now = Date.now(), v = s.vote;
     if (!v) throw new Error('Vote: nothing is open');
