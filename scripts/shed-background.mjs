@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=17'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null)]).then(([fpm, bosses, pm, gl3d]) => {
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0, sharp = false;
@@ -232,6 +232,8 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const rk = d.boss.character + '|' + d.floor, rStage = d.phase !== 'boss' ? -1 : d.pct <= 33.4 ? 2 : d.pct <= 66.7 ? 1 : 0;
         if (rk !== rage.key) rage = { key: rk, seen: rStage }; else if (rStage > rage.seen) { rage.seen = rStage; fp.attack(bosses.bossById(d.boss.character).move); }
         fp.set(fpm.crawlStateFrom({ stats, stage, urls: pics.urls, now, testUntil, hideNear }));
+        // A sale landing on the boss: the hall shakes (the overlay flashes over the hosts at the same time).
+        const hp = d.phase === 'boss' ? Number(d.boss?.hp) : NaN; if (hp < lastHp) fp.hit?.(); lastHp = hp;
         // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
         if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
       };
@@ -255,7 +257,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (it && it.image) { if (cardAt !== i) { cardAt = i; cardImg.src = img(it.image); cardTxt.textContent = String(it.title || '').slice(0, 60) + (Number(it.price) > 0 ? '  ·  $' + Number(it.price).toFixed(2) : ''); cardTxt.hidden = !it.title; } card.classList.add('on'); }
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
-      let hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
+      let lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
         if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { miniOn = m.settings.miniMap !== false; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };

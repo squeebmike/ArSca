@@ -121,7 +121,8 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
 // 10. Props in front, IN the scene (2026-11-13: "they look like they're on the screen, and they move with the camera").
 {
   assert.match(fp, /layer = '' \} = \{\}\) \{\n  const FG = layer === 'front';/);
-  assert.match(fp, /if \(FG\) \{ tick\+\+; ctx\.putImageData\(img, 0, 0\); return; \}/, 'the front layer is only the close props');
+  assert.match(fp, /if \(FG \? !close : close\) return; \} else if \(FG\) return;/, 'the front layer has only the close props (and see-through glow)');
+  assert.match(fp, /if \(FG\) data\.fill\(0\); else for/, 'no floor or walls on the front layer');
   assert.match(fp, /const shared = \(\) => \(\(Date\.now\(\) \+ clockOffset\) % 3\.6e6\) \/ 1000;/, 'one clock on every screen');
   assert.match(fp, /const tm = shared\(\), ph = \(tm % 13\) \/ 13/, 'the idle glance keeps the shared time');
   const ov = read('scripts/live-studio-overlay.mjs'), html = read('arcade-overlay.html'), css = read('assets/live-studio.css');
@@ -130,5 +131,29 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.ok(html.includes('<canvas id="mana-front"') && css.includes('#mana-front{position:absolute;left:0;top:0;width:1080px;height:850px'), 'lined up with the green screen\'s hall');
   const st = F.crawlStateFrom({ stats: { dungeon: { floor: 3, shed: 'X', pct: 40, phase: 'floor', boss: {}, opened: [1], boxes: [{ open: true }], fork: '' }, lastSaleAt: 0 }, stage: { next: [{ image: 'https://a/1.jpg', price: 5 }, { image: 'https://a/2.jpg', price: 50 }] }, urls: ['https://a/1.jpg', 'https://a/2.jpg'] });
   assert.deepEqual([st.floor, st.bossItem, st.chests, st.boxes], [3, 1, [false, true, false], [true, false]]);
+}
+// 11. See-through glow and particles in front of the hosts; the polish (2026-11-13: "add all those features").
+{
+  assert.match(fp, /const FRONT = FG \|\| !!state\.hideNear, FXN = 3\.05;/, 'particles as close as the chests in front go on the front layer');
+  assert.match(fp, /const fx = \(i, col, a, tY\) => \{/); assert.match(fp, /glowAt\(pr\.x, pr\.y, 0\.22, 0\.42, \[255, 210, 90\]/, 'the chest\'s gleam');
+  assert.match(fp, /chestBurst\[k\] = performance\.now\(\)/, 'a chest opening bursts');
+  assert.match(fp, /hit\(\) \{ hitAt = performance\.now\(\); \}/); assert.match(fp, /screenOf\(kind, idx\)/);
+  assert.match(fp, /swoop: true/); assert.match(fp, /sniff = f >= 0\.4 && f < 0\.62/); assert.match(fp, /drop = ph < 0\.15/);
+  assert.match(fp, /const DECALS = \(\(\) => \{/); assert.match(fp, /const jamb = !pic && \(\(alongA/);
+  assert.match(fp, /segs\[i\] - d < 1\.3\)/, 'smoother corners'); assert.match(fp, /Walking past a room, you turn your head to look in/);
+  assert.match(fp, /COLOUR GRADING \(2026-11-13 polish\)/); assert.match(fp, /Cold down there: your breath fogs/);
+  const ov = read('scripts/live-studio-overlay.mjs'), bg = read('scripts/shed-background.mjs'), css = read('assets/live-studio.css');
+  assert.match(ov, /if\(hp<frontHp\)front\.hit\(\);/); assert.match(bg, /if \(hp < lastHp\) fp\.hit\?\.\(\);/);
+  assert.match(ov, /front\.screenOf\('chest'/); assert.ok(css.includes('@keyframes mana-from-chest'));
+  assert.match(ov, /front\?\.walking\?\.\(\)/, 'footsteps while walking');
+  // Every polish piece is fixed (no chance) and keeps the same time on every screen.
+  assert.ok(!/Math\.random/.test(fp));
+}
+// 12. The knockout and the next floor (2026-11-13: "keep going -- what else does it need?").
+{
+  assert.match(fp, /koUntil = koAt \+ 2600; pendingSet = next;/, 'the arena holds for the knockout');
+  assert.match(fp, /if \(n\) set\(n, true\); \}, 2650\)/, 'then the next floor -- once (no second knockout)');
+  assert.match(fp, /THE KNOCKOUT: the boss blows apart/); assert.match(fp, /Arriving on a new floor: the light comes up/);
+  assert.match(fp, /shown = target; arenaK = 0; look = 0;/, 'a new floor never starts in the old arena');
 }
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');

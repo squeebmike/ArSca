@@ -467,3 +467,8 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
    same camera, only the close props, over the hosts -- exactly over the
    background's top 850 pixels. */
 #mana-front{position:absolute;left:0;top:0;width:1080px;height:850px;z-index:4;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges}
+
+/* The item flies out of the chest standing in the room (2026-11-13), then spins. */
+#mana-reveal.from-chest .mana-reveal-stage{animation:mana-from-chest 1s cubic-bezier(.2,1.25,.4,1) both}
+#mana-reveal.from-chest #mana-reveal-chest{display:none}
+@keyframes mana-from-chest{0%{transform:translate(var(--fx),var(--fy)) scale(.12);opacity:.3;filter:brightness(3)}60%{opacity:1;filter:brightness(1.6)}100%{transform:none;opacity:1;filter:none}}
