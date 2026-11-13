@@ -286,7 +286,11 @@ export class ManaLiveStudio extends DurableObject {
     if (input.load === 'stage') { m.items = clean([s.stage?.now, ...(s.stage?.next || [])].filter(Boolean)); m.kind = 'items'; m.up = 0; }
     if (Array.isArray(input.items)) { m.items = clean(input.items); m.kind = 'items'; m.up = 0; }
     // SPOTS for a break or a surprise set: "75 at $5" or one name a line -- in the machine only, never in inventory.
-    if (input.spots && typeof input.spots === 'object') { m.items = clean(makeSpots(input.spots)); if (!m.items.length) throw new Error('How many spots? (or one name a line)'); m.kind = 'spots'; m.up = 0; }
+    if (input.spots && typeof input.spots === 'object') { m.items = clean(makeSpots(input.spots)); if (!m.items.length) throw new Error('How many spots? (or one name a line)'); m.kind = 'spots'; m.up = 0;
+      // Each spot's own Whatnot id ("spot-<batch>-<n>"), so its listing's sale marks exactly that spot.
+      m.batch = Date.now().toString(36); m.items = m.items.map((it, i) => ({ ...it, ext: 'spot-' + m.batch + '-' + (i + 1) })); }
+    // Spots listed on Whatnot (the remote lists them, then says which went in).
+    if (Array.isArray(input.listed)) { const on = new Set(input.listed.map(String)); m.items = m.items.map(it => it.ext && on.has(it.ext) ? { ...it, listed: true } : it); }
     if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;
     // The slot UP NOW: set it, step to the next/previous open one, or mark it sold and move on.
     if (Number.isInteger(input.up) && m.items[input.up]) m.up = input.up;
@@ -304,7 +308,12 @@ export class ManaLiveStudio extends DurableObject {
   machineSold(s, order, wasNow) {
     if (!s.machine?.items?.length) return false;
     // Spots (a break, a surprise set) have no item ids: a sale while the machine is up takes the spot UP NOW.
-    if (s.machine.kind === 'spots') { if (!s.machine.on) return false; const u = upIndex(s.machine); if (u < 0) return false; s.machine.items[u] = { ...s.machine.items[u], sold: true }; s.machine.up = openFrom(s.machine.items, u, 1); return true; }
+    if (s.machine.kind === 'spots') {
+      // Listed on Whatnot: the sale names its spot.
+      const exts = new Set((order?.items || []).flatMap(it => [it.product_external_id, it.variant_external_id]).filter(Boolean).map(String));
+      const hitAt = s.machine.items.findIndex(it => !it.sold && it.ext && exts.has(it.ext));
+      if (hitAt >= 0) { s.machine.items[hitAt] = { ...s.machine.items[hitAt], sold: true }; if (upIndex(s.machine) < 0 || s.machine.up === hitAt) s.machine.up = openFrom(s.machine.items, hitAt, 1); return true; }
+      if (!s.machine.on) return false; const u = upIndex(s.machine); if (u < 0) return false; s.machine.items[u] = { ...s.machine.items[u], sold: true }; s.machine.up = openFrom(s.machine.items, u, 1); return true; }
     const ids = new Set((order?.items || []).flatMap(it => [it.product_external_id, it.variant_external_id]).filter(Boolean).map(String));
     let changed = false;
     s.machine.items = s.machine.items.map(it => { const hit = !it.sold && ((it.id && ids.has(it.id)) || (wasNow && ((wasNow.id && it.id === wasNow.id) || (!wasNow.id && it.title === wasNow.title)))); if (hit) changed = true; return hit ? { ...it, sold: true } : it; });

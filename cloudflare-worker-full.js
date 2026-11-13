@@ -55,9 +55,10 @@ import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledSto
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
 import { syncWhatnotShowEvents } from './scripts/whatnot-show-events.mjs';
-import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText , upcomingWhatnotShows, SHOW_ONLY_START, auctionRuleFrom } from './scripts/whatnot-sync.mjs';
+import { whatnotClient, runWhatnotListingSync, processWhatnotOrder, reconcileWhatnotOrders, refreshWhatnotShow, refreshRecentWhatnotShows, applyWhatnotListingCosts, nextWhatnotShow, currentWhatnotShow, whatnotShowOrders, returnUnsoldToShop, showWrapUp, addItemsToWhatnotShow, listSpotsInShow, orderBoardNotes, syncWhatnotShipments, backToBuyItNow, pullWhatnotEdits, removeDuplicateWhatnotListings, whatnotAllProducts, matchWhatnotListings, linkWhatnotListings, parseCsv, summarizeFinancialReport, whatnotInsights, whatnotErrorText , upcomingWhatnotShows, SHOW_ONLY_START, auctionRuleFrom } from './scripts/whatnot-sync.mjs';
 import { handleLiveStudio } from './scripts/live-studio-api.mjs';
 import { ManaLiveStudio } from './scripts/live-studio-room.mjs';
+import { chanceWordIn } from './scripts/live-studio-model.mjs';
 export { ManaLiveStudio };
 import { runPriceChartingServerSync } from './scripts/pricecharting-daily-sync.mjs';
 import { handleBacklistRequest, syncBacklistStripeEvent } from './scripts/backlist-catalog.mjs';
@@ -13809,6 +13810,28 @@ async function routeRequest(request, env, ctx) {
         profileId: kind => profileIds[kind] || '',
         saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction: auctionRuleFrom(deps.listingSettings) });
       return json({ ok: true, added: results.filter(r => r.added).length, results });
+    }
+    // POST /whatnot/spots-list { showId, spots:[{ext,title,price}], category, photo, mode } -- the vending
+    // machine's spots (a break, a surprise set) listed in the show, Whatnot only: nothing in inventory.
+    // Up to 10 a request (the remote sends them in turns). Store, 2026-11-13.
+    if (url.pathname === '/whatnot/spots-list' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const parsed = await readJsonWithLimit(request, 16 * 1024);
+      if (parsed.error) return parsed.error;
+      const showId = String(parsed.data?.showId || '');
+      const spots = (Array.isArray(parsed.data?.spots) ? parsed.data.spots : []).slice(0, 10).map(x => ({ ext: String(x?.ext || ''), title: String(x?.title || '').slice(0, 200), price: Number(x?.price) || 0 }));
+      if (!spots.length || !/^[0-9a-f-]{36}$/i.test(showId)) return json({ ok: false, error: 'spots and a Whatnot show are required' }, 400);
+      for (const sp of spots) { const w = chanceWordIn(sp.title); if (w) return json({ ok: false, error: '"' + w + '" reads as a game of chance -- Whatnot doesn\'t allow those.' }, 400); }
+      const deps = whatnotDeps(env, ctx, storeId);
+      const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
+      const results = await listSpotsInShow(spots, showId, { ...deps, storeId,
+        profileId: kind => profileIds[kind] || '',
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } },
+        { category: String(parsed.data?.category || 'comics'), photo: String(parsed.data?.photo || ''), mode: parsed.data?.mode === 'auction' ? 'auction' : 'buy_it_now' });
+      return json({ ok: true, listed: results.filter(r => r.listed).length, results });
     }
     // POST /whatnot/show-add { itemIds, showId } -- adds items to a show's
     // lineup (listing any not on Whatnot yet first). Up to 25 a request.

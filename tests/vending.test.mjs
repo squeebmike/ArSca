@@ -27,7 +27,7 @@ assert.equal(V.upIndex(mc), 2); assert.equal(V.upIndex({ ...mc, up: 0 }), 1); as
 // 3. The machine: a BID pill on every slot, SOLD stamped, a big BID in the tray, UP NOW lit; small, full, or in front.
 for (const k of ["'BID ' + money(it.price)", '<em class="vm-stamp">SOLD</em>', "(i === up ? ' up' : '')", '.vm.full{', "where === 'overlay' ? mode === 'front' : mode !== 'front'"]) assert.ok(vsrc.includes(k), k);
 // 4. The room: modes, step, sold-and-next, spots; a sale takes the spot UP NOW.
-for (const k of ["if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;", 'm.items = clean(makeSpots(input.spots));', "m.kind = 'spots'", 'if (input.soldUp === true)', 'm.up = openFrom(m.items, upIndex(m), input.step);', ".slice(0, 120)", "if (s.machine.kind === 'spots') { if (!s.machine.on) return false;"]) assert.ok(room.includes(k), k);
+for (const k of ["if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;", 'm.items = clean(makeSpots(input.spots));', "m.kind = 'spots'", 'if (input.soldUp === true)', 'm.up = openFrom(m.items, upIndex(m), input.step);', ".slice(0, 120)", "if (!s.machine.on) return false; const u = upIndex(s.machine);"]) assert.ok(room.includes(k), k);
 assert.match(room, /import \{ makeSpots, upIndex \} from '\.\/vending\.mjs';/);
 assert.ok(read('.github/workflows/deploy-worker.yml').includes('- scripts/vending.mjs'), 'the worker deploys when the machine changes');
 // 5. Both screens draw the same machine.
