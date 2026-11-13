@@ -103,7 +103,7 @@ export function validateSettings(input) {
   if (!/^[A-Z]{3}$/.test(full.currency)) throw new Error('Use a three-letter currency');
   if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
   if (!['ps1', 'n64'].includes(full.bossStyle)) throw new Error('Invalid bossStyle');
-  if (!['dungeon', 'beasts'].includes(full.gameMode)) throw new Error('Invalid gameMode');
+  if (!['dungeon', 'beasts', 'vending'].includes(full.gameMode)) throw new Error('Invalid gameMode');
   if (!['overlay', 'green'].includes(full.beastsBattle)) throw new Error('Invalid beastsBattle');
   for (const k of ['beastsFace', 'beastsBuddy']) if (full[k] && !/^[0-3]{144}$/.test(full[k])) throw new Error('Invalid ' + k);
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');

@@ -66,7 +66,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   roomRewards: '',     // lines "vault: $1 start on a grail" (a room's reward when a floor has none)
   showMap: true,       // the dungeon map + relic shelf panel
   centerStage: true,   // the big mana bar across the middle, the boss standing on it (2026-11-11)
-  gameMode: 'dungeon', // 'dungeon' (the first-person crawl) or 'beasts' (the top-down monster-battler, scripts/beasts.mjs)
+  gameMode: 'dungeon', // 'dungeon' (the first-person crawl), 'beasts' (the top-down monster-battler, scripts/beasts.mjs) or 'vending' (no game: the vending machine)
   beastsMoves: '',     // your beast's four attacks, one a line (chat can invent them)
   beastsFace: '',      // your face in four greens (144 digits, made from a photo in the remote)
   beastsBuddy: '',     // your buddy's (Champ's) face, the same way

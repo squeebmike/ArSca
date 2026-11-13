@@ -205,7 +205,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // the top camera -- you look down the hall, not at the ceiling.
     Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=4').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
-      let world = null, beastsOn = false;
+      let world = null, beastsOn = false, vendOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0, sharp = false;
@@ -221,6 +221,15 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       let stats = null, stage = { now: null, next: [] }, shedPics = [], offset = 0, bossId = '', picKey = '';
       const img = u => { try { return endpoint ? new URL(endpoint).origin + '/public/studio-img?u=' + encodeURIComponent(u) : u; } catch { return u; } };
       const paint = () => {
+        // VENDING ONLY (2026-11-13): no game behind the hosts -- a plain store backdrop, the machine on it.
+        if (settings0.gameMode === 'vending') {
+          if (!vendOn) { fp?.stop(); world?.stop(); world = null; beastsOn = false; paintBattle(null); vendOn = true; mini.hidden = true; bubble.classList.remove('on'); }
+          const c = canvas.getContext('2d'), w = canvas.width, h = canvas.height, g = c.createLinearGradient(0, 0, 0, h);
+          g.addColorStop(0, '#2a1250'); g.addColorStop(1, '#0d0620'); c.fillStyle = g; c.fillRect(0, 0, w, h);
+          c.fillStyle = '#ff3fd222'; for (let x = -h; x < w; x += 24) { c.beginPath(); c.moveTo(x, h); c.lineTo(x + h, 0); c.lineTo(x + h + 6, 0); c.lineTo(x + 6, h); c.fill(); }
+          return;
+        }
+        if (vendOn) { vendOn = false; topH = 0; if (settings0.gameMode !== 'beasts') build(850); bossId = ''; picKey = ''; }
         const d = settings0.gameMode === 'beasts' ? (stats?.beasts || { floor: 1, route: 1, pct: 0, phase: 'floor' }) : stats?.dungeon; if (!d) return; // Beasts keeps its own track
         if (beasts && settings0.gameMode === 'beasts') {
           if (!beastsOn) { fp?.stop(); world = beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world.start(); beastsOn = true; mini.hidden = true; }
@@ -255,7 +264,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       // screen behind the hosts while it's on (the remote's VENDING MACHINE).
       // Now drawn by scripts/vending.mjs (2026-11-13 polish): small or full screen behind the hosts, a BID button on every slot.
       let drawMachine = () => {}, lastMachine = null; const vmLook = () => ({ theme: settings0.gameMode === 'beasts' ? 'gb' : '' });
-      import('./vending.mjs?v=3').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
+      import('./vending.mjs?v=4').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
       // THE BATTLE ON THE GREEN SCREEN (2026-11-13: "I may also want the pokemon game thing to also be the green screen ... I want the option"):
       // with WHERE THE BATTLE SHOWS on BEHIND US, the battle is drawn here, behind the hosts, instead of on the overlay.
       const bcv = Object.assign(document.createElement('canvas'), { id: 'shed-battle', hidden: true }); document.body.append(bcv);
@@ -283,16 +292,16 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       const card = Object.assign(document.createElement('div'), { id: 'shed-item' }), cardImg = document.createElement('img'), cardTxt = document.createElement('b');
       cardImg.alt = ''; card.append(cardImg, cardTxt); document.body.append(card);
       setInterval(() => {
-        const boss = beastsOn || stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
+        const boss = beastsOn || vendOn || stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
         if (it && it.image) { if (cardAt !== i) { cardAt = i; cardImg.src = img(it.image); cardTxt.textContent = String(it.title || '').slice(0, 60) + (Number(it.price) > 0 ? '  ·  $' + Number(it.price).toFixed(2) : ''); cardTxt.hidden = !it.title; } card.classList.add('on'); }
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
       let settings0 = {}, lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
-        if (m.type === 'attack') { if (beastsOn) return; const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode !== 'beasts'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) lastMachine = m.machine; if (lastMachine) drawMachine(lastMachine, vmLook()); paint(); if (m.effect && (m.type === 'effect' || m.fresh)) battleFx(m.effect); };
+        if (m.type === 'attack') { if (beastsOn || vendOn) return; const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode === 'dungeon'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) lastMachine = m.machine; if (lastMachine) drawMachine(lastMachine, vmLook()); paint(); if (m.effect && (m.type === 'effect' || m.fresh)) battleFx(m.effect); };
       setInterval(paint, 5000);
-      setInterval(() => { const d = stats?.dungeon; if (d && !beastsOn) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
+      setInterval(() => { const d = stats?.dungeon; if (d && !beastsOn && !vendOn) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
       if (pending) onState(pending);

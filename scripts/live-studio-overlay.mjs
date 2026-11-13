@@ -35,7 +35,7 @@ import('./live-studio-3d.mjs').then(m=>{
   }catch(e){console.warn('[studio] 3D off:',e?.message||e);bossView=effectBoss=coinLayer=gl=null;document.body.classList.remove('mana-3d');}
 }).catch(e=>console.warn('[studio] 3D off:',e?.message||e));
 // The Shed Dungeon (scripts/live-studio-dungeon.mjs), when it's on.
-const dg=()=>settings.dungeonOn&&stats.dungeon?.on?stats.dungeon:null;
+const dg=()=>settings.gameMode!=='vending'&&settings.dungeonOn&&stats.dungeon?.on?stats.dungeon:null; // VENDING ONLY: no game on screen
 // The game on screen: Beasts' own track while it's on, else the dungeon's.
 const gd=()=>settings.gameMode==='beasts'?(stats.beasts||null):dg();
 // The boss on screen: the dungeon floor's, or the show's boss bar.
@@ -82,7 +82,7 @@ function paintStats(next,fromSale) {
   if(drawnBoss!==b.character){drawnBoss=b.character;void drawBoss($('mana-boss-sprite'),drawnBoss);bossView?.set(drawnBoss);effectBoss?.set(drawnBoss);}
   // The boss bar's boss stomps in when the flask fills.
   // BEASTS (2026-11-13: "are you crossing some things from the shed game across?"): the battle is the rival fight -- no dungeon boss card, intro, rage or K.O.
-  const bm=beastMode();boss.classList.toggle('mana-hidden',!b.show||bm);
+  const bm=beastMode()||settings.gameMode==='vending';boss.classList.toggle('mana-hidden',!b.show||bm);
   const phase=d?d.phase+d.floor:'';if(d&&d.phase==='boss'&&lastPhase&&lastPhase!==phase&&!bm){bossView?.enter();bossIntro(b,d);}lastPhase=phase;
   if(!bm)bossRage(b,d);
   if(b.defeated&&!lastDefeated&&b.show&&!bm)bossKO();lastDefeated=!!b.defeated;
@@ -271,7 +271,7 @@ import('./beasts.mjs?v=4').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d)
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=3').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+import('./vending.mjs?v=4').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 function paintBeasts(d){
@@ -576,7 +576,7 @@ function words(e) {
     // Show start: a boss-fight intro card.
     // Beasts' own moments.
     case 'beast': return e.beastEvent==='badge'?['ROUTE '+(e.route||'')+' BADGE!','BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];
-    case 'ready': {if(beastMode()&&stats.beasts){const bs=stats.beasts;return ['ROUTE '+bs.route,'LONG BOX BEASTS',bs.stage==='rival'?'RIVAL: '+bs.rival.name:'WALK THE ROUTE!'];}const d=dg();if(d)return ['FLOOR '+d.floor,d.shed,d.phase==='boss'?'BOSS FIGHT: '+d.boss.name:'FILL THE MANA FLASK!'];}
+    case 'ready': {if(settings.gameMode==='vending')return ['WE\'RE LIVE!','THE MANA POCKET','STEP UP TO THE MACHINE!'];if(beastMode()&&stats.beasts){const bs=stats.beasts;return ['ROUTE '+bs.route,'LONG BOX BEASTS',bs.stage==='rival'?'RIVAL: '+bs.rival.name:'WALK THE ROUTE!'];}const d=dg();if(d)return ['FLOOR '+d.floor,d.shed,d.phase==='boss'?'BOSS FIGHT: '+d.boss.name:'FILL THE MANA FLASK!'];}
       if(!settings.showBoss)return ['PLAYER 1 READY','',''];
       return ['BOSS FIGHT!','VS',(settings.bossName||'')+' — "'+bossById(settings.bossCharacter).taunt+'"'];
     default: return [EFFECT_LABELS[e.kind]||'','',''];
@@ -587,7 +587,7 @@ function draw() {
   const now=Date.now()+offset;
   if(effect && effect.endsAt>now) {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind+(effect.item?.title&&['chest','found'].includes(effect.kind)?' with-item':'');lastKind=effect.id;
-      if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg())){
+      if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg()&&settings.gameMode!=='vending')){
         const who=effect.bossCharacter||settings.bossCharacter;
         if(effectBoss){effectBoss.set(who);effectBoss.defeat(false);if(effect.kind==='floor')effectBoss.enter();effectBoss.start();
           // Beaten: a beat of HP-zero, then it blows apart (PS1) or keels over.

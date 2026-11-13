@@ -44,10 +44,12 @@ export class ManaLiveStudio extends DurableObject {
     return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), beasts: publicBeasts(state.beasts, state.settings), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
   }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], machine:state.machine || { on:false, items:[] }, serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], machine:this.pubMachine(state), serverNow:Date.now() };
   }
   // Which game is on.
   beastsOn(s) { return s.settings.gameMode === 'beasts'; }
+  // VENDING ONLY: no game; sales move nothing but the score and the machine.
+  vendingOnly(s) { return s.settings.gameMode === 'vending'; }
   // Beasts' biggest moment in a batch of events: a badge beats the rival stepping up, which beats a catch.
   beastEffect(events) {
     const e = events.filter(x => x.kind === 'badge').pop() || events.filter(x => x.kind === 'rival').pop() || events.filter(x => x.kind === 'caught').pop();
@@ -66,6 +68,7 @@ export class ManaLiveStudio extends DurableObject {
   dungeonTap(kind) {
     const s = this.read(), now = Date.now();
     if (this.beastsOn(s)) return this.beastsIn(s, tapMana(s.settings, kind), now, { kind: 'tap', tapKind: kind, mana: tapMana(s.settings, kind) });
+    if (this.vendingOnly(s)) { s.effect = makeEffect('tap', s.settings, now, { tapKind: kind, mana: 0 }); this.write(s); this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now }); return this.publicState(s); }
     const r = addTap(s.dungeon, kind, s.settings, now);
     // A treasure chest this tap opened (chat's goal reached).
     const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();
@@ -82,6 +85,7 @@ export class ManaLiveStudio extends DurableObject {
   // Manual: + $ mana (a sale off Whatnot), set the floor, or start the week over.
   dungeonAdjust(input = {}) {
     const s = this.read(), now = Date.now();
+    if (this.vendingOnly(s)) throw new Error('Vending only: no game is on (pick the dungeon or Long Box Beasts first)');
     if (this.beastsOn(s)) {
       if (input.mana !== undefined) { const amount = Number(input.mana); if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Invalid amount'); return this.beastsIn(s, amount, now, null); }
       if (input.door !== undefined) throw new Error('Long Box Beasts has no doors -- that is the dungeon');
@@ -110,6 +114,7 @@ export class ManaLiveStudio extends DurableObject {
   // weapon, or which of the next items comes up first. Nothing is drawn.
   openVote(kind) {
     const s = this.read(), now = Date.now();
+    if (this.vendingOnly(s) && !['next', 'trivia'].includes(kind)) throw new Error('Vending only: no game is on');
     if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw new Error('That vote is the dungeon\'s -- Long Box Beasts is on');
     if (!this.beastsOn(s) && ['move', 'starter'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
     let options;
@@ -155,7 +160,7 @@ export class ManaLiveStudio extends DurableObject {
     if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
     if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! GO, ' + opt.id + ' -- LET\'S SELL SOME COMICS!' }); }
     if (v.kind === 'move') { s.beastMove = index; fx = makeEffect('move', s.settings, now, { move: opt.label.replace(/^\S+\s/, '') }); }
-    if (v.kind === 'trivia') { if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana) || 0, s.settings, now).beasts; else { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; } const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
+    if (v.kind === 'trivia') { if (this.vendingOnly(s)) {} else if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana) || 0, s.settings, now).beasts; else { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; } const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
     s.effect = fx || makeEffect('mascot', s.settings, now, { mascotState: 'happy', say: 'CHAT PICKED: ' + opt.label.replace(/^\S+\s/, '') });
     this.write(s);
@@ -290,6 +295,7 @@ export class ManaLiveStudio extends DurableObject {
       // Each spot's own Whatnot id ("spot-<batch>-<n>"), so its listing's sale marks exactly that spot.
       m.batch = Date.now().toString(36); m.items = m.items.map((it, i) => ({ ...it, ext: 'spot-' + m.batch + '-' + (i + 1) })); }
     // Spots listed on Whatnot (the remote lists them, then says which went in).
+    if (input.buyer && Number.isInteger(input.buyer.i) && m.items[input.buyer.i]) { const nm = String(input.buyer.name || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); const { buyer, ...rest } = m.items[input.buyer.i]; m.items[input.buyer.i] = nm ? { ...rest, buyer: nm, sold: true } : rest; }
     if (Array.isArray(input.listed)) { const on = new Set(input.listed.map(String)); m.items = m.items.map(it => it.ext && on.has(it.ext) ? { ...it, listed: true } : it); }
     if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;
     // The slot UP NOW: set it, step to the next/previous open one, or mark it sold and move on.
@@ -305,18 +311,21 @@ export class ManaLiveStudio extends DurableObject {
     return this.publicState(s);
   }
   // A sale marks its item sold out in the machine (by our item id, or the item that was NOW PLAYING).
+  // THE BREAK BOARD (2026-11-13): who has which spot -- only with SHOW BUYER NAMES on (off by default); otherwise no names leave the room.
+  pubMachine(s) { const m = s.machine || { on:false, items:[] }; return s.settings.showBuyerNames ? m : { ...m, items: (m.items || []).map(({ buyer, ...it }) => it) }; }
   machineSold(s, order, wasNow) {
     if (!s.machine?.items?.length) return false;
+    const who = s.settings.showBuyerNames ? String(order?.buyer?.username || '').replace(/[^\w.\-]/g, '').slice(0, 30) : '', tag = it => ({ ...it, sold: true, ...(who ? { buyer: who } : {}) });
     // Spots (a break, a surprise set) have no item ids: a sale while the machine is up takes the spot UP NOW.
     if (s.machine.kind === 'spots') {
       // Listed on Whatnot: the sale names its spot.
       const exts = new Set((order?.items || []).flatMap(it => [it.product_external_id, it.variant_external_id]).filter(Boolean).map(String));
       const hitAt = s.machine.items.findIndex(it => !it.sold && it.ext && exts.has(it.ext));
-      if (hitAt >= 0) { s.machine.items[hitAt] = { ...s.machine.items[hitAt], sold: true }; if (upIndex(s.machine) < 0 || s.machine.up === hitAt) s.machine.up = openFrom(s.machine.items, hitAt, 1); return true; }
-      if (!s.machine.on) return false; const u = upIndex(s.machine); if (u < 0) return false; s.machine.items[u] = { ...s.machine.items[u], sold: true }; s.machine.up = openFrom(s.machine.items, u, 1); return true; }
+      if (hitAt >= 0) { s.machine.items[hitAt] = tag(s.machine.items[hitAt]); if (upIndex(s.machine) < 0 || s.machine.up === hitAt) s.machine.up = openFrom(s.machine.items, hitAt, 1); return true; }
+      if (!s.machine.on) return false; const u = upIndex(s.machine); if (u < 0) return false; s.machine.items[u] = tag(s.machine.items[u]); s.machine.up = openFrom(s.machine.items, u, 1); return true; }
     const ids = new Set((order?.items || []).flatMap(it => [it.product_external_id, it.variant_external_id]).filter(Boolean).map(String));
     let changed = false;
-    s.machine.items = s.machine.items.map(it => { const hit = !it.sold && ((it.id && ids.has(it.id)) || (wasNow && ((wasNow.id && it.id === wasNow.id) || (!wasNow.id && it.title === wasNow.title)))); if (hit) changed = true; return hit ? { ...it, sold: true } : it; });
+    s.machine.items = s.machine.items.map(it => { const hit = !it.sold && ((it.id && ids.has(it.id)) || (wasNow && ((wasNow.id && it.id === wasNow.id) || (!wasNow.id && it.title === wasNow.title)))); if (hit) changed = true; return hit ? tag(it) : it; });
     return changed;
   }
   // Now playing / next up, from the dashboard.
@@ -391,7 +400,7 @@ export class ManaLiveStudio extends DurableObject {
         const m = addBeastXp(s.beasts, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
         s.beasts = m.beasts;
         if (r.effect) dfx = this.beastEffect(m.events);
-      } else if (s.stats.gross > grossBefore) {
+      } else if (s.stats.gross > grossBefore && !this.vendingOnly(s)) {
         const m = addMana(s.dungeon, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
         s.dungeon = m.dungeon;
         const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];
@@ -419,8 +428,8 @@ export class ManaLiveStudio extends DurableObject {
       if (emitted || statsChanged || followed) this.write(s);
     });
     if (followed) this.broadcast({ type:'state', ...this.publicState(s) });
-    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage,machine:s.machine||{on:false,items:[]}}:{}),serverNow:now});
-    else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),...(stageMoved?{stage:s.stage,machine:s.machine||{on:false,items:[]}}:{}),serverNow:now});
+    if (emitted) this.broadcast({type:'effect',effect:s.effect,stats:this.publicStats(s),...(stageMoved?{stage:s.stage,machine:this.pubMachine(s)}:{}),serverNow:now});
+    else if (statsChanged) this.broadcast({type:'stats',stats:this.publicStats(s),...(stageMoved?{stage:s.stage,machine:this.pubMachine(s)}:{}),serverNow:now});
     return {ok:true, ...this.takeChest(s)};
   }
   async fetch(request) {
