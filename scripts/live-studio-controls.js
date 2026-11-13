@@ -149,10 +149,12 @@
   <div class="mana-grid">${box('visible','Show sign')}${box('marqueeOn','Scrolling marquee on the sign')}${box('showHud','Show score board')}${box('showCard','Show now playing')}${box('showQueue','Show next up')}${box('showCombo','Show combos')}${box('attract','INSERT COIN when nothing is playing')}${box('muted','Mute sound')}${box('showBuyerNames','Show buyer usernames ("THANKS @name")')}</div>
   <small>Buyer usernames are off unless you turn them on. Whatnot shows the winner's username in the app already; check Whatnot's seller rules before showing them. Only the username is ever shown, and there's no "top spender" board.</small>
   <button type="submit">Save live settings</button></form></details>
-  <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" src="arcade-overlay.html#preview=1"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" src="shed-background.html#preview=1"></iframe></div>
+  <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" data-src="arcade-overlay.html#preview=1" src="about:blank"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" data-src="shed-background.html#preview=1" src="about:blank"></iframe></div>
   <div class="mana-row"><button type="button" id="mana-demo">DEMO A SALE (preview only)</button></div><small>Preview is silent. Both camera areas are placeholders; camera sources stay in OBS.</small>
   <button id="mana-link">Create / replace OBS link</button><button id="mana-revoke">Revoke OBS link</button><label>Private OBS Browser Source URL<input id="mana-url" readonly></label><label>Shed background URL (green screen)<input id="mana-shed-url" readonly></label><div class="mana-row"><a href="shed-background.html#demo=1" target="_blank" rel="noopener">PREVIEW ALL SHEDS ↗</a></div><small>Green screen: put the shed background as a Browser Source (1080 × 1920) <b>under</b> your camera, and add OBS's Chroma Key filter to the camera. The shed follows the dungeon's floor, shows the room chat picked, and glows red while a boss is up.</small><small>Link expires after 12 hours. Replacing it disconnects old overlays. OBS: Browser Source 1080 × 1920 above both cameras, enable “Control audio via OBS”. If sound is blocked, use OBS Interact and click the overlay once.</small>`;
   const form=host.querySelector('form'),status=host.querySelector('#mana-status'),frame=host.querySelector('iframe');
+  // The studio is on screen: the page is showing and its tab is open (a closed tab panel has no layout).
+  const studioOnScreen=()=>!document.hidden&&host.getClientRects().length>0;
   // A demo sale holds the preview where the demo left it for 2 minutes (the 8-second refresh used to snap it back).
   let demoFake=null,demoUntil=0;
   let machineCtl={on:false,items:[]};
@@ -278,7 +280,8 @@
   async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
   host.querySelector('#mana-load').onclick=()=>run(connect);
   // Connect on its own once the dashboard is signed in.
-  (function autoConnect(tries){if(connectedStore)return;if(typeof storeWorkerFetch==='function'&&store()){connect().catch(()=>{if(tries<5)setTimeout(()=>autoConnect(tries+1),4000);});}else if(tries<20)setTimeout(()=>autoConnect(tries+1),1500);})(0);
+  (function autoConnect(tries){if(connectedStore)return;if(!studioOnScreen()){setTimeout(()=>autoConnect(tries),3000);return;} // waits until you open the Whatnot tab
+    if(typeof storeWorkerFetch==='function'&&store()){connect().catch(()=>{if(tries<5)setTimeout(()=>autoConnect(tries+1),4000);});}else if(tries<20)setTimeout(()=>autoConnect(tries+1),1500);})(0);
   // What ByteRider knows on the website (Worker: /byterider/facts).
   const factsBox=host.querySelector('#mana-br-facts'),factsStatus=host.querySelector('#mana-br-facts-status');
   async function factsCall(body){const res=await storeWorkerFetch('/byterider/facts?store_id='+encodeURIComponent(store()),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Could not reach ByteRider');return d;}
@@ -307,8 +310,8 @@
   new MutationObserver(()=>{const m=host.querySelector('#mana-remote-msg');if(m)m.textContent=status.textContent;}).observe(status,{childList:true,characterData:true,subtree:true});
   // While connected, pick up what happened on stream (doors opening, chests,
   // the floor) every 8 seconds, so the winner buttons are always current.
-  setInterval(()=>{if(!connectedStore||document.hidden||connectedStore!==store())return;api('state').then(d=>{if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});else{revision=d.revision;took(d);}}).catch(()=>{});},8000);
-  setInterval(()=>{const f=host.querySelector('#mana-remote-floor'),sc=host.querySelector('#mana-remote-score');if(!f)return;const d=host.querySelector('#mana-dungeon-status')?.textContent||'';f.textContent=connectedStore?d:'Tap CONNECT to start';sc.textContent=connectedStore?host.querySelector('#mana-score')?.textContent||'':'';},1000);
+  setInterval(()=>{if(!connectedStore||!studioOnScreen()||connectedStore!==store())return;api('state').then(d=>{if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});else{revision=d.revision;took(d);}}).catch(()=>{});},8000);
+  setInterval(()=>{if(!studioOnScreen())return;const f=host.querySelector('#mana-remote-floor'),sc=host.querySelector('#mana-remote-score');if(!f)return;const d=host.querySelector('#mana-dungeon-status')?.textContent||'';f.textContent=connectedStore?d:'Tap CONNECT to start';sc.textContent=connectedStore?host.querySelector('#mana-score')?.textContent||'':'';},1000);
   try{const all=host.querySelector('#mana-all');all.open=localStorage.getItem('mana-all-open')==='1';all.ontoggle=()=>{try{localStorage.setItem('mana-all-open',all.open?'1':'0');}catch(_){}};}catch(_){}
   host.querySelector('#mana-trivia').onclick=()=>run(async()=>{const q=host.querySelector('#mana-trivia-q').value.trim(),a=host.querySelector('#mana-trivia-a').value.trim();if(q&&!a)throw Error('Type the answer too');const x=await api('trivia',{question:q,answer:a});took(x);host.querySelector('#mana-trivia-q').value='';host.querySelector('#mana-trivia-a').value='';status.textContent='Trivia is on screen'+(x.stats?.vote?.question?': '+x.stats.vote.question:'')+(x.triviaAnswer?' (answer: '+x.triviaAnswer+')':'')+'. Tap CHAT GOT IT when someone does.';});
   host.querySelector('#mana-floor-name-go').onclick=()=>run(async()=>{const n=host.querySelector('#mana-floor-name').value.trim();const x=await api('floor-name',{name:n});took(x);status.textContent=n?'Floor named "'+n.toUpperCase()+'".':'Floor name cleared.';});
@@ -511,5 +514,14 @@
   host.querySelector('#mana-revoke').onclick=()=>run(async()=>{await api('revoke',{});host.querySelector('#mana-url').value='';host.querySelector('#mana-shed-url').value='';status.textContent='OBS links revoked.';});
   const resize=new ResizeObserver(()=>{frame.style.setProperty('--preview-scale',frame.parentElement.clientWidth/1080);});resize.observe(frame.parentElement);
   frame.onload=()=>{if(settings)preview();};
+  host.querySelector('.mana-preview-bg').onload=()=>{if(settings)preview();};
+  // ASLEEP UNLESS ON SCREEN (store, 2026-11-13: "make sure the Whatnot tab isn't using resources while we
+  // aren't using it ... is it running in the background all the time?"): the two previews (the overlay and the
+  // green-screen game, drawing every frame) load only while the studio is on screen and are emptied 20 seconds
+  // after it goes out of view (another tab, the app in the background); the server isn't asked anything meanwhile.
+  let previewOffAt=null;
+  const previewsOn=on=>{for(const f of host.querySelectorAll('iframe[data-src]')){const want=on?f.dataset.src:'about:blank';if(on?f.getAttribute('src')!==want:f.getAttribute('src')!=='about:blank')f.setAttribute('src',want);}};
+  const watchView=()=>{const v=studioOnScreen();if(v){clearTimeout(previewOffAt);previewOffAt=null;previewsOn(true);}else if(!previewOffAt)previewOffAt=setTimeout(()=>{previewOffAt=null;if(!studioOnScreen())previewsOn(false);},20000);};
+  document.addEventListener('visibilitychange',watchView);setInterval(watchView,2000);watchView();
   import('./live-studio-model.mjs').then(m=>{chanceFn=m.chanceWordIn;paint({...m.DEFAULT_STUDIO});}).catch(()=>{});
 })();
