@@ -360,7 +360,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const ov6 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(ov6.includes("const eye=fpLib.eyePose(fgCache.L,fgCache.grid,Math.min(0.99,fgShown+cam.scout))") && ov6.includes('if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;'), 'props in front are the hall\'s props, beside and just ahead');
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
-  assert.ok(src.includes("if (fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05) return;"), 'the hall hides what is passing in front');
+  assert.ok(src.includes("const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05; if (FG ? !close : close) return;"), 'the hall hides what is passing in front');
   assert.ok(src.includes('export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H'), 'the window crawl has its default size');
   assert.equal(DEFAULT_STUDIO.panelAlpha, 70); assert.throws(() => validateSettings({ panelAlpha: 101 }), /Invalid panelAlpha/); assert.ok(validateSettings({ panelAlpha: 0 }));
   assert.match(readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8'), /rgb\(74 29 150\/var\(--pa,1\)\)/);
@@ -469,7 +469,7 @@ console.log('live-studio-dungeon: ok');
   for (const k of ['setCamera(c = {})', 'const held = now - manual.at < 3000', 'Math.min(0.99, shown + scoutNow)', 'pitchNow * VH * 0.28']) assert.ok(fp.includes(k), k);
   assert.ok(!fp.match(/shown\s*=\s*[^;]*scoutNow/), 'scouting never moves how far along the floor you are');
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), bg = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8'), ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
-  assert.ok(ov.includes("if(m.type==='camera'){fp?.setCamera?.(m.cam);return;}") && ov.includes("ev.data?.type==='mana-camera'"));
+  assert.ok(ov.includes("if(m.type==='camera'){fp?.setCamera?.(m.cam);front?.setCamera?.(m.cam);return;}") && ov.includes("ev.data?.type==='mana-camera'"));
   assert.ok(bg.includes("if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }") && bg.includes("ev.data?.type === 'mana-camera'"));
   assert.ok(ctl.includes('id="mana-joy"') && ctl.includes("camSend({action:'scout'})") && ctl.includes("camSend({action:'back'})") && ctl.includes("api('camera',cam)"));
 }

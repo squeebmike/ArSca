@@ -96,7 +96,7 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.match(fp, /if \(boss && bossPx && state\.bossItem >= 0 && pics\.length\)/, 'the boss holds up an item');
   assert.match(fp, /drawMap\(ctx, \{ cell = 6 \} = \{\}\) \{/); assert.match(fp, /revealed\[y \* N \+ x\] = 1;/);
   const bg = read('scripts/shed-background.mjs'), html = read('shed-background.html'), ov = read('scripts/live-studio-overlay.mjs');
-  assert.match(bg, /const bossItem = grab \? picUrls\.indexOf\(grab\.image\) : -1;/);
+  assert.match(bg, /fp\.set\(fpm\.crawlStateFrom\(\{ stats, stage, urls: pics\.urls, now, testUntil, hideNear \}\)\);/);
   assert.match(bg, /' IS MINE!'/); assert.match(bg, /fp\?\.drawMap\?\.\(miniCtx/);
   assert.ok(html.includes('#shed-mini{') && html.includes('#shed-taunt.on{'));
   assert.ok(!/const rk = [^;]*\bstage = d\.phase/.test(bg), 'no local "stage" hiding the lineup (it blanked the green screen\'s item photos)');
@@ -117,5 +117,18 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   const chest = '5 follows: Free giveaway for everyone -- Bone #1\n10 shares: Free giveaway for everyone -- Saga #1\n25 taps: Low start on Amazing Spider-Man #300';
   assert.equal(D.parseChestLines(chest).length, 3);
   assert.equal(M.chanceWordIn(chest), '');
+}
+// 10. Props in front, IN the scene (2026-11-13: "they look like they're on the screen, and they move with the camera").
+{
+  assert.match(fp, /layer = '' \} = \{\}\) \{\n  const FG = layer === 'front';/);
+  assert.match(fp, /if \(FG\) \{ tick\+\+; ctx\.putImageData\(img, 0, 0\); return; \}/, 'the front layer is only the close props');
+  assert.match(fp, /const shared = \(\) => \(\(Date\.now\(\) \+ clockOffset\) % 3\.6e6\) \/ 1000;/, 'one clock on every screen');
+  assert.match(fp, /const tm = shared\(\), ph = \(tm % 13\) \/ 13/, 'the idle glance keeps the shared time');
+  const ov = read('scripts/live-studio-overlay.mjs'), html = read('arcade-overlay.html'), css = read('assets/live-studio.css');
+  assert.match(ov, /front=fpLib\.createShedCrawl\(cv,\{w:W,h:Math\.round\(W\*850\/1080\),fov:0\.66,layer:'front'\}\)/);
+  assert.match(ov, /fpLib\.crawlStateFrom\(\{stats,stage,urls:pics\.urls,now:Date\.now\(\)\+offset,hideNear:true\}\)/, 'the same state recipe as the green screen');
+  assert.ok(html.includes('<canvas id="mana-front"') && css.includes('#mana-front{position:absolute;left:0;top:0;width:1080px;height:850px'), 'lined up with the green screen\'s hall');
+  const st = F.crawlStateFrom({ stats: { dungeon: { floor: 3, shed: 'X', pct: 40, phase: 'floor', boss: {}, opened: [1], boxes: [{ open: true }], fork: '' }, lastSaleAt: 0 }, stage: { next: [{ image: 'https://a/1.jpg', price: 5 }, { image: 'https://a/2.jpg', price: 50 }] }, urls: ['https://a/1.jpg', 'https://a/2.jpg'] });
+  assert.deepEqual([st.floor, st.bossItem, st.chests, st.boxes], [3, 1, [false, true, false], [true, false]]);
 }
 console.log('dungeon arena: locked long boxes, boss arenas, day to night and window weather passed');

@@ -462,3 +462,8 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 /* SHOW READY checklist (2026-11-12). */
 .mana-ready{list-style:none;margin:8px 0 14px;padding:0;display:grid;gap:4px;font-size:14px}
 .mana-ready li.ok{color:#9dff6a}.mana-ready li.no{color:#ffd84a}
+
+/* The props in front, in the scene (2026-11-13): the green screen's hall from the
+   same camera, only the close props, over the hosts -- exactly over the
+   background's top 850 pixels. */
+#mana-front{position:absolute;left:0;top:0;width:1080px;height:850px;z-index:4;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges}
