@@ -483,3 +483,15 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 .vm-list{display:grid;gap:6px;margin:6px 0 14px}
 .vm-list .vm-item{text-align:left;min-height:44px;margin:0;font-size:14px}
 .vm-list .vm-item.sold{opacity:.6;text-decoration:line-through}
+
+/* The remote, organized (2026-11-13): sections that fold, a show/hide list. */
+.mana-controls details.mana-sec{border:2px solid #2b2f45;border-radius:12px;margin:10px 0;padding:0 12px;background:#121626}
+.mana-controls details.mana-sec[open]{padding-bottom:12px}
+.mana-controls details.mana-sec>summary{cursor:pointer;list-style:none;font-weight:800;font-size:17px;padding:14px 0;display:flex;justify-content:space-between;align-items:center}
+.mana-controls details.mana-sec>summary::after{content:'▾';transition:transform .2s}
+.mana-controls details.mana-sec:not([open])>summary::after{transform:rotate(-90deg)}
+.mana-controls details.mana-sec>summary::-webkit-details-marker{display:none}
+.mana-controls details.mana-hider label{display:flex;gap:8px;align-items:center;min-height:40px}
+.mana-controls #game-dungeon.on,.mana-controls #game-beasts.on{outline:3px solid #b4ff3a;background:#2b4a10}
+.mana-controls details.mana-hider label.mana-check{display:flex!important;flex-direction:row!important;justify-content:flex-start!important;align-items:center;text-align:left;gap:10px}
+.mana-controls details.mana-hider input[type=checkbox]{width:22px!important;height:22px;margin:0;flex:none}
