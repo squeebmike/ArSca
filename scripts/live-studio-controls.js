@@ -30,6 +30,11 @@
   <div class="mana-row"><label>HOW MANY<input id="vm-n" type="number" min="1" max="120" value="75"></label><label>PRICE EACH $<input id="vm-price" type="number" min="0" step="0.01" placeholder="5"></label><label>CALL THEM<input id="vm-prefix" maxlength="20" value="SPOT"></label></div>
   <label>OR ONE NAME A LINE<textarea id="vm-names" rows="5" placeholder="SPIDER-MAN&#10;BATMAN&#10;WOLVERINE"></textarea></label>
   <button type="button" id="vm-make" style="width:100%;min-height:52px;font-weight:800">🎟 MAKE THE SPOTS</button>
+  <div class="vm-wn"><b>📡 LIST THE SPOTS ON WHATNOT</b>
+  <small>Each spot becomes its own listing in your show (⚙ Settings → Show: the Whatnot show ID), reserved for the show, quantity 1, at the spot price. Nothing goes into your site or inventory; each sale marks its spot SOLD here and counts as a Whatnot-only sale (its cost from Settings → Whatnot).</small>
+  <div class="mana-row"><select id="vm-wn-cat"><option value="comics">COMICS</option><option value="pokemon">POKÉMON CARDS</option><option value="sports">SPORTS CARDS</option><option value="mtg">MAGIC</option><option value="onepiece">ONE PIECE</option><option value="lorcana">LORCANA</option><option value="yugioh">YU-GI-OH</option></select><select id="vm-wn-mode"><option value="buy_it_now">BUY IT NOW AT THE SPOT PRICE</option><option value="auction">AUCTION STARTING THERE</option></select></div>
+  <div class="mana-row"><input id="vm-wn-photo" placeholder="Photo link (https) -- blank: NOW PLAYING's photo"></div>
+  <button type="button" id="vm-wn-go" style="width:100%;min-height:52px;font-weight:800">📡 LIST THE SPOTS IN MY WHATNOT SHOW</button></div>
   <small>Saved lists (on this device): save the one above with a name, load it next time.</small>
   <div class="mana-row"><select id="vm-saved"><option value="">— SAVED LISTS —</option></select><button type="button" id="vm-load-list">LOAD</button><button type="button" id="vm-save-list">💾 SAVE THIS LIST</button><button type="button" id="vm-del-list">🗑</button></div>
   </details>
@@ -198,6 +203,23 @@
     if(q('#vm-save-list'))q('#vm-save-list').onclick=()=>{const name=String(prompt('Name this list (e.g. MARVEL 75)')||'').trim().toUpperCase().slice(0,30);if(!name)return;const o=lists();o[name]={count:Number(q('#vm-n').value)||0,price:Number(q('#vm-price').value)||0,prefix:q('#vm-prefix').value,names:q('#vm-names').value};putLists(o);fillSaved();q('#vm-saved').value=name;status.textContent='Saved: '+name;};
     if(q('#vm-load-list'))q('#vm-load-list').onclick=()=>{const it=lists()[q('#vm-saved').value];if(!it){status.textContent='Pick a saved list first.';return;}q('#vm-n').value=it.count||'';q('#vm-price').value=it.price||'';q('#vm-prefix').value=it.prefix||'SPOT';q('#vm-names').value=it.names||'';status.textContent='Loaded -- tap MAKE THE SPOTS.';};
     if(q('#vm-del-list'))q('#vm-del-list').onclick=()=>{const k=q('#vm-saved').value;if(!k||!confirm('Delete the list '+k+'?'))return;const o=lists();delete o[k];putLists(o);fillSaved();};
+    // SPOTS ON WHATNOT: the machine's spots not listed yet, 10 at a time, after a yes.
+    const wn=host.querySelector('#vm-wn-go');if(wn)wn.onclick=()=>run(async()=>{
+      if(!connectedStore)throw Error('Connect first -- this makes real listings in your Whatnot show.');
+      if(machineCtl.kind!=='spots'||!(machineCtl.items||[]).length)throw Error('Make the spots first (🎟 MAKE THE SPOTS).');
+      const showId=String(values().showId||'').trim();if(!/^[0-9a-f-]{36}$/i.test(showId))throw Error('Set the Whatnot show first (⚙ Settings → Show → USE LIVE / NEXT SHOW).');
+      const photo=String(host.querySelector('#vm-wn-photo').value||'').trim()||stage?.now?.image||'';if(!/^https:\/\//i.test(photo))throw Error('Paste a photo link (https) for the listings, or put an item with a photo in NOW PLAYING.');
+      const todo=machineCtl.items.filter(it=>it.ext&&!it.listed&&!it.sold);if(!todo.length){status.textContent='Every spot is already on Whatnot.';return;}
+      const mode=host.querySelector('#vm-wn-mode').value,cat=host.querySelector('#vm-wn-cat').value;
+      if(!confirm('List '+todo.length+' spots on Whatnot, in your show, as '+(mode==='auction'?'auctions':'Buy It Now')+'? These are REAL listings (not in your site inventory).'))return;
+      let done=0;const errs=[];
+      for(let i=0;i<todo.length;i+=10){const part=todo.slice(i,i+10);status.textContent='Listing on Whatnot: '+done+' of '+todo.length+'…';
+        const res=await storeWorkerFetch('/whatnot/spots-list?store_id='+encodeURIComponent(connectedStore),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({showId,category:cat,mode,photo,spots:part.map(it=>({ext:it.ext,title:it.title,price:it.price}))})});
+        const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Whatnot listing failed ('+res.status+')');
+        const ok=(d.results||[]).filter(r=>r.listed).map(r=>r.ext);done+=ok.length;for(const r of d.results||[])if(r.error)errs.push(r.error);
+        if(ok.length)took(await api('machine',{listed:ok}));}
+      status.textContent='On Whatnot: '+done+' of '+todo.length+' spots listed in your show.'+(errs.length?' Problems: '+[...new Set(errs)].slice(0,2).join(' / '):'');
+    });
     vmb('#vm-prev',{step:-1},'Previous slot is up.');vmb('#vm-next',{step:1},'Next slot is up.');vmb('#vm-sold-up',{soldUp:true},'Sold -- the next slot is up.');
     vmb('#vm-make',()=>({spots:{count:Number(host.querySelector('#vm-n').value)||0,price:Number(host.querySelector('#vm-price').value)||0,prefix:String(host.querySelector('#vm-prefix').value||'SPOT'),names:String(host.querySelector('#vm-names').value||'')},on:true}),'Spots made -- they are in the machine.');
     // TEST A BOSS ATTACK (2026-11-12): the preview only -- into the arena, the boss pulls its move.
@@ -358,7 +380,7 @@
   const short=t=>String(t||'').replace(/\s+/g,' ').trim().slice(0,58);
   function stockComics(){return inventory().filter(i=>i.status==='in_stock'&&/comic/i.test(String(i.category||''))&&(https(i.thumbnail)||https(i.imageUrl))&&Number(i.qty??1)>0).map(stageItem).filter(c=>c.title&&c.image);}
   // The vending machine's list: tap an item to mark it SOLD OUT (or back).
-  function paintMachine(){const el=host.querySelector('#vm-list');if(!el)return;el.replaceChildren(...(machineCtl.items||[]).map((it,i)=>{const b=document.createElement('button');b.type='button';b.className='vm-item'+(it.sold?' sold':'');b.textContent=(it.sold?'❌ ':'✅ ')+String.fromCharCode(65+Math.floor(i/3)%26)+(i%3+1)+'  '+it.title;b.onclick=()=>run(()=>machineDo({toggle:i}));if(i===vmUp(machineCtl))b.classList.add('up');return b;}));const sh=host.querySelector('#vm-show');if(sh)sh.textContent=machineCtl.on?'✅ MACHINE IS ON':'SHOW THE MACHINE';
+  function paintMachine(){const el=host.querySelector('#vm-list');if(!el)return;el.replaceChildren(...(machineCtl.items||[]).map((it,i)=>{const b=document.createElement('button');b.type='button';b.className='vm-item'+(it.sold?' sold':'');b.textContent=(it.sold?'❌ ':'✅ ')+(it.listed?'📡 ':'')+String.fromCharCode(65+Math.floor(i/3)%26)+(i%3+1)+'  '+it.title;b.onclick=()=>run(()=>machineDo({toggle:i}));if(i===vmUp(machineCtl))b.classList.add('up');return b;}));const sh=host.querySelector('#vm-show');if(sh)sh.textContent=machineCtl.on?'✅ MACHINE IS ON':'SHOW THE MACHINE';
     host.querySelectorAll('[data-vm-mode]').forEach(b=>b.classList.toggle('on',(machineCtl.mode||'panel')===b.dataset.vmMode));const u=vmUp(machineCtl),upEl=host.querySelector('#vm-up');if(upEl)upEl.textContent=u>=0?'UP NOW: '+String.fromCharCode(65+Math.floor(u/3)%26)+(u%3+1)+'  '+machineCtl.items[u].title+'  ·  '+machineCtl.items.filter(x=>!x.sold).length+' OF '+machineCtl.items.length+' LEFT':machineCtl.items?.length?'ALL SOLD':'Nothing up';}
   // The slot UP NOW (the same rule as the screens: the host's pick, else the first open one).
   function vmUp(m){if(!m?.items?.length)return -1;if(Number.isInteger(m.up)&&m.items[m.up]&&!m.items[m.up].sold)return m.up;return m.items.findIndex(x=>!x.sold);}

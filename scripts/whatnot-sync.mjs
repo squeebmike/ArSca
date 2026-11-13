@@ -639,6 +639,58 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
   return results;
 }
 
+// SPOTS ON WHATNOT (store, 2026-11-13: "an easy way to make surprise set items
+// and games for the Whatnot app ... and not have all those items on the site in
+// inventory, i.e. a break with 75 character spots" -- "yes"). Each spot from the
+// vending machine becomes its own Whatnot listing in the show, reserved for live
+// (never in the shop): its title, one photo, the category, quantity 1, priced
+// in whole dollars, Buy It Now at the spot price or an auction starting there.
+// Nothing is written to inventory: the external id is the spot's own
+// ("spot-<batch>-<n>", not one of ours), so a sale is recorded as a
+// Whatnot-only sale (its cost from Settings -> Whatnot) and the machine marks
+// that very spot SOLD. deps: api, profileId(kind), saveProfileId(kind, id),
+// kvGet/kvPut, storeId. Up to 10 a call (the remote sends them in turns).
+export const SPOT_EXT = /^spot-[a-z0-9]{1,16}-\d{1,3}$/;
+export const SPOT_CATEGORIES = { comics: '244', pokemon: '2', mtg: '9', sports: '139', onepiece: '567', lorcana: '2013', yugioh: '8' };
+export async function listSpotsInShow(spots, showId, deps, { category = 'comics', photo = '', mode = 'buy_it_now', description = '' } = {}) {
+  const results = [];
+  const categoryId = SPOT_CATEGORIES[category] || SPOT_CATEGORIES.comics;
+  if (!/^https:\/\/[^\s"'<>]{1,600}$/i.test(String(photo || ''))) return spots.map(sp => ({ ext: sp.ext, error: 'A photo link (https) is needed -- Whatnot won\'t list without one' }));
+  const pkg = whatnotPackage({ category: category === 'comics' ? 'Comic' : 'Trading Card' }, 1, { categorySlug: category === 'comics' ? 'comics' : '' });
+  for (const sp of spots.slice(0, 10)) {
+    const ext = String(sp.ext || ''), title = String(sp.title || '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 200), price = Math.max(1, Math.ceil(Number(sp.price) || 0));
+    if (!SPOT_EXT.test(ext) || !title) { results.push({ ext, error: 'Not a spot' }); continue; }
+    const linkKey = `whatnot-spot:${deps.storeId}:${ext}`;
+    let link = await deps.kvGet(linkKey);
+    try {
+      if (!link?.productId) {
+        const saved = pkg.profileKind ? await deps.profileId?.(pkg.profileKind) : '';
+        const known = saved && saved !== 'inline' ? saved : '';
+        const product = { title, description: (String(description || '').trim() || title + ' -- one spot. Live on stream; nothing is random: you get exactly the spot named.').slice(0, 4000), external_id: ext, category: { id: categoryId }, media: [{ url: photo }], attributes: [], dimension_profile: known ? { id: known } : pkg.profile };
+        let created = await deps.api('POST', '/products', product);
+        if (!created.ok && known && /dimension profile/i.test(whatnotErrorText(created))) { product.dimension_profile = pkg.profile; created = await deps.api('POST', '/products', product); }
+        if (!created.ok || !created.data?.id) { results.push({ ext, error: whatnotErrorText(created) }); continue; }
+        const variants = await deps.api('GET', `/products/${encodeURIComponent(created.data.id)}/variants?limit=5`);
+        const variantId = variants.data?.data?.[0]?.id || '';
+        if (!variantId) { results.push({ ext, error: 'Whatnot made the listing but no variant came back' }); continue; }
+        link = { productId: created.data.id, variantId, url: created.data.url || '', title, createdAt: new Date().toISOString() };
+        await deps.kvPut(linkKey, link);
+      }
+      const priced = await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, external_id: ext, price: money(price) }] });
+      if (!priced.ok) { results.push({ ext, error: whatnotErrorText(priced) }); continue; }
+      const set = await deps.api('POST', '/inventory/set', { items: [{ variant_id: link.variantId, quantity: 1, idempotency_key: ext + '-' + showId }] });
+      if (!set.ok) { results.push({ ext, error: whatnotErrorText(set) }); continue; }
+      const body = { ...(mode === 'auction' ? { transaction_type: 'auction' } : { transaction_type: 'buy_it_now' }), reserve_for_live: true, shows: { strategy: 'ADD', show_ids: [showId] } };
+      let m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, body);
+      if (!m.ok && m.status === 422) { const { reserve_for_live, ...plain } = body; m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, plain); }
+      if (!m.ok) { results.push({ ext, error: whatnotErrorText(m) }); continue; }
+      await deps.kvPut(linkKey, { ...link, showId, price, mode });
+      results.push({ ext, listed: true, productId: link.productId, url: link.url || '' });
+    } catch (e) { results.push({ ext, error: String(e?.message || e).slice(0, 200) }); }
+  }
+  return results;
+}
+
 // After a show: auctioned items still in stock (unsold, or more copies left)
 // go back to Buy It Now in the shop. Once per show.
 // Waits 30 minutes after the show is first seen ended, so the last orders
