@@ -159,7 +159,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.ok(html.includes('<div class="mana-liquid" aria-hidden="true"></div><div class="mana-bubbles" aria-hidden="true"></div>'), 'the bubbling mana stays');
   assert.ok(html.includes('<section id="mana-arena" class="mana-hidden" aria-label="Boss"></section>'));
   assert.ok(ov.includes("const center=!!d&&settings.centerStage!==false&&settings.visible!==false"));
-  assert.ok(ov.includes("arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false));"));
+  assert.ok(ov.includes("arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false&&!beastMode()));"));
   assert.doesNotMatch(css, /body\.mana-center \.mana-(liquid|bubbles)[^{]*\{[^}]*display:none/, 'center stage never hides the bubbling mana');
   assert.match(css, /body\.mana-center #mana-sign\{left:40px!important;width:1000px!important;height:200px!important/);
   assert.match(css, /body\.mana-center #byterider\{z-index:2\}/);

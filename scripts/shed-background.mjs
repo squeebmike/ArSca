@@ -225,9 +225,11 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (beasts && settings0.gameMode === 'beasts') {
           if (!beastsOn) { fp?.stop(); world = beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world.start(); beastsOn = true; mini.hidden = true; }
           world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '' });
+          bubble.classList.remove('on'); paintBattle(d); // the dungeon's boss taunt stays out of the route
           return;
         }
         if (beastsOn) { world?.stop(); world = null; beastsOn = false; topH = 0; build(850); bossId = ''; picKey = ''; }
+        paintBattle(null);
         const now = Date.now() + offset;
         fp.setClock?.(offset);
         // The photos and the hall's state: the same recipe as the overlay's front layer (shed-crawl-fp.mjs).
@@ -251,18 +253,24 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       // THE VENDING MACHINE (2026-11-13): for breaks and surprise sets -- the items
       // in rows of three, scrolling past, each SOLD OUT or still lit; on the green
       // screen behind the hosts while it's on (the remote's VENDING MACHINE).
-      const vm = Object.assign(document.createElement('div'), { id: 'shed-vend', hidden: true }); document.body.append(vm);
-      vm.innerHTML = '<div class="vm-top"><b class="vm-title"></b><span class="vm-count"></span></div><div class="vm-glass"><div class="vm-rows"></div></div><div class="vm-tray">PUSH</div>';
-      let vmKey = '', vmY = 0, vmLast = 0;
-      const drawMachine = mc => {
-        vm.hidden = !(mc && mc.on && mc.items?.length); if (vm.hidden) return;
-        const key = JSON.stringify(mc); if (key !== vmKey) { vmKey = key; vm.querySelector('.vm-title').textContent = mc.title || 'MANA POCKET VENDING';
-          const sold = mc.items.filter(i => i.sold).length; vm.querySelector('.vm-count').textContent = (mc.items.length - sold) + ' LEFT  ·  ' + sold + ' SOLD';
-          const slot = (it, i) => '<div class="vm-slot' + (it.sold ? ' sold' : '') + '"><div class="vm-pic">' + (it.image ? '<img alt="" src="' + img(it.image).replace(/"/g, '&quot;') + '">' : '<i>' + String(it.title || '').replace(/[<&]/g, '') + '</i>') + '</div><div class="vm-coil"></div><div class="vm-tag"><b>' + String.fromCharCode(65 + Math.floor(i / 3) % 26) + (i % 3 + 1) + '</b>' + (it.sold ? 'SOLD OUT' : Number(it.price) > 0 ? '$' + Number(it.price).toFixed(0) : 'AVAILABLE') + '</div><em class="vm-lamp">SOLD OUT</em></div>';
-          const html = mc.items.map(slot).join(''); vm.querySelector('.vm-rows').innerHTML = html + (mc.items.length > 9 ? html : ''); vmY = 0; }
+      // Now drawn by scripts/vending.mjs (2026-11-13 polish): small or full screen behind the hosts, a BID button on every slot.
+      let drawMachine = () => {}, lastMachine = null;
+      import('./vending.mjs?v=1').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
+      // THE BATTLE ON THE GREEN SCREEN (2026-11-13: "I may also want the pokemon game thing to also be the green screen ... I want the option"):
+      // with WHERE THE BATTLE SHOWS on BEHIND US, the battle is drawn here, behind the hosts, instead of on the overlay.
+      const bcv = Object.assign(document.createElement('canvas'), { id: 'shed-battle', hidden: true }); document.body.append(bcv);
+      let battle = null, battleOn = false, rivalArt = '';
+      const batteryOf = d => { const last = Math.max(Number(stats?.lastSaleAt) || 0, Number(d?.lastAt) || 0); return last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / 360000)) : 1; };
+      const paintBattle = d => {
+        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: batteryOf(d), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
+        bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
+        if (!battle) battle = beasts.createBattle(bcv, { scale: 3 });
+        battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0 });
+        if (b.kind === 'rival' && rivalArt !== d.boss.character) { rivalArt = d.boss.character; const c = document.createElement('canvas'); void bosses.drawBoss(c, rivalArt, { size: 48 }).then(ok => { if (ok) battle?.setRival(c); }); }
+        if (!battleOn) { battle.start(); battleOn = true; }
       };
-      // The rows scroll slowly upward and around (when there are more than nine).
-      (function scroll(now) { requestAnimationFrame(scroll); if (vm.hidden) return; const rows = vm.querySelector('.vm-rows'), half = rows.scrollHeight / 2; if (rows.children.length <= 9) { rows.style.transform = ''; return; } vmY += (now - (vmLast || now)) / 1000 * 26; vmLast = now; if (vmY >= half) vmY -= half; rows.style.transform = 'translateY(' + (-vmY) + 'px)'; })(0);
+      // Its attacks: the one the host taps, and every sale fires the one chat picked.
+      const battleFx = e => { if (!battleOn || !battle || !e) return; if (e.kind === 'move') battle.attack(e.move); else if (['sold', 'jackpot', 'boss'].includes(e.kind)) { const mv = beasts.movesFrom(settings0.beastsMoves); battle.attack(mv[Number(stats?.beastMove) || 0] || mv[0]); } };
       // THE MINI-MAP (2026-11-12): top left, filling in as you walk.
       const mini = Object.assign(document.createElement('canvas'), { id: 'shed-mini' }), miniCtx = mini.getContext('2d'); document.body.append(mini);
       setInterval(() => { mini.hidden = !miniOn || !stats?.dungeon; if (!mini.hidden) fp?.drawMap?.(miniCtx, { cell: 7 }); }, 300);
@@ -276,16 +284,16 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       const card = Object.assign(document.createElement('div'), { id: 'shed-item' }), cardImg = document.createElement('img'), cardTxt = document.createElement('b');
       cardImg.alt = ''; card.append(cardImg, cardTxt); document.body.append(card);
       setInterval(() => {
-        const boss = stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
+        const boss = beastsOn || stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
         if (it && it.image) { if (cardAt !== i) { cardAt = i; cardImg.src = img(it.image); cardTxt.textContent = String(it.title || '').slice(0, 60) + (Number(it.price) > 0 ? '  ·  $' + Number(it.price).toFixed(2) : ''); cardTxt.hidden = !it.title; } card.classList.add('on'); }
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
       let settings0 = {}, lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
-        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode !== 'beasts'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) drawMachine(m.machine); paint(); };
+        if (m.type === 'attack') { if (beastsOn) return; const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode !== 'beasts'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) { lastMachine = m.machine; drawMachine(m.machine); } paint(); if (m.effect && (m.type === 'effect' || m.fresh)) battleFx(m.effect); };
       setInterval(paint, 5000);
-      setInterval(() => { const d = stats?.dungeon; if (d) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
+      setInterval(() => { const d = stats?.dungeon; if (d && !beastsOn) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
       build(850);
       fp.set({ floor: view.floor, shed: shedFor(view.floor), pct: 30, phase: view.boss ? 'boss' : 'floor' });
       if (pending) onState(pending);
@@ -303,6 +311,6 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     socket.onclose = ev => { if (ev.code === 1008) return; setTimeout(connect, Math.min(30000, 1000 * 2 ** Math.min(retry++, 5))); };
   }
   // Live Studio's preview: the dashboard sends the state (same page only), no socket.
-  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type === 'mana-attack') { onState({ type: 'attack' }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics, machine: ev.data.machine }; onState(pending); });
+  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type === 'mana-attack') { onState({ type: 'attack' }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics, machine: ev.data.machine, effect: ev.data.effect, fresh: !!ev.data.effect }; onState(pending); });
   else if (!demo) connect();
 }

@@ -28,6 +28,6 @@ assert.match(ov, /x=\(side<0\?-1:1\)\*\(phase\*190-60\)\+fgCam\.x/);
 assert.match(ov, /if\(!p\|\|fgCam\.hide\)/);
 // "When I demo a sale it goes ahead, then comes back": the 8-second refresh no longer undoes the demo.
 const ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
-assert.match(ctl, /stats:demoStats\|\|\(Date\.now\(\)<demoUntil\?demoFake:null\)\|\|stats/);
+assert.match(ctl, /stats:withMove\(demoStats\|\|\(Date\.now\(\)<demoUntil\?demoFake:null\)\|\|stats/);
 assert.match(ctl, /demoFake=fake;demoUntil=Date\.now\(\)\+120000;/);
 console.log('prop-models: props in front stay put, demo holds passed');

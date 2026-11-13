@@ -11,4 +11,11 @@ assert.match(ctl, /for\(const n of \['🎬 Show ready','Now playing & next up','
 assert.ok(ctl.includes('id="game-dungeon"') && ctl.includes('id="game-beasts"'), 'the game in one tap');
 assert.match(bg, /const d = stats\?\.dungeon \|\| \(settings0\.gameMode === 'beasts' \? \{ floor: 1, pct: 0, phase: 'floor' \} : null\)/, 'the preview shows Beasts before Connect');
 assert.ok(css.includes('details.mana-sec>summary'));
+// ATTACK NOW, and resets in reach (2026-11-13: "nothing to let me reset the dungeon ... I need to select an attack? I'm in preview").
+assert.ok(ctl.includes('id="beast-moves"') && ctl.includes('id="demo-reset"') && ctl.includes('data-click="#mana-reset-week"') && ctl.includes('id="quick-floor"'));
+assert.match(ctl, /api\('beast-move',\{index:i\}\);took\(d\);if\(d\.effect\)preview\(d\.effect\);/, 'the show uses it, and the preview shows it');
+assert.match(ctl, /demoMove=i;preview\(\{id:'move-'\+now,kind:'move',move:m/, 'in the preview (not connected) it plays there');
+assert.match(ctl, /amount=v\.gameMode==='beasts'\?\[4,3,5,4,6\]\[demo%5\]/, 'the beasts demo walks into the tall grass');
+const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
+assert.match(room, /pickMove\(index\) \{/); assert.match(api, /room\.pickMove\(Number\(body\.index\)\)/);
 console.log('remote organized: folding sections, show/hide, show order, one-tap game, Beasts preview passed');
