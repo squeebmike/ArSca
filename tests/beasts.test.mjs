@@ -12,7 +12,7 @@ assert.ok(!/pok[eé]|nintendo|pikachu|pokeball/i.test(src.replace(/^\/\/.*$/gm, 
 // Beasts from names: the same name, the same beast; different names, different beasts.
 const a = B.makeBeast('SLABBIT'), a2 = B.makeBeast('SLABBIT'), c = B.makeBeast('FOILMOTH');
 assert.deepEqual(a.px, a2.px); assert.notDeepEqual(a.px, c.px);
-assert.equal(a.px.length, 20); assert.ok(a.px.flat().some(v => v === 3) && a.px.flat().some(v => v === -1));
+assert.equal(a.px.length, 32); assert.equal(a.frames.length, 4, 'four idle frames'); assert.notDeepEqual(a.frames[0], a.frames[2], 'it moves'); assert.ok(a.blink, 'it blinks'); assert.ok(a.px.flat().some(v => v === 3) && a.px.flat().some(v => v === -1));
 assert.equal(B.wildName(3, 1), B.wildName(3, 1)); assert.notEqual(B.wildName(1, 0), B.wildName(1, 1));
 // Attacks: chat can invent one; its name picks the animation.
 assert.equal(B.moveAnim('PRICE CHECK'), 'coins'); assert.equal(B.moveAnim('HOT TAKE FIRE'), 'flame'); assert.equal(B.moveAnim('SLAB TOSS'), 'card'); assert.equal(B.moveAnim('LOWBALL'), 'ball');
@@ -57,10 +57,14 @@ assert.deepEqual(B.STARTERS, ['SLABBIT', 'TOPLOADON', 'SLEEVIL']);
 assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'SLEEVIL' }).mine.name, 'SLEEVIL');
 assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'NOPE' }).mine.name, B.STARTER, 'only a real starter');
 assert.notDeepEqual(B.makeBeast('SLABBIT', { back: true }).px, B.makeBeast('SLABBIT').px, 'yours from behind');
-assert.match(src, /drawBeast\(beast\(b\.mine\.name, true\), 30 \+ lunge, 46/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name\), 164 \+ shake, 24/, 'theirs top right');
+assert.match(src, /drawBeast\(beast\(b\.mine\.name, true\), 28 \+ lunge, 42/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name\), 152 \+ shake, 4/, 'theirs top right');
 assert.match(room, /else if \(kind === 'starter'\) options = STARTERS\.map/); assert.match(room, /if \(v\.kind === 'starter'\) \{ s\.beastStarter = opt\.id;/);
 assert.match(room, /setMachine\(input = \{\}\) \{/); assert.match(room, /this\.machineSold\(s, event\.data, moved \? wasNow : null\)/, 'a sale marks its item SOLD OUT');
 assert.match(read('scripts/live-studio-api.mjs'), /room\.setMachine\(body\)/);
 assert.match(bg, /const drawMachine = mc =>/); assert.ok(read('shed-background.html').includes('#shed-vend .vm-slot.sold .vm-lamp{display:block}'));
 assert.ok(ctl.includes('id="vm-load"') && ctl.includes('data-vote="starter"'));
+// Better, animated beasts (2026-11-13: "need better and animated sprites for the mons"): body types, 32 x 32, four frames.
+for (const n of B.STARTERS) assert.ok(['biped', 'quad'].includes(B.beastType(n)), n);
+assert.equal(new Set(['FOILMOTH', 'PENNYSNAIL', 'HOLOIMP', 'GRAILAROO', 'KEYTOAD', 'NEWSOWL'].map(B.beastType)).size >= 3, true, 'different body types');
+assert.match(src, /blink = bt\.blink && \(t % 3\.7\) < 0\.14/, 'a blink now and then'); assert.match(src, /const faint = b\.foe\.hp <= 0\.002/, 'knocked out, it sinks away');
 console.log('beasts: original beasts and moves from names, the route, battles, chat\'s attacks, your face, wiring passed');

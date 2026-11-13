@@ -34,37 +34,94 @@ const PRE = ['SLAB', 'FOIL', 'MINT', 'BULK', 'PENNY', 'GRAIL', 'VARI', 'TOPLOAD'
 const SUF = ['BIT', 'LING', 'OON', 'AROO', 'OX', 'ISH', 'MOTH', 'TOAD', 'IMP', 'PUP', 'OWL', 'SNAIL'];
 // The wild beast at encounter k on a floor.
 export function wildName(floor, k) { const f = Math.max(1, floor | 0); return PRE[(f * 5 + k * 7) % PRE.length] + SUF[(f * 3 + k * 5) % SUF.length]; }
-// A beast's look, made from its name: a 20 x 20 sprite in shades 0-3 (-1: see-through).
-// Symmetric body, big eyes, and the collector bits its name asks for.
+// A beast's look, made from its name (2026-11-13: "need better and animated
+// sprites for the mons"): 32 x 32, four idle frames (it breathes; its tail,
+// wings and feet move), front or back. Built from a body type the name picks --
+// blob, biped, four-legged, bird, bug or serpent -- shaded light from the top
+// left, a dark outline, big eyes; plus the collector bits its name asks for.
+// The three starters are drawn on purpose. Original; nothing by chance.
+export const BEAST_SIZE = 32;
+const TYPES = ['blob', 'biped', 'quad', 'bird', 'bug', 'serpent'];
+export function beastType(name) { const nm = String(name).toUpperCase(); if (nm === 'SLABBIT') return 'biped'; if (nm === 'TOPLOADON') return 'quad'; if (nm === 'SLEEVIL') return 'biped'; if (/MOTH|OWL/.test(nm)) return 'bird'; if (/SNAIL|TOAD/.test(nm)) return 'blob'; if (/IMP|PUP/.test(nm)) return 'biped'; if (/OX|AROO/.test(nm)) return 'quad'; return TYPES[hashOf(nm + 't') % TYPES.length]; }
 export function makeBeast(name, { back = false } = {}) {
-  const N = 20, px = Array.from({ length: N }, () => Array(N).fill(-1)), r = seq(hashOf(name)), nm = String(name).toUpperCase();
-  const w = 0.55 + r() * 0.3, hgt = 0.6 + r() * 0.3, cy = 11 + Math.floor(r() * 2);
-  // The body: a lumpy oval, mirrored.
-  for (let y = 0; y < N; y++) for (let x = 0; x < 10; x++) {
-    const dx = (9.5 - x) / (10 * w), dy = (y - cy) / (9 * hgt), lump = 0.12 * Math.sin(y * 1.3 + r() * 0.01 + (hashOf(nm) % 7));
-    if (dx * dx + dy * dy < 1 + lump) { px[y][x] = 1; px[y][N - 1 - x] = 1; }
+  const nm = String(name).toUpperCase(), type = beastType(nm), r = seq(hashOf(nm)), N = BEAST_SIZE;
+  const shape = { w: 0.9 + r() * 0.25, h: 0.9 + r() * 0.2, ear: Math.floor(r() * 3), tail: r() < 0.7, spots: r() < 0.5, horn: r() < 0.3 };
+  const frames = [0, 1, 2, 3].map(f => drawFrame(nm, type, shape, f, back));
+  return { name: nm, type, frames, blink: back ? frames[0] : drawFrame(nm, type, shape, 0, back, true), px: frames[0] };
+}
+function drawFrame(nm, type, sh, f, back, shut = false) {
+  const N = BEAST_SIZE, g = Array.from({ length: N }, () => Array(N).fill(-1));
+  const breath = [0, 0.5, 1, 0.5][f], step = f % 2, sway = [0, 1, 0, -1][f];
+  // Shaded ellipse: light top-left, darker bottom-right, an inner highlight.
+  const blob = (cx, cy, rx, ry, base = 1) => { for (let y = Math.floor(cy - ry - 1); y <= cy + ry + 1; y++) for (let x = Math.floor(cx - rx - 1); x <= cx + rx + 1; x++) { if (x < 0 || y < 0 || x >= N || y >= N) continue; const dx = (x + 0.5 - cx) / rx, dy = (y + 0.5 - cy) / ry, d = dx * dx + dy * dy; if (d > 1) continue; const lit = dx * -0.6 + dy * -0.8; g[y][x] = d > 0.8 && base !== 0 ? 3 : lit > 0.45 && d < 0.4 ? 0 : lit < -0.25 && d > 0.45 ? Math.min(2, base + 1) : base; } }; // each part outlined, a highlight top left, shadow bottom right
+  const px = (x, y, s) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < N && y < N) g[y][x] = s; };
+  const line = (x0, y0, x1, y1, s, w = 1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1); for (let k = 0; k <= n; k++) for (let a = 0; a < w; a++) px(x0 + (x1 - x0) * k / n + a, y0 + (y1 - y0) * k / n, s); };
+  let eyeY = 12, eyeDX = 4, cx = 16, mouthY = 17;
+  // ── the body type ──
+  if (type === 'blob') {
+    const ry = 9 * sh.h - breath * 0.6, rx = 12 * sh.w + breath * 0.6;
+    blob(cx, 30 - ry, rx, ry); for (let k = 0; k < 4; k++) blob(cx - rx * 0.7 + k * rx * 0.47, 29.5, 2, 1.5 + ((k + f) % 2) * 0.6); // drips at the base
+    if (/SNAIL/.test(nm)) { blob(cx + 6, 30 - ry - 2, 7, 7, 2); for (let a = 0; a < 6.2; a += 0.3) px(cx + 6 + Math.cos(a) * a * 0.9, 30 - ry - 2 + Math.sin(a) * a * 0.9, 3); }
+    eyeY = Math.round(30 - ry * 1.3); mouthY = eyeY + 5;
+  } else if (type === 'biped') {
+    blob(cx - 5, 28 + (step ? -1 : 0), 3, 2.5, 2); blob(cx + 5, 28 + (step ? 0 : -1), 3, 2.5, 2); // feet
+    blob(cx, 21 - breath * 0.5, 8.5 * sh.w, 7.5); // body
+    blob(cx - 9 * sh.w, 20 + sway * 0.5, 2.2, 3.5); blob(cx + 9 * sh.w, 20 - sway * 0.5, 2.2, 3.5); // arms
+    blob(cx, 11 - breath * 0.5, 8.5 * sh.w, 7.5); // the big head
+    eyeY = Math.round(11 - breath * 0.5); mouthY = eyeY + 4;
+    if (sh.tail || /SLABBIT/.test(nm)) blob(cx + 10, 24, 2.5, 2.5, 0);
+  } else if (type === 'quad') {
+    for (const [lx, o] of [[-8, 0], [-3, 1], [4, 0], [9, 1]]) blob(cx + lx, 28 + ((o + step) % 2 ? -0.7 : 0), 2.2, 3, 2); // four stubby legs
+    blob(cx + 1, 21 - breath * 0.4, 11 * sh.w, 6.5); // the long body
+    if (sh.tail) line(cx + 11, 20, cx + 15, 15 + sway, 3, 2);
+    blob(cx - 6, 12 - breath * 0.5, 7, 6.5); // the head, to one side
+    cx = 10; eyeY = Math.round(12 - breath * 0.5); eyeDX = 3; mouthY = eyeY + 4;
+  } else if (type === 'bird') {
+    const flap = [0, -2, -3, -2][f];
+    blob(cx, 18 - breath * 0.4, 9 * sh.w, 9); // round body
+    for (const s of [-1, 1]) { for (let k = 0; k < 7; k++) line(cx + s * 8, 17, cx + s * (13 + k * 0.3), 10 + flap + k * 2, 2); } // wings
+    for (const s of [-1, 1]) line(cx + s * 3, 26, cx + s * 4, 30, 3); // legs
+    eyeY = Math.round(14 - breath * 0.4); mouthY = eyeY + 4;
+  } else if (type === 'bug') {
+    for (let k = 0; k < 3; k++) for (const s of [-1, 1]) line(cx + s * 6, 18 + k * 3, cx + s * (12 + ((k + f) % 2)), 21 + k * 3, 3); // six legs
+    blob(cx, 22 - breath * 0.3, 7, 6, 2); blob(cx, 14 - breath * 0.4, 7.5, 6); // abdomen, head
+    for (const s of [-1, 1]) line(cx + s * 3, 8, cx + s * (7 + sway * 0.5), 2, 3); // antennae
+    eyeY = Math.round(14 - breath * 0.4); mouthY = eyeY + 4;
+  } else { // serpent
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 1.6 + f * 0.15; blob(cx + Math.cos(a) * 9, 26 - k * 0.9 + Math.sin(a) * 2, 3.4, 3, k % 3 === 0 ? 2 : 1); }
+    blob(cx + 2, 9 - breath * 0.5, 6.5, 5.5); cx = 18; eyeY = Math.round(9 - breath * 0.5); eyeDX = 3; mouthY = eyeY + 4;
   }
-  // Ears or horns or antennae.
-  const top = px.findIndex(row => row.includes(1)), kind = hashOf(nm + 'e') % 3;
-  for (let k = 0; k < 4; k++) { const y = top - 1 - k; if (y < 0) break; const x = kind === 0 ? 5 - (k >> 1) : kind === 1 ? 6 + k : 4; if (kind === 2 && k > 2) continue; px[y][x] = 2; px[y][N - 1 - x] = 2; if (kind === 2 && k === 2) { px[y][x - 1] = 3; px[y][N - x] = 3; } }
-  // Shading: darker belly band, the outline.
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (px[y][x] === 1 && y > cy + 2 && Math.abs(x - 9.5) < 4) px[y][x] = 0;
-  const out = px.map(row => row.slice());
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (px[y][x] >= 0 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (px[y + b]?.[x + a] ?? -1) < 0)) out[y][x] = 3;
-  // Seen from behind (yours, in a battle): no face -- a stripe down its back, a stubby tail.
-  if (back) { for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (out[y][x] === 1 || out[y][x] === 0) out[y][x] = 1; for (let y = top + 2; y < N - 3; y += 2) { if (out[y][9] >= 0) out[y][9] = 2; if (out[y][10] >= 0) out[y][10] = 2; } for (const [x, y] of [[9, N - 2], [10, N - 2], [10, N - 1]]) out[y][x] = 3; return { name: nm, px: out }; }
-  // Eyes: big, googly, a glint; a mouth.
-  const ey = Math.max(top + 3, cy - 3), ex = 6 + Math.floor(r() * 2);
-  for (const x of [ex, N - 1 - ex]) { out[ey][x] = 3; out[ey + 1][x] = 3; out[ey][x + (x < 10 ? 1 : -1)] = 3; out[ey + 1][x + (x < 10 ? 1 : -1)] = 3; out[ey][x] = 0; }
-  const mw = 1 + Math.floor(r() * 3); for (let x = 10 - mw; x < 10 + mw; x++) out[ey + 4][x] = 3; if (r() < 0.5) { out[ey + 5][9] = 0; out[ey + 5][10] = 0; } // a tooth or two
-  // The collector bits.
-  if (/SLAB|GRAIL|KEY/.test(nm)) { for (let x = 1; x < N - 1; x++) { out[1][x] = 3; out[N - 1][x] = 3; } for (let y = 1; y < N; y++) { out[y][1] = 3; out[y][N - 2] = 3; } for (let x = 3; x < 9; x++) out[2][x] = 2; }
-  if (/FOIL|HOLO/.test(nm)) for (const [x, y] of [[3, 4], [16, 6], [4, 15], [15, 16], [9, 2]]) { out[y][x] = 0; if (out[y + 1]) out[y + 1][x] = 2; }
-  if (/SLEEVE|TOPLOAD/.test(nm)) for (let y = 3; y < N - 2; y++) { if (out[y][2] < 0) out[y][2] = 2; if (out[y][N - 3] < 0) out[y][N - 3] = 2; }
-  if (/BENT|CREASE/.test(nm)) { out[top][14] = -1; out[top + 1][15] = -1; out[top][15] = -1; }
-  if (/MINT/.test(nm)) { out[Math.max(0, top - 2)][10] = 2; out[Math.max(0, top - 3)][11] = 2; out[Math.max(0, top - 3)][12] = 2; }
-  if (/PENNY/.test(nm)) for (let k = 0; k < 3; k++) { out[N - 3][3 + k] = 2; out[N - 4][3 + k] = 0; }
-  return { name: nm, px: out };
+  // Ears or horns (on the head).
+  const headTop = g.findIndex(row => row.some(v => v >= 0));
+  if (type !== 'bird' && type !== 'bug') {
+    if (sh.ear === 0 || /SLABBIT/.test(nm)) for (const s of [-1, 1]) { line(cx + s * 3, headTop + 1, cx + s * 5, headTop - 6, 1, 2); line(cx + s * 3.5, headTop, cx + s * 5, headTop - 4, 0); } // long ears
+    else if (sh.ear === 1) for (const s of [-1, 1]) { blob(cx + s * 5, headTop + 1, 2.4, 2.4, 1); } // round ears
+    if (sh.horn) line(cx, headTop + 1, cx, headTop - 3, 0, 1);
+  }
+  // Spots.
+  if (sh.spots && type !== 'bird') for (const [x, y] of [[cx + 4, 21], [cx - 5, 24], [cx + 1, 25]]) if (g[Math.round(y)]?.[Math.round(x)] >= 0) px(x, y, 2);
+  // ── the collector bits ──
+  if (/SLAB|GRAIL|KEY/.test(nm) && !back) { for (let y = 17; y < 26; y++) for (let x = cx - 5; x <= cx + 5; x++) if (g[y]?.[x] >= 0) g[y][x] = y === 17 || y === 25 || x === cx - 5 || x === cx + 5 ? 3 : y < 20 ? 2 : 0; px(cx - 1, 18, 0); px(cx, 18, 0); px(cx + 2, 18, 0); px(cx + 3, 18, 0); } // a grading label on its belly
+  if (/TOPLOAD/.test(nm)) for (let y = headTop - 4; y < headTop + 2; y++) for (let x = cx - 4; x <= cx + 4; x++) if (y >= 0 && (y === headTop - 4 || x === cx - 4 || x === cx + 4)) px(x, y, 3); // the top-loader crest
+  if (/SLEEV/.test(nm)) { for (let y = 14; y < 29; y++) for (const s of [-1, 1]) { const x = cx + s * (9 + (y - 14) * 0.25 + (s * sway > 0 ? 0.5 : 0)); px(x, y, 2); px(x - s, y, 1); } } // the sleeve cape
+  if (/FOIL|HOLO/.test(nm)) for (const [x, y] of [[4, 6], [27, 9], [6, 24], [26, 22]]) { const on = (x + y + f) % 4 < 2; if (on) { px(x, y, 0); px(x - 1, y, 2); px(x + 1, y, 2); px(x, y - 1, 2); px(x, y + 1, 2); } }
+  if (/MINT/.test(nm)) { line(cx + 1, headTop - 1, cx + 3, headTop - 5, 2); blob(cx + 4, headTop - 5, 2, 1.3, 1); }
+  if (/BENT|CREASE/.test(nm)) for (let k = 0; k < 4; k++) line(cx + 6 + k, headTop + k, cx + 9, headTop + k, -1);
+  if (/PENNY/.test(nm)) { blob(cx + 9, 26, 2.6, 2.6, 0); px(cx + 9, 26, 2); }
+  // ── the face (front only) ──
+  if (!back) {
+    if (shut) for (const s of [-1, 1]) { const ex = cx + s * eyeDX; line(ex - 2, eyeY, ex + 1, eyeY, 3); } // a blink
+    else for (const s of [-1, 1]) { const ex = cx + s * eyeDX; for (let y = -3; y <= 3; y++) for (let x = -2; x <= 2; x++) { const e = (x / 2.5) ** 2 + (y / 3.4) ** 2; if (e <= 1) px(ex + x, eyeY + y, e > 0.62 ? 3 : 0); } for (const [a, c] of [[0, 0], [-s, 0], [0, 1], [-s, 1]]) px(ex + a, eyeY + c, 3); px(ex - s, eyeY - 1, 0); } // big eyes looking a little inward, a glint
+    const grin = hashOf(nm + 'm') % 3; if (grin === 0) line(cx - 2, mouthY, cx + 2, mouthY, 3); else if (grin === 1) { line(cx - 2, mouthY, cx + 2, mouthY, 3); px(cx - 3, mouthY - 1, 3); px(cx + 3, mouthY - 1, 3); px(cx + 1, mouthY + 1, 0); } else { blob(cx, mouthY + 1, 2, 1.4, 2); px(cx, mouthY + 1, 3); }
+    if (type === 'bird') { px(cx, eyeY + 3, 3); px(cx - 1, eyeY + 3, 3); px(cx, eyeY + 4, 3); } // a beak
+  } else {
+    // From behind: a stripe down its back.
+    for (let y = headTop + 2; y < 27; y += 2) if (g[y]?.[cx] >= 0) { px(cx, y, 2); px(cx + 1, y, 2); }
+  }
+  // The outline, all round.
+  const out = g.map(row => row.slice());
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (g[y][x] >= 0 && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => (g[y + b]?.[x + a] ?? -1) < 0)) out[y][x] = 3;
+  return out;
 }
 
 // ── the moves ────────────────────────────────────────────────────────────────
@@ -276,7 +333,8 @@ export function createBattle(canvas, { scale = 3 } = {}) {
   let b = null, moves = DEFAULT_MOVES, pick = 0, anim = null, raf = 0, last = 0, msg = '', shownFoe = 1, beastCache = new Map(), introAt = -1e9, key = '', rival = null;
   const beast = (n, back = false) => { const k = n + (back ? '|back' : ''); if (!beastCache.has(k)) beastCache.set(k, makeBeast(n, { back })); return beastCache.get(k); };
   const fill = (x0, y0, w, h, s) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(img, W, x, y, s); };
-  const drawBeast = (bt, x0, y0, flash, k = 2) => { for (let y = 0; y < 20; y++) for (let x = 0; x < 20; x++) { const s = bt.px[y][x]; if (s < 0) continue; for (let a = 0; a < k; a++) for (let c = 0; c < k; c++) put(img, W, x0 + x * k + c, y0 + y * k + a, flash ? 3 - s : s); } };
+  // A beast, animated: its idle frames (4 a second), a blink now and then; sinking out of sight when it's knocked out.
+  const drawBeast = (bt, x0, y0, flash, k = 2, sink = 0) => { const t = performance.now() / 1000, blink = bt.blink && (t % 3.7) < 0.14, fr = blink ? bt.blink : bt.frames[Math.floor(t * 4) % 4], N = BEAST_SIZE, cut = N - Math.round(sink * N); for (let y = 0; y < cut; y++) for (let x = 0; x < N; x++) { const s = fr[y][x]; if (s < 0) continue; for (let a = 0; a < k; a++) for (let c = 0; c < k; c++) put(img, W, x0 + x * k + c, y0 + (y + Math.round(sink * N)) * k + a, flash ? 3 - s : s); } };
   const patch = (cx, cy, rx, ry) => { for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) { const d = (x / rx) ** 2 + (y / ry) ** 2; if (d <= 1) put(img, W, cx + x, cy + y, d > 0.78 ? 3 : (x + y) % 3 === 0 ? 2 : 1); } };
   const hpBox = (x0, y0, name, f, mineBox) => { fill(x0, y0, 104, 26, 3); fill(x0 + 1, y0 + 1, 102, 24, 0); fill(x0 + 2, y0 + 23, 100, 1, 2); const bx = x0 + 18, by = y0 + 15; fill(bx, by, 80, 5, 3); fill(bx + 1, by + 1, 78, 3, 0); fill(bx + 1, by + 1, Math.max(0, Math.round(78 * f)), 3, f < 0.25 ? 3 : 2); if (mineBox) fill(x0 + 104, y0 + 8, 3, 18, 3); else fill(x0 - 3, y0 + 8, 3, 18, 3); };
   function words(line) { const S = scale; ctx.fillStyle = `rgb(${GB[3]})`; ctx.fillRect(0, 106 * S, W * S, 54 * S); ctx.fillStyle = `rgb(${GB[0]})`; ctx.fillRect(2 * S, 108 * S, (W - 4) * S, 50 * S); ctx.fillStyle = `rgb(${GB[3]})`; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(line, 10 * S, 126 * S); }
@@ -285,7 +343,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     for (let i = 0; i < img.data.length; i += 4) { img.data[i] = GB[0][0]; img.data[i + 1] = GB[0][1]; img.data[i + 2] = GB[0][2]; img.data[i + 3] = 255; }
     if (!b) { lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); return; }
     // Their patch of ground (top right), yours (bottom left).
-    patch(184, 62, 34, 7); patch(60, 104, 46, 8);
+    patch(184, 66, 34, 7); patch(60, 104, 46, 8);
     const a = anim ? (now - anim.at) / 1300 : -1, hitT = a >= 0.55 && a < 0.85, shake = hitT ? Math.round(Math.sin(now / 18) * 3) : 0, bob = k => Math.round(Math.sin(tm * 3 + k) * 1.5);
     // THE INTRO (2.4 s): the host and Champ on the left, the rival on the right, then the beasts.
     const it = (now - introAt) / 2400;
@@ -293,12 +351,13 @@ export function createBattle(canvas, { scale = 3 } = {}) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
       drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
       if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival') drawBeast(beast(b.foe.name), 164, 24 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (it < 0.62) { if (b.kind !== 'rival') drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;
-    drawBeast(beast(b.mine.name, true), 30 + lunge, 46 + bob(0) - lunge, false, 3);
-    if (shownFoe > 0.001 || b.kind === 'rival') drawBeast(beast(b.foe.name), 164 + shake, 24 + bob(1), hitT && Math.floor(now / 60) % 2 === 0);
+    drawBeast(beast(b.mine.name, true), 28 + lunge, 42 + bob(0) - lunge, false, 2);
+    const faint = b.foe.hp <= 0.002 ? Math.min(1, Math.max(0, 1 - shownFoe * 50)) : 0;
+    drawBeast(beast(b.foe.name), 152 + shake, 4 + bob(1), hitT && Math.floor(now / 60) % 2 === 0, 2, faint);
     // The attack: from yours (bottom left) up to theirs (top right).
     if (a >= 0 && a < 1) { const kind = anim.kind, f = Math.min(1, a / 0.6), x = 70 + f * 112, y = 74 - f * 30 - Math.sin(f * Math.PI) * 18, FX = 184, FY = 44;
       if (kind === 'coins') for (let k = 0; k < 7; k++) { const cx = FX - 18 + k * 6, cy = 4 + ((a * 120 + k * 13) % 50); fill(cx, cy, 3, 3, 3); fill(cx + 1, cy + 1, 1, 1, 0); }
