@@ -31,7 +31,7 @@ for (const k of ["if (['panel', 'full', 'front'].includes(input.mode)) m.mode = 
 assert.match(room, /import \{ makeSpots, upIndex \} from '\.\/vending\.mjs';/);
 assert.ok(read('.github/workflows/deploy-worker.yml').includes('- scripts/vending.mjs'), 'the worker deploys when the machine changes');
 // 5. Both screens draw the same machine.
-assert.match(bg, /import\('\.\/vending\.mjs\?v=3'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
+assert.match(bg, /import\('\.\/vending\.mjs\?v=4'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
 assert.ok(ov.includes('if(m.machine||m.settings)paintMachine(m.machine||machine);') && ov.includes('if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);'));
 assert.ok(!read('shed-background.html').includes('#shed-vend'), 'the old machine is gone');
 // 6. The remote: sizes, prev/next, sold-and-next, the spots maker; it works in the preview too.
@@ -45,7 +45,7 @@ assert.ok(bg.includes("settings0.gameMode === 'beasts' && settings0.beastsBattle
 assert.ok(bg.includes("if (m.effect && (m.type === 'effect' || m.fresh)) battleFx(m.effect);"), 'and it attacks there');
 // 8. Kept apart: no dungeon boss, map, chest or taunt in Beasts; no Beasts buttons in the dungeon.
 for (const k of ["if(!bm)bossRage(b,d);", "lastPhase!==phase&&!bm){bossView?.enter();bossIntro(b,d);}", "boss.classList.toggle('mana-hidden',!b.show||bm);", "settings.showMap===false||beastMode()", "' MORE TO BATTLE '+rv.name+'!'", "isChest=e.kind==='chest'&&!bm", "'FOUND IT IN THE TALL GRASS!'", "door:'WHICH PATH?'"]) assert.ok(ov.includes(k), k);
-for (const k of ["bubble.classList.remove('on'); paintBattle(d);", "const boss = beastsOn || stats?.dungeon?.phase === 'boss'", "if (m.type === 'attack') { if (beastsOn) return;", "if (d && !beastsOn) { let grab"]) assert.ok(bg.includes(k), k);
+for (const k of ["bubble.classList.remove('on'); paintBattle(d);", "const boss = beastsOn || vendOn || stats?.dungeon?.phase === 'boss'", "if (m.type === 'attack') { if (beastsOn || vendOn) return;", "if (d && !beastsOn && !vendOn) { let grab"]) assert.ok(bg.includes(k), k);
 assert.ok(ctl.includes("host.querySelectorAll('[data-beasts],#beast-moves').forEach(el=>{el.hidden=m!=='beasts';});"));
 // 9. More (2026-11-13 "keep going"): a sold slot drops into the tray, LAST 5 SPOTS!, the green machine in Beasts, saved spot lists.
 for (const k of ["'<b>' + code(i) + ' VEND!</b>'", 'for (const i of fresh) drop(mc.items[i], i);', "n > 10 && left > 0 && left <= 5", "' SPOTS!'", ".vm.gb{"]) assert.ok(vsrc.includes(k), k);

@@ -28,6 +28,7 @@
   <details class="vm-spots"><summary>🎟 MAKE SPOTS (a break, a surprise set -- not in your inventory)</summary>
   <small>"75 spots at $5", or paste one name a line (characters, teams, packs). They live in the machine only -- nothing is added to the site or your stock. List the spots in the Whatnot app the way you do now; each sale takes the spot UP NOW.</small>
   <div class="mana-row"><label>HOW MANY<input id="vm-n" type="number" min="1" max="120" value="75"></label><label>PRICE EACH $<input id="vm-price" type="number" min="0" step="0.01" placeholder="5"></label><label>CALL THEM<input id="vm-prefix" maxlength="20" value="SPOT"></label></div>
+  <div class="mana-row"><select id="vm-preset"><option value="">— READY-MADE LIST —</option><option value="nfl">NFL TEAMS (32)</option><option value="mlb">MLB TEAMS (30)</option><option value="nba">NBA TEAMS (30)</option><option value="nhl">NHL TEAMS (32)</option><option value="marvel">MARVEL CHARACTERS (30)</option><option value="dc">DC CHARACTERS (25)</option><option value="image">IMAGE TITLES (10)</option></select></div>
   <label>OR ONE NAME A LINE<textarea id="vm-names" rows="5" placeholder="SPIDER-MAN&#10;BATMAN&#10;WOLVERINE"></textarea></label>
   <button type="button" id="vm-make" style="width:100%;min-height:52px;font-weight:800">🎟 MAKE THE SPOTS</button>
   <div class="vm-wn"><b>📡 LIST THE SPOTS ON WHATNOT</b>
@@ -39,10 +40,12 @@
   <div class="mana-row"><select id="vm-saved"><option value="">— SAVED LISTS —</option></select><button type="button" id="vm-load-list">LOAD</button><button type="button" id="vm-save-list">💾 SAVE THIS LIST</button><button type="button" id="vm-del-list">🗑</button></div>
   </details>
   <div class="mana-row"><input id="vm-title" maxlength="30" placeholder="MACHINE NAME (e.g. SURPRISE SET #3)"><button type="button" id="vm-title-go">NAME IT</button></div>
+  <small>BREAK BOARD: with SHOW BUYER NAMES on (⚙ Settings, off by default), each sold spot shows who has it. Write one in by hand:</small>
+  <div class="mana-row"><input id="vm-who-slot" placeholder="Spot # (e.g. 5)"><input id="vm-who-name" maxlength="30" placeholder="Username (blank clears)"><button type="button" id="vm-who-go">✍ PUT THE NAME ON</button></div>
   <div id="vm-list" class="vm-list"></div>
   <h3>🎮 Game</h3>
-  <div class="mana-row"><button type="button" id="game-dungeon">🗡 THE SHED DUNGEON</button><button type="button" id="game-beasts">👾 LONG BOX BEASTS</button></div>
-  <small>Each game keeps its own progress. Its controls are in its own section below; its settings in ⚙ Settings.</small>
+  <div class="mana-row"><button type="button" id="game-dungeon">🗡 THE SHED DUNGEON</button><button type="button" id="game-beasts">👾 LONG BOX BEASTS</button><button type="button" id="game-vending">🥤 VENDING ONLY</button></div>
+  <small>VENDING ONLY: no game -- the machine full screen behind you with your lineup (or spots); sales move no game. Each game keeps its own progress. Its controls are in its own section below; its settings in ⚙ Settings.</small>
   <div class="mana-row"><button type="button" id="demo-reset">↺ RESET THE PREVIEW DEMO</button></div>
   <h3>🗡 Dungeon controls</h3>
   <p id="mana-dungeon-status" class="mana-score">Floor 1</p>
@@ -88,7 +91,7 @@
   <div class="mana-row"><button type="button" id="mana-sync">SYNC TOTALS FROM WHATNOT</button><button type="button" id="mana-reset">RESET TOTALS</button></div>
   <p id="mana-score" class="mana-score">$0 · 0 sold</p>
   <h3>🎮 Which game</h3>
-  <label>WHICH GAME<select name="gameMode"><option value="dungeon">THE SHED DUNGEON (first person)</option><option value="beasts">LONG BOX BEASTS (top-down, battles)</option></select></label>
+  <label>WHICH GAME<select name="gameMode"><option value="dungeon">THE SHED DUNGEON (first person)</option><option value="beasts">LONG BOX BEASTS (top-down, battles)</option><option value="vending">VENDING ONLY (no game: the machine)</option></select></label>
   <h3>👾 Beasts settings</h3>
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
@@ -178,7 +181,9 @@
     const addMove=host.querySelector('#beast-add-move');if(addMove)addMove.onclick=()=>run(async()=>{const nm=String(host.querySelector('#beast-new-move').value||'').trim().toUpperCase().slice(0,16);if(!nm)throw Error('Type the attack chat came up with');const el=form.elements.namedItem('beastsMoves');const cur=String(el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const base=cur.length?cur:['LOWBALL','PRICE CHECK','SLEEVE UP','BENT CORNER'];el.value=[...base.slice(0,3),nm].join('\n');const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);host.querySelector('#beast-new-move').value='';status.textContent='New attack: '+nm+' (slot 4).';});
     // THE GAME, in one tap (the setting is saved and the screens switch).
     const gameBtn=(id,mode,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value=mode;preview();const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;paintGame();});};
-    gameBtn('#game-dungeon','dungeon','The Shed Dungeon is on.');gameBtn('#game-beasts','beasts','Long Box Beasts is on.');
+    gameBtn('#game-dungeon','dungeon','The Shed Dungeon is on.');
+    // VENDING ONLY (2026-11-13): no game; the machine full screen behind you, stocked from the lineup if it's empty.
+    const gv=host.querySelector('#game-vending');if(gv)gv.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value='vending';preview();if(connectedStore){const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);}paintGame();await machineDo({...(!(machineCtl.items||[]).length&&(stage?.now||stage?.next?.length)?{load:'stage'}:{}),on:true,mode:'full'});status.textContent='Vending only: the machine is up, full screen behind you.'+((machineCtl.items||[]).length?'':' It is empty -- load NOW + NEXT UP or make spots.');});gameBtn('#game-beasts','beasts','Long Box Beasts is on.');
     // BEASTS' OWN BUTTONS (its section): taps, + $, the route, start over -- the server sends them to Beasts while it's on.
     host.querySelectorAll('[data-beast-tap]').forEach(b=>{b.onclick=()=>host.querySelector('#mana-taps [data-tap="'+b.dataset.beastTap+'"]')?.click();});
     const ba=host.querySelector('#beast-add-go');if(ba)ba.onclick=()=>{host.querySelector('#mana-add-mana').value=host.querySelector('#beast-add').value;host.querySelector('#beast-add').value='';host.querySelector('#mana-add-mana-go').click();};
@@ -220,6 +225,11 @@
         if(ok.length)took(await api('machine',{listed:ok}));}
       status.textContent='On Whatnot: '+done+' of '+todo.length+' spots listed in your show.'+(errs.length?' Problems: '+[...new Set(errs)].slice(0,2).join(' / '):'');
     });
+    // Ready-made lists fill the names.
+    const pre=host.querySelector('#vm-preset');if(pre)pre.onchange=()=>run(async()=>{if(!pre.value)return;const V=await import('./vending.mjs');const list=V.SPOT_PRESETS[pre.value]||[];host.querySelector('#vm-names').value=list.join('\n');host.querySelector('#vm-n').value=list.length;status.textContent=list.length+' names in -- set the price and tap MAKE THE SPOTS.';});
+    // The break board by hand: the spot's number ("5" or "#5").
+    const slotOf=v=>{const n=Number(String(v||'').replace(/^#/,'').trim());return Number.isInteger(n)&&n>0?n-1:-1;};
+    vmb('#vm-who-go',()=>{const i=slotOf(host.querySelector('#vm-who-slot').value);if(i<0||!(machineCtl.items||[])[i])throw Error('Which spot? (its number)');return {buyer:{i,name:String(host.querySelector('#vm-who-name').value||'')}};},'Name on the board.');
     vmb('#vm-prev',{step:-1},'Previous slot is up.');vmb('#vm-next',{step:1},'Next slot is up.');vmb('#vm-sold-up',{soldUp:true},'Sold -- the next slot is up.');
     vmb('#vm-make',()=>({spots:{count:Number(host.querySelector('#vm-n').value)||0,price:Number(host.querySelector('#vm-price').value)||0,prefix:String(host.querySelector('#vm-prefix').value||'SPOT'),names:String(host.querySelector('#vm-names').value||'')},on:true}),'Spots made -- they are in the machine.');
     // TEST A BOSS ATTACK (2026-11-12): the preview only -- into the arena, the boss pulls its move.
@@ -261,7 +271,7 @@
   }
   function values(){const out={};for(const el of form.elements){if(!el.name)continue;out[el.name]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;}return out;}
   // The green-screen shed sits behind the top camera in the preview too (2026-11-11).
-  function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:withMove(demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined),machine:machineCtl,effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
+  function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:withMove(demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined),machine:values().showBuyerNames?machineCtl:{...machineCtl,items:(machineCtl.items||[]).map(({buyer,...it})=>it)},effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
   async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
   host.querySelector('#mana-load').onclick=()=>run(connect);
@@ -380,8 +390,8 @@
   const short=t=>String(t||'').replace(/\s+/g,' ').trim().slice(0,58);
   function stockComics(){return inventory().filter(i=>i.status==='in_stock'&&/comic/i.test(String(i.category||''))&&(https(i.thumbnail)||https(i.imageUrl))&&Number(i.qty??1)>0).map(stageItem).filter(c=>c.title&&c.image);}
   // The vending machine's list: tap an item to mark it SOLD OUT (or back).
-  function paintMachine(){const el=host.querySelector('#vm-list');if(!el)return;el.replaceChildren(...(machineCtl.items||[]).map((it,i)=>{const b=document.createElement('button');b.type='button';b.className='vm-item'+(it.sold?' sold':'');b.textContent=(it.sold?'❌ ':'✅ ')+(it.listed?'📡 ':'')+String.fromCharCode(65+Math.floor(i/3)%26)+(i%3+1)+'  '+it.title;b.onclick=()=>run(()=>machineDo({toggle:i}));if(i===vmUp(machineCtl))b.classList.add('up');return b;}));const sh=host.querySelector('#vm-show');if(sh)sh.textContent=machineCtl.on?'✅ MACHINE IS ON':'SHOW THE MACHINE';
-    host.querySelectorAll('[data-vm-mode]').forEach(b=>b.classList.toggle('on',(machineCtl.mode||'panel')===b.dataset.vmMode));const u=vmUp(machineCtl),upEl=host.querySelector('#vm-up');if(upEl)upEl.textContent=u>=0?'UP NOW: '+String.fromCharCode(65+Math.floor(u/3)%26)+(u%3+1)+'  '+machineCtl.items[u].title+'  ·  '+machineCtl.items.filter(x=>!x.sold).length+' OF '+machineCtl.items.length+' LEFT':machineCtl.items?.length?'ALL SOLD':'Nothing up';}
+  function paintMachine(){const el=host.querySelector('#vm-list');if(!el)return;el.replaceChildren(...(machineCtl.items||[]).map((it,i)=>{const b=document.createElement('button');b.type='button';b.className='vm-item'+(it.sold?' sold':'');b.textContent=(it.sold?'❌ ':'✅ ')+(it.listed?'📡 ':'')+(it.buyer?'@'+it.buyer+' · ':'')+'#'+(i+1)+'  '+it.title;b.onclick=()=>run(()=>machineDo({toggle:i}));if(i===vmUp(machineCtl))b.classList.add('up');return b;}));const sh=host.querySelector('#vm-show');if(sh)sh.textContent=machineCtl.on?'✅ MACHINE IS ON':'SHOW THE MACHINE';
+    host.querySelectorAll('[data-vm-mode]').forEach(b=>b.classList.toggle('on',(machineCtl.mode||'panel')===b.dataset.vmMode));const u=vmUp(machineCtl),upEl=host.querySelector('#vm-up');if(upEl)upEl.textContent=u>=0?'UP NOW: '+'#'+(u+1)+'  '+machineCtl.items[u].title+'  ·  '+machineCtl.items.filter(x=>!x.sold).length+' OF '+machineCtl.items.length+' LEFT':machineCtl.items?.length?'ALL SOLD':'Nothing up';}
   // The slot UP NOW (the same rule as the screens: the host's pick, else the first open one).
   function vmUp(m){if(!m?.items?.length)return -1;if(Number.isInteger(m.up)&&m.items[m.up]&&!m.items[m.up].sold)return m.up;return m.items.findIndex(x=>!x.sold);}
   // Connected: the show's machine. In the preview: the same changes, here only, so you can try it first.
@@ -389,6 +399,7 @@
     const m={on:false,items:[],...machineCtl},items=m.items=[...m.items],open=(i,dir)=>{for(let k=1;k<=items.length;k++){const j=(((i+dir*k)%items.length)+items.length)%items.length;if(!items[j].sold)return j;}return -1;};
     if(body.load==='stage'){m.items=[stage.now,...(stage.next||[])].filter(x=>x&&x.title).map(x=>({...x,sold:false}));m.kind='items';m.up=0;}
     if(body.spots){const V=await import('./vending.mjs');m.items=V.makeSpots(body.spots);if(!m.items.length)throw Error('How many spots? (or one name a line)');for(const it of m.items){const w=chanceFn?.(it.title);if(w)throw Error('"'+w+'" reads as a game of chance -- Whatnot doesn\'t allow those.');}m.kind='spots';m.up=0;}
+    if(body.buyer&&items[body.buyer.i]){const nm=String(body.buyer.name||'').replace(/^@/,'').replace(/[^\w.\-]/g,'').slice(0,30);const {buyer,...rest}=items[body.buyer.i];items[body.buyer.i]=nm?{...rest,buyer:nm,sold:true}:rest;}
     if(Number.isInteger(body.toggle)&&items[body.toggle])items[body.toggle]={...items[body.toggle],sold:!items[body.toggle].sold};
     if(body.mode)m.mode=body.mode;if(typeof body.on==='boolean')m.on=body.on;if(typeof body.title==='string')m.title=body.title.trim().slice(0,30).toUpperCase();
     if(body.step)m.up=open(vmUp(m),body.step);if(body.soldUp){const u=vmUp(m);if(u>=0){m.items[u]={...m.items[u],sold:true};m.up=open(u,1);}}
@@ -399,12 +410,12 @@
   function paintMoves(){const el=host.querySelector('#beast-moves');if(!el)return;const raw=String(form.elements.namedItem('beastsMoves')?.value||'').split(/\r?\n/).map(x=>x.replace(/[^A-Za-z0-9 '!?$&.-]/g,'').trim().toUpperCase().slice(0,16)).filter(Boolean),list=[...raw,'LOWBALL','PRICE CHECK','SLEEVE UP','BENT CORNER'].slice(0,4),cur=demoMove!=null&&!connectedStore?demoMove:Number(stats?.beastMove)||0;
     el.replaceChildren(...list.map((m,i)=>{const b=document.createElement('button');b.type='button';b.textContent='⚔ '+(i+1)+' '+m;b.classList.toggle('on',i===cur);b.onclick=()=>run(async()=>{const now=Date.now();if(connectedStore){const d=await api('beast-move',{index:i});took(d);if(d.effect)preview(d.effect);status.textContent='Attack: '+m;}else{demoMove=i;preview({id:'move-'+now,kind:'move',move:m,startsAt:now,endsAt:now+3000});status.textContent='Preview: '+m+' (connect to use it in the show).';}paintMoves();});return b;}));}
   // Which game is on, lit in the quick section.
-  function paintGame(){const m=form.elements.namedItem('gameMode')?.value||'dungeon';host.querySelector('#game-dungeon')?.classList.toggle('on',m==='dungeon');host.querySelector('#game-beasts')?.classList.toggle('on',m==='beasts');
+  function paintGame(){const m=form.elements.namedItem('gameMode')?.value||'dungeon';host.querySelector('#game-dungeon')?.classList.toggle('on',m==='dungeon');host.querySelector('#game-beasts')?.classList.toggle('on',m==='beasts');host.querySelector('#game-vending')?.classList.toggle('on',m==='vending');
     // Beasts-only buttons stay out of the dungeon (and the other way round).
     host.querySelectorAll('[data-beasts],#beast-moves').forEach(el=>{el.hidden=m!=='beasts';});
     // TOTALLY SEPARATE GAMES (2026-11-13): the other game's sections step aside (your own show/hide choices stay as they are).
     const DUNGEON_ONLY=['🗡 Dungeon controls','🗡 Dungeon settings','Boss battle'],BEASTS_ONLY=['👾 Beasts controls','👾 Beasts settings'];
-    host.querySelectorAll('details.mana-sec[data-sec]').forEach(d=>d.classList.toggle('mana-offgame',m==='beasts'?DUNGEON_ONLY.includes(d.dataset.sec):BEASTS_ONLY.includes(d.dataset.sec)));
+    host.querySelectorAll('details.mana-sec[data-sec]').forEach(d=>d.classList.toggle('mana-offgame',m==='beasts'?DUNGEON_ONLY.includes(d.dataset.sec):m==='vending'?DUNGEON_ONLY.includes(d.dataset.sec)||BEASTS_ONLY.includes(d.dataset.sec):BEASTS_ONLY.includes(d.dataset.sec)));
     const w=form.elements.namedItem('beastsBattle')?.value||'overlay';host.querySelector('#battle-front')?.classList.toggle('on',w==='overlay');host.querySelector('#battle-green')?.classList.toggle('on',w==='green');}
   // ORGANIZED (2026-11-13: "I want to be able to close a dropdown for different
   // sections. I don't use ByteRider_97 much and like to hide certain sections.
