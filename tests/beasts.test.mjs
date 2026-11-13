@@ -49,7 +49,7 @@ assert.ok(read('.github/workflows/deploy-worker.yml').includes('scripts/beasts.m
 for (const who of ['host', 'champ']) for (const d of ['down', 'up', 'side']) for (const fr of B.PEOPLE[who][d]) { assert.equal(fr.length, 16, 'chibi: 16 x 16'); assert.ok(fr.every(r => r.length === 16 && /^[.0-3]+$/.test(r)), who + ' ' + d); }
 assert.equal(typeof B.drawTrainer, 'function', 'the trainers for battles');
 assert.match(src, /drawTrainer\(img, W, 2 - slide, 54, 'host'\); drawTrainer\(img, W, 40 - slide, 54, 'champ'\);/, 'both of you open every battle');
-assert.match(read('scripts/live-studio-overlay.mjs'), /battle\?\.setRival\(c\)/, 'the rival trainer is the boss, in four greens');
+assert.ok(!read('scripts/live-studio-overlay.mjs').includes('battle?.setRival'), 'the rival is Beasts\' own, not the dungeon boss (tests/vending.test.mjs)');
 assert.notDeepEqual(B.PEOPLE.host.down, B.PEOPLE.champ.down);
 assert.match(src, /drawSprite\(img, w, sx\(p\.x\), sy\(p\.y\) \+ 4, 'host'/, 'you walk the route'); assert.match(src, /drawSprite\(img, w, sx\(q\.x\), sy\(q\.y\) \+ 6, 'champ'/, 'Champ a step behind');
 // Chat picks the starter; the classic layout (theirs facing you top right, yours from behind bottom left); the vending machine.

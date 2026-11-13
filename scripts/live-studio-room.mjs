@@ -1,10 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { movesFrom, STARTERS } from './beasts.mjs';
+import { movesFrom, STARTERS, ensureBeasts, addBeastXp, adjustBeasts, publicBeasts } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
-import { ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
+import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
@@ -35,18 +35,37 @@ export class ManaLiveStudio extends DurableObject {
     s.stage ||= { now:null, next:[] };
     // The dungeon runs all week (Wednesday to Wednesday), across shows.
     s.dungeon = ensureWeek(s.dungeon);
+    // LONG BOX BEASTS keeps its own track (2026-11-13: "they should be totally separate games").
+    s.beasts = ensureBeasts(s.beasts, weekKey());
     return s;
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
   publicStats(state) {
-    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
+    return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), beasts: publicBeasts(state.beasts, state.settings), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
   }
   publicState(state = this.read()) {
     return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], machine:state.machine || { on:false, items:[] }, serverNow:Date.now() };
   }
+  // Which game is on.
+  beastsOn(s) { return s.settings.gameMode === 'beasts'; }
+  // Beasts' biggest moment in a batch of events: a badge beats the rival stepping up, which beats a catch.
+  beastEffect(events) {
+    const e = events.filter(x => x.kind === 'badge').pop() || events.filter(x => x.kind === 'rival').pop() || events.filter(x => x.kind === 'caught').pop();
+    return e ? { kind: 'beast', beastEvent: e.kind, beastName: e.kind === 'caught' ? e.name : e.beast, trainer: e.trainer || '', route: e.route, badges: e.badges } : null;
+  }
+  // Dollars (a tap, a manual + $, trivia) into Beasts: its own effect, or the fallback.
+  beastsIn(s, amount, now, fallback) {
+    const m = addBeastXp(s.beasts, amount, s.settings, now); s.beasts = m.beasts;
+    const fx = this.beastEffect(m.events) || fallback;
+    if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
+    this.write(s);
+    this.broadcast(fx ? { type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now } : { type:'stats', stats:this.publicStats(s), serverNow:now });
+    return this.publicState(s);
+  }
   // A follow / share / bookmark the host tapped in fills the flask.
   dungeonTap(kind) {
     const s = this.read(), now = Date.now();
+    if (this.beastsOn(s)) return this.beastsIn(s, tapMana(s.settings, kind), now, { kind: 'tap', tapKind: kind, mana: tapMana(s.settings, kind) });
     const r = addTap(s.dungeon, kind, s.settings, now);
     // A treasure chest this tap opened (chat's goal reached).
     const chest = chestsOpened(s.dungeon, r.dungeon, s.settings).pop();
@@ -63,6 +82,12 @@ export class ManaLiveStudio extends DurableObject {
   // Manual: + $ mana (a sale off Whatnot), set the floor, or start the week over.
   dungeonAdjust(input = {}) {
     const s = this.read(), now = Date.now();
+    if (this.beastsOn(s)) {
+      if (input.mana !== undefined) { const amount = Number(input.mana); if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Invalid amount'); return this.beastsIn(s, amount, now, null); }
+      if (input.door !== undefined) throw new Error('Long Box Beasts has no doors -- that is the dungeon');
+      s.beasts = adjustBeasts(s.beasts, { route: input.floor, reset: !!input.resetWeek }, weekKey(now), now);
+      this.write(s); this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:now }); return this.publicState(s);
+    }
     let fx = null;
     if (input.mana !== undefined) {
       const amount = Number(input.mana);
@@ -85,6 +110,8 @@ export class ManaLiveStudio extends DurableObject {
   // weapon, or which of the next items comes up first. Nothing is drawn.
   openVote(kind) {
     const s = this.read(), now = Date.now();
+    if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw new Error('That vote is the dungeon\'s -- Long Box Beasts is on');
+    if (!this.beastsOn(s) && ['move', 'starter'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
     let options;
     if (kind === 'weapon') options = WEAPONS.map(w => ({ id: w.id, label: w.icon + ' ' + w.name }));
     else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
@@ -126,9 +153,9 @@ export class ManaLiveStudio extends DurableObject {
     let fx = null;
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
     if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
-    if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! I CHOOSE YOU... TO SELL COMICS!' }); }
+    if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! GO, ' + opt.id + ' -- LET\'S SELL SOME COMICS!' }); }
     if (v.kind === 'move') { s.beastMove = index; fx = makeEffect('move', s.settings, now, { move: opt.label.replace(/^\S+\s/, '') }); }
-    if (v.kind === 'trivia') { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
+    if (v.kind === 'trivia') { if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana) || 0, s.settings, now).beasts; else { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; } const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
     s.effect = fx || makeEffect('mascot', s.settings, now, { mascotState: 'happy', say: 'CHAT PICKED: ' + opt.label.replace(/^\S+\s/, '') });
     this.write(s);
@@ -350,7 +377,12 @@ export class ManaLiveStudio extends DurableObject {
       // A new sale's dollars fill the dungeon's flask (cancellations don't
       // drain it: a floor reached stays reached).
       let dfx = null;
-      if (s.stats.gross > grossBefore) {
+      if (s.stats.gross > grossBefore && this.beastsOn(s)) {
+        // Beasts: the sale walks the route (the dungeon stays where it is).
+        const m = addBeastXp(s.beasts, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
+        s.beasts = m.beasts;
+        if (r.effect) dfx = this.beastEffect(m.events);
+      } else if (s.stats.gross > grossBefore) {
         const m = addMana(s.dungeon, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
         s.dungeon = m.dungeon;
         const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];

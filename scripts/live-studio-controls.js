@@ -17,8 +17,7 @@
   <div class="mana-remote-grid">
     <button type="button" data-click="#mana-load">🔌 CONNECT</button><button type="button" data-click="#mana-show">📺 USE LIVE SHOW</button><button type="button" data-click="#mana-trivia">❓ TRIVIA</button>
     <button type="button" class="tap" data-click="#mana-taps [data-tap=follow]">➕ FOLLOW</button><button type="button" class="tap" data-click="#mana-taps [data-tap=share]">➕ SHARE</button><button type="button" class="tap" data-click="#mana-taps [data-tap=bookmark]">➕ BOOKMARK</button>
-    <button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=merchant]">🧙 MERCHANT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button>
-    <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
+    <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
   </div>
   <h3>🥤 Vending machine</h3>
   <small>For breaks and surprise sets: a machine of items (or spots), scrolling, a BID button on each slot, the one UP NOW lit, SOLD stamped on what's gone. A sale marks its item by itself (with spots: the one UP NOW). Tap a slot below to mark it by hand.</small>
@@ -31,23 +30,41 @@
   <div class="mana-row"><label>HOW MANY<input id="vm-n" type="number" min="1" max="120" value="75"></label><label>PRICE EACH $<input id="vm-price" type="number" min="0" step="0.01" placeholder="5"></label><label>CALL THEM<input id="vm-prefix" maxlength="20" value="SPOT"></label></div>
   <label>OR ONE NAME A LINE<textarea id="vm-names" rows="5" placeholder="SPIDER-MAN&#10;BATMAN&#10;WOLVERINE"></textarea></label>
   <button type="button" id="vm-make" style="width:100%;min-height:52px;font-weight:800">🎟 MAKE THE SPOTS</button>
+  <small>Saved lists (on this device): save the one above with a name, load it next time.</small>
+  <div class="mana-row"><select id="vm-saved"><option value="">— SAVED LISTS —</option></select><button type="button" id="vm-load-list">LOAD</button><button type="button" id="vm-save-list">💾 SAVE THIS LIST</button><button type="button" id="vm-del-list">🗑</button></div>
   </details>
   <div class="mana-row"><input id="vm-title" maxlength="30" placeholder="MACHINE NAME (e.g. SURPRISE SET #3)"><button type="button" id="vm-title-go">NAME IT</button></div>
   <div id="vm-list" class="vm-list"></div>
-  <h3>🎬 Show ready</h3>
-  <small>One tap loads the dungeon from your comics in stock: comics on every wall and stand, NEXT UP (if it's empty -- SHOW PREP's lineup stays), the chests' and floors' rewards (free giveaways for everyone, low starts on your best books), and special books for the merchant.</small>
-  <button type="button" id="mana-show-ready" style="width:100%;min-height:58px;font-size:17px;font-weight:800">🎬 LOAD THE DUNGEON FROM STOCK (COMICS)</button>
-  <ul id="mana-ready" class="mana-ready"></ul>
   <h3>🎮 Game</h3>
   <div class="mana-row"><button type="button" id="game-dungeon">🗡 THE SHED DUNGEON</button><button type="button" id="game-beasts">👾 LONG BOX BEASTS</button></div>
+  <small>Each game keeps its own progress. Its controls are in its own section below; its settings in ⚙ Settings.</small>
+  <div class="mana-row"><button type="button" id="demo-reset">↺ RESET THE PREVIEW DEMO</button></div>
+  <h3>🗡 Dungeon controls</h3>
+  <p id="mana-dungeon-status" class="mana-score">Floor 1</p>
+  <div class="mana-row" id="mana-taps" hidden><button type="button" data-tap="follow" data-key="F">+ FOLLOW <kbd>F</kbd></button><button type="button" data-tap="share" data-key="Y">+ SHARE <kbd>Y</kbd></button><button type="button" data-tap="bookmark" data-key="B">+ BOOKMARK <kbd>B</kbd></button></div>
+  <div class="mana-row"><input id="mana-add-mana" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="mana-add-mana-go">+ MANA</button><input id="mana-set-floor" type="number" min="1" max="99" hidden><button type="button" id="mana-set-floor-go" hidden>SET FLOOR</button><button type="button" id="mana-reset-week" hidden>RESET WEEK</button></div>
+  <div class="mana-row"><button type="button" id="quick-floor">🔢 SET FLOOR…</button><button type="button" data-click="#mana-reset-week">⏮ START THE WEEK OVER</button></div>
+  <small>Chat votes: chat types a number in Whatnot's chat; tap the winner at the top. Nothing is random.</small>
+  <div class="mana-remote-grid"><button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=merchant]">🧙 MERCHANT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button></div>
+  <div class="mana-row" id="mana-vote-open" hidden><button type="button" data-vote="starter">CHAT VOTE: THE STARTER (BEASTS)</button><button type="button" data-vote="move">CHAT VOTE: THE ATTACK (BEASTS)</button><button type="button" data-vote="merchant">CHAT VOTE: THE MERCHANT (2 SPECIAL ITEMS -- THE PICK RUNS)</button><button type="button" data-vote="dig">CHAT VOTE: WHERE TO DIG (FOUND IT!)</button><button type="button" data-vote="fork">CHAT VOTE: FORK IN THE HALL</button><button type="button" data-vote="weapon">CHAT VOTE: HERO'S WEAPON</button><button type="button" data-vote="next">CHAT VOTE: WHAT'S NEXT</button><button type="button" data-vote="door">CHAT VOTE: DOOR</button></div>
+  <div class="mana-row"><button type="button" id="mana-trivia">ASK BYTERIDER TRIVIA</button><input id="mana-trivia-q" maxlength="160" placeholder="Your own question (optional)"><input id="mana-trivia-a" maxlength="80" placeholder="Answer"></div>
+  <div class="mana-row"><input id="mana-floor-name" maxlength="30" placeholder="Chat's name for this floor"><button type="button" id="mana-floor-name-go">NAME THE FLOOR</button></div>
+  <small>Trivia: chat types answers in Whatnot's chat; tap CHAT GOT IT and everyone's mana goes up. Chests along the path open as the crawl reaches them (after chat's goal, if it has one) and bring your most valuable NEXT UP item up as a $1 start.</small>
+  <small>Whatnot doesn't send follows, shares or bookmarks -- tap them in as they pop up in the app. Sales fill the flask on their own.</small>
+  <small>🎬 SHOW READY: one tap loads the dungeon from your comics in stock.</small>
+  <small hidden>One tap loads the dungeon from your comics in stock: comics on every wall and stand, NEXT UP (if it's empty -- SHOW PREP's lineup stays), the chests' and floors' rewards (free giveaways for everyone, low starts on your best books), and special books for the merchant.</small>
+  <button type="button" id="mana-show-ready" style="width:100%;min-height:58px;font-size:17px;font-weight:800">🎬 LOAD THE DUNGEON FROM STOCK (COMICS)</button>
+  <ul id="mana-ready" class="mana-ready"></ul>
+  <small>🕹️ CAMERA</small>
+  <small>Drag to look around the hall (up, down, left, right); let go and it eases back after 3 seconds. Works on the green screen, the crawl window and the preview.</small>
+  <div class="mana-joy-row"><div id="mana-joy" class="mana-joy" aria-label="Camera joystick"><i></i></div><div class="mana-joy-btns"><button type="button" id="mana-scout">🔭 SCOUT AHEAD</button><button type="button" id="mana-test-attack">⚔️ TEST BOSS ATTACK (preview)</button><button type="button" id="mana-lookback">↩ LOOK BACK</button></div></div>
+  <h3>👾 Beasts controls</h3>
+  <p id="beast-status" class="mana-score">Route 1</p>
   <div class="mana-row" data-beasts><button type="button" id="battle-front">📺 BATTLE IN FRONT OF US</button><button type="button" id="battle-green">🟩 BATTLE ON THE GREEN SCREEN</button></div>
   <small data-beasts>ATTACK NOW: tap one -- it's used right away (works in the preview too). Or let chat vote.</small>
   <div class="mana-row beast-moves" id="beast-moves"></div>
-  <div class="mana-row"><button type="button" id="demo-reset">↺ RESET THE PREVIEW DEMO</button><button type="button" data-click="#mana-reset-week">⏮ START THE WEEK OVER</button><button type="button" id="quick-floor">🔢 SET FLOOR…</button></div>
   <div class="mana-row" data-beasts><input id="beast-new-move" maxlength="16" placeholder="CHAT'S NEW ATTACK (e.g. MOM'S BASEMENT)"><button type="button" id="beast-add-move">➕ ADD CHAT'S ATTACK</button><button type="button" data-click="#mana-vote-open [data-vote=move]">⚔️ CHAT PICKS THE ATTACK</button><button type="button" data-click="#mana-vote-open [data-vote=starter]">🥚 CHAT PICKS THE STARTER</button></div>
-  <h3>🕹️ Camera</h3>
-  <small>Drag to look around the hall (up, down, left, right); let go and it eases back after 3 seconds. Works on the green screen, the crawl window and the preview.</small>
-  <div class="mana-joy-row"><div id="mana-joy" class="mana-joy" aria-label="Camera joystick"><i></i></div><div class="mana-joy-btns"><button type="button" id="mana-scout">🔭 SCOUT AHEAD</button><button type="button" id="mana-test-attack">⚔️ TEST BOSS ATTACK (preview)</button><button type="button" id="mana-lookback">↩ LOOK BACK</button></div></div>
+  <div class="mana-row"><input id="beast-add" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="beast-add-go">+ $ UP THE ROUTE</button><button type="button" id="beast-route">🔢 SET ROUTE…</button><button type="button" id="beast-reset">⏮ START BEASTS OVER</button></div>
   <h3>Now playing &amp; next up</h3>
   <small>What's on screen as NOW PLAYING and NEXT STAGE (and what goes in the chests). Show Prep's LINE IT UP fills it; or find items here.</small>
   <div class="mana-row"><input id="mana-find" placeholder="Find an item in inventory to add…" autocomplete="off"></div>
@@ -65,23 +82,16 @@
   <small>Whatnot doesn't share live bids. Each order comes through as it's made (auction, Buy It Now and giveaway), so the score board keeps the money total, items sold and biggest sale.</small>
   <div class="mana-row"><button type="button" id="mana-sync">SYNC TOTALS FROM WHATNOT</button><button type="button" id="mana-reset">RESET TOTALS</button></div>
   <p id="mana-score" class="mana-score">$0 · 0 sold</p>
-  <h3>🎮 Game settings</h3>
+  <h3>🎮 Which game</h3>
   <label>WHICH GAME<select name="gameMode"><option value="dungeon">THE SHED DUNGEON (first person)</option><option value="beasts">LONG BOX BEASTS (top-down, battles)</option></select></label>
+  <h3>👾 Beasts settings</h3>
+  <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
-  <small>Long Box Beasts: sales walk you up the route; wild beasts jump out of the tall grass; the boss is the rival's beast. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) -- a photo below swaps in a face instead.</small>
+  <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) -- a photo below swaps in a face instead.</small>
   <div class="mana-row beast-faces"><label>YOUR FACE (a photo)<input type="file" accept="image/*" id="beast-face-file"></label><canvas id="beast-face-view" width="12" height="12"></canvas><label>CHAMP'S FACE<input type="file" accept="image/*" id="beast-buddy-file"></label><canvas id="beast-buddy-view" width="12" height="12"></canvas></div>
   <input type="hidden" name="beastsFace"><input type="hidden" name="beastsBuddy">
   <label>YOUR BEAST'S 4 ATTACKS (one a line)<textarea name="beastsMoves" rows="4" placeholder="LOWBALL&#10;PRICE CHECK&#10;SLEEVE UP&#10;BENT CORNER"></textarea></label>
-  <h3>The Shed Dungeon</h3>
-  <p id="mana-dungeon-status" class="mana-score">Floor 1</p>
-  <div class="mana-row" id="mana-taps"><button type="button" data-tap="follow" data-key="F">+ FOLLOW <kbd>F</kbd></button><button type="button" data-tap="share" data-key="Y">+ SHARE <kbd>Y</kbd></button><button type="button" data-tap="bookmark" data-key="B">+ BOOKMARK <kbd>B</kbd></button></div>
-  <div class="mana-row" id="mana-vote-open"><button type="button" data-vote="starter">CHAT VOTE: THE STARTER (BEASTS)</button><button type="button" data-vote="move">CHAT VOTE: THE ATTACK (BEASTS)</button><button type="button" data-vote="merchant">CHAT VOTE: THE MERCHANT (2 SPECIAL ITEMS -- THE PICK RUNS)</button><button type="button" data-vote="dig">CHAT VOTE: WHERE TO DIG (FOUND IT!)</button><button type="button" data-vote="fork">CHAT VOTE: FORK IN THE HALL</button><button type="button" data-vote="weapon">CHAT VOTE: HERO'S WEAPON</button><button type="button" data-vote="next">CHAT VOTE: WHAT'S NEXT</button><button type="button" data-vote="door">CHAT VOTE: DOOR</button></div>
-  <div class="mana-row"><button type="button" id="mana-trivia">ASK BYTERIDER TRIVIA</button><input id="mana-trivia-q" maxlength="160" placeholder="Your own question (optional)"><input id="mana-trivia-a" maxlength="80" placeholder="Answer"></div>
-  <div class="mana-row"><input id="mana-floor-name" maxlength="30" placeholder="Chat's name for this floor"><button type="button" id="mana-floor-name-go">NAME THE FLOOR</button></div>
-  <small>Trivia: chat types answers in Whatnot's chat; tap CHAT GOT IT and everyone's mana goes up. Chests along the path open as the crawl reaches them (after chat's goal, if it has one) and bring your most valuable NEXT UP item up as a $1 start.</small>
-  <small>Chat types a number in Whatnot's chat; tap the winner. Nothing is random.</small>
-  <small>Whatnot doesn't send follows, shares or bookmarks -- tap them in as they pop up in the app. Sales fill the flask on their own.</small>
-  <div class="mana-row"><input id="mana-add-mana" type="number" min="1" max="100000" placeholder="$ sale off Whatnot"><button type="button" id="mana-add-mana-go">+ MANA</button><input id="mana-set-floor" type="number" min="1" max="99" placeholder="Floor"><button type="button" id="mana-set-floor-go">SET FLOOR</button><button type="button" id="mana-reset-week">RESET WEEK</button></div>
+  <h3>🗡 Dungeon settings</h3>
   ${box('dungeonOn','Dungeon on: the sign is the mana flask (sales, follows, shares and bookmarks fill it)')}
   ${box('finale','FINALE tonight (the last show before Wednesday): bigger goals for every star this week')}
   <div class="mana-grid">${num('floorBase','Floor 1 goal ($)',1,1000000)}${num('floorGrowth','Each floor needs (+%)',0,500)}${num('bossShare','Floor boss HP (% of the floor goal)',1,500)}${num('manaFollow','Follow = mana',0,1000)}${num('manaShare','Share = mana',0,1000)}${num('manaBookmark','Bookmark = mana',0,1000)}${num('starsPerFloor','Stars per floor cleared',0,10)}${num('finaleBoost','Finale: +% goal per star',0,500)}</div>
@@ -164,18 +174,30 @@
     // THE GAME, in one tap (the setting is saved and the screens switch).
     const gameBtn=(id,mode,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value=mode;preview();const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;paintGame();});};
     gameBtn('#game-dungeon','dungeon','The Shed Dungeon is on.');gameBtn('#game-beasts','beasts','Long Box Beasts is on.');
+    // BEASTS' OWN BUTTONS (its section): taps, + $, the route, start over -- the server sends them to Beasts while it's on.
+    host.querySelectorAll('[data-beast-tap]').forEach(b=>{b.onclick=()=>host.querySelector('#mana-taps [data-tap="'+b.dataset.beastTap+'"]')?.click();});
+    const ba=host.querySelector('#beast-add-go');if(ba)ba.onclick=()=>{host.querySelector('#mana-add-mana').value=host.querySelector('#beast-add').value;host.querySelector('#beast-add').value='';host.querySelector('#mana-add-mana-go').click();};
+    const br=host.querySelector('#beast-route');if(br)br.onclick=()=>host.querySelector('#quick-floor')?.click();
+    const bz=host.querySelector('#beast-reset');if(bz)bz.onclick=()=>host.querySelector('#mana-reset-week')?.click();
     // Where the battle shows: over the hosts (the overlay) or behind them (the green screen).
     const whereBtn=(id,v,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('beastsBattle').value=v;preview();paintGame();if(!connectedStore){status.textContent=msg+' (preview)';return;}const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;});};
     whereBtn('#battle-front','overlay','The battle shows in front of you.');whereBtn('#battle-green','green','The battle shows on the green screen, behind you.');
     // Reset the preview's demo (its floor, mana and sales go back to the show's), and set the floor in one tap.
-    const dr=host.querySelector('#demo-reset');if(dr)dr.onclick=()=>{demo=0;demoGross=0;demoBig=0;demoDungeon=null;demoFake=null;demoUntil=0;demoMove=null;preview();paintMoves();status.textContent='Preview demo reset.';};
-    const qf=host.querySelector('#quick-floor');if(qf)qf.onclick=()=>{const v=prompt('Which floor? (1-99)');if(!v)return;host.querySelector('#mana-set-floor').value=v;host.querySelector('#mana-set-floor-go').click();};
+    const dr=host.querySelector('#demo-reset');if(dr)dr.onclick=()=>{demo=0;demoGross=0;demoBig=0;demoDungeon=null;demoBeasts=null;demoFake=null;demoUntil=0;demoMove=null;preview();paintMoves();status.textContent='Preview demo reset.';};
+    const qf=host.querySelector('#quick-floor');if(qf)qf.onclick=()=>{const v=prompt(values().gameMode==='beasts'?'Which route? (1-99)':'Which floor? (1-99)');if(!v)return;host.querySelector('#mana-set-floor').value=v;host.querySelector('#mana-set-floor-go').click();};
     form.addEventListener('input',e=>{if(e.target?.name==='beastsMoves')paintMoves();});form.addEventListener('change',e=>{if(['gameMode','beastsBattle'].includes(e.target?.name))paintGame();});setTimeout(paintMoves,0);
     // THE VENDING MACHINE's buttons.
-    const vmb=(id,body,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{await machineDo(typeof body==='function'?body():body);status.textContent=msg+(connectedStore?'':' (preview -- connect to use it in the show)');});};
+    const vmb=(id,body,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{await machineDo(typeof body==='function'?body():body);const empty=!(machineCtl.items||[]).length;status.textContent=(empty&&machineCtl.on?'The machine is up but EMPTY -- tap LOAD FROM NOW + NEXT UP (fill NOW PLAYING / NEXT UP first) or 🎟 MAKE SPOTS below.':msg)+(connectedStore?'':' (preview -- connect to use it in the show)');if(empty){const sp=host.querySelector('details.vm-spots');if(sp)sp.open=true;}});};
     vmb('#vm-load',{load:'stage'},'Machine loaded from NOW PLAYING + NEXT UP.');vmb('#vm-show',{on:true},'The machine is on the green screen.');vmb('#vm-hide',{on:false},'Machine hidden.');
     vmb('#vm-title-go',()=>({title:String(host.querySelector('#vm-title').value||'')}),'Machine named.');
     host.querySelectorAll('[data-vm-mode]').forEach(b=>{const m=b.dataset.vmMode;vmb('[data-vm-mode="'+m+'"]',{mode:m,on:true},m==='front'?'Machine full screen, in front of you.':m==='full'?'Machine full screen, behind you.':'Machine small, behind you.');});
+    // SAVED SPOT LISTS: the break's 75 characters, typed once, used every week (kept on this device).
+    const SL='mana-spot-lists',lists=()=>{try{return JSON.parse(localStorage.getItem(SL)||'{}')||{};}catch{return {};}},putLists=o=>{try{localStorage.setItem(SL,JSON.stringify(o));}catch{}};
+    const fillSaved=()=>{const sel=host.querySelector('#vm-saved');if(!sel)return;const o=lists();sel.replaceChildren(new Option('— SAVED LISTS —',''),...Object.keys(o).sort().map(k=>new Option(k+' ('+(o[k].names?o[k].names.split('\n').filter(Boolean).length:o[k].count)+')',k)));};fillSaved();
+    const q=id=>host.querySelector(id);
+    if(q('#vm-save-list'))q('#vm-save-list').onclick=()=>{const name=String(prompt('Name this list (e.g. MARVEL 75)')||'').trim().toUpperCase().slice(0,30);if(!name)return;const o=lists();o[name]={count:Number(q('#vm-n').value)||0,price:Number(q('#vm-price').value)||0,prefix:q('#vm-prefix').value,names:q('#vm-names').value};putLists(o);fillSaved();q('#vm-saved').value=name;status.textContent='Saved: '+name;};
+    if(q('#vm-load-list'))q('#vm-load-list').onclick=()=>{const it=lists()[q('#vm-saved').value];if(!it){status.textContent='Pick a saved list first.';return;}q('#vm-n').value=it.count||'';q('#vm-price').value=it.price||'';q('#vm-prefix').value=it.prefix||'SPOT';q('#vm-names').value=it.names||'';status.textContent='Loaded -- tap MAKE THE SPOTS.';};
+    if(q('#vm-del-list'))q('#vm-del-list').onclick=()=>{const k=q('#vm-saved').value;if(!k||!confirm('Delete the list '+k+'?'))return;const o=lists();delete o[k];putLists(o);fillSaved();};
     vmb('#vm-prev',{step:-1},'Previous slot is up.');vmb('#vm-next',{step:1},'Next slot is up.');vmb('#vm-sold-up',{soldUp:true},'Sold -- the next slot is up.');
     vmb('#vm-make',()=>({spots:{count:Number(host.querySelector('#vm-n').value)||0,price:Number(host.querySelector('#vm-price').value)||0,prefix:String(host.querySelector('#vm-prefix').value||'SPOT'),names:String(host.querySelector('#vm-names').value||'')},on:true}),'Spots made -- they are in the machine.');
     // TEST A BOSS ATTACK (2026-11-12): the preview only -- into the arena, the boss pulls its move.
@@ -205,6 +227,10 @@
       const c=document.createElement('button');c.type='button';c.textContent='CLOSE VOTE';c.onclick=()=>run(async()=>{took(await api('vote-close',{}));});vp.append(c);}
     host.querySelector('.mana-trivia-who').hidden=stats?.vote?.kind!=='trivia';
     host.querySelector('.mana-remote').classList.toggle('voting',!!(stats?.vote||d?.doors));
+    const bs=stats?.beasts,bst=host.querySelector('#beast-status');
+    const beastLine=bs?'Route '+bs.route+' · '+(bs.stage==='rival'?bs.rival.name+'\'s '+bs.rival.beast+' HP '+usd(bs.rival.hp)+' / '+usd(bs.rival.max):usd(bs.xp)+' / '+usd(bs.goal)+' to '+bs.rival.name)+' · badges '+bs.badges+' · beasts beaten '+bs.caughtCount:'Connect to see the route.';
+    if(bst)bst.textContent=beastLine;
+    if(values().gameMode==='beasts'){el.textContent=beastLine;return;}
     if(!d){el.textContent='Connect to see the floor.';return;}
     // Chat's vote: one button per door.
     if(d.doors)d.doors.forEach((r,i)=>{const b=document.createElement('button');b.type='button';b.textContent=(i+1)+' → '+r.icon+' '+r.name;
@@ -240,7 +266,7 @@
     if(!connectedStore){const now=Date.now(),v=values();preview({id:'local-'+now,kind:'tap',tapKind:kind,mana:v[{follow:'manaFollow',share:'manaShare',bookmark:'manaBookmark'}[kind]]||0,startsAt:now,endsAt:now+2500});status.textContent='Preview only. Tap Connect / reload to fill the real flask.';return;}
     void run(async()=>{const d=await api('dungeon-tap',{kind});took(d);preview(d.effect);status.textContent='+ '+kind;});};
   host.querySelector('#mana-add-mana-go').onclick=()=>run(async()=>{const v=Number(host.querySelector('#mana-add-mana').value);if(!(v>0))throw Error('Type the $ amount first');const d=await api('dungeon-adjust',{mana:v});took(d);if(d.effect)preview(d.effect);host.querySelector('#mana-add-mana').value='';status.textContent='Added '+usd(v)+' mana.';});
-  host.querySelector('#mana-set-floor-go').onclick=()=>run(async()=>{const f=Number(host.querySelector('#mana-set-floor').value);if(!Number.isInteger(f)||f<1)throw Error('Type a floor number');if(!confirm('Jump to floor '+f+'? Its mana starts at 0.'))return;const d=await api('dungeon-adjust',{floor:f});took(d);status.textContent='Now on floor '+f+'.';});
+  host.querySelector('#mana-set-floor-go').onclick=()=>run(async()=>{const f=Number(host.querySelector('#mana-set-floor').value);if(!Number.isInteger(f)||f<1)throw Error('Type a floor number');const bm=values().gameMode==='beasts',w=bm?'route':'floor';if(!confirm('Jump to '+w+' '+f+'? It starts at $0.'))return;const d=await api('dungeon-adjust',{floor:f});took(d);status.textContent='Now on '+w+' '+f+'.';});
   // The show remote's big buttons press the real ones (in ALL SETTINGS); its
   // status line mirrors the floor and score.
   host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(b)host.querySelector(b.dataset.click)?.click();};
@@ -253,7 +279,7 @@
   host.querySelector('#mana-trivia').onclick=()=>run(async()=>{const q=host.querySelector('#mana-trivia-q').value.trim(),a=host.querySelector('#mana-trivia-a').value.trim();if(q&&!a)throw Error('Type the answer too');const x=await api('trivia',{question:q,answer:a});took(x);host.querySelector('#mana-trivia-q').value='';host.querySelector('#mana-trivia-a').value='';status.textContent='Trivia is on screen'+(x.stats?.vote?.question?': '+x.stats.vote.question:'')+(x.triviaAnswer?' (answer: '+x.triviaAnswer+')':'')+'. Tap CHAT GOT IT when someone does.';});
   host.querySelector('#mana-floor-name-go').onclick=()=>run(async()=>{const n=host.querySelector('#mana-floor-name').value.trim();const x=await api('floor-name',{name:n});took(x);status.textContent=n?'Floor named "'+n.toUpperCase()+'".':'Floor name cleared.';});
   host.querySelector('#mana-vote-open').onclick=e=>{const b=e.target.closest('[data-vote]');if(b)run(async()=>{const x=await api('vote-open',{kind:b.dataset.vote});took(x);status.textContent='Vote is on screen. Tap the winner below.';});};
-  host.querySelector('#mana-reset-week').onclick=()=>run(async()=>{if(!confirm('Start the week over at floor 1 with no stars?'))return;const d=await api('dungeon-adjust',{resetWeek:true});took(d);status.textContent='Week reset: floor 1.';});
+  host.querySelector('#mana-reset-week').onclick=()=>run(async()=>{const bm=values().gameMode==='beasts';if(!confirm(bm?'Start Long Box Beasts over at route 1 (no badges, no beasts beaten)? The dungeon is not touched.':'Start the week over at floor 1 with no stars? Long Box Beasts is not touched.'))return;const d=await api('dungeon-adjust',{resetWeek:true});took(d);status.textContent=bm?'Beasts reset: route 1.':'Week reset: floor 1.';});
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
   // ByteRider_97: a reaction or a line, on stream (and in the preview).
   // Store, 2026-11-02 (on a phone): "I didn't see it animate in the preview."
@@ -353,7 +379,11 @@
   // Which game is on, lit in the quick section.
   function paintGame(){const m=form.elements.namedItem('gameMode')?.value||'dungeon';host.querySelector('#game-dungeon')?.classList.toggle('on',m==='dungeon');host.querySelector('#game-beasts')?.classList.toggle('on',m==='beasts');
     // Beasts-only buttons stay out of the dungeon (and the other way round).
-    host.querySelectorAll('[data-beasts],#beast-moves').forEach(el=>{el.hidden=m!=='beasts';});const w=form.elements.namedItem('beastsBattle')?.value||'overlay';host.querySelector('#battle-front')?.classList.toggle('on',w==='overlay');host.querySelector('#battle-green')?.classList.toggle('on',w==='green');}
+    host.querySelectorAll('[data-beasts],#beast-moves').forEach(el=>{el.hidden=m!=='beasts';});
+    // TOTALLY SEPARATE GAMES (2026-11-13): the other game's sections step aside (your own show/hide choices stay as they are).
+    const DUNGEON_ONLY=['🗡 Dungeon controls','🗡 Dungeon settings','Boss battle'],BEASTS_ONLY=['👾 Beasts controls','👾 Beasts settings'];
+    host.querySelectorAll('details.mana-sec[data-sec]').forEach(d=>d.classList.toggle('mana-offgame',m==='beasts'?DUNGEON_ONLY.includes(d.dataset.sec):BEASTS_ONLY.includes(d.dataset.sec)));
+    const w=form.elements.namedItem('beastsBattle')?.value||'overlay';host.querySelector('#battle-front')?.classList.toggle('on',w==='overlay');host.querySelector('#battle-green')?.classList.toggle('on',w==='green');}
   // ORGANIZED (2026-11-13: "I want to be able to close a dropdown for different
   // sections. I don't use ByteRider_97 much and like to hide certain sections.
   // Organize it better"): every section folds (it remembers), any section can be
@@ -362,9 +392,9 @@
     const K='mana-sec:',get=k=>{try{return localStorage.getItem(K+k);}catch{return null;}},put=(k,v)=>{try{localStorage.setItem(K+k,v);}catch{}};
     const fold=(box,openFirst)=>{const out=[];let cur=null;for(const el of [...box.children]){if(el.tagName==='H3'){const name=el.textContent.trim(),d=document.createElement('details'),sm=document.createElement('summary');d.className='mana-sec';d.dataset.sec=name;sm.textContent=name;d.append(sm);el.replaceWith(d);const st=get(name);d.open=st?st==='open':openFirst.includes(name);d.hidden=get('hide:'+name)==='1';d.addEventListener('toggle',()=>put(name,d.open?'open':'closed'));out.push(d);cur=d;continue;}if(cur&&!el.matches('button[type=submit]'))cur.append(el);}return out;};
     const remote=host.querySelector('.mana-remote'),formBox=host.querySelector('#mana-form');
-    const top=fold(remote,['🎬 Show ready','Now playing & next up','🎮 Game']),rest=fold(formBox,[]);
+    const top=fold(remote,['🎮 Game','🗡 Dungeon controls','👾 Beasts controls']),rest=fold(formBox,['🎮 Which game']);
     // The show order up top.
-    for(const n of ['🎬 Show ready','Now playing & next up','🎮 Game','🕹️ Camera','🥤 Vending machine']){const d=top.find(x=>x.dataset.sec===n);if(d)remote.append(d);}
+    for(const n of ['🎮 Game','🗡 Dungeon controls','👾 Beasts controls','Now playing & next up','🥤 Vending machine']){const d=top.find(x=>x.dataset.sec===n);if(d)remote.append(d);}
     // SHOW / HIDE SECTIONS.
     const all=[...top,...rest],mgr=document.createElement('details'),sm=document.createElement('summary');mgr.className='mana-sec mana-hider';sm.textContent='👁 SHOW / HIDE SECTIONS';mgr.append(sm);
     const byte=()=>{const off=all.find(d=>d.dataset.sec==='ByteRider_97')?.hidden;host.querySelectorAll('[data-click*="mana-mascot"]').forEach(b=>{b.hidden=!!off;});};
@@ -416,15 +446,23 @@
   host.querySelector('#mana-stage-clear').onclick=()=>run(()=>saveStage({now:null,next:stage.next||[]}));
 
   // A pretend sale in the preview only -- nothing is sent.
-  let demo=0,demoGross=0,demoBig=0,demoDungeon=null,dungeonLib=null,demoMove=null;
+  let demo=0,demoGross=0,demoBig=0,demoDungeon=null,dungeonLib=null,demoMove=null,demoBeasts=null,beastsLib=null;
+  import('./beasts.mjs').then(m=>{beastsLib=m;}).catch(()=>{});
   import('./live-studio-dungeon.mjs').then(m=>{dungeonLib=m;}).catch(()=>{});
   host.querySelector('#mana-demo').onclick=()=>{const v=values(),amount=v.gameMode==='beasts'?[4,3,5,4,6][demo%5]:[12,45,8,150,25][demo%5]; // beasts: small steps, so the demo walks into the tall grass and fightsdemo++;
     if(demo===1){demoGross=stats?.gross||0;demoBig=stats?.biggest||0;}
     const wasAlive=demoGross<v.bossGoal;demoGross+=amount;demoBig=Math.max(demoBig,amount);const hp=Math.max(0,v.bossGoal-demoGross);
     const fake={gross:demoGross,sold:(stats?.sold||0)+demo,biggest:demoBig,combo:demo,lastSaleAt:Date.now(),giveaways:0,boss:{name:v.bossName,goal:v.bossGoal,hp,pct:hp/v.bossGoal*100,defeated:hp<=0,reward:v.bossReward}};
     let kind=!v.dungeonOn&&wasAlive&&hp<=0&&v.showBoss?'boss':amount>=v.jackpotAmount?'jackpot':'sold',extra={};
+    // BEASTS: its own track in the preview too (the dungeon doesn't move).
+    if(v.gameMode==='beasts'&&beastsLib){
+      if(demo===1){const p=stats?.beasts;demoBeasts=p?{week:p.week,route:p.route,phase:p.stage==='rival'?'rival':'route',xp:p.xp,rivalHp:p.stage==='rival'?p.rival.hp:0,caught:[],badges:[]}:beastsLib.emptyBeasts();}
+      const r=beastsLib.addBeastXp(demoBeasts,amount,v);demoBeasts=r.beasts;fake.beasts=beastsLib.publicBeasts(demoBeasts,v);fake.dungeon=stats?.dungeon;
+      const e=r.events.filter(x=>x.kind==='badge').pop()||r.events.filter(x=>x.kind==='rival').pop()||r.events.filter(x=>x.kind==='caught').pop();
+      if(e){kind='beast';extra={beastEvent:e.kind,beastName:e.kind==='caught'?e.name:e.beast,trainer:e.trainer||'',route:e.route,badges:e.badges};}
+    }
     // The dungeon moves too (preview only).
-    if(dungeonLib){
+    else if(dungeonLib){
       if(demo===1){const p=stats?.dungeon;demoDungeon=p?{week:p.week,floor:p.floor,phase:p.phase,mana:p.mana,bossHp:p.phase==='boss'?p.boss.hp:0,stars:p.stars,cleared:[],taps:{}}:null;}
       const r=dungeonLib.addMana(demoDungeon,amount,v);demoDungeon=r.dungeon;fake.dungeon=dungeonLib.publicDungeon(demoDungeon,v,demoGross);
       const boss=r.events.filter(x=>x.kind==='boss').pop(),fl=r.events.filter(x=>x.kind==='floor').pop(),un=v.dungeonOn?dungeonLib.showUnlocksCrossed(demoGross-amount,demoGross,v).pop():null;

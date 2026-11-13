@@ -509,3 +509,11 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 .mana-controls details.vm-spots{border:2px dashed #6b3fbf;border-radius:10px;padding:6px 10px;margin:8px 0}
 .mana-controls details.vm-spots>summary{cursor:pointer;font-weight:800;min-height:40px;display:flex;align-items:center}
 .mana-controls #battle-front.on,.mana-controls #battle-green.on{outline:3px solid #9bbc0f;background:#306230;color:#e8ffc0}
+.mana-controls details.mana-sec.mana-offgame{display:none}
+/* Phone-friendly remote (2026-11-13: "it's tough controlling it from the phone"): hidden means hidden, and each section's
+   buttons sit two (or more) across as big tap targets instead of one per line. */
+.mana-controls [hidden]{display:none!important}
+.mana-controls details.mana-sec .mana-row:not(.beast-faces){display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:stretch}
+.mana-controls details.mana-sec .mana-row>button{min-height:52px;margin:0;font-weight:800}
+.mana-controls details.mana-sec .mana-row>input,.mana-controls details.mana-sec .mana-row>select{min-height:48px;margin:0;width:100%;box-sizing:border-box;min-width:0}
+.mana-controls details.mana-sec .mana-remote-grid{margin:8px 0}

@@ -70,6 +70,8 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   beastsMoves: '',     // your beast's four attacks, one a line (chat can invent them)
   beastsFace: '',      // your face in four greens (144 digits, made from a photo in the remote)
   beastsBuddy: '',     // your buddy's (Champ's) face, the same way
+  beastsGoal: 100,    // Beasts: route 1's goal ($) to reach the rival (its own track, apart from the dungeon's floors)
+  beastsGrowth: 15,   // Beasts: each route needs this % more
   beastsBattle: 'overlay', // where the battle shows: 'overlay' (in front of the hosts) or 'green' (the green screen, behind them)
   dungeonComics: true, // the shed's and dungeon's walls and stands show comics only (store, 2026-11-12: "keep it comics")
   miniMap: true,       // the mini-map in the green screen's corner, filling in as the crawl walks
@@ -84,7 +86,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
-export const DUNGEON_LIMITS = { secretTaps: [0, 500], lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
+export const DUNGEON_LIMITS = { beastsGoal: [5, 1000000], beastsGrowth: [0, 100], secretTaps: [0, 500], lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
 export const DUNGEON_STRINGS = { gameMode: 12, beastsBattle: 8, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.

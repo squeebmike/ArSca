@@ -195,15 +195,71 @@ export function posAt(route, t) {
 // A wild beast while the floor's mana is inside an encounter (its HP is what's
 // left of that slice); the rival's beast while a boss is up. Your beast's HP is
 // the flashlight battery (sales keep it up). Beaten beasts join your shelf.
+// THE RIVALS (2026-11-13: "does the bar in the center still give wrong stuff? Leaky roof kraken?"):
+// Beasts has its own rival trainers, one a route, each with their own beast -- never the dungeon's boss.
+export const RIVALS = [['SCALPER STEVE', 'FLIPWRAITH'], ['BAGGER BEV', 'POLYBAGGON'], ['MINT MARCY', 'MINTICORE'], ['LONGBOX LOU', 'BOXJAW'], ['SLABHEAD SAL', 'GRADEGOLEM'], ['FLIPPER FRAN', 'REPRICER'], ['DOLLAR BIN DEX', 'BINRAT'], ['CGC CARLA', 'CASECRAB']];
+// The dungeon's rooms, as places on the route (2026-11-13: "Path? On pokemon"): the same vote, the same rewards, route names.
+export const PLACES = { vault: ['🪙', 'GOLDEN GROTTO'], library: ['📚', 'READING MEADOW'], armory: ['🛡️', 'SLAB RIDGE'], forge: ['🔥', 'EMBER TRAIL'], crypt: ['🕯️', 'BARGAIN BOG'], lab: ['🧪', 'VARIANT WOODS'] };
+export function placeFor(room) { const p = PLACES[room?.id || room]; return p ? { icon: p[0], name: p[1] } : { icon: room?.icon || '🌿', name: 'TALL GRASS' }; }
+export function rivalFor(floor) { const [name, beast] = RIVALS[(Math.max(1, Math.floor(Number(floor) || 1)) - 1) % RIVALS.length]; return { name, beast }; }
 export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {}) {
   if (!d) return null;
   const mine = { name: STARTERS.includes(starter) ? starter : STARTER, hp: Math.max(0.08, Math.min(1, battery)) };
-  if (d.phase === 'boss') { const rival = makeBeast((bossName || d.boss?.name || 'RIVAL').replace(/^THE\s+/, '') + 'MON').name; return { kind: 'rival', k: 3, mine, foe: { name: rival.slice(0, 12), hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: d.boss?.name || 'THE RIVAL' }; }
+  if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name }; }
   const pct = Math.max(0, Math.min(1, (d.pct || 0) / 100));
   for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k), hp: 1 - (pct - a) / (b - a) } }; }
   return null;
 }
 export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1; f <= d.floor; f++) for (let k = 0; k < ENCOUNTERS.length; k++) if (f < d.floor || (d.phase === 'boss' || (d.pct || 0) / 100 >= ENCOUNTERS[k][1])) out.push(wildName(f, k)); return out; }
+
+// ── THE GAME ITSELF, ITS OWN (store, 2026-11-13: "they should be totally separate games") ──
+// Beasts keeps its own progress -- the route, the dollars toward the rival, the
+// rival's HP, the beasts you've beaten, the badges -- apart from the dungeon's
+// floors, chests and doors. Sales (and chat's follows / shares / bookmarks) walk
+// you up the route; the three wild beasts on it fall as you pass their patch of
+// grass; at the top the route's rival sends out their beast; beat it for the
+// route's badge and the next route opens. Week by week, like the dungeon, but
+// on its own track. Nothing by chance; nothing won by buying.
+const r2b = n => Math.round(n * 100) / 100;
+export const beastGoal = (s, route) => Math.max(1, Math.round((Number(s.beastsGoal) || 100) * Math.pow(1 + (Number(s.beastsGrowth) || 0) / 100, Math.max(0, route - 1))));
+export const rivalMax = (s, route) => Math.max(1, Math.round(beastGoal(s, route) / 2));
+export function emptyBeasts(week = '') { return { week, route: 1, phase: 'route', xp: 0, rivalHp: 0, caught: [], badges: [], lastAt: 0 }; }
+export function ensureBeasts(b, week = '') { if (b && b.week === week) return b; const fresh = emptyBeasts(week); if (b?.week) fresh.lastWeek = { week: b.week, route: b.route, badges: (b.badges || []).length, caught: (b.caught || []).length }; return fresh; }
+// Dollars in: walk the route (passing the wild beasts), then the rival's HP; leftovers carry on.
+// Returns { beasts, events } -- { kind:'caught', name }, { kind:'rival', trainer, beast }, { kind:'badge', route, trainer, beast }.
+export function addBeastXp(bIn, amount, s, now = Date.now()) {
+  const b = { ...bIn, caught: [...(bIn.caught || [])], badges: [...(bIn.badges || [])] }, events = [];
+  if (!(amount > 0)) return { beasts: b, events };
+  let left = r2b(amount);
+  for (let guard = 0; left > 0 && guard < 60; guard++) {
+    if (b.phase === 'route') {
+      const goal = beastGoal(s, b.route), before = b.xp / goal, need = r2b(goal - b.xp);
+      const take = Math.min(left, need); b.xp = r2b(b.xp + take); left = r2b(left - take);
+      const after = b.xp / goal;
+      ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const name = wildName(b.route, k); b.caught.push({ name, route: b.route, at: now }); events.push({ kind: 'caught', name, route: b.route }); } });
+      if (b.xp >= goal) { b.phase = 'rival'; b.rivalHp = rivalMax(s, b.route); const rv = rivalFor(b.route); events.push({ kind: 'rival', route: b.route, trainer: rv.name, beast: rv.beast }); }
+    } else {
+      if (left < b.rivalHp) { b.rivalHp = r2b(b.rivalHp - left); left = 0; break; }
+      left = r2b(left - b.rivalHp); const rv = rivalFor(b.route);
+      b.badges.push({ route: b.route, trainer: rv.name, at: now }); events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length });
+      b.route += 1; b.phase = 'route'; b.xp = 0; b.rivalHp = 0;
+    }
+  }
+  b.lastAt = now;
+  return { beasts: b, events };
+}
+// The host's fixes: set the route, or start Beasts' week over.
+export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.now()) {
+  if (reset) return { ...emptyBeasts(week), lastAt: now };
+  const n = Math.floor(Number(route));
+  if (!Number.isFinite(n) || n < 1 || n > 99) throw new Error('Route 1 to 99');
+  return { ...bIn, route: n, phase: 'route', xp: 0, rivalHp: 0, lastAt: now };
+}
+// What the screens see (floor and pct keep the drawing code's names: floor is the route).
+export function publicBeasts(bIn, s) {
+  const b = bIn || emptyBeasts(), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, badges: (b.badges || []).length, lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+}
 
 // ── drawing ──────────────────────────────────────────────────────────────────
 const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = GB[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
@@ -236,7 +292,7 @@ function text3(img, W, x, y, str, s) { [...str].forEach((ch, k) => { const g = F
 // back); Champ bald and shiny, glasses, a full beard, a big hoodie. Two walk
 // frames each way ('.' see-through, '0' lightest .. '3' darkest); facing left
 // is facing right, mirrored. Our own pixels, drawn here.
-export const PEOPLE = {"host":{"down":[["....33333333....","...3333333333...","..333333323333..","..333330033333..","..300000000003..","..303300003303..","..303000000303..","..330001100033..","..333300003333..","...3333333333...","..331303303133..","..301300003103..","...3333333333...","....32222223....","....32233223....","....333..333...."],["....33333333....","...3333333333...","..333333323333..","..333330033333..","..300000000003..","..303300003303..","..303000000303..","..330001100033..","..333300003333..","...3333333333...","..331303303133..","..301300003103..","...3333333333...","....32222223....","....3223.223....","...333...333...."]],"up":[["....33333333....","...3333333333...","..333333333333..",".33333333333333.","..300000000003..","..300000000003..","..300000000003..","..330000000033..","..333300003333..","...3333333333...","..331003300133..","..301330033103..","...3333333333...","....32222223....","....32233223....","....333..333...."],["....33333333....","...3333333333...","..333333333333..",".33333333333333.","..300000000003..","..300000000003..","..300000000003..","..330000000033..","..333300003333..","...3333333333...","..331003300133..","..301330033103..","...3333333333...","....32222223....","....3223.223....","...333...333...."]],"side":[[".....33333333...","....3333333333..","...33333333333..",".333332333333...","....3000000003..","....3000003303..","....3000000303..","....30000000003.","....3333000333..",".....33333333...",".....33313333...",".....33310333...",".....33333333...",".....3222223....","....322223......","....33.33......."],[".....33333333...","....3333333333..","...33333333333..",".333332333333...","....3000000003..","....3000003303..","....3000000303..","....30000000003.","....3333000333..",".....33333333...",".....33313333...",".....33310333...",".....33333333...",".....3222223....","....32223.......","....333.33......"]]},"champ":{"down":[["....33333333....","...3000000003...","..300001100003..","..300000000003..","..333330033333..","..311130031113..","..333330033333..","..322000000223..","..322220022223..","...3222222223...",".33333333333333.",".30333222233303.",".33333333333333.","....32222223....","....32233223....","....333..333...."],["....33333333....","...3000000003...","..300001100003..","..300000000003..","..333330033333..","..311130031113..","..333330033333..","..322000000223..","..322220022223..","...3222222223...",".33333333333333.",".30333222233303.",".33333333333333.","....32222223....","....3223.223....","...333...333...."]],"up":[["....33333333....","...3000000003...","..300001100003..","..300000000003..","..330000000033..","..300000000003..","..300000000003..","..322000000223..","..322200002223..","...3332222333...",".33333333333333.",".30333333333303.",".33333333333333.","....32222223....","....32233223....","....333..333...."],["....33333333....","...3000000003...","..300001100003..","..300000000003..","..330000000033..","..300000000003..","..300000000003..","..322000000223..","..322200002223..","...3332222333...",".33333333333333.",".30333333333303.",".33333333333333.","....32222223....","....3223.223....","...333...333...."]],"side":[[".....33333333...","....3000000003..","...30000110003..","...30033333333..","...30003111133..","...30033333333..","...300000000003.","...32200000223..","...32222202223..","....322222223...","...33333333333..","...33333033333..","...33333333333..",".....3222223....","....322223......","....33.33......."],[".....33333333...","....3000000003..","...30000110003..","...30033333333..","...30003111133..","...30033333333..","...300000000003.","...32200000223..","...32222202223..","....322222223...","...33333333333..","...33333033333..","...33333333333..",".....3222223....","....32223.......","....333.33......"]]}};
+export const PEOPLE = {"host":{"down":[["....33333333....","...3222222223...","..322222222223..","..321111111123..","..310000000013..","..303300003303..","..300000000003..","..322000000223..","...3222112223...","....33222233....","..332200002233..",".30322022022303.","...3222222223...","....31111113....","....31133113....","....333..333...."],["....33333333....","...3222222223...","..322222222223..","..321111111123..","..310000000013..","..303300003303..","..300000000003..","..322000000223..","...3222112223...","....33222233....","..332200002233..",".30322022022303.","...3222222223...","....31111113....","....3113.3113...","...333....333..."]],"up":[["....33333333....","...3222222223...","..322222222223..","..322222222223..",".33333333333333.","..300000000003..","..300000000003..","..310000000013..","...3100000013...","....33333333....","..332222222233..",".30320202002303.","...3200220023...","....31111113....","....31133113....","....333..333...."],["....33333333....","...3222222223...","..322222222223..","..322222222223..",".33333333333333.","..300000000003..","..300000000003..","..310000000013..","...3100000013...","....33333333....","..332222222233..",".30320202002303.","...3200220023...","....31111113....","....3113.3113...","...333....333..."]],"side":[[".....33333333...","....3222222223..","...32222222223..","..3321111111123.",".333100000003...","....3000003303..","....3000000003..","....3220000003..","....3222112223..",".....3222233....",".....3222223....",".....3202223....",".....3222223....","....322223......","....32223.......","....333.33......"],[".....33333333...","....3222222223..","...32222222223..","..3321111111123.",".333100000003...","....3000003303..","....3000000003..","....3220000003..","....3222112223..",".....3222233....",".....3222223....",".....3202223....",".....3222223....",".....32223......",".....3223.3.....","....333..333...."]]},"champ":{"down":[["....33333333....","...3000000003...","..300001100003..","..300000000003..","..303330033303..","..303130031303..","..300330033003..","..322000000223..","..322221122223..","...3222222223...",".33311111111333.",".30311111111303.",".33311111111333.","....31111113....","....31133113....","....333..333...."],["....33333333....","...3000000003...","..300001100003..","..300000000003..","..303330033303..","..303130031303..","..300330033003..","..322000000223..","..322221122223..","...3222222223...",".33311111111333.",".30311111111303.",".33311111111333.","....31111113....","....3113.3113...","...333....333..."]],"up":[["....33333333....","...3000000003...","..300001100003..","..300000000003..","..330000000033..","..300000000003..","..300000000003..","..322000000223..","...3220000223...","....33333333....",".33311111111333.",".30311111111303.",".33311111111333.","....31111113....","....31133113....","....333..333...."],["....33333333....","...3000000003...","..300001100003..","..300000000003..","..330000000033..","..300000000003..","..300000000003..","..322000000223..","...3220000223...","....33333333....",".33311111111333.",".30311111111303.",".33311111111333.","....31111113....","....3113.3113...","...333....333..."]],"side":[[".....33333333...","....3000000003..","...300011000003.","...300000000003.","...300033333333.","...300003111133.","...300033333333.","...32200000223..","...32222212223..","....322222223...","...31111111113..","...31111033113..","...31111111113..","....322223......","....32223.......","....333.33......"],[".....33333333...","....3000000003..","...300011000003.","...300000000003.","...300033333333.","...300003111133.","...300033333333.","...32200000223..","...32222212223..","....322222223...","...31111111113..","...31111033113..","...31111111113..",".....32223......",".....3223.3.....","....333..333...."]]}};
 export function drawSprite(img, W, x0, y0, who, dir, step) {
   const s = PEOPLE[who] || PEOPLE.host, rows = (dir === 'up' ? s.up : dir === 'down' ? s.down : s.side)[step ? 1 : 0], flip = dir === 'left';
   rows.forEach((row, y) => { for (let x = 0; x < 16; x++) { const ch = row[flip ? 15 - x : x]; if (ch !== '.') put(img, W, x0 + x, y0 + y, +ch); } });
@@ -248,7 +304,7 @@ export function drawTrainer(img, W, x0, y0, who) {
   const hx = 20, hy = champ ? 15 : 14, rx = champ ? 11 : 9.5, ry = champ ? 11.5 : 10.5;
   // The body first: the jersey (host) or the big hoodie (Champ), an arm out front.
   const bw = champ ? 15 : 11;
-  for (let y = 26; y < 48; y++) for (let x = hx - bw - (y > 34 && champ ? 2 : 0); x <= hx + bw + (y > 34 && champ ? 2 : 0); x++) { const edge = x === hx - bw - (y > 34 && champ ? 2 : 0) || x === hx + bw + (y > 34 && champ ? 2 : 0) || y === 26; P(x, y, edge ? 3 : champ ? (y > 36 && y < 42 && Math.abs(x - hx) < 6 ? 2 : 3) : 3); }
+  for (let y = 26; y < 48; y++) for (let x = hx - bw - (y > 34 && champ ? 2 : 0); x <= hx + bw + (y > 34 && champ ? 2 : 0); x++) { const edge = x === hx - bw - (y > 34 && champ ? 2 : 0) || x === hx + bw + (y > 34 && champ ? 2 : 0) || y === 26; const L = hx - bw - (y > 34 && champ ? 2 : 0), pocket = champ && y > 35 && y < 43 && Math.abs(x - hx) < 7; P(x, y, edge ? 3 : pocket ? (y === 36 || y === 42 || Math.abs(x - hx) === 6 ? 3 : 1) : x - L < 3 ? (champ ? 1 : 2) : champ ? 2 : (y === 27 && Math.abs(x - hx) < 3 ? 0 : 3)); } // shaded: lit from the left; Champ's hoodie has a pocket, the jersey a collar
   if (!champ) { for (let x = hx - bw + 1; x < hx - bw + 4; x++) for (const y of [33, 34]) P(x, y, 1); for (let x = hx + bw - 3; x < hx + bw; x++) for (const y of [33, 34]) P(x, y, 1); text3(img, W, x0 + hx - 4, y0 + 31, 'MP', 0); }
   for (let k = 0; k < 9; k++) { P(hx + bw - 1 + k, 30 - (k >> 1), 3); P(hx + bw - 1 + k, 31 - (k >> 1), 3); P(hx + bw - 1 + k, 32 - (k >> 1), k > 6 ? 0 : 3); } // the arm, reaching out
   for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1], [2, 0]]) P(hx + bw + 8 + a, 26 + b, 0); // the hand
@@ -351,7 +407,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
       drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
       if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival') drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (it < 0.62) { if (b.kind !== 'rival' || !rival) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;
