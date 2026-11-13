@@ -1,6 +1,8 @@
 (function(){
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
+  // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
+  const STUDIO_V='2026.11.13.14';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -95,7 +97,7 @@
   <h3>👾 Beasts settings</h3>
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
-  <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) -- a photo below swaps in a face instead.</small>
+  <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) (the chibi walkers are always used now; the face photos below are kept but no longer replace them).</small>
   <div class="mana-row beast-faces"><label>YOUR FACE (a photo)<input type="file" accept="image/*" id="beast-face-file"></label><canvas id="beast-face-view" width="12" height="12"></canvas><label>CHAMP'S FACE<input type="file" accept="image/*" id="beast-buddy-file"></label><canvas id="beast-buddy-view" width="12" height="12"></canvas></div>
   <input type="hidden" name="beastsFace"><input type="hidden" name="beastsBuddy">
   <label>YOUR BEAST'S 4 ATTACKS (one a line)<textarea name="beastsMoves" rows="4" placeholder="LOWBALL&#10;PRICE CHECK&#10;SLEEVE UP&#10;BENT CORNER"></textarea></label>
@@ -176,7 +178,7 @@
     const sr=host.querySelector('#mana-show-ready');if(sr)sr.onclick=()=>{if(confirm('Load the dungeon from your comics in stock? It replaces the chest, floor and room rewards'+((stage.next||[]).length<5?' and fills NEXT UP':'')+'.'))run(showReady);};
     // LONG BOX BEASTS: your face and Champ's from a photo (12 x 12, four greens -- kept in the settings, no upload);
     // chat's new attack goes in as the 4th.
-    const faceIn=(fileId,field,viewId)=>{const inp=host.querySelector(fileId);if(!inp||inp.dataset.on)return;inp.dataset.on=1;inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;run(async()=>{const B=await import('./beasts.mjs');const url=URL.createObjectURL(f);const im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(Error('Could not read that photo'));im.src=url;});form.elements.namedItem(field).value=B.faceFromImage(im);URL.revokeObjectURL(url);drawFace(viewId,field);const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Face saved -- it walks the route now.';});};};
+    const faceIn=(fileId,field,viewId)=>{const inp=host.querySelector(fileId);if(!inp||inp.dataset.on)return;inp.dataset.on=1;inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;run(async()=>{const B=await import('./beasts.mjs?v='+STUDIO_V);const url=URL.createObjectURL(f);const im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(Error('Could not read that photo'));im.src=url;});form.elements.namedItem(field).value=B.faceFromImage(im);URL.revokeObjectURL(url);drawFace(viewId,field);const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Face saved -- it walks the route now.';});};};
     faceIn('#beast-face-file','beastsFace','#beast-face-view');faceIn('#beast-buddy-file','beastsBuddy','#beast-buddy-view');
     const addMove=host.querySelector('#beast-add-move');if(addMove)addMove.onclick=()=>run(async()=>{const nm=String(host.querySelector('#beast-new-move').value||'').trim().toUpperCase().slice(0,16);if(!nm)throw Error('Type the attack chat came up with');const el=form.elements.namedItem('beastsMoves');const cur=String(el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const base=cur.length?cur:['LOWBALL','PRICE CHECK','SLEEVE UP','BENT CORNER'];el.value=[...base.slice(0,3),nm].join('\n');const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);host.querySelector('#beast-new-move').value='';status.textContent='New attack: '+nm+' (slot 4).';});
     // THE GAME, in one tap (the setting is saved and the screens switch).
@@ -226,7 +228,7 @@
       status.textContent='On Whatnot: '+done+' of '+todo.length+' spots listed in your show.'+(errs.length?' Problems: '+[...new Set(errs)].slice(0,2).join(' / '):'');
     });
     // Ready-made lists fill the names.
-    const pre=host.querySelector('#vm-preset');if(pre)pre.onchange=()=>run(async()=>{if(!pre.value)return;const V=await import('./vending.mjs');const list=V.SPOT_PRESETS[pre.value]||[];host.querySelector('#vm-names').value=list.join('\n');host.querySelector('#vm-n').value=list.length;status.textContent=list.length+' names in -- set the price and tap MAKE THE SPOTS.';});
+    const pre=host.querySelector('#vm-preset');if(pre)pre.onchange=()=>run(async()=>{if(!pre.value)return;const V=await import('./vending.mjs?v='+STUDIO_V);const list=V.SPOT_PRESETS[pre.value]||[];host.querySelector('#vm-names').value=list.join('\n');host.querySelector('#vm-n').value=list.length;status.textContent=list.length+' names in -- set the price and tap MAKE THE SPOTS.';});
     // The break board by hand: the spot's number ("5" or "#5").
     const slotOf=v=>{const n=Number(String(v||'').replace(/^#/,'').trim());return Number.isInteger(n)&&n>0?n-1:-1;};
     vmb('#vm-who-go',()=>{const i=slotOf(host.querySelector('#vm-who-slot').value);if(i<0||!(machineCtl.items||[])[i])throw Error('Which spot? (its number)');return {buyer:{i,name:String(host.querySelector('#vm-who-name').value||'')}};},'Name on the board.');
@@ -398,7 +400,7 @@
   async function machineDo(body){if(connectedStore){took(await api('machine',body));return;}
     const m={on:false,items:[],...machineCtl},items=m.items=[...m.items],open=(i,dir)=>{for(let k=1;k<=items.length;k++){const j=(((i+dir*k)%items.length)+items.length)%items.length;if(!items[j].sold)return j;}return -1;};
     if(body.load==='stage'){m.items=[stage.now,...(stage.next||[])].filter(x=>x&&x.title).map(x=>({...x,sold:false}));m.kind='items';m.up=0;}
-    if(body.spots){const V=await import('./vending.mjs');m.items=V.makeSpots(body.spots);if(!m.items.length)throw Error('How many spots? (or one name a line)');for(const it of m.items){const w=chanceFn?.(it.title);if(w)throw Error('"'+w+'" reads as a game of chance -- Whatnot doesn\'t allow those.');}m.kind='spots';m.up=0;}
+    if(body.spots){const V=await import('./vending.mjs?v='+STUDIO_V);m.items=V.makeSpots(body.spots);if(!m.items.length)throw Error('How many spots? (or one name a line)');for(const it of m.items){const w=chanceFn?.(it.title);if(w)throw Error('"'+w+'" reads as a game of chance -- Whatnot doesn\'t allow those.');}m.kind='spots';m.up=0;}
     if(body.buyer&&items[body.buyer.i]){const nm=String(body.buyer.name||'').replace(/^@/,'').replace(/[^\w.\-]/g,'').slice(0,30);const {buyer,...rest}=items[body.buyer.i];items[body.buyer.i]=nm?{...rest,buyer:nm,sold:true}:rest;}
     if(Number.isInteger(body.toggle)&&items[body.toggle])items[body.toggle]={...items[body.toggle],sold:!items[body.toggle].sold};
     if(body.mode)m.mode=body.mode;if(typeof body.on==='boolean')m.on=body.on;if(typeof body.title==='string')m.title=body.title.trim().slice(0,30).toUpperCase();
@@ -480,9 +482,10 @@
 
   // A pretend sale in the preview only -- nothing is sent.
   let demo=0,demoGross=0,demoBig=0,demoDungeon=null,dungeonLib=null,demoMove=null,demoBeasts=null,beastsLib=null;
-  import('./beasts.mjs').then(m=>{beastsLib=m;}).catch(()=>{});
-  import('./live-studio-dungeon.mjs').then(m=>{dungeonLib=m;}).catch(()=>{});
-  host.querySelector('#mana-demo').onclick=()=>{const v=values(),amount=v.gameMode==='beasts'?[4,3,5,4,6][demo%5]:[12,45,8,150,25][demo%5]; // beasts: small steps, so the demo walks into the tall grass and fightsdemo++;
+  import('./beasts.mjs?v='+STUDIO_V).then(m=>{beastsLib=m;}).catch(()=>{});
+  import('./live-studio-dungeon.mjs?v='+STUDIO_V).then(m=>{dungeonLib=m;}).catch(()=>{});
+  host.querySelector('#mana-demo').onclick=()=>{try{demoSale();}catch(e){status.textContent='Demo: '+(e?.message||e)+' -- reload the dashboard.';}};
+  const demoSale=()=>{const v=values(),amount=v.gameMode==='beasts'?[4,3,5,4,6][demo%5]:[12,45,8,150,25][demo%5]; demo++; // beasts: small steps, so the demo walks into the tall grass and fights
     if(demo===1){demoGross=stats?.gross||0;demoBig=stats?.biggest||0;}
     const wasAlive=demoGross<v.bossGoal;demoGross+=amount;demoBig=Math.max(demoBig,amount);const hp=Math.max(0,v.bossGoal-demoGross);
     const fake={gross:demoGross,sold:(stats?.sold||0)+demo,biggest:demoBig,combo:demo,lastSaleAt:Date.now(),giveaways:0,boss:{name:v.bossName,goal:v.bossGoal,hp,pct:hp/v.bossGoal*100,defeated:hp<=0,reward:v.bossReward}};
