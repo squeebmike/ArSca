@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=1').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=2').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -248,6 +248,21 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       // THE CLOSE-UP (2026-11-12: "item images need to be clearer, so we can tell
       // what they are"): the item you're walking right past, sharp, with its name and price.
       let picItems = [], cardAt = -1, picUrls = [], miniOn = true;
+      // THE VENDING MACHINE (2026-11-13): for breaks and surprise sets -- the items
+      // in rows of three, scrolling past, each SOLD OUT or still lit; on the green
+      // screen behind the hosts while it's on (the remote's VENDING MACHINE).
+      const vm = Object.assign(document.createElement('div'), { id: 'shed-vend', hidden: true }); document.body.append(vm);
+      vm.innerHTML = '<div class="vm-top"><b class="vm-title"></b><span class="vm-count"></span></div><div class="vm-glass"><div class="vm-rows"></div></div><div class="vm-tray">PUSH</div>';
+      let vmKey = '', vmY = 0, vmLast = 0;
+      const drawMachine = mc => {
+        vm.hidden = !(mc && mc.on && mc.items?.length); if (vm.hidden) return;
+        const key = JSON.stringify(mc); if (key !== vmKey) { vmKey = key; vm.querySelector('.vm-title').textContent = mc.title || 'MANA POCKET VENDING';
+          const sold = mc.items.filter(i => i.sold).length; vm.querySelector('.vm-count').textContent = (mc.items.length - sold) + ' LEFT  ·  ' + sold + ' SOLD';
+          const slot = (it, i) => '<div class="vm-slot' + (it.sold ? ' sold' : '') + '"><div class="vm-pic">' + (it.image ? '<img alt="" src="' + img(it.image).replace(/"/g, '&quot;') + '">' : '<i>' + String(it.title || '').replace(/[<&]/g, '') + '</i>') + '</div><div class="vm-coil"></div><div class="vm-tag"><b>' + String.fromCharCode(65 + Math.floor(i / 3) % 26) + (i % 3 + 1) + '</b>' + (it.sold ? 'SOLD OUT' : Number(it.price) > 0 ? '$' + Number(it.price).toFixed(0) : 'AVAILABLE') + '</div><em class="vm-lamp">SOLD OUT</em></div>';
+          const html = mc.items.map(slot).join(''); vm.querySelector('.vm-rows').innerHTML = html + (mc.items.length > 9 ? html : ''); vmY = 0; }
+      };
+      // The rows scroll slowly upward and around (when there are more than nine).
+      (function scroll(now) { requestAnimationFrame(scroll); if (vm.hidden) return; const rows = vm.querySelector('.vm-rows'), half = rows.scrollHeight / 2; if (rows.children.length <= 9) { rows.style.transform = ''; return; } vmY += (now - (vmLast || now)) / 1000 * 26; vmLast = now; if (vmY >= half) vmY -= half; rows.style.transform = 'translateY(' + (-vmY) + 'px)'; })(0);
       // THE MINI-MAP (2026-11-12): top left, filling in as you walk.
       const mini = Object.assign(document.createElement('canvas'), { id: 'shed-mini' }), miniCtx = mini.getContext('2d'); document.body.append(mini);
       setInterval(() => { mini.hidden = !miniOn || !stats?.dungeon; if (!mini.hidden) fp?.drawMap?.(miniCtx, { cell: 7 }); }, 300);
@@ -268,7 +283,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       let settings0 = {}, lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
-        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode !== 'beasts'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; paint(); };
+        if (m.type === 'attack') { const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode !== 'beasts'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) drawMachine(m.machine); paint(); };
       setInterval(paint, 5000);
       setInterval(() => { const d = stats?.dungeon; if (d) { let grab = null; for (const n of [stage.now, ...(stage.next || [])]) if (n && n.image && (!grab || (Number(n.price) || 0) > (Number(grab.price) || 0))) grab = n; taunt(d, grab); } }, 1000);
       build(850);
@@ -288,6 +303,6 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     socket.onclose = ev => { if (ev.code === 1008) return; setTimeout(connect, Math.min(30000, 1000 * 2 ** Math.min(retry++, 5))); };
   }
   // Live Studio's preview: the dashboard sends the state (same page only), no socket.
-  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type === 'mana-attack') { onState({ type: 'attack' }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics }; onState(pending); });
+  if (preview) window.addEventListener('message', ev => { if (ev.source !== parent || ev.origin !== location.origin) return; if (ev.data?.type === 'mana-camera') { onState({ type: 'camera', cam: ev.data.cam }); return; } if (ev.data?.type === 'mana-attack') { onState({ type: 'attack' }); return; } if (ev.data?.type !== 'mana-preview') return; pending = { settings: ev.data.settings, stats: ev.data.stats, stage: ev.data.stage, pics: ev.data.pics, machine: ev.data.machine }; onState(pending); });
   else if (!demo) connect();
 }

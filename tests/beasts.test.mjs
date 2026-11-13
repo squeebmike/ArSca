@@ -48,8 +48,19 @@ assert.ok(read('.github/workflows/deploy-worker.yml').includes('scripts/beasts.m
 // The host and Champ, drawn (2026-11-13: "put us in there recognizable"): 16 x 20 a direction, four greens.
 for (const who of ['host', 'champ']) for (const d of ['down', 'up', 'side']) for (const fr of B.PEOPLE[who][d]) { assert.equal(fr.length, 16, 'chibi: 16 x 16'); assert.ok(fr.every(r => r.length === 16 && /^[.0-3]+$/.test(r)), who + ' ' + d); }
 assert.equal(typeof B.drawTrainer, 'function', 'the trainers for battles');
-assert.match(src, /drawTrainer\(img, W, 2 - slide, 38, 'host'\); drawTrainer\(img, W, 40 - slide, 38, 'champ'\);/, 'both of you open every battle');
+assert.match(src, /drawTrainer\(img, W, 2 - slide, 54, 'host'\); drawTrainer\(img, W, 40 - slide, 54, 'champ'\);/, 'both of you open every battle');
 assert.match(read('scripts/live-studio-overlay.mjs'), /battle\?\.setRival\(c\)/, 'the rival trainer is the boss, in four greens');
 assert.notDeepEqual(B.PEOPLE.host.down, B.PEOPLE.champ.down);
 assert.match(src, /drawSprite\(img, w, sx\(p\.x\), sy\(p\.y\) \+ 4, 'host'/, 'you walk the route'); assert.match(src, /drawSprite\(img, w, sx\(q\.x\), sy\(q\.y\) \+ 6, 'champ'/, 'Champ a step behind');
+// Chat picks the starter; the classic layout (theirs facing you top right, yours from behind bottom left); the vending machine.
+assert.deepEqual(B.STARTERS, ['SLABBIT', 'TOPLOADON', 'SLEEVIL']);
+assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'SLEEVIL' }).mine.name, 'SLEEVIL');
+assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'NOPE' }).mine.name, B.STARTER, 'only a real starter');
+assert.notDeepEqual(B.makeBeast('SLABBIT', { back: true }).px, B.makeBeast('SLABBIT').px, 'yours from behind');
+assert.match(src, /drawBeast\(beast\(b\.mine\.name, true\), 30 \+ lunge, 46/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name\), 164 \+ shake, 24/, 'theirs top right');
+assert.match(room, /else if \(kind === 'starter'\) options = STARTERS\.map/); assert.match(room, /if \(v\.kind === 'starter'\) \{ s\.beastStarter = opt\.id;/);
+assert.match(room, /setMachine\(input = \{\}\) \{/); assert.match(room, /this\.machineSold\(s, event\.data, moved \? wasNow : null\)/, 'a sale marks its item SOLD OUT');
+assert.match(read('scripts/live-studio-api.mjs'), /room\.setMachine\(body\)/);
+assert.match(bg, /const drawMachine = mc =>/); assert.ok(read('shed-background.html').includes('#shed-vend .vm-slot.sold .vm-lamp{display:block}'));
+assert.ok(ctl.includes('id="vm-load"') && ctl.includes('data-vote="starter"'));
 console.log('beasts: original beasts and moves from names, the route, battles, chat\'s attacks, your face, wiring passed');

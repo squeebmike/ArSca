@@ -17,7 +17,7 @@ export async function handleLiveStudio(request,env,deps,url) {
   }
   if (request.method!=='POST') return deps.json({ok:false,error:'Not found'},404);
   // A prepped show's whole lineup (up to 60) fits.
-  const parsed=await deps.readJsonWithLimit(request,['/live-studio/stage','/live-studio/pics'].includes(url.pathname)?65536:8192);
+  const parsed=await deps.readJsonWithLimit(request,['/live-studio/stage','/live-studio/pics','/live-studio/machine'].includes(url.pathname)?65536:8192);
   if (parsed.error) return parsed.error;
   const body=parsed.data || {};
   // A chest that opened: its item goes into the Whatnot show as a $1-start
@@ -35,6 +35,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/revoke') return deps.json(await room.revokeOverlay());
     if (url.pathname==='/live-studio/stage') return deps.json({ok:true,...await room.setStage(body.stage)});
     if (url.pathname==='/live-studio/pics') return deps.json({ok:true,...await room.setPics(body.pics)});
+    if (url.pathname==='/live-studio/machine') return deps.json({ok:true,...await room.setMachine(body)});
     // The Shed Dungeon: a follow / share / bookmark tapped in, or a fix.
     if (url.pathname==='/live-studio/camera') return deps.json({ok:true,...room.camera(body)});
     if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await withChest(await room.dungeonTap(String(body.kind||'')))});

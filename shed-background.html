@@ -12,7 +12,27 @@ body{width:1080px;height:1920px;position:relative}
 #shed-taunt{position:absolute;left:50%;top:600px;max-width:640px;transform:translateX(-50%) scale(.8);opacity:0;padding:16px 22px;background:#fff;color:#111;border:5px solid #111;border-radius:22px;font:900 30px/1.15 system-ui,sans-serif;text-align:center;box-shadow:0 8px 0 #000a;transition:opacity .3s,transform .3s;pointer-events:none}
 #shed-taunt.on{opacity:1;transform:translateX(-50%) scale(1)}
 #shed-taunt::after{content:'';position:absolute;left:50%;top:-30px;border:14px solid transparent;border-bottom:16px solid #111;transform:translateX(-50%)}
+#shed-vend{position:absolute;left:170px;top:150px;width:740px;height:680px;background:linear-gradient(#3b1670,#1d0b3a);border:10px solid #0b0612;border-radius:26px;box-shadow:inset 0 0 0 6px #ff3fd2,0 0 40px #ff3fd288;display:flex;flex-direction:column;padding:14px;box-sizing:border-box;font-family:system-ui,sans-serif}
+#shed-vend[hidden]{display:none}
+#shed-vend .vm-top{display:flex;justify-content:space-between;align-items:center;background:#0b0612;border:4px solid #ffd84a;border-radius:12px;padding:10px 16px;margin-bottom:12px}
+#shed-vend .vm-title{font:900 34px/1 system-ui,sans-serif;color:#ffd84a;letter-spacing:2px;text-shadow:0 0 12px #ffd84a}
+#shed-vend .vm-count{font:800 22px system-ui,sans-serif;color:#9dff6a}
+#shed-vend .vm-glass{flex:1;overflow:hidden;border-radius:12px;background:linear-gradient(115deg,#ffffff1c 0 18%,#0000 18% 100%),#120726;border:5px solid #0b0612;padding:10px;box-shadow:inset 0 0 30px #000}
+#shed-vend .vm-rows{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;will-change:transform}
+#shed-vend .vm-slot{position:relative;height:190px;background:#1d0b3a;border:3px solid #6b3fbf;border-radius:10px;display:flex;flex-direction:column;align-items:center;padding:6px}
+#shed-vend .vm-pic{flex:1;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#shed-vend .vm-pic img{max-width:100%;max-height:118px;object-fit:contain;filter:drop-shadow(0 4px 6px #000)}
+#shed-vend .vm-pic i{color:#fff;font:700 16px system-ui;text-align:center}
+#shed-vend .vm-coil{width:90%;height:8px;background:repeating-linear-gradient(90deg,#c8c8d0 0 6px,#6a6a76 6px 12px);border-radius:4px;margin:4px 0}
+#shed-vend .vm-tag{font:800 18px system-ui;color:#fff;background:#0b0612;border-radius:6px;padding:3px 10px;display:flex;gap:8px}
+#shed-vend .vm-tag b{color:#ffd84a}
+#shed-vend .vm-lamp{display:none;position:absolute;top:40%;left:50%;transform:translate(-50%,-50%) rotate(-8deg);font:900 26px system-ui;color:#fff;background:#e0213a;border:3px solid #fff;border-radius:8px;padding:4px 10px;box-shadow:0 0 18px #ff2a4f;font-style:normal}
+#shed-vend .vm-slot.sold{border-color:#4a2a2a}
+#shed-vend .vm-slot.sold img{filter:grayscale(1) brightness(.45)}
+#shed-vend .vm-slot.sold .vm-lamp{display:block}
+#shed-vend .vm-slot.sold .vm-tag{color:#ff8a9a}
+#shed-vend .vm-tray{margin-top:12px;height:60px;background:#0b0612;border-radius:10px;border:4px solid #6b3fbf;color:#6b3fbf;font:900 22px system-ui;display:flex;align-items:center;justify-content:center;letter-spacing:6px}
 #shed-label{position:absolute;left:24px;bottom:24px;font:700 28px monospace;color:#fff;text-shadow:3px 3px 0 #000}
 </style></head>
 <body><canvas id="shed" width="270" height="480" aria-label="Shed background"></canvas><div id="shed-label"></div>
-<script type="module" src="scripts/shed-background.mjs?v=25"></script></body></html>
+<script type="module" src="scripts/shed-background.mjs?v=26"></script></body></html>
