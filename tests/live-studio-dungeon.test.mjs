@@ -272,9 +272,9 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
 // PROPS IN FRONT (shed junk and chests slide past in front of the hosts).
 {
   assert.match(controls, /<section class="mana-remote" aria-label="Show remote">/);
-  assert.match(controls, /<details class="mana-all" id="mana-all"><summary>⚙ ALL SETTINGS/);
+  assert.match(controls, /<details class="mana-all mana-sec" id="mana-all"><summary>⚙ Settings<\/summary>/);
   for (const t of ['#mana-taps [data-tap=follow]', '#mana-vote-open [data-vote=dig]', '#mana-trivia', '#mana-load']) assert.ok(controls.includes('data-click="' + t + '"'), t);
-  assert.ok(controls.indexOf('id="mana-vote-pick"') < controls.indexOf('<details class="mana-all"'), 'the winner buttons are in the remote');
+  assert.ok(controls.indexOf('id="mana-vote-pick"') < controls.indexOf('<details class="mana-all mana-sec"'), 'the winner buttons are in the remote');
   assert.ok(controls.includes("host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(b)host.querySelector(b.dataset.click)?.click();};"));
   assert.equal(DUNGEON_DEFAULTS.foreground, true);
   const { drawSprite, SPRITE_KINDS } = await import('../scripts/shed-crawl-fp.mjs');

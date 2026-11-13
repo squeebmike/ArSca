@@ -41,9 +41,9 @@
   <div id="mana-found" class="mana-found"></div>
   <div id="mana-stage" class="mana-stage"></div>
   <div class="mana-row"><button type="button" id="mana-next">NEXT ITEM ▶</button><button type="button" id="mana-stage-clear">CLEAR NOW PLAYING</button></div>
-  <small>Chat votes in Whatnot's chat; the winner buttons show up at the top of this box. Everything else is in ALL SETTINGS below.</small>
+  <small>Chat votes in Whatnot's chat; the winner buttons show up at the top of this box. Everything else is in ⚙ Settings below.</small>
   </section>
-  <details class="mana-all" id="mana-all"><summary>⚙ ALL SETTINGS — set these up before the show</summary>
+  <details class="mana-all mana-sec" id="mana-all"><summary>⚙ Settings</summary><small>Set these up before the show. Tap a section to open it.</small>
   <form id="mana-form">
   <h3>Show</h3>
   <div class="mana-row"><button type="button" id="mana-show">USE LIVE / NEXT SHOW</button><span id="mana-show-name"></span></div>
