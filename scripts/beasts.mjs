@@ -195,10 +195,17 @@ export function posAt(route, t) {
 // A wild beast while the floor's mana is inside an encounter (its HP is what's
 // left of that slice); the rival's beast while a boss is up. Your beast's HP is
 // the flashlight battery (sales keep it up). Beaten beasts join your shelf.
+// THE RIVALS (2026-11-13: "does the bar in the center still give wrong stuff? Leaky roof kraken?"):
+// Beasts has its own rival trainers, one a route, each with their own beast -- never the dungeon's boss.
+export const RIVALS = [['SCALPER STEVE', 'FLIPWRAITH'], ['BAGGER BEV', 'POLYBAGGON'], ['MINT MARCY', 'MINTICORE'], ['LONGBOX LOU', 'BOXJAW'], ['SLABHEAD SAL', 'GRADEGOLEM'], ['FLIPPER FRAN', 'REPRICER'], ['DOLLAR BIN DEX', 'BINRAT'], ['CGC CARLA', 'CASECRAB']];
+// The dungeon's rooms, as places on the route (2026-11-13: "Path? On pokemon"): the same vote, the same rewards, route names.
+export const PLACES = { vault: ['🪙', 'GOLDEN GROTTO'], library: ['📚', 'READING MEADOW'], armory: ['🛡️', 'SLAB RIDGE'], forge: ['🔥', 'EMBER TRAIL'], crypt: ['🕯️', 'BARGAIN BOG'], lab: ['🧪', 'VARIANT WOODS'] };
+export function placeFor(room) { const p = PLACES[room?.id || room]; return p ? { icon: p[0], name: p[1] } : { icon: room?.icon || '🌿', name: 'TALL GRASS' }; }
+export function rivalFor(floor) { const [name, beast] = RIVALS[(Math.max(1, Math.floor(Number(floor) || 1)) - 1) % RIVALS.length]; return { name, beast }; }
 export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {}) {
   if (!d) return null;
   const mine = { name: STARTERS.includes(starter) ? starter : STARTER, hp: Math.max(0.08, Math.min(1, battery)) };
-  if (d.phase === 'boss') { const rival = makeBeast((bossName || d.boss?.name || 'RIVAL').replace(/^THE\s+/, '') + 'MON').name; return { kind: 'rival', k: 3, mine, foe: { name: rival.slice(0, 12), hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: d.boss?.name || 'THE RIVAL' }; }
+  if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name }; }
   const pct = Math.max(0, Math.min(1, (d.pct || 0) / 100));
   for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k), hp: 1 - (pct - a) / (b - a) } }; }
   return null;
@@ -351,7 +358,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
       drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
       if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival') drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (it < 0.62) { if (b.kind !== 'rival' || !rival) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;

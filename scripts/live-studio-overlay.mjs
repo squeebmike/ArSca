@@ -123,8 +123,9 @@ function paintDungeon(d){
   const bm=beastMode();
   $('mana-title-text').textContent=bm?'ROUTE '+d.floor+' · LONG BOX BEASTS':'FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
   $('mana-flask-meter').textContent=d.phase==='boss'?(bm?'RIVAL HP ':'BOSS HP ')+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
-  $('mana-cbar-sub').textContent=bm?(d.phase==='boss'?'EVERY SALE IS AN ATTACK ON '+d.boss.name+'\'S BEAST!':usd(Math.max(0,d.goal-d.mana))+' MORE TO BATTLE '+d.boss.name+'!'):d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
-  $('mana-dungeon-floor').textContent=(bm?'ROUTE ':'FLOOR ')+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
+  const rv=bm&&beastsLib?beastsLib.rivalFor(d.floor):{name:'THE RIVAL'};
+  $('mana-cbar-sub').textContent=bm?(d.phase==='boss'?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S BEAST!':usd(Math.max(0,d.goal-d.mana))+' MORE TO BATTLE '+rv.name+'!'):d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
+  $('mana-dungeon-floor').textContent=(bm?'ROUTE ':'FLOOR ')+d.floor;const rm=d.room&&bm&&beastsLib?beastsLib.placeFor(d.room):d.room;$('mana-dungeon-shed').textContent=(bm?'LONG BOX BEASTS':d.shed)+(rm?' · '+rm.icon+' '+rm.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
@@ -255,12 +256,12 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=3').then(m=>{beastsLib=m;const d=dg();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=4').then(m=>{beastsLib=m;const d=dg();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=1').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)vendDraw(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
-function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m);}
+import('./vending.mjs?v=2').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 function paintBeasts(d){
   const cv=$('beast-battle');if(!cv)return;
@@ -270,7 +271,6 @@ function paintBeasts(d){
   if(!battle)battle=beastsLib.createBattle(cv,{scale:3});
   battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0});
   // The rival trainer: the boss's own art, in four greens.
-  if(b.kind==='rival'&&rivalArt!==d.boss.character){rivalArt=d.boss.character;const c=document.createElement('canvas');void drawBoss(c,rivalArt,{size:48}).then(ok=>{if(ok)battle?.setRival(c);});}
   cv.style.top=Math.max(0,Number(settings.y)-560)+'px';
   if(!beastsOn){battle.start();beastsOn=true;}
 }
@@ -374,7 +374,7 @@ function revealItem(e){
 // An open door vote shows on its own.
 function paintVote(){
   const v=stats.vote,d=dg(),el=$('mana-vote');
-  const doors=!v&&d&&d.doors?{kind:'door',options:d.doors.map(r=>({label:r.icon+' '+r.name}))}:null,show=v||doors;
+  const pl=r=>beastMode()&&beastsLib?beastsLib.placeFor(r):r,doors=!v&&d&&d.doors?{kind:'door',options:d.doors.map(r=>({label:pl(r).icon+' '+pl(r).name}))}:null,show=v||doors;
   el.classList.toggle('mana-hidden',!show||settings.visible===false);
   if(!show)return;
   el.classList.toggle('trivia',show.kind==='trivia');el.style.top=Math.max(0,settings.y-330)+'px';
@@ -602,7 +602,7 @@ function connect() {
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
-    if(m.machine)paintMachine(m.machine);
+    if(m.machine||m.settings)paintMachine(m.machine||machine);
     if(m.stats)paintStats(m.stats,m.type==='effect'||m.type==='stats');
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};
   socket.onclose=ev=>{if(ev.code===1008)return;setTimeout(connect,Math.min(30000,1000*2**Math.min(retry++,5)));};
@@ -633,4 +633,4 @@ if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.o
   if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);front?.setCamera?.(ev.data.cam);return;}
   // The remote's TEST A BOSS ATTACK (preview only).
   if(ev.data?.type==='mana-attack'){const d=stats.dungeon,b=d?.boss?{name:d.boss.name,character:d.boss.character}:stats.boss;if(b)bossMove(b,2);return;}
-  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.machine)paintMachine(ev.data.machine);if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
+  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});

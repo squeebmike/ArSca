@@ -31,6 +31,8 @@
   <div class="mana-row"><label>HOW MANY<input id="vm-n" type="number" min="1" max="120" value="75"></label><label>PRICE EACH $<input id="vm-price" type="number" min="0" step="0.01" placeholder="5"></label><label>CALL THEM<input id="vm-prefix" maxlength="20" value="SPOT"></label></div>
   <label>OR ONE NAME A LINE<textarea id="vm-names" rows="5" placeholder="SPIDER-MAN&#10;BATMAN&#10;WOLVERINE"></textarea></label>
   <button type="button" id="vm-make" style="width:100%;min-height:52px;font-weight:800">🎟 MAKE THE SPOTS</button>
+  <small>Saved lists (on this device): save the one above with a name, load it next time.</small>
+  <div class="mana-row"><select id="vm-saved"><option value="">— SAVED LISTS —</option></select><button type="button" id="vm-load-list">LOAD</button><button type="button" id="vm-save-list">💾 SAVE THIS LIST</button><button type="button" id="vm-del-list">🗑</button></div>
   </details>
   <div class="mana-row"><input id="vm-title" maxlength="30" placeholder="MACHINE NAME (e.g. SURPRISE SET #3)"><button type="button" id="vm-title-go">NAME IT</button></div>
   <div id="vm-list" class="vm-list"></div>
@@ -176,6 +178,13 @@
     vmb('#vm-load',{load:'stage'},'Machine loaded from NOW PLAYING + NEXT UP.');vmb('#vm-show',{on:true},'The machine is on the green screen.');vmb('#vm-hide',{on:false},'Machine hidden.');
     vmb('#vm-title-go',()=>({title:String(host.querySelector('#vm-title').value||'')}),'Machine named.');
     host.querySelectorAll('[data-vm-mode]').forEach(b=>{const m=b.dataset.vmMode;vmb('[data-vm-mode="'+m+'"]',{mode:m,on:true},m==='front'?'Machine full screen, in front of you.':m==='full'?'Machine full screen, behind you.':'Machine small, behind you.');});
+    // SAVED SPOT LISTS: the break's 75 characters, typed once, used every week (kept on this device).
+    const SL='mana-spot-lists',lists=()=>{try{return JSON.parse(localStorage.getItem(SL)||'{}')||{};}catch{return {};}},putLists=o=>{try{localStorage.setItem(SL,JSON.stringify(o));}catch{}};
+    const fillSaved=()=>{const sel=host.querySelector('#vm-saved');if(!sel)return;const o=lists();sel.replaceChildren(new Option('— SAVED LISTS —',''),...Object.keys(o).sort().map(k=>new Option(k+' ('+(o[k].names?o[k].names.split('\n').filter(Boolean).length:o[k].count)+')',k)));};fillSaved();
+    const q=id=>host.querySelector(id);
+    if(q('#vm-save-list'))q('#vm-save-list').onclick=()=>{const name=String(prompt('Name this list (e.g. MARVEL 75)')||'').trim().toUpperCase().slice(0,30);if(!name)return;const o=lists();o[name]={count:Number(q('#vm-n').value)||0,price:Number(q('#vm-price').value)||0,prefix:q('#vm-prefix').value,names:q('#vm-names').value};putLists(o);fillSaved();q('#vm-saved').value=name;status.textContent='Saved: '+name;};
+    if(q('#vm-load-list'))q('#vm-load-list').onclick=()=>{const it=lists()[q('#vm-saved').value];if(!it){status.textContent='Pick a saved list first.';return;}q('#vm-n').value=it.count||'';q('#vm-price').value=it.price||'';q('#vm-prefix').value=it.prefix||'SPOT';q('#vm-names').value=it.names||'';status.textContent='Loaded -- tap MAKE THE SPOTS.';};
+    if(q('#vm-del-list'))q('#vm-del-list').onclick=()=>{const k=q('#vm-saved').value;if(!k||!confirm('Delete the list '+k+'?'))return;const o=lists();delete o[k];putLists(o);fillSaved();};
     vmb('#vm-prev',{step:-1},'Previous slot is up.');vmb('#vm-next',{step:1},'Next slot is up.');vmb('#vm-sold-up',{soldUp:true},'Sold -- the next slot is up.');
     vmb('#vm-make',()=>({spots:{count:Number(host.querySelector('#vm-n').value)||0,price:Number(host.querySelector('#vm-price').value)||0,prefix:String(host.querySelector('#vm-prefix').value||'SPOT'),names:String(host.querySelector('#vm-names').value||'')},on:true}),'Spots made -- they are in the machine.');
     // TEST A BOSS ATTACK (2026-11-12): the preview only -- into the arena, the boss pulls its move.
