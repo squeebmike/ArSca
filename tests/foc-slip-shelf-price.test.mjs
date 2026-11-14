@@ -11,7 +11,7 @@ const service = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
 const fn = n => { const s = dash.indexOf('function ' + n + '('); assert.ok(s >= 0, n); return dash.slice(s, dash.indexOf('\n}\n', s) + 2); };
 const line = n => { const s = dash.indexOf('function ' + n + '('); return dash.slice(s, dash.indexOf('\n', s) + 1); };
 const ctx = { state: { slip: { picks:{}, qtys:{}, prices:{} } } };
-vm.runInNewContext([line('slipLineKey'), line('slipPrice'), line('focSlipPrice'), 'this.api = { slipPrice, focSlipPrice };'].join('\n'), ctx);
+vm.runInNewContext([line('slipLineKey'), line('slipIsRatio'), line('slipRatioDefault'), line('slipHasOwnCustomerPrice'), line('slipPrice'), line('focSlipPrice'), 'this.api = { slipPrice, focSlipPrice };'].join('\n'), ctx);
 const { slipPrice, focSlipPrice } = ctx.api;
 const priced = { code:'761941', title:'ABSOLUTE BATMAN #25 CVR B', qty:20, cover:{ customerPrice:7.99, coverPrice:6.99 } };
 const unpriced = { code:'725130', title:'THUNDERCATS CHEETARA #2 CVR A', qty:5, cover:{ customerPrice:0, coverPrice:4.99 } };

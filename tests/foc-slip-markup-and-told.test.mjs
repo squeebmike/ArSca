@@ -18,7 +18,7 @@ const ctx = {
   esc: s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'),
 };
 vm.runInNewContext([
-  line('slipLineKey'), line('slipPrice'), line('focSlipPrice'), fn('slipMarkupRound'), line('slipMarkupSettings'), line('slipOwnPrice'), fn('focSlipMarkup'), fn('slipToldHtml'),
+  line('slipLineKey'), line('slipIsRatio'), line('slipRatioDefault'), line('slipHasOwnCustomerPrice'), line('slipPrice'), line('focSlipPrice'), fn('slipMarkupRound'), line('slipMarkupSettings'), line('slipOwnPrice'), fn('focSlipMarkup'), fn('slipToldHtml'),
   'function toast_dash(m){toasts.push(m);} function renderSlip(){this.renders++;}',
   'this.api = { slipPrice, focSlipPrice, slipMarkupRound, slipMarkupSettings, focSlipMarkup, slipToldHtml };',
 ].join('\n'), ctx);
