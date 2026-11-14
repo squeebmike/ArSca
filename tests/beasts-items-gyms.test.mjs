@@ -77,7 +77,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
 }
 // Graphics settings (2026-11-14): GBC (four greens) or GBA (full colour); your beast follows you.
 {
-  assert.deepEqual([...B.GFX], ['gbc', 'gba']);
+  assert.deepEqual([...B.GFX], ['gbc', 'gba', 'nds', '3ds']);
   for (const t of Object.keys(B.TILE_RAMPS)) assert.equal(B.TILE_RAMPS[t].length, 4, 'tile ' + t);
   for (let t = 0; t <= 24; t++) assert.ok(B.TILE_RAMPS[t], 'every tile has GBA colours: ' + t);
   assert.deepEqual(B.beastRamp('SLABBIT'), B.beastRamp('slabbit'), 'a beast keeps its colours');
@@ -97,4 +97,13 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   assert.ok(ov.includes("fisterView.mode('goo',e.kind==='fistergoo')") && ctl.includes("['fistergoo','🖤 SYMBIOTE FISTER']"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.ok(M.EFFECTS.includes('fistergoo'));
   console.log('Symbiote Fister: passed');
+}
+// DS and 3DS (2026-11-14): the touch panel; the tilted route; 3D beasts in the battle.
+{
+  const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
+  assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
+  assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=1')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
+  console.log('DS / 3DS: passed');
 }

@@ -405,7 +405,9 @@ let PAL = GB;
 // like the corresponding games"): 'gbc' is the four greens; 'gba' is full colour -- each kind of ground its own four
 // colours, the people and the beasts in colour (each beast its own hue, from its name), a bright battle screen.
 // Original colours and art; nothing copied from any game.
-export const GFX = ['gbc', 'gba'];
+// 'nds': the GBA colours with a DS-style touch panel in the battle (big rounded move buttons); '3ds': the route tilted
+// in 3D and the battle with real 3D beasts (scripts/beasts-3d.mjs).
+export const GFX = ['gbc', 'gba', 'nds', '3ds'];
 const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const ramp = (...hs) => hs.map(hex);
 export const TILE_RAMPS = {
@@ -557,7 +559,7 @@ function followerBeast(name) { if (!followerCache.has(name)) followerCache.set(n
 export function createWorld(canvas, { w = 240, h = 189 } = {}) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
-  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '';
+  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '', flat = null;
   function set(s) {
     if (first || s.floor !== state.floor) { route = routeFor(s.floor); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
     const wasBattle = battleOf(state), isBattle = battleOf(s);
@@ -573,7 +575,7 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     // Picking things up as you pass them: the route's items, then chat's gifts.
     if (shown > lastShown) { const got = route.items.filter(it => it.t > lastShown && it.t <= shown).pop(), gift = drops.filter(d => d.t > lastShown && d.t <= shown).pop(); if (gift) { said = 'CHAT GIFT: ' + String(gift.kind).toUpperCase().slice(0, 8) + '! +STAMINA'; saidAt = now; } else if (got) { said = ITEM_SAYS[got.kind] || 'FOUND SOMETHING!'; saidAt = now; } }
     lastShown = shown;
-    const gba = gfx === 'gba', day = tod || timeOfDay(); PAL = gba ? GB : PALETTES[day] || GB;
+    const gba = gfx !== 'gbc', day = tod || timeOfDay(); PAL = gba ? GB : PALETTES[day] || GB;
     // Facing the way you're walking (2026-11-13: "change directions"): across on a turn, up on a straight run.
     if (walking) { step = Math.floor(tm * 6) % 2; dir = p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : p.dy < 0 ? 'up' : p.dy > 0 ? 'down' : dir; } else step = 0;
     // The camera follows you (kept inside the map).
@@ -609,7 +611,14 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     PAL = GB;
     // GBA colours at sunset and night: the whole screen warmed or cooled.
     const tint = gba && TINTS[day]; if (tint) for (let i = 0; i < img.data.length; i += 4) { img.data[i] *= tint[0]; img.data[i + 1] *= tint[1]; img.data[i + 2] *= tint[2]; }
-    ctx.putImageData(img, 0, 0);
+    if (gfx === '3ds') {
+      // 3DS: the route tilted away from you -- each row narrower toward the top, a sky and haze over the far edge.
+      flat ||= Object.assign(document.createElement('canvas'), { width: w, height: h }); flat.getContext('2d').putImageData(img, 0, 0);
+      const sky = ctx.createLinearGradient(0, 0, 0, h * 0.5); sky.addColorStop(0, day === 'night' ? '#1a2350' : day === 'sunset' ? '#f2a46a' : '#8fd0ff'); sky.addColorStop(1, day === 'night' ? '#3a4a80' : '#d8f0ff');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h); ctx.imageSmoothingEnabled = false;
+      for (let y = 0; y < h; y++) { const s = 0.6 + 0.4 * (y / h), w2 = w * s; ctx.drawImage(flat, 0, y, w, 1, (w - w2) / 2, y, w2, 1); }
+      const haze = ctx.createLinearGradient(0, 0, 0, h * 0.35); haze.addColorStop(0, 'rgba(230,244,255,.55)'); haze.addColorStop(1, 'rgba(230,244,255,0)'); ctx.fillStyle = haze; ctx.fillRect(0, 0, w, h * 0.35);
+    } else ctx.putImageData(img, 0, 0);
   }
   return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };
 }
@@ -634,7 +643,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
   function words(line) { const S = scale, U = gfx === 'gba' ? UI_RAMP : GB; ctx.fillStyle = `rgb(${U[3]})`; ctx.fillRect(0, 106 * S, W * S, 54 * S); ctx.fillStyle = `rgb(${U[0]})`; ctx.fillRect(2 * S, 108 * S, (W - 4) * S, 50 * S); ctx.fillStyle = `rgb(${U[3]})`; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(line, 10 * S, 126 * S); }
   function frame(now) {
     raf = requestAnimationFrame(frame); if (now - last < 33) return; last = now; const tm = now / 1000;
-    const gbaB = gfx === 'gba'; PAL = gbaB ? UI_RAMP : GB;
+    const gbaB = gfx !== 'gbc', nds = gfx === 'nds' || gfx === '3ds'; PAL = gbaB ? UI_RAMP : GB;
     // GBA: a sky over a field; GBC: the plain lightest green.
     for (let i = 0; i < img.data.length; i += 4) { const y = (i / 4 / W) | 0, c = !gbaB ? GB[0] : y < 60 ? [176 + y, 216 + (y >> 1), 248] : [196, 232, 160]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; }
     if (!b) { PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); return; }
@@ -688,7 +697,12 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     const U = gbaB ? UI_RAMP : GB, S = scale, tx = (s, x, y, size = 7, c = U[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
     tx(b.foe.name.slice(0, 11), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5); tx('L' + (b.mine.level || 1), 214, 87, 6);
     tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
-    moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${U[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? U[0] : U[3]); });
+    if (nds) {
+      // DS: the bottom screen -- dark, the line of text, the four moves as big rounded touch buttons.
+      ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
+      ctx.fillStyle = '#f8f8f8'; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 8 * S, 117 * S);
+      moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); tx((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? [32, 40, 48] : [255, 255, 255]); });
+    } else moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${U[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? U[0] : U[3]); });
   }
   return {
     set(next, { moves: mv, pick: p, gfx: g } = {}) { if (g) gfx = GFX.includes(g) ? g : 'gbc'; const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); } key = k;
