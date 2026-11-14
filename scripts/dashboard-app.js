@@ -42382,11 +42382,14 @@ async function importMtgListToBuyList(text, progress = () => {}){
     await new Promise(res => setTimeout(res, 120));
   }
   const key = (set, num) => (String(set) + '|' + String(num)).toLowerCase();
+  // Match each line to ITS printing: set + number, else name + set, else name. (A name-only map let the
+  // same card in two sets share one price -- Dave's 200-card test read $256 vs TCGplayer's $276.)
   const byKey = new Map(found.map(c => [key(c.set, c.collector_number), c])), byName = new Map();
-  for(const c of found){ const k = String(c.name).toLowerCase(); if(!byName.has(k)) byName.set(k, c); const front = k.split(' // ')[0]; if(!byName.has(front)) byName.set(front, c); }
+  const putName = (k, c) => { if(!byName.has(k)) byName.set(k, c); };
+  for(const c of found){ const n = String(c.name).toLowerCase(), front = n.split(' // ')[0], set = String(c.set).toLowerCase(); putName(n + '|' + set, c); putName(front + '|' + set, c); putName(n, c); putName(front, c); }
   const rows = items.map(it => {
-    const id = mod.mtgIdentifier(it);
-    const card = id.collector_number ? byKey.get(key(id.set, id.collector_number)) : byName.get(String(it.name).toLowerCase());
+    const id = mod.mtgIdentifier(it), nm = String(it.name).toLowerCase(), st = String(it.set || '').toLowerCase();
+    const card = (id.collector_number && byKey.get(key(id.set, id.collector_number))) || (st && byName.get(nm + '|' + st)) || byName.get(nm);
     const market = card ? mod.mtgPriceOf(card, it.finish) : 0;
     return {
       name:mod.mtgDisplayName(it), set:card?.set_name || it.set, category:'Magic: The Gathering', card_number:card?.collector_number || it.number,
