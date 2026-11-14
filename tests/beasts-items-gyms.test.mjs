@@ -103,7 +103,17 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=1')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=2')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
+}
+// Chat picks the next area; the route in real 3D (2026-11-14).
+{
+  assert.equal(B.areaOptions(3).length, 3); assert.deepEqual(B.areaOptions(3), B.areaOptions(3));
+  assert.deepEqual(B.routeFor(3, 'cave').biomes.slice(0, 2), ['cave', 'cave']); assert.notDeepEqual(B.routeFor(3, 'cave').grid, B.routeFor(3).grid);
+  assert.equal(B.publicBeasts({ ...B.emptyBeasts('w'), route: 2, areas: { 2: 'snow', 3: 'city' } }, s).area, 'snow');
+  const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), sb = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
+  assert.ok(room.includes("else if (kind === 'area') options = areaOptions(") && room.includes("if (v.kind === 'area')"));
+  assert.ok(b3.includes('export function createWorld3D(canvas') && sb.includes("b3d.createWorld3D(canvas"));
+  console.log('Area vote + 3D route: passed');
 }

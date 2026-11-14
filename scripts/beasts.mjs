@@ -165,10 +165,14 @@ export const MAP_W = 28, MAP_H = 128;
 // MORE COUNTRY (store, 2026-11-14): a cave (dark, the host's lantern lights the way), a beach on the ocean, a
 // snowfield, a city street, a graveyard and a volcano join the meadow, woods, lake, river, ledges and flowers.
 export const BIOMES = ['meadow', 'woods', 'lake', 'river', 'rocky', 'flowers', 'cave', 'beach', 'snow', 'city', 'graveyard', 'volcano'];
+// CHAT PICKS THE NEXT AREA (store, 2026-11-14): three areas to vote on for the next route (a fixed rotation by the
+// route's number, never by chance); the winner is most of that route -- its first two stretches.
+export const AREA_ICONS = { meadow: '🌾', woods: '🌲', lake: '🏞️', river: '🌊', rocky: '🪨', flowers: '🌸', cave: '🦇', beach: '🏖️', snow: '❄️', city: '🏙️', graveyard: '🪦', volcano: '🌋' };
+export function areaOptions(route) { const r = Math.max(1, route | 0), start = (r * 5) % BIOMES.length, out = []; for (let k = 0; out.length < 3 && k < BIOMES.length; k++) { const b = BIOMES[(start + k * 4) % BIOMES.length]; if (!out.includes(b)) out.push(b); } return out; }
 export function biomesFor(floor) { const f = Math.max(1, floor | 0), h = hashOf('biomes' + f), out = []; for (let k = 0; k < 3; k++) { let b = BIOMES[(h >>> (k * 5)) % BIOMES.length]; if (out.includes(b)) b = BIOMES[(BIOMES.indexOf(b) + 1 + k) % BIOMES.length]; out.push(b); } return out; }
 const mapCache = new Map();
-export function routeFor(floor) {
-  const f = Math.max(1, floor | 0); if (mapCache.has(f)) return mapCache.get(f);
+export function routeFor(floor, area = '') {
+  const f = Math.max(1, floor | 0), ar = BIOMES.includes(area) ? area : '', ck = f + '|' + ar; if (mapCache.has(ck)) return mapCache.get(ck);
   const r = seq(hashOf('route' + f)), W = MAP_W, H = MAP_H, g = Array.from({ length: H }, () => Array(W).fill(0));
   const inMap = (x, y) => y >= 0 && y < H && x >= 2 && x < W - 2;
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (x < 2 || x >= W - 2) g[y][x] = 3;
@@ -180,7 +184,7 @@ export function routeFor(floor) {
   for (let i = 1; i < corners.length; i++) lay(corners[i - 1][0], corners[i - 1][1], corners[i][0], corners[i][1]);
   const nearPath = (x2, y2, d = 1) => { for (let yy = -d; yy <= d; yy++) for (let xx = -d; xx <= d; xx++) if (pathTiles.has((x2 + xx) + ',' + (y2 + yy))) return true; return false; };
   // Three stretches of country.
-  const biomes = biomesFor(f), zoneOf = y => y < TOP + (BOT - TOP) / 3 ? 2 : y < TOP + 2 * (BOT - TOP) / 3 ? 1 : 0;
+  const hb = biomesFor(f), biomes = ar ? [ar, ar, hb[2] === ar ? hb[0] : hb[2]] : hb, zoneOf = y => y < TOP + (BOT - TOP) / 3 ? 2 : y < TOP + 2 * (BOT - TOP) / 3 ? 1 : 0;
   for (let y = TOP + 1; y < BOT; y++) for (let x2 = 2; x2 < W - 2; x2++) {
     if (g[y][x2] !== 0) continue; const v = r(), bio = biomes[zoneOf(y)], close = nearPath(x2, y);
     if (bio === 'meadow') g[y][x2] = v < 0.08 && !close ? 3 : v < 0.12 ? 9 : 0;
@@ -240,7 +244,7 @@ export function routeFor(floor) {
   const bands = [0, 1, 2].map(z => [Math.round(TOP + (2 - z) * (BOT - TOP) / 3), Math.round(TOP + (3 - z) * (BOT - TOP) / 3)]);
   const biomeAt = y => { for (let z = 0; z < 3; z++) if (y >= bands[z][0] && y < bands[z][1]) return biomes[z]; return ''; };
   const out = { floor: f, grid: g, walk, biomes, biomeAt, items: itemsFor(f), len: walk.reduce((n, p, i) => i ? n + Math.abs(p[0] - walk[i - 1][0]) + Math.abs(p[1] - walk[i - 1][1]) : 0, 0) };
-  mapCache.set(f, out); return out;
+  out.area = ar; mapCache.set(ck, out); return out;
 }
 // How far along the walk you are for the floor's progress: you stand still in
 // the tall grass while a wild beast is up.
@@ -392,7 +396,7 @@ export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.n
 // What the screens see (floor and pct keep the drawing code's names: floor is the route).
 export function publicBeasts(bIn, s, starter = '') {
   const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
-  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), area: (b.areas || {})[b.route] || '', nextArea: (b.areas || {})[b.route + 1] || '', drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
 }
 
 // ── drawing ──────────────────────────────────────────────────────────────────
@@ -561,7 +565,7 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
   let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '', flat = null;
   function set(s) {
-    if (first || s.floor !== state.floor) { route = routeFor(s.floor); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
+    if (first || s.floor !== state.floor || (s.area ?? '') !== (route.area || '')) { route = routeFor(s.floor, s.area || ''); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
     const wasBattle = battleOf(state), isBattle = battleOf(s);
     if (isBattle && !wasBattle) exclaim = performance.now(); // a "!" over your head as the beast jumps out
     state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay !== undefined) tod = s.timeOfDay || null; if (s.gfx) gfx = GFX.includes(s.gfx) ? s.gfx : 'gbc'; if (s.follower !== undefined) follower = String(s.follower || '');

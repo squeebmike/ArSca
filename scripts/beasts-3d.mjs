@@ -112,3 +112,88 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; },
   };
 }
+
+// ── THE ROUTE IN 3D (store, 2026-11-14: "full 3D route for 3DS mode") ─────────────────────────────────────────────
+// The same route (routeFor: the same tiles, the same items, the same walk) built in 3D: the ground in its colours, real
+// trees, houses with roofs, water, boulders, snow, lava, lamps and gravestones; the host and Champ as little 3D people,
+// your beast following in 3D, the route's items and chat's gifts bobbing on the path; the camera over your shoulder,
+// tilted like the handhelds. Drawn into the same 2D canvas the flat route uses (so the screens don't change).
+import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs';
+const SKY = { day: [0x8fd0ff, 0xd8f0ff], sunset: [0xf2a46a, 0xffd9b0], night: [0x1a2350, 0x3a4a80] };
+function person(shirt, cap) {
+  const g = new THREE.Group(), skin = mat([242, 184, 146]);
+  for (const sx of [-1, 1]) at(g, cyl(0.07, 0.06, 0.3, mat([40, 46, 70])), sx * 0.09, 0.15, 0);
+  at(g, cyl(0.17, 0.14, 0.36, mat(shirt)), 0, 0.48, 0);
+  const head = at(g, ball(0.2, skin, 16), 0, 0.84, 0);
+  if (cap) { const c = at(g, new THREE.Mesh(new THREE.SphereGeometry(0.205, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(cap)), 0, 0.86, 0); at(g, new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.16), mat(cap)), 0, 0.88, -0.2); }
+  at(g, new THREE.Mesh(new THREE.SphereGeometry(0.205, 16, 8, 0, Math.PI * 2, Math.PI * 0.62, Math.PI * 0.38), mat([60, 40, 30])), 0, 0.84, 0); // the beard
+  for (const sx of [-1, 1]) at(g, ball(0.025, mat([20, 20, 28]), 6), sx * 0.07, 0.88, 0.18);
+  g.userData.legs = g.children.slice(0, 2); g.userData.head = head; return g;
+}
+export function createWorld3D(canvas, { w = 240, h = 189 } = {}) {
+  const S = 2; canvas.width = w * S; canvas.height = h * S;
+  const ctx = canvas.getContext('2d'), gl = document.createElement('canvas');
+  const r = new THREE.WebGLRenderer({ canvas: gl, antialias: true, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(w * S, h * S, false);
+  const scene = new THREE.Scene(), hemi = new THREE.HemisphereLight(0xffffff, 0x6fae4a, 1.15), sun = new THREE.DirectionalLight(0xffffff, 1.2); sun.position.set(-6, 12, 8); scene.add(hemi, sun);
+  const cam = new THREE.PerspectiveCamera(42, w / h, 0.1, 80);
+  let routeG = null, route = null, state = { floor: 1, pct: 0, phase: 'floor' }, area = '', shown = 0, first = true, raf = 0, last = 0, follower = '', followerM = null, drops = [], tod = null, dropG = new THREE.Group(), itemG = new THREE.Group();
+  scene.add(dropG, itemG);
+  const host = person([58, 90, 176], [30, 40, 60]), champ = person([226, 226, 232], null); scene.add(host, champ);
+  const tile = (x, y) => new THREE.Vector3(x + 0.5 - MAP_W / 2, 0, y + 0.5);
+  function build() {
+    if (routeG) scene.remove(routeG); routeG = new THREE.Group(); scene.add(routeG);
+    const g = route.grid, n = MAP_W * MAP_H, ground = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.2, 1), new THREE.MeshLambertMaterial(), n), m4 = new THREE.Matrix4(), c = new THREE.Color();
+    let i = 0; const kinds = {};
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      const t = g[y][x], base = [3, 9, 10, 13, 21, 22].includes(t) ? (route.biomeAt(y) === 'snow' ? 19 : route.biomeAt(y) === 'city' ? 20 : route.biomeAt(y) === 'cave' ? 18 : route.biomeAt(y) === 'volcano' ? 24 : 0) : [5, 6, 7, 11, 12].includes(t) ? 1 : t;
+      const p = tile(x, y), lift = t === 4 || t === 23 ? -0.12 : t === 16 ? 0.15 : t === 17 ? 0.7 : 0;
+      m4.makeScale(1, t === 17 ? 8 : 1, 1); m4.setPosition(p.x, lift - 0.1, p.z); ground.setMatrixAt(i, m4);
+      const rc = (TILE_RAMPS[base] || TILE_RAMPS[0])[t === 4 ? 1 : t === 23 ? 1 : t === 17 ? 2 : 1]; ground.setColorAt(i, c.setRGB(rc[0] / 255, rc[1] / 255, rc[2] / 255)); i++;
+      (kinds[t] ||= []).push(p);
+    }
+    ground.instanceMatrix.needsUpdate = true; ground.instanceColor.needsUpdate = true; routeG.add(ground);
+    const inst = (list, geo, material, f) => { if (!list?.length) return; const m = new THREE.InstancedMesh(geo, material, list.length); list.forEach((p, k) => { f(m4, p, k); m.setMatrixAt(k, m4); }); m.instanceMatrix.needsUpdate = true; routeG.add(m); };
+    // Trees (pines in the snow), flowers, tall grass, boulders, lamps, gravestones, lava glow.
+    const snowy = p => route.biomeAt(Math.floor(p.z)) === 'snow';
+    inst(kinds[3], new THREE.CylinderGeometry(0.08, 0.12, 0.5, 6), mat([107, 74, 42]), (m, p) => m.makeTranslation(p.x, 0.25, p.z));
+    inst(kinds[3], new THREE.ConeGeometry(0.42, 1.1, 8), mat([47, 127, 58]), (m, p, k) => { m.makeScale(1, 1 + ((k * 7) % 5) * 0.08, 1); m.setPosition(p.x, 0.95, p.z); });
+    inst((kinds[3] || []).filter(snowy), new THREE.ConeGeometry(0.3, 0.45, 8), mat([250, 250, 255]), (m, p) => m.makeTranslation(p.x, 1.35, p.z));
+    inst(kinds[2], new THREE.ConeGeometry(0.12, 0.45, 4), mat([60, 150, 50]), (m, p, k) => { m.makeTranslation(p.x + ((k % 3) - 1) * 0.22, 0.22, p.z + (((k >> 1) % 3) - 1) * 0.22); });
+    inst(kinds[9], new THREE.SphereGeometry(0.08, 6, 5), mat([242, 84, 132]), (m, p, k) => m.makeTranslation(p.x + ((k % 3) - 1) * 0.25, 0.08, p.z + (((k >> 2) % 3) - 1) * 0.25));
+    inst(kinds[13], new THREE.DodecahedronGeometry(0.4), mat([150, 150, 140]), (m, p) => m.makeTranslation(p.x, 0.3, p.z));
+    inst(kinds[21], new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6), mat([60, 60, 70]), (m, p) => m.makeTranslation(p.x, 0.7, p.z));
+    inst(kinds[21], new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff3a0 }), (m, p) => m.makeTranslation(p.x, 1.45, p.z));
+    inst(kinds[22], new THREE.BoxGeometry(0.4, 0.55, 0.12), mat([170, 170, 182]), (m, p) => m.makeTranslation(p.x, 0.27, p.z));
+    inst(kinds[23], new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshBasicMaterial({ color: 0xff7a1a }), (m, p) => m.makeTranslation(p.x, -0.1, p.z));
+    inst(kinds[4], new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshPhongMaterial({ color: 0x3a8ae0, transparent: true, opacity: 0.85, shininess: 120 }), (m, p) => m.makeTranslation(p.x, -0.05, p.z));
+    // Houses: the wall and roof tiles grouped into buildings.
+    inst(kinds[5], new THREE.BoxGeometry(1, 1.2, 1), mat([240, 232, 214]), (m, p) => m.makeTranslation(p.x, 0.6, p.z));
+    inst(kinds[6], new THREE.BoxGeometry(1, 0.5, 1), mat([210, 80, 64]), (m, p) => m.makeTranslation(p.x, 1.35, p.z));
+    inst(kinds[7], new THREE.BoxGeometry(0.5, 0.8, 1.02), mat([120, 72, 34]), (m, p) => m.makeTranslation(p.x, 0.4, p.z));
+    inst([...(kinds[11] || []), ...(kinds[12] || [])], new THREE.BoxGeometry(1.02, 0.4, 1.02), mat([255, 210, 64]), (m, p) => m.makeTranslation(p.x, 1.2, p.z));
+    inst(kinds[8], new THREE.BoxGeometry(1, 0.35, 0.08), mat([200, 170, 120]), (m, p) => m.makeTranslation(p.x, 0.18, p.z));
+    // The route's items.
+    itemG.clear(); for (const it of route.items) { const p = posAt(route, it.t), o = ball(0.16, mat(it.kind === 'STONE' ? [140, 255, 120] : it.kind === 'CANDY' ? [255, 140, 220] : it.kind === 'COIN' ? [255, 210, 60] : [240, 80, 80], { emissive: 0x222222 }), 12); o.position.copy(tile(p.x, p.y)).setY(0.4); o.userData.t = it.t; itemG.add(o); }
+  }
+  function set(s) {
+    if (first || s.floor !== state.floor || (s.area ?? area) !== area) { area = s.area ?? area; route = routeFor(s.floor, area); build(); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); first = false; }
+    state = { ...state, ...s }; if (Array.isArray(s.drops)) { drops = s.drops; dropG.clear(); for (const d of drops) { const p = posAt(route, d.t), o = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), mat([255, 216, 74])); o.position.copy(tile(p.x, p.y)).setY(0.4); o.userData.t = d.t; dropG.add(o); } }
+    if (s.timeOfDay !== undefined) tod = s.timeOfDay || null;
+    if (s.follower !== undefined && s.follower !== follower) { follower = s.follower || ''; if (followerM) scene.remove(followerM); followerM = follower ? buildBeast3D(follower) : null; if (followerM) { followerM.scale.setScalar(0.45); scene.add(followerM); } }
+  }
+  function frame(now) {
+    raf = requestAnimationFrame(frame); if (now - last < 33) return; const dt = Math.min(0.2, (now - (last || now)) / 1000); last = now; const t = now / 1000;
+    const target = state.phase === 'boss' ? 1 : walkAt((state.pct || 0) / 100), walking = shown < target - 0.0005;
+    if (walking) shown = Math.min(target, shown + dt * Math.max(3.2 / route.len, (target - shown) / 10)); else if (shown > target) shown = target;
+    const place = (o, tt, lift = 0) => { const p = posAt(route, tt), v = tile(p.x, p.y); o.position.set(v.x, lift + (walking ? Math.abs(Math.sin(t * 10)) * 0.05 : 0), v.z); if (p.dx || p.dy) o.rotation.y = Math.atan2(p.dx, p.dy); return v; };
+    const me = place(host, shown); place(champ, Math.max(0, shown - 1.3 / route.len)); if (followerM) { place(followerM, Math.max(0, shown - 2.6 / route.len)); followerM.userData.tick?.(t); }
+    for (const pp of [host, champ]) pp.userData.legs.forEach((l, i) => { l.rotation.x = walking ? Math.sin(t * 10 + i * Math.PI) * 0.5 : 0; });
+    for (const o of [...itemG.children, ...dropG.children]) { o.visible = o.userData.t > shown + 0.001; o.position.y = 0.4 + Math.sin(t * 3 + o.userData.t * 30) * 0.08; o.rotation.y = t * 2; }
+    // The camera: behind and above you, looking up the route (the handhelds' tilt).
+    cam.position.set(me.x * 0.6, 7.5, me.z + 7.5); cam.lookAt(me.x * 0.6, 0, me.z - 3);
+    const day = tod || timeOfDay(), sk = SKY[day] || SKY.day; scene.background = new THREE.Color(sk[0]); scene.fog = new THREE.Fog(sk[1], 14, 30);
+    hemi.intensity = day === 'night' ? 0.5 : 1.15; sun.intensity = day === 'night' ? 0.25 : 1.2; sun.color.set(day === 'sunset' ? 0xffb070 : 0xffffff);
+    r.render(scene, cam); ctx.drawImage(gl, 0, 0);
+  }
+  return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };
+}

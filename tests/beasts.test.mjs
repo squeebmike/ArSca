@@ -39,7 +39,7 @@ assert.equal(M.makeEffect('move', S, Date.now(), { move: 'lowball' }).move, 'LOW
 const room = read('scripts/live-studio-room.mjs'), ov = read('scripts/live-studio-overlay.mjs'), bg = read('scripts/shed-background.mjs'), ctl = read('scripts/live-studio-controls.js');
 assert.match(room, /else if \(kind === 'move'\) options = movesFrom\(s\.settings\.beastsMoves\)/);
 assert.match(room, /if \(v\.kind === 'move'\) \{ s\.beastMove = index; fx = makeEffect\('move'/);
-assert.match(bg, /world = beasts\.createWorld\(canvas/); assert.match(ov, /battle=beastsLib\.createBattle\(cv,\{scale:3\}\)/);
+assert.match(bg, /beasts\.createWorld\(canvas/); assert.match(ov, /battle=beastsLib\.createBattle\(cv,\{scale:3\}\)/);
 assert.match(ov, /if\(e\.kind==='move'\)\{if\(beastsOn&&battle\)\{battle\.attack\(e\.move\)/, 'chat\'s pick fires');
 assert.match(ov, /if\(beastsOn&&battle&&\['sold','jackpot','boss'\]\.includes\(e\.kind\)\)/, 'every sale fires it');
 assert.ok(ctl.includes('name="gameMode"') && ctl.includes('id="beast-face-file"') && ctl.includes('id="beast-buddy-file"') && ctl.includes('id="beast-add-move"') && ctl.includes('data-vote="move"'));

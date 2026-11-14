@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
+import { areaOptions, AREA_ICONS, movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
@@ -114,7 +114,7 @@ export class ManaLiveStudio extends DurableObject {
     const s = this.read(), now = Date.now();
     if (this.vendingOnly(s) && !['next', 'trivia'].includes(kind)) throw new Error('Vending only: no game is on');
     if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw new Error('That vote is the dungeon\'s -- Long Box Beasts is on');
-    if (!this.beastsOn(s) && ['move', 'starter'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
+    if (!this.beastsOn(s) && ['move', 'starter', 'area'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
     let options;
     if (kind === 'weapon') options = WEAPONS.map(w => ({ id: w.id, label: w.icon + ' ' + w.name }));
     else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
@@ -124,6 +124,8 @@ export class ManaLiveStudio extends DurableObject {
     else if (kind === 'move') options = movesFrom(s.settings.beastsMoves).map((m, i) => ({ id: String(i), label: '⚔️ ' + m }));
     // BEASTS: chat picks your starter.
     else if (kind === 'starter') options = STARTERS.map(n => ({ id: n, label: '🥚 ' + n }));
+    // BEASTS: chat picks the country for the next route.
+    else if (kind === 'area') options = areaOptions((s.beasts?.route || 1) + 1).map(id => ({ id, label: AREA_ICONS[id] + ' ' + id.toUpperCase() }));
     // THE MERCHANT (2026-11-12): two items, what makes each special; chat picks, it runs.
     else if (kind === 'merchant') { const picks = merchantPicks(s.stage.next || []); if (picks.length < 2) throw new Error('The merchant needs two items in NEXT UP'); options = picks.map(p => ({ id: String(p.i), label: p.tag + ': ' + String(p.item.title || '').slice(0, 60), ...(p.item.image ? { image: p.item.image } : {}) })); }
     // FOUND IT!: each spot holds one of the next lineup items.
@@ -157,6 +159,7 @@ export class ManaLiveStudio extends DurableObject {
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
     if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
     if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! GO, ' + opt.id + ' -- LET\'S SELL SOME COMICS!' }); }
+    if (v.kind === 'area') { const nx = (s.beasts?.route || 1) + 1; s.beasts = { ...s.beasts, areas: { ...(s.beasts?.areas || {}), [nx]: opt.id } }; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT PICKED ' + opt.id.toUpperCase() + ' FOR ROUTE ' + nx + '!' }); }
     if (v.kind === 'move') { s.beastMove = index; fx = makeEffect('move', s.settings, now, { move: opt.label.replace(/^\S+\s/, '') }); }
     if (v.kind === 'trivia') { if (this.vendingOnly(s)) {} else if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana) || 0, s.settings, now).beasts; else { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; } const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
