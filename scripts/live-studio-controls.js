@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.7';
+  const STUDIO_V='2026.11.14.8';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -23,8 +23,13 @@
   </div>
   <h3>🥤 Vending machine</h3>
   <small>For breaks and surprise sets: a machine of items (or spots), scrolling, a BID button on each slot, the one UP NOW lit, SOLD stamped on what's gone. A sale marks its item by itself (with spots: the one UP NOW). Tap a slot below to mark it by hand.</small>
+  <details class="vm-showcase" open><summary>🛒 SHOWCASE -- pre-release shows: NEW RELEASES to pre-order + THE BIN, on the lower half</summary>
+  <small>The new releases (your FOC books with covers, their price and FOC date) on top, the in-stock Buy It Now items with their price below, each shelf turning a page every 5 seconds. Shows on the green screen's lower half.</small>
+  <div class="mana-row"><button type="button" id="vm-sc-both">🛒 LOAD BOTH (NEW + BIN)</button><button type="button" id="vm-sc-pre">📚 NEW RELEASES ONLY</button><button type="button" id="vm-sc-bin">🏷 BIN ONLY</button></div>
+  </details>
+  <div class="mana-row"><label>LOOK<select id="vm-theme"><option value="">KIOSK (white)</option><option value="comics">COMIC SHOP (red + yellow)</option><option value="cards">CARD SHOP (red + white)</option><option value="arcane">ARCANE (purple + gold)</option></select></label><label>CHANGE RETURN: A FREE GIVEAWAY EVERY<input id="vm-give" type="number" min="0" max="100" placeholder="0 = off"> SOLD</label><button type="button" id="vm-look-go">SET</button></div>
   <div class="mana-row"><button type="button" id="vm-load">LOAD FROM NOW + NEXT UP</button><button type="button" id="vm-show">SHOW THE MACHINE</button><button type="button" id="vm-hide">HIDE IT</button></div>
-  <div class="mana-row vm-modes"><button type="button" data-vm-mode="panel">▣ SMALL · BEHIND US</button><button type="button" data-vm-mode="full">⛶ FULL SCREEN · BEHIND US</button><button type="button" data-vm-mode="front">⛶ FULL SCREEN · IN FRONT</button></div>
+  <div class="mana-row vm-modes"><button type="button" data-vm-mode="panel">▣ SMALL · BEHIND US</button><button type="button" data-vm-mode="full">⛶ FULL SCREEN · BEHIND US</button><button type="button" data-vm-mode="lower">⬇ LOWER HALF · BEHIND US</button><button type="button" data-vm-mode="front">⛶ FULL SCREEN · IN FRONT</button></div>
   <div class="mana-row"><button type="button" id="vm-prev">◀ PREV SLOT</button><button type="button" id="vm-sold-up">✔ UP NOW SOLD → NEXT</button><button type="button" id="vm-next">NEXT SLOT ▶</button></div>
   <p id="vm-up" class="mana-score">Nothing up</p>
   <details class="vm-spots"><summary>🎟 MAKE SPOTS (a break, a surprise set -- not in your inventory)</summary>
@@ -132,7 +137,7 @@
   <h3>Quick</h3>
   <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button><button type="button" data-toggle="finale" data-key="V">FINALE ON/OFF <kbd>V</kbd></button></div>
   <h3>Effects</h3>
-  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER'],['fistergoo','🖤 SYMBIOTE FISTER']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
+  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER'],['fistergoo','🖤 SYMBIOTE FISTER'],['spotlight','🔦 SPOTLIGHT NOW PLAYING']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
   <h3>ByteRider_97</h3>
   <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${box('mascotSounds','ByteRider sounds')}${box('showHype','Hype meter')}${box('mascotSaysMarquee','ByteRider says the marquee lines')}${num('mascotSayEvery','…one every (seconds)',10,600)}${box('mascotBorder','His bezel round the screen')}${box('mascotIdleFace','Keep a faint face up between reactions')}${num('mascotScale','Face size (%)',40,150)}${num('mascotFaceY','Face height on screen',250,1650)}</div>
@@ -153,7 +158,8 @@
   ${num('speed','Scroll cycle (seconds)',4,60)}${num('hudY','Score board top',0,1700)}${num('cardX','Card left',0,700)}${num('cardY','Card top',0,1560)}
   ${num('countdownSeconds','Countdown (seconds)',3,15)}${num('volume','Volume (%)',0,100)}${num('jackpotAmount','BIG HIT at ($)',1,1000000)}
   <label>Currency<input name="currency" maxlength="3" pattern="[A-Z]{3}" required></label></div>
-  <div class="mana-grid">${box('visible','Show sign')}${box('marqueeOn','Scrolling marquee on the sign')}${box('showHud','Show score board')}${box('showCard','Show now playing')}${box('showQueue','Show next up')}${box('showCombo','Show combos')}${box('attract','INSERT COIN when nothing is playing')}${box('muted','Mute sound')}${box('showBuyerNames','Show buyer usernames ("THANKS @name")')}</div>
+  <div class="mana-grid">${box('visible','Show sign')}${box('marqueeOn','Scrolling marquee on the sign')}${box('showHud','Show score board')}${box('showCard','Show now playing')}${box('showQueue','Show next up')}${box('showCombo','Show combos')}${box('attract','INSERT COIN when nothing is playing')}${box('muted','Mute sound')}${box('showBuyerNames','Show buyer usernames ("THANKS @name")')}${box('chaseOn','🔥 Chase countdown (the priciest item lined up)')}</div>
+  <div class="mana-row"><label>COUNTDOWN WORD<input name="chaseLabel" maxlength="16" placeholder="CHASE (or HEAT, BIG HIT, KEY)"></label><label>ONLY ITEMS AT OR OVER $<input name="chaseMin" type="number" min="0" step="1"></label></div>
   <small>Buyer usernames are off unless you turn them on. Whatnot shows the winner's username in the app already; check Whatnot's seller rules before showing them. Only the username is ever shown, and there's no "top spender" board.</small>
   <button type="submit">Save live settings</button></form></details>
   <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" data-src="arcade-overlay.html#preview=1" src="about:blank"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" data-src="shed-background.html#preview=1" src="about:blank"></iframe></div>
@@ -216,6 +222,15 @@
     const vmb=(id,body,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{await machineDo(typeof body==='function'?body():body);const empty=!(machineCtl.items||[]).length;status.textContent=(empty&&machineCtl.on?'The machine is up but EMPTY -- tap LOAD FROM NOW + NEXT UP (fill NOW PLAYING / NEXT UP first) or 🎟 MAKE SPOTS below.':msg)+(connectedStore?'':' (preview -- connect to use it in the show)');if(empty){const sp=host.querySelector('details.vm-spots');if(sp)sp.open=true;}});};
     vmb('#vm-load',{load:'stage'},'Machine loaded from NOW PLAYING + NEXT UP.');vmb('#vm-show',{on:true},'The machine is on the green screen.');vmb('#vm-hide',{on:false},'Machine hidden.');
     vmb('#vm-title-go',()=>({title:String(host.querySelector('#vm-title').value||'')}),'Machine named.');
+    // THE SHOWCASE (2026-11-14): the FOC books coming up (covers, price, FOC date) and the in-stock BIN items (price).
+    const binItems=()=>inventory().filter(i=>i.status==='in_stock'&&i.sellOnWhatnot===true&&i.whatnotShowOnly!==true&&(https(i.thumbnail)||https(i.imageUrl))).map(i=>({...stageItem(i),price:Number(i.price||i.market||i.marketPrice||0)||0,shelf:'bin'})).filter(it=>it.image&&it.price>0&&!chanceFn(it.title+' '+it.detail)).sort((a,b)=>b.price-a.price).slice(0,60);
+    const newReleases=async()=>{const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null,id=store();if(!sb||!id)return[];const today=new Date().toISOString().slice(0,10);
+      const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents').eq('store_id',id).eq('customer_enabled',true).gte('foc_date',today).not('cover_image_url','is',null).order('foc_date',{ascending:true}).limit(40);
+      if(error)throw Error('New releases: '+error.message);const md=d=>d?d.slice(5).replace('-','/'):'';
+      return (data||[]).filter(r=>https(r.cover_image_url)).map(r=>({title:String((r.title||'')+(r.variant_label?' '+r.variant_label:'')).slice(0,90),detail:'FOC '+md(r.foc_date)+(r.on_sale_date?' · OUT '+md(r.on_sale_date):''),image:r.cover_image_url,price:(Number(r.customer_price_cents)||Number(r.msrp_cents)||0)/100,shelf:'pre',badge:'FOC '+md(r.foc_date)})).filter(it=>!chanceFn(it.title));};
+    const showcase=(want,msg)=>{const b=host.querySelector(want);if(b)b.onclick=()=>run(async()=>{const pre=want!=='#vm-sc-bin'?await newReleases():[],bin=want!=='#vm-sc-pre'?binItems():[],items=[...pre,...bin].slice(0,120);if(!items.length)throw Error(want==='#vm-sc-pre'?'No new releases with covers coming up (FOC books need a cover).':want==='#vm-sc-bin'?'No Buy It Now items with photos and prices in stock.':'Nothing to show: no FOC books with covers and no BIN items with photos.');await machineDo({items,kind:'showcase',mode:'lower',on:true});status.textContent=msg+' '+pre.length+' new releases, '+bin.length+' bin items.'+(connectedStore?'':' (preview -- connect to put it on the show)');});};
+    showcase('#vm-sc-both','Showcase on the lower half:');showcase('#vm-sc-pre','Showcase (new releases):');showcase('#vm-sc-bin','Showcase (the bin):');
+    vmb('#vm-look-go',()=>({theme:String(host.querySelector('#vm-theme').value||''),giveEvery:Number(host.querySelector('#vm-give').value)||0}),'Machine look set.');
     host.querySelectorAll('[data-vm-mode]').forEach(b=>{const m=b.dataset.vmMode;vmb('[data-vm-mode="'+m+'"]',{mode:m,on:true},m==='front'?'Machine full screen, in front of you.':m==='full'?'Machine full screen, behind you.':'Machine small, behind you.');});
     // SAVED SPOT LISTS: the break's 75 characters, typed once, used every week (kept on this device).
     const SL='mana-spot-lists',lists=()=>{try{return JSON.parse(localStorage.getItem(SL)||'{}')||{};}catch{return {};}},putLists=o=>{try{localStorage.setItem(SL,JSON.stringify(o));}catch{}};
@@ -424,6 +439,7 @@
     if(body.spots){const V=await import('./vending.mjs?v='+STUDIO_V);m.items=V.makeSpots(body.spots);if(!m.items.length)throw Error('How many spots? (or one name a line)');for(const it of m.items){const w=chanceFn?.(it.title);if(w)throw Error('"'+w+'" reads as a game of chance -- Whatnot doesn\'t allow those.');}m.kind='spots';m.up=0;}
     if(body.buyer&&items[body.buyer.i]){const nm=String(body.buyer.name||'').replace(/^@/,'').replace(/[^\w.\-]/g,'').slice(0,30);const {buyer,...rest}=items[body.buyer.i];items[body.buyer.i]=nm?{...rest,buyer:nm,sold:true}:rest;}
     if(Number.isInteger(body.toggle)&&items[body.toggle])items[body.toggle]={...items[body.toggle],sold:!items[body.toggle].sold};
+    if(Array.isArray(body.items)){m.items=body.items.map(x=>({...x,sold:false}));m.kind=body.kind==='showcase'?'showcase':'items';m.up=0;}if(body.theme!==undefined)m.theme=body.theme;if(body.giveEvery!==undefined)m.giveEvery=body.giveEvery;
     if(body.mode)m.mode=body.mode;if(typeof body.on==='boolean')m.on=body.on;if(typeof body.title==='string')m.title=body.title.trim().slice(0,30).toUpperCase();
     if(body.step)m.up=open(vmUp(m),body.step);if(body.soldUp){const u=vmUp(m);if(u>=0){m.items[u]={...m.items[u],sold:true};m.up=open(u,1);}}
     machineCtl=m;paintMachine();preview();}

@@ -256,6 +256,8 @@ export class ManaLiveStudio extends DurableObject {
   }
   trigger(kind, extra = {}) {
     const s = this.read();
+    // THE SPOTLIGHT (2026-11-14): NOW PLAYING, big on screen with its facts.
+    if (extra.spotlight) { const now = s.stage?.now; if (!now?.title) throw new Error('Put an item in NOW PLAYING first'); extra = { item: { title: now.title, image: now.image, price: now.price }, spot: String(now.detail || '').slice(0, 90) }; }
     s.effect = makeEffect(kind,s.settings,Date.now(),extra);
     this.write(s);
     this.broadcast({type:'effect', effect:s.effect, serverNow:Date.now()});
@@ -294,9 +296,9 @@ export class ManaLiveStudio extends DurableObject {
   // (loaded from NOW PLAYING + NEXT UP, or sent in), each sold out or not; on or off.
   setMachine(input = {}) {
     const s = this.read(), m = { on: false, items: [], ...(s.machine || {}) };
-    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 120)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold }); } return out; };
+    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 120)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold, ...(['pre', 'bin'].includes(x.shelf) ? { shelf: x.shelf } : {}), ...(typeof x.badge === 'string' && x.badge.trim() ? { badge: x.badge.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 20).toUpperCase() } : {}) }); } return out; };
     if (input.load === 'stage') { m.items = clean([s.stage?.now, ...(s.stage?.next || [])].filter(Boolean)); m.kind = 'items'; m.up = 0; }
-    if (Array.isArray(input.items)) { m.items = clean(input.items); m.kind = 'items'; m.up = 0; }
+    if (Array.isArray(input.items)) { m.items = clean(input.items); m.kind = input.kind === 'showcase' ? 'showcase' : 'items'; m.up = 0; if (m.kind === 'showcase' && !input.mode) m.mode = 'lower'; }
     // SPOTS for a break or a surprise set: "75 at $5" or one name a line -- in the machine only, never in inventory.
     if (input.spots && typeof input.spots === 'object') { m.items = clean(makeSpots(input.spots)); if (!m.items.length) throw new Error('How many spots? (or one name a line)'); m.kind = 'spots'; m.up = 0;
       // Each spot's own Whatnot id ("spot-<batch>-<n>"), so its listing's sale marks exactly that spot.
@@ -304,7 +306,9 @@ export class ManaLiveStudio extends DurableObject {
     // Spots listed on Whatnot (the remote lists them, then says which went in).
     if (input.buyer && Number.isInteger(input.buyer.i) && m.items[input.buyer.i]) { const nm = String(input.buyer.name || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); const { buyer, ...rest } = m.items[input.buyer.i]; m.items[input.buyer.i] = nm ? { ...rest, buyer: nm, sold: true } : rest; }
     if (Array.isArray(input.listed)) { const on = new Set(input.listed.map(String)); m.items = m.items.map(it => it.ext && on.has(it.ext) ? { ...it, listed: true } : it); }
-    if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;
+    if (['panel', 'full', 'front', 'lower'].includes(input.mode)) m.mode = input.mode;
+    if (['', 'comics', 'cards', 'arcane'].includes(input.theme)) m.theme = input.theme;
+    if (input.giveEvery !== undefined) { const g = Math.floor(Number(input.giveEvery)); if (!Number.isFinite(g) || g < 0 || g > 100) throw new Error('Change return: every 0 to 100 sold'); m.giveEvery = g; }
     // The slot UP NOW: set it, step to the next/previous open one, or mark it sold and move on.
     if (Number.isInteger(input.up) && m.items[input.up]) m.up = input.up;
     if (input.step === 1 || input.step === -1) m.up = openFrom(m.items, upIndex(m), input.step);

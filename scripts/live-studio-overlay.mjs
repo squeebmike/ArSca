@@ -278,7 +278,7 @@ import('./beasts.mjs?v=11').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=4').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+import('./vending.mjs?v=5').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 let shownLevel=0,shelfKey='';
@@ -379,6 +379,8 @@ function revealItem(e){
   $('mana-reveal-label').textContent=e.kind==='found'?(e.spot==='THE MERCHANT'?'THE MERCHANT SELLS IT! UP NOW!':e.spot==='THE SECRET VAULT'?'TREASURE FROM THE SECRET VAULT!':'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!'):'CHEST OPENED! '+(e.chestText||'LOW START!');
   $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'LOW START!':(it.price?'VALUE '+usd(it.price):'');
   img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
+  // THE SPOTLIGHT (2026-11-14): NOW PLAYING, tilting slowly in 3D, its facts under it.
+  const spot=e.kind==='spotlight';el.classList.toggle('spot-mode',spot);if(spot){$('mana-reveal-label').textContent='SPOTLIGHT';$('mana-reveal-price').textContent=[e.spot,it.price?'VALUE '+usd(it.price):''].filter(Boolean).join('  ·  ');}
   // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
   // shows shut, the lid pops open in a burst of light, the item rises out of
   // it spinning and hangs there -- YOU GOT IT!
@@ -432,6 +434,7 @@ function paintMap(d){
     em.textContent=m.shed;li.append(n,document.createTextNode((m.icon?m.icon+' ':'')+(m.room||(m.floor===1?'THE WAY IN':m.current&&d.doors?'DOOR VOTE…':'UNEXPLORED'))+(m.cleared?' ✓':'')),em);return li;}));
   $('mana-relics').replaceChildren(...d.relics.map(r=>{const i=document.createElement('i');i.textContent=r.icon;i.title=r.name;return i;}));
 }
+const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function paintStage() {
   const now=stage.now;
   card.classList.toggle('has-art',!!now?.image);card.classList.toggle('has-price',!!now?.price);
@@ -442,6 +445,12 @@ function paintStage() {
   $('mana-card-price').innerHTML='';
   if(now?.price){const s=document.createElement('small');s.textContent='GUIDE';$('mana-card-price').append(s,document.createTextNode(usd(now.price)));}
   card.classList.toggle('mana-hidden',!settings.showCard||(!now&&!settings.attract));
+  // THE CHASE COUNTDOWN: the priciest item lined up (at or over the host's minimum), counted down.
+  { const el=$('mana-chase'),word=String(settings.chaseLabel||'CHASE').toUpperCase(),min=Number(settings.chaseMin)||0,nx=stage.next||[];let best=-1;nx.forEach((n,i)=>{if(Number(n.price)>=min&&(best<0||Number(n.price)>Number(nx[best].price)))best=i;});
+    const upNow=now&&Number(now.price)>=min&&nx.every(n=>!(Number(n.price)>Number(now.price)))&&min>0;
+    if(el){el.classList.toggle('mana-hidden',settings.chaseOn===false||(best<0&&!upNow));el.classList.toggle('now',!!upNow&&best<0);
+      if(upNow&&best<0)el.innerHTML='<b>🔥 THE '+esc(word)+' IS UP NOW!</b><span>'+esc(now.title)+'</span>';
+      else if(best>=0)el.innerHTML='<b>🔥 '+esc(word)+' IN '+(best+1)+'</b><span>'+esc(nx[best].title)+(nx[best].price?' · '+usd(nx[best].price):'')+'</span>';}}
   const list=$('mana-queue-list');list.replaceChildren(...(stage.next||[]).slice(0,3).map(n=>{const li=document.createElement('li');li.textContent=n.title+(n.price?' · '+usd(n.price):'');return li;}));
   queue.classList.toggle('mana-hidden',!settings.showQueue||settings.bigArt||!(stage.next||[]).length);
   // A new item up (NEXT ITEM, or auto-advance after an auction sells): ByteRider calls it.
@@ -593,6 +602,7 @@ function words(e) {
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
     // Show start: a boss-fight intro card.
     // Beasts' own moments.
+    case 'spotlight': return ['','',''];
     case 'fister': return ['MR FISTER!','IF I CAN DO IT, YOU CAN!','THE GAUNTLET OF GRAILS'];
     case 'fistergoo': return ['SYMBIOTE FISTER!','THE GOO HAS TAKEN HOLD','GOO MODE: ACTIVATED'];
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];

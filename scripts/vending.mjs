@@ -115,6 +115,52 @@ export const VENDING_CSS = `
 /* THE BREAK BOARD: who has the spot (only sent with SHOW BUYER NAMES on). */
 .vm-who{position:absolute;top:calc(34% + 34px);left:4px;right:4px;text-align:center;font:900 15px system-ui;font-style:normal;color:#fff;background:#d8262c;border-radius:6px;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vm.gb .vm-who{background:#0f380f;color:#9bbc0f}
+/* POLISH (store, 2026-11-14: "do all new vending machine ideas and polish"): a shine sweeping the glass, each slot's
+   number lit while it's open, the SOLD OUT sign lighting up, the big button pressing in on a vend, the slots filling in
+   one by one on a restock (the coils turning), CHANGE RETURN -- a free giveaway for everyone every N sold. */
+.vm-glass{position:relative}
+.vm-glass::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(105deg,#0000 35%,#ffffff2a 45%,#ffffff10 50%,#0000 60%);background-size:250% 100%;animation:vm-shine 6s linear infinite}
+@keyframes vm-shine{from{background-position:120% 0}to{background-position:-120% 0}}
+.vm-num{position:absolute;top:6px;left:6px;z-index:2;font:900 14px system-ui;font-style:normal;color:#1b1300;background:#ffd84a;border-radius:6px;padding:1px 6px;box-shadow:0 0 10px #ffd84a}
+.vm-slot.sold .vm-num{background:#555;color:#bbb;box-shadow:none}
+.vm.gb .vm-num{background:#9bbc0f;color:#0f380f;box-shadow:none}
+.vm-out{display:none;position:absolute;right:26px;top:-24px;font:900 24px system-ui;color:#fff;background:#111;border:3px solid #ff2a4f;border-radius:10px;padding:4px 14px;box-shadow:0 0 20px #ff2a4f;animation:vm-blink 1s infinite}
+.vm.out .vm-out{display:block}
+.vm-bigbid.press{animation:vm-press .5s 2 !important}
+@keyframes vm-press{40%{transform:translateY(6px) scale(.96);box-shadow:0 0 0 #0000}}
+.vm.restock .vm-slot{animation:vm-in .5s backwards}
+@keyframes vm-in{from{opacity:0;transform:translateY(-30px) rotate(-6deg)}}
+.vm.restock .vm-coil{animation:vm-coil .4s 3 linear}
+@keyframes vm-coil{to{background-position:24px 0}}
+.vm-change{display:none;position:absolute;left:50%;bottom:120px;transform:translateX(-50%) rotate(-2deg);z-index:5;background:#ffd84a;color:#1b1300;border:5px solid #111;border-radius:16px;padding:10px 26px;font:900 34px/1.05 system-ui;text-align:center;box-shadow:0 0 40px #ffd84a;white-space:nowrap}
+.vm-change small{display:block;font:800 18px system-ui}
+.vm.change .vm-change{display:block;animation:vm-pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes vm-pop{from{transform:translateX(-50%) scale(.3) rotate(-12deg)}}
+/* THEMES: the same machine in a comic shop's red and yellow, a card shop's red and white, or a dark purple and gold. */
+.vm.kiosk.t-comics{background:#fff6d6;border-color:#c8102e}.vm.kiosk.t-comics .vm-tab{background:#ffd200;color:#c8102e}.vm.kiosk.t-comics .vm-glass,.vm.kiosk.t-comics .vm-shelf{background:repeating-radial-gradient(circle at 0 0,#ffe9a8 0 2px,#fff6d6 2px 7px)}.vm.kiosk.t-comics .vm-head .vm-title{color:#c8102e}
+.vm.kiosk.t-cards{background:#f4f4f4;border-color:#d81e2a}.vm.kiosk.t-cards .vm-tab{background:#1a1a1a}.vm.kiosk.t-cards .vm-head{border-bottom:6px solid #d81e2a}
+.vm.kiosk.t-arcane{background:#1c1330;border-color:#0b0612;color:#efe6ff}.vm.kiosk.t-arcane .vm-tab{background:#c9a227;color:#1c1330}.vm.kiosk.t-arcane .vm-head{background:#2a1d48}.vm.kiosk.t-arcane .vm-head .vm-title{color:#e9c95a}.vm.kiosk.t-arcane .vm-glass,.vm.kiosk.t-arcane .vm-shelf{background:#241a3c}.vm.kiosk.t-arcane .vm-name,.vm.kiosk.t-arcane .vm-cn,.vm.kiosk.t-arcane .vm-shelf h4{color:#e6dcff}
+/* THE SHOWCASE (store, 2026-11-14: "the vending machine on the lower half during the pre-release shows ... the books for
+   pre-bid, the new releases, and the stuff that's in the bin rotating through, with the price showing"): two shelves --
+   NEW RELEASES (pre-order, with the FOC or on-sale date) and IN THE BIN (buy it now, the price big) -- turning a page
+   every few seconds. */
+.vm.lower{left:20px;top:1000px;width:1040px;height:880px}
+.vm.showcase .vm-glass,.vm.showcase .vm-up,.vm.showcase .vm-tray,.vm.showcase .vm-bar{display:none !important}
+.vm-shelves{display:none;flex:1;flex-direction:column;gap:14px;margin-top:12px;min-height:0}
+.vm.showcase .vm-shelves{display:flex}
+.vm-shelf{flex:1;display:flex;flex-direction:column;min-height:0;background:#f6f8fb;border-radius:12px;box-shadow:inset 0 0 0 1px #d5dbe5;padding:10px 12px;overflow:hidden;position:relative}
+.vm-shelf[hidden]{display:none}
+.vm-shelf h4{margin:0 0 8px;font:900 26px system-ui;letter-spacing:1px;color:#1a1d24;display:flex;align-items:center;gap:10px}
+.vm-shelf h4 i{font-style:normal;background:#d8262c;color:#fff;border-radius:999px;font-size:16px;padding:3px 12px}
+.vm-shelf[data-shelf=bin] h4 i{background:#13a05f}
+.vm-track{flex:1;display:flex;gap:14px;transition:transform .9s cubic-bezier(.6,0,.2,1);min-height:0}
+.vm-card{flex:0 0 calc((100% - 56px) / 5);display:flex;flex-direction:column;align-items:center;min-height:0;position:relative}
+.vm-card .vm-pic img{filter:drop-shadow(0 6px 6px #0004)}
+.vm-card .vm-cn{font:700 15px/1.15 system-ui;color:#2a2f3a;text-align:center;max-height:2.3em;overflow:hidden;margin-top:4px}
+.vm-card .vm-cp{font:900 24px system-ui;color:#e06a00;margin-top:2px}
+.vm-card .vm-cb{position:absolute;top:2px;left:2px;font:900 13px system-ui;background:#111;color:#ffd400;border-radius:6px;padding:2px 7px}
+.vm-shelf[data-shelf=bin] .vm-card .vm-cp{color:#13a05f;font-size:28px}
+.vm-dots{position:absolute;right:14px;top:16px;font:900 16px system-ui;color:#6b7383}
 @keyframes vm-pulse{50%{filter:brightness(1.25)}}
 @keyframes vm-blink{50%{opacity:.55}}
 `;
@@ -127,30 +173,46 @@ export function upIndex(mc) { if (!mc?.items?.length) return -1; if (Number.isIn
 export function createVending(doc, { img = u => u, where = 'green' } = {}) {
   if (!doc.getElementById('vm-css')) { const st = doc.createElement('style'); st.id = 'vm-css'; st.textContent = VENDING_CSS; doc.head.append(st); }
   const vm = doc.createElement('div'); vm.className = 'vm panel'; vm.hidden = true; doc.body.append(vm);
-  vm.innerHTML = '<b class="vm-last"></b><i class="vm-tab vm-tab-l">MANA POCKET</i><i class="vm-tab vm-tab-r">MANA POCKET</i><div class="vm-head"><span class="vm-live">LIVE</span><div class="vm-head-t"><b class="vm-title"></b><small class="vm-sub">STOCK UPDATES LIVE · ONE PER WIN · BID IN THE APP</small></div><span class="vm-count"></span></div><div class="vm-bar"><i></i></div><div class="vm-up"><img alt=""><div class="vm-up-t"><small>UP NOW</small><b></b><em class="vm-up-d"></em></div><b class="vm-up-p"></b><span class="vm-bid vm-up-bid"></span></div><div class="vm-glass"><div class="vm-rows"></div></div><div class="vm-tray"><span class="vm-left"></span><span class="vm-hint"></span><span class="vm-bigbid">BID NOW ››</span></div>';
+  vm.innerHTML = '<b class="vm-last"></b><b class="vm-out">SOLD OUT</b><div class="vm-change">CHANGE RETURN!<small>A FREE GIVEAWAY FOR EVERYONE WATCHING</small></div><i class="vm-tab vm-tab-l">MANA POCKET</i><i class="vm-tab vm-tab-r">MANA POCKET</i><div class="vm-head"><span class="vm-live">LIVE</span><div class="vm-head-t"><b class="vm-title"></b><small class="vm-sub">STOCK UPDATES LIVE · ONE PER WIN · BID IN THE APP</small></div><span class="vm-count"></span></div><div class="vm-bar"><i></i></div><div class="vm-up"><img alt=""><div class="vm-up-t"><small>UP NOW</small><b></b><em class="vm-up-d"></em></div><b class="vm-up-p"></b><span class="vm-bid vm-up-bid"></span></div><div class="vm-glass"><div class="vm-rows"></div></div><div class="vm-shelves"><div class="vm-shelf" data-shelf="pre"><h4>NEW RELEASES <i>PRE-ORDER NOW</i></h4><b class="vm-dots"></b><div class="vm-track"></div></div><div class="vm-shelf" data-shelf="bin"><h4>IN THE BIN <i>BUY IT NOW</i></h4><b class="vm-dots"></b><div class="vm-track"></div></div></div><div class="vm-tray"><span class="vm-left"></span><span class="vm-hint"></span><span class="vm-bigbid">BID NOW ››</span></div>';
   let key = '', y = 0, last = 0, wasSold = null, listKey = '';
   (function scroll(now) { requestAnimationFrame(scroll); if (vm.hidden) return; const rows = vm.querySelector('.vm-rows'), glass = vm.querySelector('.vm-glass'), half = rows.scrollHeight / 2; if (!rows.dataset.loop) { rows.style.transform = ''; return; } y += (now - (last || now)) / 1000 * (vm.classList.contains('full') ? 34 : 26); last = now; if (y >= half) y -= half; rows.style.transform = 'translateY(' + (-y) + 'px)'; if (glass.clientHeight > half) { rows.style.transform = ''; } })(0);
+  // The showcase's shelves turn a page every 5 seconds (5 to a page), each on its own clock.
+  const pages = { pre: 0, bin: 0 };
+  setInterval(() => { if (vm.hidden || !vm.classList.contains('showcase')) return; for (const sh of vm.querySelectorAll('.vm-shelf')) { const k = sh.dataset.shelf, n = sh.querySelectorAll('.vm-card').length, pn = Math.max(1, Math.ceil(n / 5)); pages[k] = (pages[k] + 1) % pn; const tr = sh.querySelector('.vm-track'); tr.style.transform = 'translateX(calc(' + (-pages[k] * 100) + '% - ' + (pages[k] * 14) + 'px))'; sh.querySelector('.vm-dots').textContent = pn > 1 ? (pages[k] + 1) + ' / ' + pn : ''; } }, 5000);
+  // The vend's sounds: a coin in, the coil's whirr, the thud in the tray (where the browser lets a page play sound).
+  let ac = null; const beep = (f, d, type = 'square', at = 0, vol = 0.05) => { try { ac ||= new (doc.defaultView.AudioContext || doc.defaultView.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t0); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d); o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d); } catch {} };
+  const vendSound = () => { beep(1568, 0.08, 'square', 0); beep(2093, 0.12, 'square', 0.08); for (let k = 0; k < 6; k++) beep(180 + k * 12, 0.07, 'sawtooth', 0.25 + k * 0.07, 0.03); beep(70, 0.25, 'sine', 1.35, 0.12); };
+  let changeAt = 0, soldBefore = -1;
   // A slot just sold: its item drops off the coil into the tray, VEND! (2026-11-13: more features).
   const drop = (it, i) => { const glass = vm.querySelector('.vm-glass'), tray = vm.querySelector('.vm-tray'), box = vm.getBoundingClientRect(), g = glass.getBoundingClientRect(); let at = null; for (const el of vm.querySelectorAll('.vm-slot[data-i="' + i + '"]')) { const r = el.getBoundingClientRect(); if (r.bottom > g.top && r.top < g.bottom) { at = r; break; } } const w = at ? at.width * 0.8 : 160, h = at ? (at.height - 50) : 160, x = at ? at.left - box.left + at.width * 0.1 : (box.width - w) / 2, top = at ? at.top - box.top + 6 : g.top - box.top + 10; const d = doc.createElement('div'); d.className = 'vm-drop'; Object.assign(d.style, { left: x + 'px', top: top + 'px', width: w + 'px', height: h + 'px' }); d.style.setProperty('--fall', Math.max(80, tray.getBoundingClientRect().top - box.top - top - h * 0.4) + 'px'); d.innerHTML = (it.image ? '<img alt="" src="' + esc(img(it.image)) + '">' : '<div class="vm-spot"><em>' + (i + 1) + '</em></div>') + '<b>' + code(i) + ' VEND!</b>'; vm.append(d); tray.classList.remove('got'); void tray.offsetWidth; tray.classList.add('got'); setTimeout(() => d.remove(), 1600); };
   return function draw(mc, { theme = '' } = {}) {
+    const sc = mc?.kind === 'showcase';
     // Where it shows: 'panel' and 'full' on the green screen; 'front' on the overlay (full screen, in front).
-    const mode = mc?.mode || 'panel', mine = where === 'overlay' ? mode === 'front' : mode !== 'front';
+    const mode = mc?.mode || (sc ? 'lower' : 'panel'), mine = where === 'overlay' ? mode === 'front' : mode !== 'front';
     // On with nothing in it yet: it still shows, empty, saying how to stock it (2026-11-13: "I click and see nothing").
     vm.hidden = !(mc && mc.on && mine); if (vm.hidden) return; if (!Array.isArray(mc.items)) mc = { ...mc, items: [] };
     const full = mode !== 'panel', k = JSON.stringify([mc, full, theme]); if (k === key) return; key = k;
-    vm.className = 'vm ' + (full ? 'full' : 'panel') + (theme === 'gb' ? ' gb' : ' kiosk');
+    const restock = listKey !== mc.items.map(i => i.title).join('\u0001') && mc.items.length > 0;
+    vm.className = 'vm ' + (mode === 'lower' ? 'lower' : full ? 'full' : 'panel') + (theme === 'gb' ? ' gb' : ' kiosk') + (mc.theme && theme !== 'gb' ? ' t-' + mc.theme : '') + (sc ? ' showcase' : '') + (restock ? ' restock' : '');
     const n = mc.items.length, sold = mc.items.filter(i => i.sold).length, up = upIndex(mc), cols = full ? (n > 40 ? 5 : 4) : 3;
     vm.style.setProperty('--vm-cols', cols); vm.style.setProperty('--vm-h', (full ? (n > 40 ? 270 : 330) : 220) + 'px');
     vm.querySelector('.vm-title').textContent = mc.title || 'MANA POCKET VENDING';
+    vm.querySelector('.vm-sub').textContent = sc ? 'PRE-ORDER THE NEW BOOKS · THE BIN IS BUY IT NOW · IN THE APP' : 'STOCK UPDATES LIVE · ONE PER WIN · BID IN THE APP';
     const left = n - sold, cnt = vm.querySelector('.vm-count'); cnt.textContent = left + ' / ' + n + ' LEFT'; cnt.classList.toggle('low', left > 0 && left <= 5);
     // The last few: LAST 3 SPOTS! (only when there were more than ten to begin with).
     vm.classList.toggle('low', n > 10 && left > 0 && left <= 5); vm.querySelector('.vm-last').textContent = left === 1 ? 'LAST ONE!' : 'LAST ' + left + (mc.kind === 'spots' ? ' SPOTS!' : ' LEFT!');
     vm.querySelector('.vm-bar i').style.width = (n ? (sold / n) * 100 : 0) + '%';
+    vm.classList.toggle('out', n > 0 && sold === n && !sc);
+    // CHANGE RETURN: every N sold (the host's number), a free giveaway for everyone watching -- shown for 9 seconds.
+    const every = Number(mc.giveEvery) || 0; if (every > 0 && soldBefore >= 0 && Math.floor(sold / every) > Math.floor(soldBefore / every)) changeAt = Date.now(); soldBefore = sold;
+    vm.classList.toggle('change', Date.now() - changeAt < 9000); if (Date.now() - changeAt < 9000) setTimeout(() => { key = ''; vm.classList.remove('change'); }, 9100 - (Date.now() - changeAt));
+    // THE SHOWCASE: the two shelves.
+    if (sc) { listKey = mc.items.map(i => i.title).join('\u0001'); for (const sh of vm.querySelectorAll('.vm-shelf')) { const k = sh.dataset.shelf, list = mc.items.filter(it => (it.shelf || 'bin') === k); sh.hidden = !list.length; sh.querySelector('.vm-track').innerHTML = list.map(it => '<div class="vm-card"><div class="vm-pic">' + (it.image ? '<img alt="" src="' + esc(img(it.image)) + '">' : '') + '</div>' + (it.badge ? '<b class="vm-cb">' + esc(it.badge) + '</b>' : '') + '<div class="vm-cn">' + esc(it.title) + '</div><b class="vm-cp">' + (money(it.price) || '') + '</b></div>').join(''); } vm.querySelector('.vm-count').textContent = mc.items.filter(i => i.shelf === 'pre').length + ' NEW · ' + mc.items.filter(i => (i.shelf || 'bin') === 'bin').length + ' IN THE BIN'; return; }
     vm.classList.toggle('has-up', up >= 0);
     if (up >= 0) { const it = mc.items[up], im = vm.querySelector('.vm-up img'); im.hidden = !it.image; if (it.image) im.src = img(it.image); vm.querySelector('.vm-up-t b').textContent = code(up) + '  ' + it.title; vm.querySelector('.vm-up-bid').textContent = 'BID ' + (money(it.price) || ''); vm.querySelector('.vm-up-d').textContent = it.detail || (mc.kind === 'spots' ? 'SPOT ' + (up + 1) + ' OF ' + n : ''); vm.querySelector('.vm-up-p').textContent = money(it.price); }
     vm.querySelector('.vm-left').textContent = n ? (n - sold) + ' LEFT' : 'STOCKING';
     vm.querySelector('.vm-hint').textContent = !n ? 'STOCKING UP -- BACK IN A SEC!' : up >= 0 ? 'SLOT ' + code(up) + ' IS UP -- TAP BID IN THE APP' : 'SOLD OUT -- THANK YOU!';
-    const slot = (it, i) => '<div data-i="' + i + '" class="vm-slot' + (it.sold ? ' sold' : '') + (i === up ? ' up' : '') + '"><div class="vm-pic">' + (it.image ? '<img alt="" src="' + esc(img(it.image)) + '">' : '<div class="vm-spot"><em>' + (i + 1) + '</em><span>' + esc(it.title) + '</span></div>') + '</div><div class="vm-name">' + esc(it.title) + '</div><b class="vm-price">' + (money(it.price) || '&nbsp;') + '</b><div class="vm-coil"></div><div class="vm-buy"><b>' + code(i) + '</b><span class="vm-bid">' + (it.sold ? 'SOLD' : 'BID ' + money(it.price)) + '</span></div><em class="vm-stamp">SOLD</em>' + (it.buyer ? '<em class="vm-who">@' + esc(it.buyer) + '</em>' : '') + '</div>';
+    const slot = (it, i) => '<div data-i="' + i + '" class="vm-slot' + (it.sold ? ' sold' : '') + (i === up ? ' up' : '') + '"><i class="vm-num">' + (i + 1) + '</i><div class="vm-pic">' + (it.image ? '<img alt="" src="' + esc(img(it.image)) + '">' : '<div class="vm-spot"><em>' + (i + 1) + '</em><span>' + esc(it.title) + '</span></div>') + '</div><div class="vm-name">' + esc(it.title) + '</div><b class="vm-price">' + (money(it.price) || '&nbsp;') + '</b><div class="vm-coil"></div><div class="vm-buy"><b>' + code(i) + '</b><span class="vm-bid">' + (it.sold ? 'SOLD' : 'BID ' + money(it.price)) + '</span></div><em class="vm-stamp">SOLD</em>' + (it.buyer ? '<em class="vm-who">@' + esc(it.buyer) + '</em>' : '') + '</div>';
     // Which slots just sold (the same list, one more SOLD): drop them after the slots repaint.
     const lk = mc.items.map(i => i.title).join('\u0001'), fresh = wasSold && lk === listKey ? mc.items.map((it, i) => it.sold && !wasSold[i] ? i : -1).filter(i => i >= 0).slice(0, 2) : [];
     wasSold = mc.items.map(i => !!i.sold); const keepY = lk === listKey; listKey = lk;
@@ -158,6 +220,8 @@ export function createVending(doc, { img = u => u, where = 'green' } = {}) {
     const html = n ? mc.items.map(slot).join('') : empty.repeat(full ? cols * 3 : 6), rows = vm.querySelector('.vm-rows'), loop = n > (full ? cols * 5 : 9);
     rows.innerHTML = html + (loop ? html : ''); if (loop) rows.dataset.loop = '1'; else delete rows.dataset.loop; if (!keepY) y = 0;
     for (const i of fresh) drop(mc.items[i], i);
+    if (fresh.length) { vendSound(); const bb = vm.querySelector('.vm-bigbid'); bb.classList.remove('press'); void bb.offsetWidth; bb.classList.add('press'); }
+    if (restock) setTimeout(() => vm.classList.remove('restock'), 2600);
   };
 }
 // READY-MADE SPOT LISTS (2026-11-13): one tap fills the names (teams, characters).
