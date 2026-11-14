@@ -156,7 +156,7 @@ const BUILD = {
     // green trim, glowing veins down his right arm into THE GAUNTLET OF GRAILS (armoured, spiked knuckles, the store's
     // comic covers set in it like stones). Green energy crackles round the fist and embers rise round him; the pump winds
     // up, punches the sky and sends a shockwave across the floor. His photo goes on the face when the remote sends one.
-    const skin = fisterSkin(), tee = mat(0x1d2027, { shininess: 10, map: fisterMaps.tee() }), trim = new THREE.MeshBasicMaterial({ color: 0x39ff14 }), jeans = mat(0x34405a, { shininess: 8, map: fisterMaps.denim() }), beard = mat(0x2a1a10, { shininess: 4, map: fisterMaps.hair() });
+    const skin = fisterSkin().clone(), tee = mat(0x1d2027, { shininess: 10, map: fisterMaps.tee() }), trim = new THREE.MeshBasicMaterial({ color: 0x39ff14 }), jeans = mat(0x34405a, { shininess: 8, map: fisterMaps.denim() }), beard = mat(0x2a1a10, { shininess: 4, map: fisterMaps.hair() });
     const cap = mat(0x1a2d20, { shininess: 30 }), steel = mat(0xa7b0ba, { shininess: 170, specular: 0xffffff, map: fisterMaps.steel() }), dark = mat(0x4a5058, { shininess: 120, specular: 0xbbbbbb, map: fisterMaps.steel() }), shoe = mat(0x0f0f12, { shininess: 60 });
     const glowM = (o = 0.9) => new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending });
     const body = new THREE.Group(); root.add(body); // crouches and springs with the pump
@@ -178,15 +178,20 @@ const BUILD = {
     const feats = new THREE.Group(); head.add(feats);
     add(feats, cone(0.05, 0.13, skin, 8), 0, -0.03, 0.3).rotation.x = Math.PI / 2;
     for (const sx of [-1, 1]) { add(feats, ball(0.03, mat(0xf5f5f0, { shininess: 80 }), 8), sx * 0.1, 0.05, 0.255).scale.set(1.3, 0.8, 0.5); add(feats, ball(0.017, mat(0x0b0612, { shininess: 140 }), 8), sx * 0.1, 0.05, 0.27); const br = add(feats, box(0.13, 0.032, 0.035, beard), sx * 0.1, 0.115, 0.27); br.rotation.z = sx * -0.18; }
-    add(feats, box(0.18, 0.03, 0.04, beard), 0, -0.1, 0.285); add(feats, box(0.1, 0.022, 0.03, mat(0x5e2a24)), 0, -0.15, 0.295);
+    add(feats, box(0.1, 0.022, 0.03, mat(0x5e2a24)), 0, -0.17, 0.29); // the mouth
     const beardM = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 14, 0, Math.PI * 2, Math.PI * 0.6, Math.PI * 0.4), beard); beardM.scale.set(0.93, 1.25, 1.04); head.add(beardM);
-    add(head, cone(0.07, 0.16, beard, 10), 0, -0.4, 0.17).rotation.x = Math.PI; // the goatee point
+    // The chin beard: full and rounded, trimmed square at the bottom (2026-11-14: "fix his beard ... the cone is terrible").
+    add(head, ball(0.15, beard, 18), 0, -0.3, 0.12).scale.set(1.15, 1.05, 0.85);
+    add(head, ball(0.12, beard, 16), 0, -0.4, 0.11).scale.set(1.1, 0.75, 0.8);
+    const stache = add(head, new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.026, 8, 18, Math.PI), beard), 0, -0.135, 0.255); stache.rotation.z = Math.PI; stache.scale.set(1.2, 0.75, 0.8); // the moustache, curving down into the beard
+    add(head, box(0.18, 0.012, 0.02, new THREE.MeshBasicMaterial({ color: 0x0a0604 })), 0, -0.21, 0.29); // a sharp line-up at the cheeks
     for (const sx of [-1, 1]) { const sb = add(head, box(0.035, 0.17, 0.12, beard), sx * 0.255, -0.06, 0.08); sb.rotation.y = sx * 0.45; }
-    const face = new THREE.Mesh(new THREE.SphereGeometry(0.334, 24, 16, Math.PI / 2 - 0.95, 1.9, Math.PI * 0.2, Math.PI * 0.62), fisterFaceMat()); face.scale.set(0.9, 1.1, 1.0); face.visible = fisterFaceOn; head.add(face);
+    const faceM = fisterFaceMat().clone(), face = new THREE.Mesh(new THREE.SphereGeometry(0.334, 24, 16, Math.PI / 2 - 0.95, 1.9, Math.PI * 0.2, Math.PI * 0.62), faceM); face.scale.set(0.9, 1.1, 1.0); face.visible = fisterFaceOn; head.add(face);
     feats.visible = !fisterFaceOn; fisterHeads.push({ face, feats }); if (fisterHeads.length > 16) fisterHeads.splice(2, 1);
     const crown = new THREE.Mesh(new THREE.SphereGeometry(0.315, 22, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), cap); crown.position.set(0, 0.1, -0.02); crown.scale.set(0.95, 0.95, 1.04); head.add(crown);
     const brim = add(head, box(0.3, 0.025, 0.24, cap), 0, 0.12, -0.38); brim.rotation.x = -0.22;
     add(head, ball(0.03, trim, 6), 0, 0.4, -0.02);
+    const capBack = add(head, new THREE.Mesh(new THREE.CircleGeometry(0.07, 20), new THREE.MeshBasicMaterial({ map: fisterMaps.emblem(), transparent: true })), 0, 0.2, -0.3); capBack.rotation.y = Math.PI; capBack.rotation.x = 0.35; // his fist emblem on the back of the cap
     // The arms: deltoid, a big biceps, forearm, hand. His left hangs; his RIGHT (our left) wears the gauntlet.
     const arm = g => { add(g, cyl(0.17, 0.15, 0.22, tee, 12), 0, -0.08, 0); add(g, new THREE.Mesh(new THREE.TorusGeometry(0.155, 0.014, 6, 18), trim), 0, -0.19, 0).rotation.x = Math.PI / 2; add(g, ball(0.14, skin, 14), 0, -0.31, 0.01).scale.set(1, 1.65, 1); };
     const armL = new THREE.Group(); armL.position.set(0.52, 0.2, 0); body.add(armL); armL.rotation.z = 0.12; arm(armL);
@@ -216,9 +221,23 @@ const BUILD = {
     const embers = pts(70, 0.035, 0x39ff14); root.add(embers);
     const ring = add(root, new THREE.Mesh(new THREE.RingGeometry(0.5, 0.62, 40), glowM(0)), 0, -1.53, 0); ring.rotation.x = -Math.PI / 2;
     const glowFloor = add(root, new THREE.Mesh(new THREE.CircleGeometry(0.9, 32), glowM(0.12)), 0, -1.54, 0); glowFloor.rotation.x = -Math.PI / 2;
+    // SYMBIOTE MODE (store, 2026-11-14: "hit the button and he looks venomized"): our own take -- black goo spreads up from
+    // the gauntlet over all of him, glossy, with green veins, glowing green eyes and goo tendrils whipping off his back.
+    const gooMats = [skin, tee, jeans, beard, cap, faceM].map(m => ({ m, c: m === skin ? fisterSkin().color : m.color.clone(), sh: m.shininess })); // his skin follows the photo's tone (the shared master)
+    const gooBlack = new THREE.Color(0x050607);
+    const tendrils = [], gooTex = mat(0x050607, { shininess: 220, specular: 0x8899aa });
+    for (let k = 0; k < 6; k++) { const g = new THREE.Group(); g.position.set((k % 3 - 1) * 0.28, 0.15 + Math.floor(k / 3) * 0.12, -0.25); body.add(g); const balls = []; for (let n = 0; n < 16; n++) balls.push(add(g, ball(0.12 * (1 - n / 19), gooTex, 10), 0, 0, 0)); g.visible = false; tendrils.push({ g, balls, k }); }
+    const gooEyes = []; for (const sx of [-1, 1]) { const e = add(head, new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: 0x39ff14 })), sx * 0.1, 0.06, 0.33); e.scale.set(1.5, 0.6, 1); e.rotation.z = sx * -0.35; e.visible = false; gooEyes.push(e); }
+    let gooOn = false, gooK = 0, gooAt = 0;
     const seeded = (k, m) => ((Math.sin(k * 12.9898 + m * 78.233) * 43758.5453) % 1 + 1) % 1; // fixed per particle, no dice
     const ease = (a, b, k) => a + (b - a) * (k < 0 ? 0 : k > 1 ? 1 : k * k * (3 - 2 * k));
-    return { tick(t) {
+    return { mode(name, on) { if (name === 'goo') { gooOn = !!on; gooAt = -1; } }, tick(t) {
+      // The goo: spreading in over 1.5 s (or peeling back off), from the gauntlet up.
+      if (gooAt < 0) gooAt = t; const gk = gooOn ? Math.min(1, (t - gooAt) / 1.5) : Math.max(0, gooK - 0.05); gooK = gk;
+      for (const o of gooMats) { o.m.color.copy(o.c).lerp(gooBlack, gk); if ('shininess' in o.m) o.m.shininess = o.sh + (220 - o.sh) * gk; }
+      gooEyes.forEach(e => { e.visible = gk > 0.6; e.material.color.setRGB(0.22, 1, 0.08).multiplyScalar(0.7 + 0.3 * Math.sin(t * 8)); });
+      tendrils.forEach(({ g, balls, k }) => { g.visible = gk > 0.3; const reach = Math.min(1, (gk - 0.3) / 0.7); balls.forEach((b, n) => { const u = n / balls.length, a = k * 1.05 + Math.sin(t * 2.2 + k) * 0.5; b.position.set(Math.cos(a) * u * 1.3 * reach + Math.sin(t * 4 + n * 0.7 + k) * 0.1 * u, (Math.sin(a) * 0.8 + 0.45) * u * reach + Math.sin(t * 3 + n * 0.5) * 0.12 * u, -u * 0.45 * reach); }); });
+      veins.forEach(v => { v.scale.set(1 + 2 * gk, 1, 1 + 2 * gk); });
       // THE FIST PUMP (1.8 s): wind up low, explode upward, hold it high with a shake, settle.
       const P = 1.8, p = (t % P) / P;
       const wind = p < 0.25 ? p / 0.25 : 1, up = p < 0.25 ? 0 : p < 0.36 ? (p - 0.25) / 0.11 : 1, down = p < 0.72 ? 0 : (p - 0.72) / 0.28;
@@ -598,6 +617,8 @@ export function createBossView(canvas, { size = 280, fov = 30, ps1 = true, lookY
   return {
     set, style,
     hit() { hitAt = clock.getElapsedTime(); },
+    // A model's own modes (Mr Fister's symbiote).
+    mode(name, on) { model?.mode?.(name, on); },
     enter() { if (defeated) this.defeat(false); enterAt = clock.getElapsedTime(); },
     get ps1() { return isPs1; },
     get exploded() { return !!pieces; },

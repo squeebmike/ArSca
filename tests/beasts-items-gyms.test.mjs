@@ -67,7 +67,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const g3 = r('live-studio-3d.mjs'), room = r('live-studio-room.mjs'), api = r('live-studio-api.mjs'), ov = r('live-studio-overlay.mjs'), ctl = r('live-studio-controls.js'), fp = r('shed-crawl-fp.mjs');
   assert.ok(g3.includes('  fister(root) {') && g3.includes('export function setFisterFace(') && g3.includes('export function setFisterCovers('));
   assert.ok(room.includes('setFisterFace(face) {') && room.includes("fisterFace:state.fisterFace || ''") && api.includes("/live-studio/fister-face"));
-  assert.ok(ov.includes("if(e.kind==='fister'&&fisterView)") && ov.includes("case 'fister':") && ctl.includes("['fister','✊ MR FISTER']") && ctl.includes("tag:'ratio'"));
+  assert.ok(ov.includes("if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView)") && ov.includes("case 'fister':") && ctl.includes("['fister','✊ MR FISTER']") && ctl.includes("tag:'ratio'"));
   assert.ok(fp.includes("if (mv === 'comics')") && fp.includes('bossFeet = feetOf('), 'the comic storm; the boss on its feet');
   const M = await import('../scripts/live-studio-model.mjs');
   assert.ok(M.EFFECTS.includes('fister'));
@@ -88,4 +88,13 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8');
   assert.ok(g3.includes('const fisterMaps = {') && g3.includes('fisterMaps.denim()') && g3.includes('THE FIST PUMP (1.8 s)'), 'Mr Fister: textures and the pump');
   console.log('Beasts graphics settings: passed');
+}
+// Symbiote Mr Fister, his beard, the back of his cap (2026-11-14).
+{
+  const g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
+  assert.ok(g3.includes('SYMBIOTE MODE') && g3.includes("mode(name, on) { model?.mode?.(name, on); }") && !g3.includes('the goatee point'), 'symbiote mode; no cone beard');
+  assert.ok(g3.includes('his fist emblem on the back of the cap'));
+  assert.ok(ov.includes("fisterView.mode('goo',e.kind==='fistergoo')") && ctl.includes("['fistergoo','🖤 SYMBIOTE FISTER']"));
+  const M = await import('../scripts/live-studio-model.mjs'); assert.ok(M.EFFECTS.includes('fistergoo'));
+  console.log('Symbiote Fister: passed');
 }

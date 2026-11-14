@@ -557,7 +557,7 @@ function receiveEffect(e,initial=false) {
   if(played.has(e.id)) return;
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
   // MR FISTER: he rises in, pumping the gauntlet (the line under him is the usual burst).
-  if(e.kind==='fister'&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.stop();},7600);}
+  if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.mode('goo',e.kind==='fistergoo');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.mode('goo',false);fisterView.stop();},e.kind==='fistergoo'?9600:7600);}
   // A ByteRider reaction or line from the dashboard: just him, no burst.
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
   // BEASTS: chat picked an attack -- your beast uses it now.
@@ -594,6 +594,7 @@ function words(e) {
     // Show start: a boss-fight intro card.
     // Beasts' own moments.
     case 'fister': return ['MR FISTER!','IF I CAN DO IT, YOU CAN!','THE GAUNTLET OF GRAILS'];
+    case 'fistergoo': return ['SYMBIOTE FISTER!','THE GOO HAS TAKEN HOLD','GOO MODE: ACTIVATED'];
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];
       if(e.beastEvent==='learn')return [(e.beastName||'YOUR BEAST')+' HIT LV '+(e.level||'')+'!','IT CAN LEARN A NEW ATTACK','CHAT: NAME IT!'];
       return e.beastEvent==='badge'?[(e.gym?'GYM BADGE! ROUTE ':'ROUTE ')+(e.route||'')+(e.gym?'':' BADGE!'),'BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];
