@@ -22,9 +22,9 @@ export const BOSSES = {
     `<path d="M26 35 Q30 38 34 35" fill="none" stroke="#c98b61" stroke-width="1.5"/>` +
     `<path d="M18 22 Q18 11 30 11 Q42 11 42 22 Q30 19 18 22 Z" fill="#1d3b24" ${ink}/><path d="M18 21 L11 24" stroke="#1d3b24" stroke-width="5" stroke-linecap="round"/>` +
     `<path d="M23 24 L28 25 M33 25 L38 24" stroke="${K}" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="28" r="1.3" fill="${K}"/><circle cx="35" cy="28" r="1.3" fill="${K}"/>` +
-    `<path d="M45 46 L52 22" stroke="#111317" stroke-width="8" stroke-linecap="round"/>` +
-    `<rect x="45" y="6" width="15" height="17" rx="4" fill="#7c8590" ${ink}/><rect x="45" y="6" width="15" height="17" rx="4" fill="none" stroke="#39ff14" stroke-width="1.5"/>` +
-    `<rect x="47" y="8" width="3" height="4" fill="#ff3fd2"/><rect x="51" y="8" width="3" height="4" fill="#22e6ff"/><rect x="55" y="8" width="3" height="4" fill="#ffe23d"/><rect x="50" y="15" width="5" height="5" fill="#ff2a4f"/>`) },
+    `<path d="M19 46 L12 22" stroke="#111317" stroke-width="8" stroke-linecap="round"/>` + // his right arm up (our left)
+    `<rect x="4" y="6" width="15" height="17" rx="4" fill="#7c8590" ${ink}/><rect x="4" y="6" width="15" height="17" rx="4" fill="none" stroke="#39ff14" stroke-width="1.5"/>` +
+    `<rect x="6" y="8" width="3" height="4" fill="#ff3fd2"/><rect x="10" y="8" width="3" height="4" fill="#22e6ff"/><rect x="14" y="8" width="3" height="4" fill="#ffe23d"/><rect x="9" y="15" width="5" height="5" fill="#ff2a4f"/>`) },
   scalper: { name: 'THE SCALPER', taunt: 'LIMIT ONE? NOT FOR ME!', svg: svg(
     // Trench coat, hood, shades, grin, an armful of sealed boxes.
     `<path d="M14 62 L18 34 Q32 28 46 34 L50 62 Z" fill="#3b1b5e" ${ink}/>` +

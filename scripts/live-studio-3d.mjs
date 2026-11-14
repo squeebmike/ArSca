@@ -165,9 +165,10 @@ const BUILD = {
     add(head, ball(0.03, cap, 6), 0, 0.4, -0.02);
     // Arms: deltoid, biceps, forearm, hand. The left hangs; the right pumps the gauntlet.
     const arm = (g, right) => { add(g, cyl(0.15, 0.13, 0.22, tee, 12), 0, -0.08, 0); add(g, ball(0.12, skin, 12), 0, -0.3, 0.01).scale.set(1, 1.6, 1); };
-    const armL = new THREE.Group(); armL.position.set(-0.5, 0.2, 0); root.add(armL); armL.rotation.z = -0.12; arm(armL);
+    // HIS RIGHT FIST wears the gauntlet (store, 2026-11-14) -- facing us, his right is on our left (-x).
+    const armL = new THREE.Group(); armL.position.set(0.5, 0.2, 0); root.add(armL); armL.rotation.z = 0.12; arm(armL);
     const foreL = new THREE.Group(); foreL.position.set(0, -0.5, 0); armL.add(foreL); add(foreL, cyl(0.1, 0.075, 0.42, skin, 12), 0, -0.21, 0); add(foreL, ball(0.085, skin, 10), 0, -0.47, 0.02).scale.set(0.9, 1.2, 0.8); foreL.rotation.x = -0.15;
-    const shoulder = new THREE.Group(); shoulder.position.set(0.5, 0.2, 0); root.add(shoulder); arm(shoulder, true);
+    const shoulder = new THREE.Group(); shoulder.position.set(-0.5, 0.2, 0); root.add(shoulder); arm(shoulder, true);
     const elbow = new THREE.Group(); elbow.position.set(0, -0.5, 0); shoulder.add(elbow);
     add(elbow, cyl(0.1, 0.08, 0.42, skin, 12), 0, -0.21, 0);
     const fist = new THREE.Group(); fist.position.set(0, -0.5, 0); fist.scale.setScalar(1.15); elbow.add(fist);
@@ -177,13 +178,13 @@ const BUILD = {
     const tex = fisterTextures();
     for (let k = 0; k < 4; k++) add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.06, 0.085), new THREE.MeshBasicMaterial({ map: tex[k] })), -0.105 + k * 0.07, -0.1, 0.138);
     const big = add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.21), new THREE.MeshBasicMaterial({ map: tex[4] })), 0, 0, -0.138); big.rotation.y = Math.PI;
-    const side = add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.18), new THREE.MeshBasicMaterial({ map: tex[4] })), 0.153, 0, 0); side.rotation.y = Math.PI / 2;
+    const side = add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.18), new THREE.MeshBasicMaterial({ map: tex[4] })), -0.153, 0, 0); side.rotation.y = -Math.PI / 2;
     const aura = add(fist, ball(0.3, new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.16, depthWrite: false }), 14), 0, 0, 0);
     const lamp = new THREE.PointLight(0x39ff14, 2, 3); fist.add(lamp);
     return { tick(t) {
       // The fist pump: up, punch higher, back down a touch -- about once a second.
       const p = (t * 0.9) % 1, up = p < 0.35 ? p / 0.35 : 1 - (p - 0.35) / 0.65, pop = Math.sin(Math.min(1, up) * Math.PI / 2);
-      shoulder.rotation.z = 2.45 + 0.3 * pop; elbow.rotation.z = -0.95 + 0.8 * pop; fist.rotation.z = 0.3 - 0.3 * pop;
+      shoulder.rotation.z = -(2.45 + 0.3 * pop); elbow.rotation.z = 0.95 - 0.8 * pop; fist.rotation.z = -0.3 + 0.3 * pop;
       head.rotation.x = -0.07 * pop; head.rotation.y = Math.sin(t * 0.8) * 0.12; torso.rotation.y = Math.sin(t * 0.8) * 0.04;
       const g = 0.6 + 0.4 * Math.sin(t * 6); aura.material.opacity = 0.1 + 0.16 * g; aura.scale.setScalar(1 + 0.15 * g); lamp.intensity = 1.4 + 1.4 * g;
       armL.rotation.x = Math.sin(t * 1.8) * 0.05;
