@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.14.3-byterider-home';
+const APP_VERSION = '2026.11.14.4-mtg-review';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42351,9 +42351,10 @@ function openMtgPasteToBuyList(){
     + '<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">One card a line: <b>1 Corpses of the Lost (Extended Art) [LCI] 366</b>, or <b>1x Sol Ring (C21) 263 *F*</b>, or just the name. Foil / Foil Etched in the line are priced as such. Prices come from Scryfall (TCGplayer market).</div>'
     + '<textarea id="mtg-paste-text" class="tsi" rows="12" style="width:100%;font:12px var(--font-mono)" placeholder="1 Whims of the Fates [BNG] 115"></textarea>'
     + '<div id="mtg-paste-status" style="font:10px var(--font-mono);color:var(--dim)"></div>'
-    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="mtg-paste-cancel">CANCEL</button><button class="hbtn" style="color:var(--g)" id="mtg-paste-go">LOOK UP &amp; ADD</button></div></div>';
+    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="mtg-paste-cancel">CANCEL</button><button class="hbtn" id="mtg-paste-review" style="color:var(--purple)">REVIEW IN RESEARCH</button><button class="hbtn" style="color:var(--g)" id="mtg-paste-go">LOOK UP &amp; ADD</button></div></div>';
   document.body.appendChild(m);
   m.querySelector('#mtg-paste-cancel').onclick = () => m.remove();
+  m.querySelector('#mtg-paste-review').onclick = () => { const t = m.querySelector('#mtg-paste-text').value; m.remove(); openMtgListReview(t); if(t.trim()) document.getElementById('mtg-review-go')?.click(); };
   m.querySelector('#mtg-paste-go').onclick = async () => {
     const go = m.querySelector('#mtg-paste-go'), status = m.querySelector('#mtg-paste-status');
     go.disabled = true;
@@ -42364,7 +42365,10 @@ function openMtgPasteToBuyList(){
   setTimeout(() => m.querySelector('#mtg-paste-text')?.focus(), 50);
 }
 window.openMtgPasteToBuyList = openMtgPasteToBuyList;
-async function importMtgListToBuyList(text, progress = () => {}){
+// Look up a pasted Magic list on Scryfall: each line matched to ITS printing (set + number, else name + set,
+// else name -- a name-only map let the same card in two sets share one price), with a second pass by name for
+// lines Scryfall didn't know (TCGplayer-only set codes like [PRE] prerelease or [UMP] bundle promos).
+async function lookupMtgList(text, progress = () => {}){
   const mod = await import(new URL('scripts/pricecharting-buy-import.mjs', document.baseURI).href).catch(() => null);
   if(!mod) throw new Error('Could not load the importer -- refresh and try again');
   const { items, skipped } = mod.parseMtgList(text);
@@ -42382,41 +42386,176 @@ async function importMtgListToBuyList(text, progress = () => {}){
     await new Promise(res => setTimeout(res, 120));
   }
   const key = (set, num) => (String(set) + '|' + String(num)).toLowerCase();
-  // Match each line to ITS printing: set + number, else name + set, else name. (A name-only map let the
-  // same card in two sets share one price -- Dave's 200-card test read $256 vs TCGplayer's $276.)
   const byKey = new Map(found.map(c => [key(c.set, c.collector_number), c])), byName = new Map();
   const putName = (k, c) => { if(!byName.has(k)) byName.set(k, c); };
   for(const c of found){ const n = String(c.name).toLowerCase(), front = n.split(' // ')[0], set = String(c.set).toLowerCase(); putName(n + '|' + set, c); putName(front + '|' + set, c); putName(n, c); putName(front, c); }
-  const cardFor = it => {
+  const match = it => {
     const id = mod.mtgIdentifier(it), nm = String(it.name).toLowerCase(), st = String(it.set || '').toLowerCase();
-    return (id.collector_number && byKey.get(key(id.set, id.collector_number))) || (st && byName.get(nm + '|' + st)) || byName.get(nm);
+    const exact = (id.collector_number && byKey.get(key(id.set, id.collector_number))) || (st && byName.get(nm + '|' + st));
+    if(exact) return { card:exact, how:'exact' };
+    const c = byName.get(nm); return c ? { card:c, how:'name' } : { card:null, how:'none' };
   };
-  // Second pass by name alone for lines Scryfall didn't know: TCGplayer-only set codes like [PRE] (prerelease)
-  // or [UMP] (bundle promos) are not Scryfall sets, and those cards came in at $0 / Needs Review.
-  const retry = [...new Set(items.filter(it => !cardFor(it)).map(it => it.name))];
+  const retry = [...new Set(items.filter(it => !match(it).card).map(it => it.name))];
   for(let i = 0; i < retry.length; i += 75){
     progress('Looking up ' + retry.length + ' card' + (retry.length === 1 ? '' : 's') + ' by name...');
     const r = await fetch('https://api.scryfall.com/cards/collection', { method:'POST', headers:{ 'Content-Type':'application/json', Accept:'application/json' }, body:JSON.stringify({ identifiers:retry.slice(i, i + 75).map(name => ({ name })) }) });
     const d = await r.json().catch(() => ({}));
-    for(const c of (r.ok ? d.data || [] : [])){ const n = String(c.name).toLowerCase(); if(!byName.has(n)) byName.set(n, c); const f = n.split(' // ')[0]; if(!byName.has(f)) byName.set(f, c); }
+    for(const c of (r.ok ? d.data || [] : [])){ const n = String(c.name).toLowerCase(); putName(n, c); putName(n.split(' // ')[0], c); }
     await new Promise(res => setTimeout(res, 120));
   }
-  const rows = items.map(it => {
-    const card = cardFor(it);
-    const market = card ? mod.mtgPriceOf(card, it.finish) : 0;
-    return {
-      name:mod.mtgDisplayName(it), set:card?.set_name || it.set, category:'Magic: The Gathering', card_number:card?.collector_number || it.number,
-      language:'', condition:'NM', grade:'', grader:'', cert_number:'', quantity:it.quantity, market,
-      pricechartingProductId:'', providerUrl:card?.scryfall_uri || '', imageUrl:card?.image_uris?.normal || card?.card_faces?.[0]?.image_uris?.normal || '',
-      notes:card ? '' : 'Not found on Scryfall -- check the set / number', source:'Scryfall (pasted list)',
-    };
-  });
+  return { mod, skipped, copies, lines:items.map(it => ({ it, ...match(it) })) };
+}
+// One buy-offer row from a looked-up line (and, from the Research review, its edits).
+function mtgLineToBuyRow(mod, line, edits = {}){
+  const { it, card } = line, finish = edits.finish ?? it.finish;
+  const market = edits.price != null ? Number(edits.price) || 0 : (card ? mod.mtgPriceOf(card, finish) : 0);
+  const name = mod.mtgDisplayName({ ...it, finish });
+  return {
+    name, set:card?.set_name || it.set, category:'Magic: The Gathering', card_number:card?.collector_number || it.number,
+    language:'', condition:edits.condition || 'NM', grade:'', grader:'', cert_number:'', quantity:edits.quantity ?? it.quantity, market,
+    pricechartingProductId:'', providerUrl:card?.scryfall_uri || '', imageUrl:card?.image_uris?.normal || card?.card_faces?.[0]?.image_uris?.normal || '',
+    notes:card ? '' : 'Not found on Scryfall -- check the set / number', source:edits.price != null ? 'Manual price (reviewed list)' : 'Scryfall (pasted list)',
+  };
+}
+async function importMtgListToBuyList(text, progress = () => {}){
+  const { mod, skipped, copies, lines } = await lookupMtgList(text, progress);
+  const rows = lines.map(line => mtgLineToBuyRow(mod, line));
   const missing = rows.filter(r => !(r.market > 0)).length;
   const total = rows.reduce((n, r) => n + r.market * r.quantity, 0);
   if(!confirm(`Add ${copies} card${copies === 1 ? '' : 's'} (${rows.length} line${rows.length === 1 ? '' : 's'}) to the buy offer?\nGuide value ${fd$(total)}.` + (missing ? `\n${missing} line${missing === 1 ? '' : 's'} without a price ${missing === 1 ? 'comes' : 'come'} in as NEEDS REVIEW.` : '') + (skipped.length ? `\n${skipped.length} line${skipped.length === 1 ? '' : 's'} couldn't be read: ` + skipped.slice(0, 3).join(' / ') : ''))) return false;
   addImportedRowsToBuyList(rows, 'pasted Magic list', skipped.length);
   return true;
 }
+
+// ── RESEARCH: review a pasted Magic list before it goes to Buy (store, 2026-11-14: "import that list to the
+// research tab, see all those cards, and change things before we add them to buy") ──
+// Every line shows its picture, printing and price; finish (Regular / Foil / Etched), printing, condition, qty
+// and price can be changed; rows that need a look are flagged; ADD TO BUY sends the checked rows.
+let mtgReview = null;
+const MTG_FINISH_LABEL = { '':'Regular', foil:'Foil', etched:'Etched' };
+function mtgReviewFinishes(card){ const f = card?.finishes || ['nonfoil']; return ['', 'foil', 'etched'].filter(x => f.includes(x || 'nonfoil')); }
+function mtgReviewPrice(r){ return r.price != null ? Number(r.price) || 0 : (r.card ? mtgReview.mod.mtgPriceOf(r.card, r.finish) : 0); }
+function mtgReviewFlags(r){
+  const flags = [];
+  if(!r.card) flags.push('Not found');
+  else {
+    if(r.how === 'name') flags.push('Printing guessed by name');
+    const has = mtgReviewFinishes(r.card);
+    if(!has.includes(r.finish)) flags.push((MTG_FINISH_LABEL[r.finish] || 'This finish') + ' not made -- priced as ' + MTG_FINISH_LABEL[has[0]]);
+    else if(r.finish === '' && !(Number(r.card.prices?.usd) > 0) && r.price == null) flags.push('No regular price -- foil price used');
+  }
+  if(!(mtgReviewPrice(r) > 0)) flags.push('No price');
+  return flags;
+}
+function openMtgListReview(text = ''){
+  if(typeof switchTab === 'function') switchTab('research', [...document.querySelectorAll('.tab')].find(t => /RESEARCH/.test(t.textContent)));
+  const box = document.getElementById('research-list-review'); if(!box) return;
+  box.style.display = 'grid';
+  box.innerHTML = '<div class="panel" style="display:grid;gap:10px">'
+    + '<div class="ph">📋 PASTE A MAGIC LIST <span style="color:var(--dim);font-size:8px">review every card here, then add to Buy</span></div>'
+    + '<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">One card a line: <b>1 Corpses of the Lost (Extended Art) [LCI] 366</b>, <b>1x Sol Ring (C21) 263 *F*</b>, or just the name.</div>'
+    + '<textarea id="mtg-review-text" class="tsi" rows="8" style="width:100%;font:12px var(--font-mono)" placeholder="1 Whims of the Fates [BNG] 115"></textarea>'
+    + '<div id="mtg-review-status" style="font:10px var(--font-mono);color:var(--dim)"></div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end"><button class="hbtn" onclick="closeMtgListReview()">CLOSE</button><button class="hbtn" style="color:var(--g)" id="mtg-review-go">LOOK UP</button></div></div>'
+    + '<div id="mtg-review-table"></div>';
+  const ta = box.querySelector('#mtg-review-text'); ta.value = text;
+  box.querySelector('#mtg-review-go').onclick = async () => {
+    const go = box.querySelector('#mtg-review-go'), status = box.querySelector('#mtg-review-status');
+    go.disabled = true;
+    try {
+      const res = await lookupMtgList(ta.value, msg => { status.textContent = msg; });
+      mtgReview = { mod:res.mod, skipped:res.skipped, filter:'all', rows:res.lines.map((l, i) => ({ i, it:l.it, card:l.card, how:l.how, finish:l.it.finish, condition:'NM', quantity:l.it.quantity, price:null, checked:true })) };
+      status.textContent = res.skipped.length ? res.skipped.length + ' line' + (res.skipped.length === 1 ? '' : 's') + " couldn't be read: " + res.skipped.slice(0, 3).join(' / ') : '';
+      renderMtgListReview();
+    } catch(e) { status.textContent = e.message || String(e); }
+    go.disabled = false;
+  };
+  box.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function closeMtgListReview(){ const box = document.getElementById('research-list-review'); if(box){ box.innerHTML = ''; box.style.display = 'none'; } mtgReview = null; }
+function renderMtgListReview(){
+  const host = document.getElementById('mtg-review-table'); if(!host || !mtgReview) return;
+  const rows = mtgReview.rows, checked = rows.filter(r => r.checked);
+  const total = checked.reduce((n, r) => n + mtgReviewPrice(r) * r.quantity, 0), copies = checked.reduce((n, r) => n + r.quantity, 0);
+  const flagged = rows.filter(r => mtgReviewFlags(r).length).length;
+  const shown = mtgReview.filter === 'flagged' ? rows.filter(r => mtgReviewFlags(r).length) : rows;
+  const sel = (on, opts, cur) => '<select class="tsi" style="width:auto;margin:0;padding:4px 6px;font-size:11px;min-height:30px" ' + on + '>' + opts.map(([v, t]) => '<option value="' + escHtml(v) + '"' + (v === cur ? ' selected' : '') + '>' + escHtml(t) + '</option>').join('') + '</select>';
+  host.innerHTML = '<div class="panel" style="display:grid;gap:8px">'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">'
+    +   '<div style="font:12px var(--font-mono)"><b style="color:var(--g)">' + fd$(total) + '</b> <span style="color:var(--dim)">market · ' + copies + ' card' + (copies === 1 ? '' : 's') + ' checked of ' + rows.reduce((n, r) => n + r.quantity, 0) + '</span>' + (flagged ? ' · <span style="color:var(--gold)">' + flagged + ' to check</span>' : '') + '</div>'
+    +   '<div style="display:flex;gap:6px;flex-wrap:wrap">'
+    +     '<button class="hbtn" onclick="mtgReviewSet(\'filter\',\'' + (mtgReview.filter === 'flagged' ? 'all' : 'flagged') + '\')">' + (mtgReview.filter === 'flagged' ? 'SHOW ALL' : 'SHOW FLAGGED') + '</button>'
+    +     '<button class="hbtn" onclick="mtgReviewCheckAll()">' + (checked.length === rows.length ? 'UNCHECK ALL' : 'CHECK ALL') + '</button>'
+    +     '<button class="hbtn" style="color:var(--g)" onclick="mtgReviewAddToBuy()"' + (checked.length ? '' : ' disabled') + '>ADD ' + copies + ' TO BUY →</button>'
+    +   '</div></div>'
+    + shown.map(r => {
+        const c = r.card, img = c?.image_uris?.small || c?.card_faces?.[0]?.image_uris?.small || '', price = mtgReviewPrice(r), flags = mtgReviewFlags(r);
+        const fins = c ? mtgReviewFinishes(c) : [''];
+        if(!fins.includes(r.finish)) fins.push(r.finish);
+        const p = c?.prices || {}, pr = v => Number(v) > 0 ? '$' + Number(v).toFixed(2) : '—';
+        return '<div style="display:grid;grid-template-columns:auto 52px 1fr;gap:8px;align-items:start;padding:8px;border:1px solid ' + (flags.length ? 'rgba(255,209,102,.45)' : 'var(--border)') + ';border-radius:8px;opacity:' + (r.checked ? 1 : .5) + '">'
+          + '<input type="checkbox" style="width:20px;height:20px;margin-top:4px"' + (r.checked ? ' checked' : '') + ' onchange="mtgReviewRow(' + r.i + ',\'checked\',this.checked)">'
+          + (img ? '<img src="' + escHtml(img) + '" alt="" loading="lazy" style="width:52px;border-radius:4px">' : '<div style="width:52px;height:72px;border:1px dashed var(--border);border-radius:4px"></div>')
+          + '<div style="display:grid;gap:6px;min-width:0">'
+          +   '<div style="font:12px var(--font-mono);overflow-wrap:anywhere"><b>' + escHtml(c?.name || r.it.name) + '</b>' + (r.it.extras?.length ? ' <span style="color:var(--dim)">(' + escHtml(r.it.extras.join(', ')) + ')</span>' : '')
+          +     '<div style="color:var(--dim);font-size:10px">' + escHtml(c ? c.set_name + ' · ' + String(c.set).toUpperCase() + ' #' + c.collector_number : 'Pasted as ' + (r.it.set ? '[' + r.it.set + '] ' + r.it.number : 'name only'))
+          +     (c ? ' · Reg ' + pr(p.usd) + ' · Foil ' + pr(p.usd_foil) + (p.usd_etched ? ' · Etched ' + pr(p.usd_etched) : '') : '') + '</div></div>'
+          +   (flags.length ? '<div style="font:10px var(--font-mono);color:var(--gold)">⚠ ' + escHtml(flags.join(' · ')) + '</div>' : '')
+          +   '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+          +     sel('onchange="mtgReviewRow(' + r.i + ',\'finish\',this.value)"', fins.map(f => [f, MTG_FINISH_LABEL[f] || f]), r.finish)
+          +     sel('onchange="mtgReviewRow(' + r.i + ',\'condition\',this.value)"', ['NM', 'LP', 'MP', 'HP', 'DMG'].map(x => [x, x]), r.condition)
+          +     '<label style="font:10px var(--font-mono);color:var(--dim)">Qty <input type="number" min="1" max="100" value="' + r.quantity + '" class="tsi" style="width:56px;margin:0;padding:4px 6px" onchange="mtgReviewRow(' + r.i + ',\'quantity\',this.value)"></label>'
+          +     '<label style="font:10px var(--font-mono);color:var(--dim)">$ <input type="number" min="0" step="0.01" value="' + price.toFixed(2) + '" class="tsi" style="width:76px;margin:0;padding:4px 6px' + (r.price != null ? ';color:var(--gold)' : '') + '" onchange="mtgReviewRow(' + r.i + ',\'price\',this.value)"></label>'
+          +     (r.price != null ? '<button class="hbtn" style="font-size:9px;min-height:30px;padding:2px 8px" onclick="mtgReviewRow(' + r.i + ',\'price\',null)">USE SCRYFALL</button>' : '')
+          +     '<button class="hbtn" style="font-size:9px;min-height:30px;padding:2px 8px" onclick="mtgReviewPrintings(' + r.i + ')">PRINTING ▾</button>'
+          +   '</div><div id="mtg-review-prints-' + r.i + '"></div>'
+          + '</div></div>';
+      }).join('')
+    + (shown.length ? '' : '<div style="font:11px var(--font-mono);color:var(--dim)">Nothing flagged.</div>')
+    + '</div>';
+}
+function mtgReviewSet(k, v){ if(mtgReview){ mtgReview[k] = v; renderMtgListReview(); } }
+function mtgReviewCheckAll(){ if(!mtgReview) return; const all = mtgReview.rows.every(r => r.checked); mtgReview.rows.forEach(r => { r.checked = !all; }); renderMtgListReview(); }
+function mtgReviewRow(i, k, v){
+  const r = mtgReview?.rows[i]; if(!r) return;
+  if(k === 'quantity') v = Math.max(1, Math.min(100, Math.round(Number(v) || 1)));
+  if(k === 'price') v = v == null || v === '' ? null : Math.max(0, Math.round(Number(v) * 100) / 100);
+  if(k === 'finish' || k === 'condition') v = String(v);
+  r[k] = v; renderMtgListReview();
+}
+// Every printing of the card (Scryfall search, one call on tap), each with its regular / foil prices.
+async function mtgReviewPrintings(i){
+  const r = mtgReview?.rows[i], slot = document.getElementById('mtg-review-prints-' + i); if(!r || !slot) return;
+  if(slot.innerHTML){ slot.innerHTML = ''; return; }
+  slot.innerHTML = '<div style="font:10px var(--font-mono);color:var(--dim)">Loading printings...</div>';
+  try {
+    const name = r.card?.name || r.it.name, q = '!"' + name.replace(/"/g, '') + '" include:extras';
+    const res = await fetch('https://api.scryfall.com/cards/search?unique=prints&order=released&dir=desc&q=' + encodeURIComponent(q), { headers:{ Accept:'application/json' } });
+    const d = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(d.details || ('Scryfall ' + res.status));
+    r.prints = (d.data || []).slice(0, 60);
+    const pr = v => Number(v) > 0 ? '$' + Number(v).toFixed(2) : '—';
+    slot.innerHTML = '<div style="display:grid;gap:4px;max-height:260px;overflow:auto;border:1px solid var(--border);border-radius:6px;padding:4px">' + r.prints.map((c, j) =>
+      '<button class="hbtn" style="justify-content:flex-start;text-align:left;font-size:10px;min-height:32px;padding:4px 8px' + (r.card && c.id === r.card.id ? ';border-color:var(--g)' : '') + '" onclick="mtgReviewPick(' + i + ',' + j + ')">'
+      + escHtml(c.set_name + ' · ' + String(c.set).toUpperCase() + ' #' + c.collector_number + (c.frame_effects?.length ? ' · ' + c.frame_effects.join('/') : '') + (c.border_color === 'borderless' ? ' · borderless' : '')) + ' — Reg ' + pr(c.prices?.usd) + ' / Foil ' + pr(c.prices?.usd_foil) + (c.prices?.usd_etched ? ' / Etched ' + pr(c.prices.usd_etched) : '') + '</button>').join('') + '</div>';
+  } catch(e) { slot.innerHTML = '<div style="font:10px var(--font-mono);color:var(--red)">' + escHtml(e.message || String(e)) + '</div>'; }
+}
+function mtgReviewPick(i, j){
+  const r = mtgReview?.rows[i], c = r?.prints?.[j]; if(!c) return;
+  r.card = c; r.how = 'exact'; r.price = null;
+  if(!mtgReviewFinishes(c).includes(r.finish)) r.finish = mtgReviewFinishes(c)[0];
+  renderMtgListReview();
+}
+function mtgReviewAddToBuy(){
+  if(!mtgReview) return;
+  const picked = mtgReview.rows.filter(r => r.checked);
+  if(!picked.length) return;
+  const rows = picked.map(r => mtgLineToBuyRow(mtgReview.mod, { it:r.it, card:r.card }, { finish:r.finish, condition:r.condition, quantity:r.quantity, price:r.price }));
+  addImportedRowsToBuyList(rows, 'reviewed Magic list', mtgReview.skipped.length);
+  closeMtgListReview();
+  switchTab('intake', [...document.querySelectorAll('.tab')].find(t => t.textContent.trim() === 'BUY'));
+}
+Object.assign(window, { openMtgListReview, closeMtgListReview, mtgReviewSet, mtgReviewCheckAll, mtgReviewRow, mtgReviewPrintings, mtgReviewPick, mtgReviewAddToBuy });
 // The buy-offer rows from an import (an export or a pasted list): one row per copy, priced or marked for review.
 function addImportedRowsToBuyList(items, format, skipped = 0){
   const session = getActiveBuySession(), stamp = Date.now(); let n = 0;
