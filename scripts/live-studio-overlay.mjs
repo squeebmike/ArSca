@@ -30,7 +30,7 @@ import('./live-studio-3d.mjs').then(m=>{
     effectBoss=m.createBossView($('mana-effect-boss'),{size:420,fov:28,ps1});
     coinLayer=m.createCoinLayer($('mana-coins-3d'));
     // MR FISTER's pop-up: his own smooth view (the stream's "PS2" look, not the PS1 one).
-    fisterView=m.createBossView($('mana-fister'),{size:560,fov:20,ps1:false,lookY:0.55});fisterView.set('fister');fisterCovers='';setGauntlet();if(fisterFaceShown)m.setFisterFace(fisterFaceShown);
+    fisterView=m.createBossView($('mana-fister'),{size:560,fov:24,ps1:false,lookY:0.35});fisterView.set('fister');fisterCovers='';setGauntlet();if(fisterFaceShown)m.setFisterFace(fisterFaceShown);
     gl=m;document.body.classList.add('mana-3d');drawnBoss='';apply(settings);bossView.start();
     // Read-only peek for tests: is 3D on, which boss, how many coins in the air.
     window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels(),ps1:bossView.ps1,exploded:effectBoss.exploded});
@@ -274,7 +274,7 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=9').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=10').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;

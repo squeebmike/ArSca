@@ -451,6 +451,7 @@ export function drawSprite(img, W, x0, y0, who, dir, step) {
 // THE TRAINERS in a battle, bigger (40 x 48): the host and Champ side by side
 // at the start of every battle; drawn from shapes here (original, not traced).
 export function drawTrainer(img, W, x0, y0, who) {
+  if (who === 'fister') return drawFisterTrainer(img, W, x0, y0);
   const P = (x, y, s) => put(img, W, x0 + Math.round(x), y0 + Math.round(y), s), champ = who === 'champ';
   const hx = 20, hy = champ ? 15 : 14, rx = champ ? 11 : 9.5, ry = champ ? 11.5 : 10.5;
   // The body first: the jersey (host) or the big hoodie (Champ), an arm out front.
@@ -475,6 +476,26 @@ export function drawTrainer(img, W, x0, y0, who) {
     for (let y = hy + 4; y < hy + 12; y++) for (let x = 0; x < 40; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1.12 && (y > hy + 5 || Math.abs(x - hx) > 6)) P(x, y, (y === hy + 6 && Math.abs(x - hx) < 3) ? 0 : 3); } // the beard, a grin
     P(hx - rx + 1, hy + 1, 1); P(hx - rx + 1, hy + 2, 1); // an ear
   }
+}
+// MR FISTER, GYM LEADER (store, 2026-11-14: "what does his gym leader look like?"): in the battle's four greens -- the
+// cap on backwards, a full beard to a goatee point, a black tee, and THE GAUNTLET raised on his right fist (our left)
+// with its four stones and a glow round it. Drawn here from shapes (original).
+function drawFisterTrainer(img, W, x0, y0) {
+  const P = (x, y, s) => put(img, W, x0 + Math.round(x), y0 + Math.round(y), s), hx = 26, hy = 20, rx = 9, ry = 10;
+  for (let y = 31; y < 54; y++) for (let x = hx - 13; x <= hx + 13; x++) P(x, y, x === hx - 13 || x === hx + 13 || y === 31 ? 3 : x - (hx - 13) < 3 ? 2 : 3); // the black tee (lit on the left)
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 48; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1) P(x, y, d > 0.84 ? 3 : 0); } // the head
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 48; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1 && y < hy - 3) P(x, y, y === hy - 4 ? 2 : 3); } // the cap's crown
+  for (let x = hx + rx - 2; x < hx + rx + 6; x++) { P(x, hy - 4, 3); P(x, hy - 3, 3); } // the brim, out the back
+  for (let x = hx - 6; x < hx - 1; x++) P(x, hy - 1, 3); for (let x = hx + 2; x < hx + 7; x++) P(x, hy - 1, 3); // brows
+  P(hx - 4, hy + 1, 3); P(hx + 4, hy + 1, 3); // eyes
+  for (let y = hy + 3; y < hy + 15; y++) for (let x = 0; x < 48; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2, point = y >= hy + 9 && Math.abs(x - hx) <= hy + 14 - y; if ((d <= 1.1 && (y > hy + 4 || Math.abs(x - hx) > 6)) || point) P(x, y, (y === hy + 6 && Math.abs(x - hx) < 3) ? 0 : 3); } // the beard to a goatee point
+  // The right arm up (our left), the gauntlet: a glow ring, the glove, four stones.
+  for (let k = 0; k < 14; k++) { P(hx - 12 - (k >> 2), 30 - k, 3); P(hx - 11 - (k >> 2), 30 - k, 2); P(hx - 13 - (k >> 2), 30 - k, 3); }
+  const gx = hx - 21, gy = 4;
+  for (let y = -7; y <= 15; y++) for (let x = -7; x <= 18; x++) { const d = ((x - 5.5) / 12) ** 2 + ((y - 4) / 11) ** 2; if (d <= 1 && d > 0.72 && (x + y) % 2 === 0) P(gx + x, gy + y, 1); } // the glow
+  for (let y = 0; y < 10; y++) for (let x = 0; x < 12; x++) P(gx + x, gy + y, x === 0 || x === 11 || y === 0 || y === 9 ? 3 : 1);
+  for (let k = 0; k < 4; k++) { P(gx + 2 + k * 2.5, gy + 2, 0); P(gx + 2 + k * 2.5, gy + 3, 2); }
+  for (let x = 1; x < 11; x++) P(gx + x, gy + 6, 3);
 }
 // You (or your buddy): a big chibi head (your face, 12 x 12) on a small body,
 // two-frame walk, four directions. Facing up you see the back of your head.
@@ -589,8 +610,9 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     if (it >= 0 && it < 1) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
       drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
-      if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival' || !rival) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (b.kind === 'rival' && b.trainer === 'MR FISTER') drawTrainer(img, W, 160 + slide, 6, 'fister');
+      else if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
+      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;
