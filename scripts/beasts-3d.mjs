@@ -4,6 +4,7 @@
 // theirs, the HP boxes and the move panel drawn over it. Same calls as the pixel battle (set, attack, evolve, levelUp).
 // Original models built from simple shapes here; nothing from any game. Nothing by chance.
 import * as THREE from '../assets/vendor/three-0.160.0.module.min.js';
+import { buildBoss3D, fisterCoverTextures } from './live-studio-3d.mjs';
 import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, DEFAULT_MOVES, STARTER } from './beasts.mjs';
 
 const col = c => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
@@ -134,6 +135,16 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   for (let k = 0; k < 7; k++) { const tr = new THREE.Group(); tr.position.set(-6 + k * 2.3, 0, -8 - (k % 3)); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6b4a2a })); tk.position.y = 0.6; tr.add(tk); const lf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), new THREE.MeshLambertMaterial({ color: 0x3f8f3a })); lf.position.y = 1.7; tr.add(lf); scene.add(tr); }
   let b = null, mineM = null, foeM = null, mineName = '', foeName = '', moves = DEFAULT_MOVES, pick = 0, msg = '', anim = null, foeAnim = null, evo = null, raf = 0, last = 0, key = '', introAt = -1e9, lastTenth = 10, foeHits = 0, shownFoe = 1;
   const shot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), new THREE.MeshBasicMaterial({ color: 0xffe14a })); shot.visible = false; scene.add(shot);
+  // MR FISTER'S GYM IN 3D (store, 2026-11-14): on a gym fight against him, the field turns into his arena -- a dark floor,
+  // a green ring under each platform, green spotlights -- and he stands behind GRAILFIST pumping the gauntlet, throwing the
+  // store's comics (the gauntlet's covers) at your beast every time his beast attacks.
+  const arena = new THREE.Group(); arena.visible = false; scene.add(arena);
+  { const fl = new THREE.Mesh(new THREE.CircleGeometry(9, 48), new THREE.MeshLambertMaterial({ color: 0x15201a })); fl.rotation.x = -Math.PI / 2; fl.position.y = 0.005; arena.add(fl);
+    for (const [x, z, rr] of [[2.3, -2.2, 1.35], [-1.5, 1.7, 1.45]]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.05, 8, 48), new THREE.MeshBasicMaterial({ color: 0x39ff14 })); ring.rotation.x = Math.PI / 2; ring.position.set(x, 0.14, z); arena.add(ring); }
+    for (const x of [-4, 6]) { const beam = new THREE.Mesh(new THREE.ConeGeometry(1.6, 8, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })); beam.position.set(x, 4, -5); beam.rotation.z = x < 0 ? -0.35 : 0.35; arena.add(beam); } }
+  let fister = null, fisterTick = null, thrown = [];
+  const ensureFister = () => { if (fister) return; fister = new THREE.Group(); const root = new THREE.Group(); fister.add(root); fisterTick = buildBoss3D('fister', root).tick; fister.position.set(4.75, 1.62, -3.9); fister.rotation.y = -0.6; fister.scale.setScalar(1.05); scene.add(fister); const lamp = new THREE.PointLight(0x7dff5a, 2.5, 6); lamp.position.set(3.2, 2.5, -2.5); fister.add(lamp); const key = new THREE.SpotLight(0xffffff, 2.2, 14, 0.5, 0.5); key.position.set(1.5, 6, 2); key.target = fister; scene.add(key); };
+  const throwComics = () => { if (!fister || !mineM) return; const tex = fisterCoverTextures(); for (let k = 0; k < 4; k++) { const card = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.62), new THREE.MeshBasicMaterial({ map: tex[k % Math.max(1, tex.length)] || null, color: tex.length ? 0xffffff : 0x39ff14, side: THREE.DoubleSide })); card.position.set(4.0, 4.0, -3.1); card.userData = { at: performance.now() + k * 160, from: card.position.clone(), k }; scene.add(card); thrown.push(card); } };
   const place = (name, mine) => { const m = buildBeast3D(name); if (mine) { m.position.set(-1.5, 0.12, 1.7); m.rotation.y = 2.5; m.scale.setScalar(0.95); } else { m.position.set(2.3, 0.12, -2.2); m.rotation.y = -0.55; m.scale.setScalar(1.15); } scene.add(m); return m; };
   const say = (t, ms = 2600) => { msg = t; clearTimeout(say.t); say.t = setTimeout(() => { msg = ''; }, ms); };
   function ui() {
@@ -142,7 +153,8 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     if (b) { box(6, 6, 104, 26, b.foe.name, Math.max(0, shownFoe)); box(130, 72, 104, 28, b.mine.name, b.mine.hp, b.mine.level || 1); }
     // The DS-style touch panel: the line of text, then the four moves as big rounded buttons.
     ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
-    f(msg || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
+    const introT = (performance.now() - introAt) / 2400;
+    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + ' WANTS TO BATTLE!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
     moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); f((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? '#202830' : '#ffffff'); });
   }
   function frame(now) {
@@ -155,6 +167,9 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     shot.visible = false;
     if (a >= 0 && a < 0.6 && mineM && foeM) { shot.visible = true; shot.position.lerpVectors(mineM.position, foeM.position, a / 0.6).add(new THREE.Vector3(0, 0.8 + Math.sin(a / 0.6 * Math.PI) * 0.8, 0)); }
     if (fa >= 0 && fa < 0.6 && mineM && foeM) { shot.visible = true; shot.position.lerpVectors(foeM.position, mineM.position, fa / 0.6).add(new THREE.Vector3(0, 0.8 + Math.sin(fa / 0.6 * Math.PI) * 0.6, 0)); }
+    // Mr Fister: pumping the gauntlet; his thrown comics turning end over end on their way to your beast.
+    if (fister && fister.visible) fisterTick?.(t);
+    thrown = thrown.filter(card => { const k = (now - card.userData.at) / 900; if (k < 0) { card.visible = false; return true; } card.visible = true; if (k >= 1) { scene.remove(card); return false; } const to = mineM ? mineM.position.clone().add(new THREE.Vector3(0, 0.8, 0)) : new THREE.Vector3(); card.position.lerpVectors(card.userData.from, to, k).add(new THREE.Vector3(Math.sin(card.userData.k * 2) * 0.6 * Math.sin(k * Math.PI), Math.sin(k * Math.PI) * 1.2, 0)); card.rotation.set(k * 9 + card.userData.k, k * 7, k * 5); return true; });
     if (foeM) foeM.rotation.z = a > 0.55 && a < 0.9 ? Math.sin(now / 20) * 0.15 : 0; if (mineM) mineM.rotation.z = fa > 0.55 && fa < 0.9 ? Math.sin(now / 20) * 0.15 : 0;
     if (a >= 1) anim = null; if (fa >= 1) foeAnim = null;
     // Fainted: yours sinks; the foe's HP knocked to nothing: theirs sinks.
@@ -167,9 +182,11 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   return {
     set(next, { moves: mv, pick: p } = {}) {
       const k = next ? next.kind + '|' + next.foe.name : '';
-      if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); }
-      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 1600) { const m = foeMoveFor(next.foe.name, foeHits++); foeAnim = { kind: moveAnim(m), at: performance.now() }; say((next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + m + '!'); } lastTenth = tenth; }
+      if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (next.trainer === 'MR FISTER') setTimeout(() => throwComics(), 2200); } // he opens with a throw
+      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 1600) { const m = next.trainer === 'MR FISTER' ? 'COMIC STORM' : foeMoveFor(next.foe.name, foeHits++); foeAnim = { kind: moveAnim(m), at: performance.now() }; if (next.trainer === 'MR FISTER') throwComics(); say((next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + m + '!'); } lastTenth = tenth; }
       key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p;
+      const gym = !!(b && b.kind === 'rival' && b.trainer === 'MR FISTER'); if (gym) ensureFister(); if (fister) fister.visible = gym; arena.visible = gym; ground.visible = !gym;
+      scene.background = new THREE.Color(gym ? 0x0b1410 : 0x9fd6ff); scene.fog = new THREE.Fog(gym ? 0x0b1410 : 0x9fd6ff, 9, 20);
       if (b && b.mine.name !== mineName) { if (mineM) scene.remove(mineM); mineName = b.mine.name; mineM = place(mineName, true); }
       if (b && b.foe.name !== foeName) { if (foeM) scene.remove(foeM); foeName = b.foe.name; foeM = place(foeName, false); }
       if (!b) { if (mineM) scene.remove(mineM); if (foeM) scene.remove(foeM); mineM = foeM = null; mineName = foeName = ''; }

@@ -507,6 +507,9 @@ const BUILD = {
   },
 };
 export const BOSS_3D_IDS = Object.keys(BUILD);
+// For other scenes (the Beasts gym fight in 3D): a boss model into any group, and the gauntlet's cover textures.
+export function buildBoss3D(id, root) { return (BUILD[id] || BUILD.scalper)(root); }
+export function fisterCoverTextures() { return typeof document === 'undefined' ? [] : fisterTextures(); }
 
 // ── the PS1 look ────────────────────────────────────────────────────────────
 // Store, 2026-11-04: "graphics would have to be animated and PS1 graphics".

@@ -103,7 +103,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=4')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=5')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
 }
@@ -136,4 +136,11 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8');
   for (const k of ['function treeShade(kind', "b === 'beach' ? 'palm'", 'Path edges: a darker line', 'export const TREE_RAMPS', 'a pebble']) assert.ok(src.includes(k), k);
   console.log('Pixel route detail: passed');
+}
+// Mr Fister's gym fight in 3D (2026-11-14).
+{
+  const b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8');
+  assert.ok(g3.includes('export function buildBoss3D(id, root)') && g3.includes('export function fisterCoverTextures()'));
+  assert.ok(b3.includes("MR FISTER'S GYM IN 3D") && b3.includes('const throwComics = () =>') && b3.includes("'COMIC STORM'"));
+  console.log('3D gym fight: passed');
 }
