@@ -26,3 +26,11 @@ assert.ok(app.includes("const points = await fetchMtgChartHistory(r, r.graphDura
 const miss = { tcgplayerId:'123', selectedFinish:'etched_foil' };
 assert.equal(await ctx.f(miss, '90d'), null); assert.match(miss._mtgChartMiss, /no etched_foil Near Mint history/i, 'says why there is no chart');
 console.log('MTG chart on tap: passed');
+// The phone's PriceCharting rows refresh by themselves weekly (no full rebuild), read through pcVersionOf().
+{
+  const b = readFileSync(new URL('../scripts/mtg/mtg-offline-browser.js', import.meta.url), 'utf8');
+  assert.ok(b.includes('const PC_REFRESH_MS=7*86400000;') && b.includes("const target=`pc::${String(pd.sha256).slice(0,16)}`;"));
+  assert.equal((b.match(/refreshPriceChartingIfStale\(workerBase,manifest,onProgress\)/g) || []).length, 3, 'defined once, both fast-sync exits check PriceCharting');
+  assert.ok(b.includes('linkStore.get([pcVersion,') && b.includes('priceStore.get([pcVersion,') && b.includes('version=pcVersionOf(active);if(!version)return[];'));
+  console.log('PriceCharting weekly refresh wiring: passed');
+}
