@@ -3362,7 +3362,15 @@ function slipClaimHtml(claim,open){
 // labels." Each line's shelf price starts at the cover's customer price
 // (else its cover price) and is what the copies are received -- and
 // labeled -- at.
-function slipPrice(l){ var k=slipLineKey(l),c=l.cover||{}; if((state.slip.prices||{})[k]!=null)return state.slip.prices[k]; var p=Number(c.customerPrice)>0?Number(c.customerPrice):Number(c.coverPrice)||0; return p?p.toFixed(2):''; }
+// RATIO COVERS START AT THE RATIO DEFAULT (store, 2026-11-14: "ratio got imported not at the default prices -- they
+// loaded in at 5 bucks vs the default we have in case I didn't set a price"): an incentive cover with no price of its
+// own starts at the store's ratio default -- the same rule the price sync uses (scripts/pricecharting-daily-sync.mjs
+// comicDefaultPrice): 1:N -> cover x (1 + N/5) (1:10 = 3x, 1:25 = 6x), foil -> cover x 2, the higher one, rounded up
+// to the dollar; a ratio with no number counts as 1:10. Never the bare cover price; the slip markup leaves it alone.
+function slipIsRatio(c){ var t=[c.title,c.variantLabel].join(' '); return c.isIncentive===true||/\b1\s*:\s*\d+\b|\bratio\b|\binc(?:v|entive)?\b|\bRI\b/i.test(t); }
+function slipRatioDefault(c){ var cover=Number(c.coverPrice)||0; if(!(cover>0))return 0; var t=[c.title,c.variantLabel].join(' '),m=t.match(/\b1\s*:\s*(\d{1,4})\b|\bRI\b\s*\(?\s*(\d{1,4})\b/i),n=Math.max(2,Number(m&&(m[1]||m[2]))||10),x=Math.max(1+n/5,/\bfoil\b/i.test(t)?2:1); return Math.ceil(cover*x-1e-9); }
+function slipHasOwnCustomerPrice(c){ return Number(c.customerPrice)>0&&Math.round(Number(c.customerPrice)*100)!==Math.round(Number(c.coverPrice||0)*100); }
+function slipPrice(l){ var k=slipLineKey(l),c=l.cover||{}; if((state.slip.prices||{})[k]!=null)return state.slip.prices[k]; if(slipIsRatio(c)&&!slipHasOwnCustomerPrice(c)){ var r=slipRatioDefault(c); if(r)return r.toFixed(2); } var p=Number(c.customerPrice)>0?Number(c.customerPrice):Number(c.coverPrice)||0; return p?p.toFixed(2):''; }
 function focSlipPrice(k,v){ state.slip.prices=state.slip.prices||{}; state.slip.prices[k]=String(v||'').trim(); state.slip.typed=state.slip.typed||{}; state.slip.typed[k]=true; }
 // Store ask: one markup for the whole slip -- "cover x 1.25, round to .99"
 // -- so only the exceptions get typed. Lines priced by hand (here, or a
@@ -3374,7 +3382,7 @@ function slipMarkupRound(x,mode){
   return Math.round(x*100)/100;
 }
 function slipMarkupSettings(){ var d={times:'1.00',round:'99'}; try{var v=JSON.parse(localStorage.getItem('foc-slip-markup')||'null');if(v&&Number(v.times)>0)d={times:String(v.times),round:v.round||'99'};}catch(e){} return d; }
-function slipOwnPrice(l){ var c=l.cover||{}; return !!((state.slip.typed||{})[slipLineKey(l)]||(Number(c.customerPrice)>0&&Math.round(c.customerPrice*100)!==Math.round(Number(c.coverPrice||0)*100))); }
+function slipOwnPrice(l){ var c=l.cover||{}; return !!((state.slip.typed||{})[slipLineKey(l)]||slipHasOwnCustomerPrice(c)||slipIsRatio(c)); } // a ratio cover keeps its ratio price
 function focSlipMarkup(){
   var times=Number((document.getElementById('foc-slip-markup-times')||{}).value),round=(document.getElementById('foc-slip-markup-round')||{}).value||'99';
   if(!(times>0&&times<20)){toast_dash('Enter a markup like 1.25');return;}

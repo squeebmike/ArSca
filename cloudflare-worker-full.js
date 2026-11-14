@@ -20784,6 +20784,8 @@ async function runScheduledPointsHoldSweep(env) {
       if (!allDead) continue;
       await supabaseAdminFetch(env, `pos_sales?id=eq.${enc(order.sale_id)}&store_id=eq.${enc(order.store_id)}&status=eq.pending`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ status:'cancelled' }) });
       await releaseWebOrderPoints(env, supabaseAdminFetch, order.store_id, `shop:${order.sale_id}`);
+      // The website order itself is cancelled too, so it stops showing anywhere (2026-11-13).
+      await supabaseAdminFetch(env, `storefront_orders?sale_id=eq.${enc(order.sale_id)}&store_id=eq.${enc(order.store_id)}&fulfillment_status=eq.pending`, { method:'PATCH', headers:{ Prefer:'return=minimal' }, body:JSON.stringify({ fulfillment_status:'cancelled' }) });
     }
   } catch (e) { console.error('Points sweep (shop) failed:', e.message); }
 }

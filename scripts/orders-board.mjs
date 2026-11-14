@@ -207,8 +207,16 @@ export async function handleOrdersBoard(request, env, deps, url) {
     const { data } = await db(`pos_sale_lines?store_id=eq.${sid}&sale_id=${inFilter(saleIds.slice(i, i + 150))}&select=sale_id,item_id,title,quantity,unit_price,image_url`);
     lines = lines.concat(data || []);
   }
-  const { data: storefrontOrders } = await db(`storefront_orders?store_id=eq.${sid}&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,confirmation_number,customer_name,fulfillment_method,fulfillment_status,shipping_fee_cents,created_at&order=created_at.desc&limit=500`);
-  const sfSaleIds = [...new Set((storefrontOrders || []).map(s => s.sale_id).filter(Boolean))];
+  let { data: storefrontOrders } = await db(`storefront_orders?store_id=eq.${sid}&created_at=gte.${encodeURIComponent(since)}&select=id,sale_id,confirmation_number,customer_name,fulfillment_method,fulfillment_status,shipping_fee_cents,created_at&order=created_at.desc&limit=500`);
+  // Paid website orders only (store, 2026-11-13: "Vano did 2 orders? I thought he did one"): a checkout that was
+  // started and never paid -- or cancelled -- isn't an order to pull or hand over.
+  const sfAllSaleIds = [...new Set((storefrontOrders || []).map(s => s.sale_id).filter(Boolean))], paidSales = new Set();
+  for (let i = 0; i < sfAllSaleIds.length; i += 150) {
+    const { data } = await db(`pos_sales?store_id=eq.${sid}&id=${inFilter(sfAllSaleIds.slice(i, i + 150))}&status=in.(completed,succeeded)&select=id`);
+    for (const r of data || []) paidSales.add(String(r.id));
+  }
+  storefrontOrders = (storefrontOrders || []).filter(o => paidSales.has(String(o.sale_id)) && o.fulfillment_status !== 'cancelled');
+  const sfSaleIds = [...new Set(storefrontOrders.map(s => s.sale_id).filter(Boolean))];
   let storefrontLines = [];
   for (let i = 0; i < sfSaleIds.length; i += 150) {
     const { data } = await db(`pos_sale_lines?store_id=eq.${sid}&sale_id=${inFilter(sfSaleIds.slice(i, i + 150))}&select=sale_id,item_id,title,quantity,unit_price,image_url`);

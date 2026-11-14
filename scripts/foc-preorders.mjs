@@ -488,7 +488,7 @@ async function readPackingSlip(request,env,deps){
     if(item.order?.fulfillment_method&&item.order.fulfillment_method!=='pickup')shipQty.set(item.sku_id,(shipQty.get(item.sku_id)||0)+n);
   }
   const receivedAt=new Map();for(const row of receivedRows)if(row.focSkuId&&!receivedAt.has(row.focSkuId))receivedAt.set(row.focSkuId,row.created_at);
-  const cover=sku=>({skuId:sku.id,cycleId:sku.cycle_id,focDate:sku.foc_date,title:sku.title,variantLabel:sku.variant_label||'',upc:sku.upc||'',
+  const cover=sku=>({skuId:sku.id,cycleId:sku.cycle_id,focDate:sku.foc_date,title:sku.title,variantLabel:sku.variant_label||'',upc:sku.upc||'',isIncentive:sku.is_incentive===true,
     itemCode:sku.distributor_sku||'',publisher:sku.publisher||'',
     orderOnFile:submittedCycles.has(sku.cycle_id)||cartCycles.has(sku.cycle_id),
     coverImage:sku.cover_image_url||'',

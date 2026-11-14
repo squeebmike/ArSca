@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.13.19-select-all';
+const APP_VERSION = '2026.11.14.2-mtg-paste';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42299,8 +42299,11 @@ async function importCollectionToBuyList(file){
   if(file.size > 2 * 1024 * 1024) return toast_dash('That file is too big (2 MB max)');
   const mod = await import(new URL('scripts/pricecharting-buy-import.mjs', document.baseURI).href).catch(() => null);
   if(!mod) return toast_dash('Could not load the importer -- refresh and try again');
-  const { format, items, skipped } = mod.importRows(await file.text());
-  if(!items.length) return toast_dash(format ? 'No cards found in that export' : 'Not a PriceCharting or Collectr export (CSV)');
+  const fileText = await file.text();
+  const { format, items, skipped } = mod.importRows(fileText);
+  // A Magic list saved as a file ("1 Lightning Bolt [M10] 146" a line) goes the pasted-list way.
+  if(!format && mod.parseMtgList(fileText).items.length){ try { await importMtgListToBuyList(fileText, msg => toast_dash(msg)); } catch(e) { toast_dash(e.message || String(e)); } return; }
+  if(!items.length) return toast_dash(format ? 'No cards found in that export' : 'Not a PriceCharting or Collectr export (CSV), or a Magic list');
   const copies = items.reduce((n, i) => n + i.quantity, 0);
   if(copies > 1000) return toast_dash(copies + ' copies is too many for one offer -- split the export (1,000 max)');
   const total = items.reduce((n, i) => n + i.market * i.quantity, 0);
@@ -42331,6 +42334,97 @@ async function importCollectionToBuyList(file){
   toast_dash('Added ' + copies + ' card' + (copies === 1 ? '' : 's') + ' from the ' + format + ' export' + (skipped ? ' (' + skipped + ' blank rows skipped)' : ''));
 }
 window.importCollectionToBuyList = importCollectionToBuyList;
+// PASTE A MAGIC LIST (store, 2026-11-14: "can the buy importer do this format? ... I'd like to copy and paste it in the
+// buy import section"): one card a line -- "1 Corpses of the Lost (Extended Art) [LCI] 366", Moxfield/Archidekt's
+// "1x Sol Ring (C21) 263 *F*", or just a name. Each card is looked up on Scryfall by set + collector number (else by
+// name), priced for its finish (regular, foil, foil etched), and goes into the buy offer like an export does; a card
+// Scryfall doesn't know, or without a price, comes in marked NEEDS REVIEW so nothing is dropped.
+function openMtgPasteToBuyList(){
+  document.getElementById('mtg-paste-modal')?.remove();
+  const m = document.createElement('div'); m.id = 'mtg-paste-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = '<div style="width:100%;max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;display:grid;gap:10px">'
+    + '<div style="font-family:Orbitron,monospace;color:var(--purple);font-size:13px;letter-spacing:2px">PASTE A MAGIC LIST</div>'
+    + '<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">One card a line: <b>1 Corpses of the Lost (Extended Art) [LCI] 366</b>, or <b>1x Sol Ring (C21) 263 *F*</b>, or just the name. Foil / Foil Etched in the line are priced as such. Prices come from Scryfall (TCGplayer market).</div>'
+    + '<textarea id="mtg-paste-text" class="tsi" rows="12" style="width:100%;font:12px var(--font-mono)" placeholder="1 Whims of the Fates [BNG] 115"></textarea>'
+    + '<div id="mtg-paste-status" style="font:10px var(--font-mono);color:var(--dim)"></div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="mtg-paste-cancel">CANCEL</button><button class="hbtn" style="color:var(--g)" id="mtg-paste-go">LOOK UP &amp; ADD</button></div></div>';
+  document.body.appendChild(m);
+  m.querySelector('#mtg-paste-cancel').onclick = () => m.remove();
+  m.querySelector('#mtg-paste-go').onclick = async () => {
+    const go = m.querySelector('#mtg-paste-go'), status = m.querySelector('#mtg-paste-status');
+    go.disabled = true;
+    try { if(await importMtgListToBuyList(m.querySelector('#mtg-paste-text').value, msg => { status.textContent = msg; })) m.remove(); }
+    catch(e) { status.textContent = e.message || String(e); }
+    go.disabled = false;
+  };
+  setTimeout(() => m.querySelector('#mtg-paste-text')?.focus(), 50);
+}
+window.openMtgPasteToBuyList = openMtgPasteToBuyList;
+async function importMtgListToBuyList(text, progress = () => {}){
+  const mod = await import(new URL('scripts/pricecharting-buy-import.mjs', document.baseURI).href).catch(() => null);
+  if(!mod) throw new Error('Could not load the importer -- refresh and try again');
+  const { items, skipped } = mod.parseMtgList(text);
+  if(!items.length) throw new Error('No cards found -- one card a line, like "1 Lightning Bolt [M10] 146"');
+  const copies = items.reduce((n, i) => n + i.quantity, 0);
+  if(copies > 1000) throw new Error(copies + ' copies is too many for one offer -- split the list (1,000 max)');
+  // Scryfall, 75 cards a request (their limit), a short pause between (their rate guidance).
+  const ids = items.map(mod.mtgIdentifier), found = [];
+  for(let i = 0; i < ids.length; i += 75){
+    progress('Looking up cards on Scryfall: ' + Math.min(i + 75, ids.length) + ' of ' + ids.length + '...');
+    const r = await fetch('https://api.scryfall.com/cards/collection', { method:'POST', headers:{ 'Content-Type':'application/json', Accept:'application/json' }, body:JSON.stringify({ identifiers:ids.slice(i, i + 75) }) });
+    const d = await r.json().catch(() => ({}));
+    if(!r.ok) throw new Error('Scryfall: ' + (d.details || r.status));
+    found.push(...(d.data || []));
+    await new Promise(res => setTimeout(res, 120));
+  }
+  const key = (set, num) => (String(set) + '|' + String(num)).toLowerCase();
+  const byKey = new Map(found.map(c => [key(c.set, c.collector_number), c])), byName = new Map();
+  for(const c of found){ const k = String(c.name).toLowerCase(); if(!byName.has(k)) byName.set(k, c); const front = k.split(' // ')[0]; if(!byName.has(front)) byName.set(front, c); }
+  const rows = items.map(it => {
+    const id = mod.mtgIdentifier(it);
+    const card = id.collector_number ? byKey.get(key(id.set, id.collector_number)) : byName.get(String(it.name).toLowerCase());
+    const market = card ? mod.mtgPriceOf(card, it.finish) : 0;
+    return {
+      name:mod.mtgDisplayName(it), set:card?.set_name || it.set, category:'Magic: The Gathering', card_number:card?.collector_number || it.number,
+      language:'', condition:'NM', grade:'', grader:'', cert_number:'', quantity:it.quantity, market,
+      pricechartingProductId:'', providerUrl:card?.scryfall_uri || '', imageUrl:card?.image_uris?.normal || card?.card_faces?.[0]?.image_uris?.normal || '',
+      notes:card ? '' : 'Not found on Scryfall -- check the set / number', source:'Scryfall (pasted list)',
+    };
+  });
+  const missing = rows.filter(r => !(r.market > 0)).length;
+  const total = rows.reduce((n, r) => n + r.market * r.quantity, 0);
+  if(!confirm(`Add ${copies} card${copies === 1 ? '' : 's'} (${rows.length} line${rows.length === 1 ? '' : 's'}) to the buy offer?\nGuide value ${fd$(total)}.` + (missing ? `\n${missing} line${missing === 1 ? '' : 's'} without a price ${missing === 1 ? 'comes' : 'come'} in as NEEDS REVIEW.` : '') + (skipped.length ? `\n${skipped.length} line${skipped.length === 1 ? '' : 's'} couldn't be read: ` + skipped.slice(0, 3).join(' / ') : ''))) return false;
+  addImportedRowsToBuyList(rows, 'pasted Magic list', skipped.length);
+  return true;
+}
+// The buy-offer rows from an import (an export or a pasted list): one row per copy, priced or marked for review.
+function addImportedRowsToBuyList(items, format, skipped = 0){
+  const session = getActiveBuySession(), stamp = Date.now(); let n = 0;
+  for(const it of items){
+    for(let c = 0; c < it.quantity; c++){
+      const priced = it.market > 0;
+      buyList.push({
+        id:'bl_import_' + stamp + '_' + (n++) + '_' + Math.random().toString(36).slice(2, 5),
+        name:it.name, set:it.set, category:normalizeQuickCategory(it.category), card_number:it.card_number,
+        condition:it.condition, selectedCondition:it.condition, selectedLanguage:it.language || 'English',
+        grade:it.grade, grader:it.grader, cert_number:it.cert_number,
+        market:it.market, referenceMarketPrice:it.market, priceUsed:it.market, resolvedPrice:it.market,
+        priceLabel:priced ? it.source : 'Needs Manual Review', priceSource:priced ? it.source : 'Needs Review', pricingSource:priced ? it.source : 'Needs Review',
+        needsReview:!priced, sourceProductId:it.pricechartingProductId, pricechartingProductId:it.pricechartingProductId, providerUrl:it.providerUrl,
+        ...(it.imageUrl ? { imageUrl:it.imageUrl } : {}),
+        notes:it.notes, buySessionId:session?.buySessionId || '', storeId:getActiveStoreId(), status:'offered',
+        quantity:1, sourceQuantity:it.quantity, quantityCopyIndex:c + 1, manualMarketOverride:false, manualOfferOverride:false,
+      });
+    }
+  }
+  saveBuyList();
+  const copies = items.reduce((m, i) => m + i.quantity, 0), total = items.reduce((m, i) => m + i.market * i.quantity, 0);
+  logOpsEvent('buy_items_imported', 'Imported ' + copies + ' cards from a ' + format, { buySessionId:session?.buySessionId || '', copies, rows:items.length, skipped, guideTotal:Math.round(total * 100) / 100 });
+  renderBuyList();
+  setTimeout(renderBuyList, 75);
+  toast_dash('Added ' + copies + ' card' + (copies === 1 ? '' : 's') + ' from the ' + format + (skipped ? ' (' + skipped + ' line' + (skipped === 1 ? '' : 's') + ' skipped)' : ''));
+}
 
 function addBuyListItem(){
   const name = document.getElementById('bl-input').value.trim();

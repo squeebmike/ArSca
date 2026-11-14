@@ -93,3 +93,58 @@ export function importRows(text = '') {
   }
   return { format, items, skipped };
 }
+
+// MAGIC LISTS, PASTED (store, 2026-11-14: "can the buy importer do this format? For MTG ... I'd like to be able to
+// copy and paste it in the buy import section"): one card a line, the way deck builders and collection apps export:
+//   1 Corpses of the Lost (Extended Art) [LCI] 366          (bracketed set, collector number)
+//   2 Agonizing Remorse (JP Alternate Art) (Foil Etched) [STA] 87
+//   1 Prosper, Tome-Bound (Display Commander) - Thick Stock [AFC] 2
+//   1 Sewer Nemesis [LIST] 075/312
+//   1x Sol Ring (C21) 263 *F*                               (Moxfield / Archidekt style)
+//   Lightning Bolt                                          (just a name: 1 copy)
+// Each card: quantity, the plain name, the printing's extras (Extended Art, Showcase, ...), set code, collector
+// number, and whether it's foil or foil-etched (a "Foil" / "Foil Etched" tag, or *F* / *E*). Lines it can't read
+// come back in `skipped` so nothing is silently dropped.
+const MTG_FINISH = s => /foil\s*etched|\betched\b/i.test(s) ? 'etched' : /\bfoil\b/i.test(s) ? 'foil' : '';
+export function parseMtgList(text = '') {
+  const items = [], skipped = [];
+  for (const raw of String(text).split(/\r?\n/)) {
+    let line = raw.replace(/\s+/g, ' ').trim();
+    if (!line || /^(?:\/\/|#)/.test(line) || /^(?:sideboard|deck|main ?deck|commander|maybeboard|companion|tokens?)\s*:?\s*$/i.test(line)) continue; // comments and section headers
+    let finish = '';
+    const star = line.match(/\s\*([FE])\*\s*$/i); if (star) { finish = star[1].toUpperCase() === 'E' ? 'etched' : 'foil'; line = line.slice(0, star.index).trim(); }
+    let m = line.match(/^(\d{1,3})\s*x?\s+(.+)$/i), qty = 1, rest = line;
+    if (m) { qty = Math.max(1, Math.min(100, Number(m[1]))); rest = m[2]; }
+    let set = '', number = '';
+    const br = rest.match(/^(.*?)\s*\[([A-Za-z0-9]{2,6})\]\s*([A-Za-z0-9★\-\/]{1,12})?\s*$/);
+    if (br) { rest = br[1]; set = br[2].toUpperCase(); number = br[3] || ''; }
+    else {
+      const pa = rest.match(/^(.*\S)\s*\(([A-Za-z0-9]{2,6})\)\s*([A-Za-z0-9★\-\/]{1,12})?\s*$/);
+      if (pa && /^[A-Z0-9]{2,6}$/.test(pa[2])) { rest = pa[1]; set = pa[2]; number = pa[3] || ''; }
+    }
+    const extras = [];
+    rest = rest.replace(/\s*-\s*(thick stock)\s*$/i, (_, t) => { extras.push('Thick Stock'); return ''; });
+    rest = rest.replace(/\s*\(([^()]{1,40})\)/g, (_, t) => { extras.push(t.trim()); return ''; }).trim();
+    if (!finish) finish = MTG_FINISH(extras.join(' '));
+    const shown = extras.filter(e => !/^foil$/i.test(e) && !/^foil etched$/i.test(e));
+    if (!rest || /^\d+$/.test(rest)) { skipped.push(raw.trim()); continue; }
+    items.push({ quantity: qty, name: rest, extras: shown, set, number, finish });
+  }
+  return { items, skipped };
+}
+// The name a buy-list row shows: the card, its printing extras and finish, e.g. "Jacob Frye (Foil Etched)".
+export function mtgDisplayName(it) { return [it.name, ...it.extras.map(e => '(' + e + ')'), it.finish === 'etched' ? '(Foil Etched)' : it.finish === 'foil' ? '(Foil)' : ''].filter(Boolean).join(' '); }
+// Scryfall lookups (api.scryfall.com/cards/collection, 75 a request): by set + collector number when there is one,
+// else by name (+ set). The List ([LIST] 075/312) and similar set-less promos go by name in their own pass.
+export function mtgIdentifier(it) {
+  const set = String(it.set || '').toLowerCase();
+  if (set && it.number && !['list', 'plst', 'media'].includes(set) && !/\//.test(it.number)) return { set, collector_number: String(it.number).replace(/^0+(?=\d)/, '') };
+  return set && !['list', 'plst', 'media'].includes(set) ? { name: it.name, set } : { name: it.name };
+}
+// Scryfall's price for the finish asked for (USD): etched, foil, then regular -- falling back sensibly.
+export function mtgPriceOf(card = {}, finish = '') {
+  const p = card.prices || {}, n = v => Number(v) > 0 ? Number(v) : 0;
+  if (finish === 'etched') return n(p.usd_etched) || n(p.usd_foil) || n(p.usd);
+  if (finish === 'foil') return n(p.usd_foil) || n(p.usd_etched) || n(p.usd);
+  return n(p.usd) || n(p.usd_foil) || n(p.usd_etched);
+}
