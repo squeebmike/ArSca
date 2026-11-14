@@ -12,6 +12,8 @@ assert.equal(card.scryfallId, 'sf-1');
 assert.equal(card.normalizedName, 'rhystic study');
 assert.match(card.searchText, /rebecca guay/);
 assert.equal(moneyFromPennies('3250'), 32.5);
+assert.equal(moneyFromPennies('$19.27'), 19.27, 'the CSV writes dollars -- a $19 card was showing as $0.19');
+assert.equal(moneyFromPennies('0.37'), 0.37); assert.equal(moneyFromPennies('$1,204.50'), 1204.5);
 
 const exactPrice = normalizePriceChartingRow({
   id:'pc-71', 'product-name':'2023 Wilds of Eldraine Enchanting Tales Rhystic Study #71', 'console-name':'Magic Cards',

@@ -282,6 +282,13 @@
     add(rows.filter(Boolean));return [...cards.values()];
   }
 
+  // Rows saved before the dollars fix hold PriceCharting prices 100x too small; their original CSV text
+  // (rawPricesPennies) is re-read here, so phones don't need a full re-download.
+  function pcMoney(v){if(v===null||v===undefined||v==='')return null;const t=String(v).trim(),n=Number(t.replace(/[$,]/g,''));if(!Number.isFinite(n)||n<0)return null;return /[$.]/.test(t)?Math.round(n*100)/100:Math.round(n)/100;}
+  function fixPcPrice(p){
+    const r=p?.rawPricesPennies;if(!r)return p;
+    return {...p,loosePrice:pcMoney(r.loose),grade7Price:pcMoney(r.grade7),grade8Price:pcMoney(r.grade8),grade9Price:pcMoney(r.grade9),grade95Price:pcMoney(r.grade95),psa10Price:pcMoney(r.psa10),bgs10Price:pcMoney(r.bgs10),cgc10Price:pcMoney(r.cgc10),sgc10Price:pcMoney(r.sgc10)};
+  }
   async function attachPrices(version,ranked){
     const db=await openDb();
     const active=await getMeta('active'),marketVersion=active?.marketPricesVersion||version;
@@ -291,7 +298,7 @@
     const links=await Promise.all(ranked.map(item=>requestPromise(linkStore.get([version,item.card.scryfallId]))));
     const priceTx=db.transaction('mtg_prices','readonly'),priceStore=priceTx.objectStore('mtg_prices');
     const prices=await Promise.all(links.map(link=>link?.pricechartingId?requestPromise(priceStore.get([version,link.pricechartingId])):null));
-    return ranked.map((item,index)=>({...item.card,prices:markets[index]?.prices||item.card.prices||{},tcgplayerId:markets[index]?.tcgplayerId||item.card.tcgplayerId||'',marketPricesUpdatedAt:markets[index]?.updatedAt||'',offlinePriceLink:links[index]||null,offlinePrice:prices[index]||null,offlineMatchWhy:item.why,catalogVersion:version}));
+    return ranked.map((item,index)=>({...item.card,prices:markets[index]?.prices||item.card.prices||{},tcgplayerId:markets[index]?.tcgplayerId||item.card.tcgplayerId||'',marketPricesUpdatedAt:markets[index]?.updatedAt||'',offlinePriceLink:links[index]||null,offlinePrice:fixPcPrice(prices[index])||null,offlineMatchWhy:item.why,catalogVersion:version}));
   }
 
   function priceScore(price,parts){
@@ -322,7 +329,7 @@
       const priceTx=db.transaction('mtg_prices','readonly'),priceStore=priceTx.objectStore('mtg_prices');
       const rows=await Promise.all(ids.map(id=>requestPromise(priceStore.get([version,id]))));add(rows.filter(Boolean));
     }
-    return [...found.values()].map(price=>{const offlineScore=priceScore(price,parts);return offlineScore===null?null:{...price,offlineScore,catalogVersion:version};}).filter(Boolean).sort((a,b)=>b.offlineScore-a.offlineScore).slice(0,limit);
+    return [...found.values()].map(price=>{const offlineScore=priceScore(price,parts);return offlineScore===null?null:{...fixPcPrice(price),offlineScore,catalogVersion:version};}).filter(Boolean).sort((a,b)=>b.offlineScore-a.offlineScore).slice(0,limit);
   }
 
   async function search(query,limit=20){
