@@ -94,16 +94,17 @@ assert.match(html, /value="skip">Skip duplicates/, 'CSV import must default to s
 {
   assert.match(html, /function buyItemPricingBasis\(item\)\{/, 'missing buyItemPricingBasis');
   const basisFn = html.slice(html.indexOf('function buyItemPricingBasis(item){'), html.indexOf('\nfunction ', html.indexOf('function buyItemPricingBasis(item){') + 1));
-  assert.match(basisFn, /return raw > 0 \? Math\.floor\(raw\) : 0;/, 'buyItemPricingBasis must floor the raw market price to a whole dollar');
+  // 2026-11-14 store: "make it do the correct math" -- the basis is the real market to the cent.
+  assert.match(basisFn, /return raw > 0 \? Math\.round\(raw \* 100\) \/ 100 : 0;/, 'buyItemPricingBasis must keep the real market price to the cent');
   const offerValueFn = html.slice(html.indexOf('function buyItemOfferValue(item, pctOverride){'), html.indexOf('\nfunction buyItemMarketValue('));
-  assert.match(offerValueFn, /return roundBuyOffer\(buyItemPricingBasis\(item\) \* pct\);/, 'buyItemOfferValue must apply the slider % to the whole-dollar basis, not the raw fractional market price');
+  assert.match(offerValueFn, /return Math\.floor\(buyItemPricingBasis\(item\) \* pct \* 100 \+ 1e-6\) \/ 100;/, 'buyItemOfferValue must be market x %, rounded down to the cent');
   // Bargain-bin bracket: any card under $2 guide value skips the normal %
   // math -- a percentage of a bulk common at $0.10-$0.35, or of a
   // $1.01-$1.99 card, doesn't land on a sane whole-dollar number either
   // way. Store policy: a flat $1.00 at a full (100%) offer, $0.50 below
   // that -- confirmed explicitly by the store owner for both sub-$1 bulk
   // commons and the $1.01-$1.99 range as one unified bracket.
-  assert.match(offerValueFn, /if\(raw > 0 && raw < 2\) return pct >= 1 \? 1 : 0\.5;/, 'buyItemOfferValue must apply the flat $1.00/$0.50 bargain-bin bracket for any item under $2, before falling through to the normal whole-dollar-basis % math');
+  assert.doesNotMatch(offerValueFn, /raw < 2\) return/, 'no flat bargain-bin prices -- every card is market x %');
   // The bracket returns a real $0.50 half-dollar -- every place that shows
   // an offer amount must format it with cents (toFixed(2)), not Math.round(),
   // which rounds 0.5 UP to 1 (JS round-half-up) and would silently turn a
