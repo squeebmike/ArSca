@@ -430,6 +430,8 @@ export const TILE_RAMPS = {
   21: ramp('#fff8b4', '#c2c2ca', '#92929a', '#303038'), 22: ramp('#e4e4ec', '#8ab86a', '#6a6a7a', '#303040'), 23: ramp('#fff284', '#f8a232', '#d2421a', '#601008'),
   24: ramp('#866652', '#64443a', '#422a22', '#201010'),
 };
+// GBA trees by area: the ground behind them matches the area (sand under palms, snow under pines).
+export const TREE_RAMPS = { beach: ramp('#faf2c4', '#f0d892', '#9a6a3a', '#1f7a2a'), snow: ramp('#ffffff', '#e2f2ff', '#2f6f4a', '#123a1c'), graveyard: ramp('#e4e4ec', '#7aa060', '#6a5a50', '#302820'), volcano: ramp('#866652', '#64443a', '#3a2a22', '#1a1010') };
 export const PEOPLE_RAMP = ramp('#fff2e2', '#f2b892', '#3a5ab0', '#181820'), ICON_RAMP = ramp('#ffffff', '#ffd040', '#f05050', '#202020'), UI_RAMP = ramp('#f8f8f8', '#d4dce6', '#6f88a4', '#202830');
 const hsl = (h, sat, l) => { const a = sat * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
 const beastRamps = new Map();
@@ -437,12 +439,23 @@ export function beastRamp(name) { const n = String(name).toUpperCase(); if (!bea
 const TINTS = { sunset: [1.08, 0.86, 0.72], night: [0.55, 0.62, 0.95] };
 const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = PAL[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
 // One tile's pixel (shade) at (u, v) inside it; tm for the waving grass and water.
-function tileShade(t, u, v, tx, ty, tm) {
+// PIXEL ROUTES, MORE DETAIL (store, 2026-11-14: "do the pixel routes too"): trees by area (round or pine; snowy pines,
+// palms on the beach, bare dead trees in the graveyard and by the volcano), ground details (tufts, pebbles, little bushes,
+// leaf litter in the woods), and -- in the frame below -- paths edged where they meet the grass and foam where water meets
+// land. All from the tile's place (the same route looks the same everywhere).
+function treeShade(kind, u, v, tx, ty) {
+  if (kind === 'pine' || kind === 'snowpine') { if (v > 12 && (u === 7 || u === 8)) return 3; const half = (v + 1) * 0.55; if (v <= 12 && Math.abs(u - 7.5) <= half) { const edge = Math.abs(u - 7.5) > half - 1.2 || v % 4 === 3; if (kind === 'snowpine' && v % 4 === 0 && Math.abs(u - 7.5) < half - 1) return 0; return edge ? 3 : (u + v) % 6 === 0 ? 1 : 2; } return 1; }
+  if (kind === 'palm') { if (v > 5 && Math.abs(u - (7 + (v - 5) * 0.15)) < 1.2) return v % 3 === 0 ? 3 : 2; for (const a of [-1, 1]) { const yy = 3 + Math.abs(u - 7.5) * 0.35; if (Math.abs(v - yy) < 1.1 && Math.sign(u - 7.5) === a && Math.abs(u - 7.5) < 7) return 3; } return v < 6 && Math.abs(u - 7.5) < 1.5 ? 2 : 1; }
+  if (kind === 'dead') { if (Math.abs(u - 7.5) < 1.2 && v > 3) return 3; if (v > 3 && v < 9 && Math.abs((u - 7.5) - (v - 9) * -0.9) < 0.8 && u > 7) return 3; if (v > 5 && v < 10 && Math.abs((7.5 - u) - (v - 10) * -0.8) < 0.8 && u < 8) return 3; return 1; }
+  return -1;
+}
+function tileShade(t, u, v, tx, ty, tm, b = '') {
   const h = (hashOf(tx * 131 + ty * 7919 + u * 17 + v) % 100);
   switch (t) {
     case 1: return h < 5 ? 1 : (u === 0 || v === 0) && h < 40 ? 1 : 0;               // path: light, pebbles
     case 2: { const sway = Math.floor(tm * 2 + tx * 0.7) % 2; const blade = (u + sway + (v >> 2) * 2) % 4; return v % 8 < 6 && blade < 2 ? 2 : v % 8 === 7 ? 3 : 1; } // tall grass, swaying
-    case 3: { const cx = u - 7.5, cy = v - 6; if (v > 11 && Math.abs(cx) < 2) return 3; const d = cx * cx / 56 + cy * cy / 40; return d < 1 ? (d > 0.75 || (u + v) % 5 === 0 ? 3 : (u * 3 + v) % 7 === 0 ? 1 : 2) : 1; } // tree
+    case 3: { const kind = b === 'snow' ? 'snowpine' : b === 'beach' ? 'palm' : b === 'graveyard' || b === 'volcano' ? 'dead' : (hashOf(tx * 31 + ty * 17) % 100) < (b === 'woods' ? 60 : 30) ? 'pine' : 'round'; if (kind !== 'round') return treeShade(kind, u, v, tx, ty); }
+    case 33: { const cx = u - 7.5, cy = v - 6; if (v > 11 && Math.abs(cx) < 2) return 3; const d = cx * cx / 56 + cy * cy / 40; return d < 1 ? (d > 0.75 || (u + v) % 5 === 0 ? 3 : (u * 3 + v) % 7 === 0 ? 1 : 2) : 1; } // tree
     case 4: { const w = Math.floor(tm * 3 + tx) % 4; return (u + w * 2 + (v >> 2) * 3) % 8 === 0 && v % 4 === 1 ? 0 : 1; } // water, rippling
     case 5: return u === 0 || u === 15 ? 3 : v % 6 === 5 ? 2 : (u > 3 && u < 7 && v > 3 && v < 9) || (u > 9 && u < 13 && v > 3 && v < 9) ? 2 : 0; // wall with windows
     case 6: return v % 4 === 3 ? 3 : (u + (v >> 2)) % 3 === 0 ? 3 : 2;              // roof
@@ -463,7 +476,15 @@ function tileShade(t, u, v, tx, ty, tm) {
     case 23: { const w = Math.floor(tm * 4 + tx * 2) % 6; return (u + w + (v >> 2) * 3) % 6 < 2 ? 0 : (u * 5 + v * 3 + w) % 11 === 0 ? 2 : 1; } // lava, bubbling
     case 24: return h < 12 ? 3 : 2;                                                   // dark volcanic ground
     case 11: case 12: return v > 1 && v < 14 ? (v === 2 || v === 13 || u === 0 || u === 15 ? 3 : 0) : 2; // a shop sign (letters drawn on top)
-    default: return h < 7 ? 2 : h < 12 ? 0 : 1;                                       // grass: a shade darker than the path, tufts
+    default: {
+      // Grass with details: tufts, a pebble, now and then a little bush or a flower (leaf litter in the woods).
+      const dk = hashOf(tx * 53 + ty * 97) % 100;
+      if (dk < 4) { const d = (u - 7.5) ** 2 / 20 + (v - 9) ** 2 / 14; if (d < 1) return d > 0.7 ? 3 : (u + v) % 4 === 0 ? 1 : 2; }
+      if (dk >= 4 && dk < 9 && u >= 6 && u <= 9 && v >= 9 && v <= 11) return u === 6 || u === 9 || v === 11 ? 3 : 0; // a pebble
+      if (b === 'woods' && h < 10) return 2;
+      if (dk >= 9 && dk < 13 && ((u === 4 && v >= 8 && v <= 11) || (u === 3 && v === 7) || (u === 5 && v === 7))) return 2; // a tuft
+      return h < 7 ? 2 : h < 12 ? 0 : 1;
+    }                                       // grass: a shade darker than the path, tufts
   }
 }
 // A tiny 3 x 5 font (the shop signs, the "!" over your head).
@@ -568,9 +589,9 @@ function followerBeast(name) { if (!followerCache.has(name)) followerCache.set(n
 export function createWorld(canvas, { w = 240, h = 189 } = {}) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
-  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '', flat = null;
+  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '', flat = null, bioRows = [];
   function set(s) {
-    if (first || s.floor !== state.floor || (s.area ?? '') !== (route.area || '')) { route = routeFor(s.floor, s.area || ''); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
+    if (first || s.floor !== state.floor || (s.area ?? '') !== (route.area || '')) { route = routeFor(s.floor, s.area || ''); bioRows = []; shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
     const wasBattle = battleOf(state), isBattle = battleOf(s);
     if (isBattle && !wasBattle) exclaim = performance.now(); // a "!" over your head as the beast jumps out
     state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay !== undefined) tod = s.timeOfDay || null; if (s.gfx) gfx = GFX.includes(s.gfx) ? s.gfx : 'gbc'; if (s.follower !== undefined) follower = String(s.follower || '');
@@ -591,7 +612,10 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     const camX = Math.max(0, Math.min(MAP_W * T - w, (p.x + 0.5) * T - w / 2)), camY = Math.max(0, Math.min(MAP_H * T - h, (p.y + 0.5) * T - h * 0.58));
     // In a cave it's dark: the host's lantern lights a circle around them.
     const hx = (p.x + 0.5) * T - camX, hy = (p.y + 0.5) * T - camY - 8, cave = route.biomeAt(Math.round(p.y)) === 'cave';
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; let sh = tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm); if (cave || route.biomeAt(ty) === 'cave') { const d2 = (x - hx) ** 2 + (y - hy) ** 2, flick = Math.sin(tm * 9) * 3; if (d2 > (54 + flick) ** 2) sh = 3; else if (d2 > (38 + flick) ** 2) sh = Math.min(3, sh + 1); } if (gba) { const c = (TILE_RAMPS[t] || TILE_RAMPS[0])[sh], i = (y * w + x) * 4; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; } else put(img, w, x, y, sh); }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; const uu = Math.floor(wx) % T, vv = Math.floor(wy) % T, bio = bioRows[ty] ?? (bioRows[ty] = route.biomeAt(ty) || ''); let sh = tileShade(t, uu, vv, tx, ty, tm, bio);
+      // Path edges: a darker line where the path meets something else (pebbles along it); foam where water meets land.
+      if (t === 1) { const G = route.grid, edge = (uu < 2 && ![1, 15].includes(G[ty]?.[tx - 1])) || (uu > 13 && ![1, 15].includes(G[ty]?.[tx + 1])) || (vv < 2 && ![1, 15].includes(G[ty - 1]?.[tx])) || (vv > 13 && ![1, 15].includes(G[ty + 1]?.[tx])); if (edge) sh = (uu + vv) % 3 === 0 ? 3 : 1; }
+      else if (t === 4) { const G = route.grid, shore = (uu < 2 && G[ty]?.[tx - 1] !== 4) || (uu > 13 && G[ty]?.[tx + 1] !== 4) || (vv < 2 && G[ty - 1]?.[tx] !== 4) || (vv > 13 && G[ty + 1]?.[tx] !== 4); if (shore) sh = (Math.floor(tm * 3) + uu + vv) % 3 ? 0 : 1; } if (cave || route.biomeAt(ty) === 'cave') { const d2 = (x - hx) ** 2 + (y - hy) ** 2, flick = Math.sin(tm * 9) * 3; if (d2 > (54 + flick) ** 2) sh = 3; else if (d2 > (38 + flick) ** 2) sh = Math.min(3, sh + 1); } if (gba) { const c = ((t === 3 && TREE_RAMPS[bio]) || TILE_RAMPS[t] || TILE_RAMPS[0])[sh], i = (y * w + x) * 4; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; } else put(img, w, x, y, sh); }
     // The items still on the path, and chat's gifts (they bob).
     const bobY = Math.round(Math.sin(tm * 4) * 1.5);
     if (gba) PAL = ICON_RAMP;

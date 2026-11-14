@@ -131,3 +131,9 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   for (const k of ['PATH EDGING', 'BRIDGES: planks and rails', 'WATER: one sheet with ripples', 'Palms:', 'Dead trees:', 'HOUSES: walls with windows', 'LAVA: glowing, pulsing', 'THE SKYLINE', 'function sceneTick(']) assert.ok(b3.includes(k), k);
   console.log('3D scenery: passed');
 }
+// Pixel routes, more detail (2026-11-14): trees by area, path edges, shorelines, ground details.
+{
+  const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8');
+  for (const k of ['function treeShade(kind', "b === 'beach' ? 'palm'", 'Path edges: a darker line', 'export const TREE_RAMPS', 'a pebble']) assert.ok(src.includes(k), k);
+  console.log('Pixel route detail: passed');
+}
