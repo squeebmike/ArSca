@@ -17201,6 +17201,8 @@ async function routeRequest(request, env, ctx) {
       const storeId = requestStoreId(request, url, parsed.data);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
       if (auth.error) return auth.error;
+      // The Mana Pocket's own (2026-11-14): no other store's staff chat with ByteRider (or spend its AI budget).
+      if (storeId !== ITEM_DETAIL_STORE_ID) return json({ ok: false, error: 'ByteRider is only available for The Mana Pocket.' }, 403);
       if (!env.ANTHROPIC_API_KEY) return json({ ok: false, error: 'ByteRider needs the Anthropic key in Cloudflare.' }, 503);
       const now = new Date(), month = now.toISOString().slice(0, 7);
       const userKey = `byterider-staff:user:${auth.user?.id || 'x'}:${now.toISOString().slice(0, 13)}`;

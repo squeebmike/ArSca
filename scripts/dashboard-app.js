@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.14.2-mtg-paste';
+const APP_VERSION = '2026.11.14.3-byterider-home';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -49867,6 +49867,8 @@ window.linkWhatnotListingsNow = linkWhatnotListingsNow;
 const BYTE_DASH_LINES = ['SCAN SOMETHING. I\'M BORED.', 'PRICE SYNC HAS CHANGES WAITING? JUST SAYING.', 'GO LIVE ON WHATNOT. I\'LL HANDLE THE HYPE.', 'I\'M NOT RUNNING EVERYTHING. (I AM.)', 'COUNT TWICE, SHIP ONCE.', 'THE SCALPER FEARS YOU.'];
 window.byteRiderDash = null;
 async function mountDashByteRider(){
+  // The Mana Pocket's own mascot (2026-11-14: "does Dave have the ByteRider_97? He shouldn't"): other stores never get him.
+  if(getActiveStoreId() !== HOME_STORE_ID){ document.getElementById('byterider-dash')?.remove(); window.byteRiderDash = null; return; }
   try { if(localStorage.getItem('byterider-dash-hidden') === '1' || document.getElementById('byterider-dash')) return; } catch(_) {}
   let m;
   try { m = await import('./byterider.mjs?v=' + encodeURIComponent(APP_VERSION)); } catch(_) { return; }
@@ -49903,6 +49905,7 @@ async function mountDashByteRider(){
 // bag, expenses or any item. He looks it up; he can't change anything.
 const staffByteRiderChat = [];
 function openStaffByteRider(){
+  if(getActiveStoreId() !== HOME_STORE_ID) return;
   let box = document.getElementById('byterider-staff');
   if(box){ box.style.display = box.style.display === 'none' ? 'flex' : 'none'; box.querySelector('input')?.focus(); return; }
   box = document.createElement('div');

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="version" content="2026.11.14.2-mtg-paste">
+<meta name="version" content="2026.11.14.3-byterider-home">
 <meta name="theme-color" content="#07080a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -530,7 +530,9 @@ tr.sold:hover td{opacity:.7;}
 .buy-preset{padding:9px 16px;font-size:11px;font-family:var(--font-mono);font-weight:700;background:var(--surf2);border:1px solid var(--border);color:var(--dim);border-radius:20px;cursor:pointer;min-height:38px;transition:all .14s;}
 .buy-preset:hover{border-color:rgba(255,209,102,.4);color:var(--gold);}
 .buy-preset.active{background:rgba(255,209,102,.15);border-color:rgba(255,209,102,.6);color:var(--gold);}
-.buy-add-row{display:flex;gap:6px;margin-bottom:12px;align-items:center;}
+.buy-add-row{display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap;}
+/* Phones (2026-11-14: "paste gets cut off on mobile"): the card name takes its own line; the buttons wrap under it. */
+@media (max-width:700px){.buy-add-row #bl-input{flex:1 1 100% !important;min-width:0}.buy-add-row .buy-price-input{flex:1 1 90px}.buy-add-row .hbtn{flex:1 1 auto}}
 .buy-price-input{width:90px;background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:12px;font-family:monospace;flex-shrink:0;}
 .buy-tray{min-height:60px;margin-bottom:12px;}
 .buy-tray-empty{font-family:var(--font-mono);font-size:10px;color:var(--dim);text-align:center;padding:20px;border:1px dashed var(--border);border-radius:8px;}
@@ -1818,27 +1820,27 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
      updating in two places. Defines window.WOTeamPalette; no DOM/CSS side effects. -->
 <script src="https://cdn.jsdelivr.net/gh/squeebmike/wo-scripts@6ad215d6d37a5dfdb03e5828882752c8fd5d0097/team-palette-data.js" defer></script>
 <script src="app-config.js"></script>
-<script src="scripts/store-demand.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/buy-signal.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/query-routing.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/barcode-lookup.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/comic-issue-hub.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/comic-demand.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/foc-dashboard.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/backlist-dashboard.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/database-viewer.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/card-intake-dashboard.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/mana-pocket-task-library.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/daily-tasks-dashboard.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/expenses.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/whatnot-bridge.js?v=2026.11.14.2-mtg-paste" defer></script>
+<script src="scripts/store-demand.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/buy-signal.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/query-routing.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/barcode-lookup.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/comic-issue-hub.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/comic-demand.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/foc-dashboard.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/backlist-dashboard.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/database-viewer.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/card-intake-dashboard.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/mana-pocket-task-library.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/daily-tasks-dashboard.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/expenses.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/whatnot-bridge.js?v=2026.11.14.3-byterider-home" defer></script>
 <script src="scripts/research-loupe.js?v=b90e780e52" defer></script>
-<script src="scripts/card-compare.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/mtg/mtg-offline-browser.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/pricecharting/offline-browser.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/topps/offline-browser.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/mtg/research-batch.js?v=2026.11.14.2-mtg-paste" defer></script>
+<script src="scripts/card-compare.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/mtg/mtg-offline-browser.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/mtg/mtg-offline-images-browser.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/pricecharting/offline-browser.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/topps/offline-browser.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/mtg/research-batch.js?v=2026.11.14.3-byterider-home" defer></script>
 </head>
 <body>
 
@@ -1890,7 +1892,7 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 <div class="dsb-chip" id="dsb-intake" title="Pending intake items — click to jump to Buy tab" style="cursor:pointer" onclick="switchTab('intake')">📥 <span>INTAKE:</span> <b id="dsb-intake-val">0</b></div>
 <div class="dsb-chip" id="dsb-tasks" title="Today's Roles &amp; Tasks — click to jump to Tasks tab" style="cursor:pointer;display:none" onclick="switchTab('tasks')">✅ <span>TASKS:</span> <b id="dsb-tasks-val">—</b></div>
     <div class="dsb-chip" id="dsb-net" title="Network connection status">🌐 <b id="dsb-net-val">…</b></div>
-<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.11.14.2-mtg-paste</div>
+<div class="dsb-chip" style="margin-left:auto;color:var(--dim);font-size:9px" id="dsb-version">v2026.11.14.3-byterider-home</div>
   </div>
   <div class="tabs">
     <div class="tab on" onclick="switchTab('overview',this)">OVERVIEW</div>
@@ -2977,9 +2979,9 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
 </div>
 
 <!-- WHATNOT MODE TAB -->
-<link rel="stylesheet" href="assets/live-studio.css?v=2026.11.14.2-mtg-paste">
-<link rel="stylesheet" href="assets/byterider.css?v=2026.11.14.2-mtg-paste">
-<script src="scripts/live-studio-controls.js?v=2026.11.14.2-mtg-paste" defer></script>
+<link rel="stylesheet" href="assets/live-studio.css?v=2026.11.14.3-byterider-home">
+<link rel="stylesheet" href="assets/byterider.css?v=2026.11.14.3-byterider-home">
+<script src="scripts/live-studio-controls.js?v=2026.11.14.3-byterider-home" defer></script>
 <div id="tab-whatnot" class="tab-panel">
   <div class="sec">WHATNOT MODE</div>
   <div style="max-width:640px;margin:0 auto;padding:0 20px 40px">
@@ -4147,9 +4149,9 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
   <a class="lba-nav-btn active" href="dashboard.html"><span class="nav-ico">▦</span>DASHBOARD</a>
 </div>
 
-<script src="scripts/dashboard-app.js?v=2026.11.14.2-mtg-paste"></script>
-<script src="scripts/mtg/research-batch-ui.js?v=2026.11.14.2-mtg-paste" defer></script>
-<script src="scripts/reference-audit-dashboard.js?v=2026.11.14.2-mtg-paste" defer></script>
+<script src="scripts/dashboard-app.js?v=2026.11.14.3-byterider-home"></script>
+<script src="scripts/mtg/research-batch-ui.js?v=2026.11.14.3-byterider-home" defer></script>
+<script src="scripts/reference-audit-dashboard.js?v=2026.11.14.3-byterider-home" defer></script>
 </body>
 </html>
 
