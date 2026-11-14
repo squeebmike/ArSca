@@ -36,4 +36,10 @@ assert.match(res[2].matchWhy.join(' '), /guessed by name/);
 assert.match(banner.innerHTML, /\$6\.66/); assert.match(banner.innerHTML, /Not found on Scryfall \(1\): 1 Breya/);
 ctx.qplResults = res; ctx.T.mtgListAddAllToBuy();
 assert.deepEqual(JSON.parse(JSON.stringify(added.map(r => [r.name, r.quantity, r.market]))), [['Sol Ring', 2, 1.5], ['Duress (Etched Foil)', 1, 3], ['Inspiring Refrain', 1, 0.66]]);
+// Regular Research: showcase / extended art opens at the regular price, not the foil one.
+assert.ok(app.includes("const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : treatment && priceMap[treatment] ? treatment"), 'scryfallCardToQplRow defaults to the regular price');
+assert.ok(app.includes('const treatmentDefault = treatment && priceMap[treatment] && !(Number(c.prices?.usd || 0) > 0);'), 'Scryfall search defaults to the regular price');
+// Phones holding the old 100x-too-small PriceCharting rows re-read the CSV text.
+const browser = readFileSync(new URL('../scripts/mtg/mtg-offline-browser.js', import.meta.url), 'utf8');
+assert.ok(browser.includes('offlinePrice:fixPcPrice(prices[index])||null,') && browser.includes('{...fixPcPrice(price),offlineScore'));
 console.log('Pasted Magic list as Research cards: passed');

@@ -23,10 +23,14 @@ export function stableHash(value = '') {
   return crypto.createHash('sha256').update(String(value)).digest('hex');
 }
 
+// PriceCharting's CSV download writes dollars ("$19.27"); its API writes whole pennies (1927). Dividing the CSV's
+// dollars by 100 showed a $19 Secret Lair Lightning Bolt as $0.19 (store, 2026-11-14). A "$" or a decimal point
+// means dollars; a bare whole number means pennies.
 export function moneyFromPennies(value) {
   if(value === null || value === undefined || value === '') return null;
-  const pennies = Number(String(value).replace(/[$,]/g, '').trim());
-  return Number.isFinite(pennies) && pennies >= 0 ? Math.round(pennies) / 100 : null;
+  const text = String(value).trim(), n = Number(text.replace(/[$,]/g, ''));
+  if(!Number.isFinite(n) || n < 0) return null;
+  return /[$.]/.test(text) ? Math.round(n * 100) / 100 : Math.round(n) / 100;
 }
 
 function compactCardFace(face = {}) {

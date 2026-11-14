@@ -38670,7 +38670,10 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
     }
     const titleFinish = /\betched\b/i.test(c.name) ? 'etched_foil' : '';
     const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal';
-    const selectedFinish = finishIntent.finish || titleFinish || (treatment && priceMap[treatment] ? treatment : autoFinish);
+    // A showcase / extended-art / borderless printing opens at its REGULAR price when it has one; the treatment's
+    // price is the foil price, so defaulting to it made non-foil cards look foil-priced (store, 2026-11-14).
+    const treatmentDefault = treatment && priceMap[treatment] && !(Number(c.prices?.usd || 0) > 0);
+    const selectedFinish = finishIntent.finish || titleFinish || (treatmentDefault ? treatment : autoFinish);
     const treatmentLabel = treatment ? qplFinishLabel(treatment) : '';
     const variantNote = [treatmentLabel, c.rarity ? c.rarity.charAt(0).toUpperCase() + c.rarity.slice(1) : ''].filter(Boolean).join(' · ');
     const row = applyQplSelectedVariant({
@@ -48702,7 +48705,7 @@ function scryfallCardToQplRow(c){
   if(Number(c.prices?.usd_etched || 0) > 0 || finishes.includes('etched')) priceMap.etched_foil = { market:Number(c.prices?.usd_etched || 0), low:Number(c.prices?.usd_etched || 0) };
   const treatment=scryfallTreatmentLabel(c);
   if(treatment && treatment!=='etched_foil' && mtgFinishPriceFamily(treatment)==='foil' && Number(c.prices?.usd_foil||0)>0) priceMap[treatment]={market:Number(c.prices.usd_foil),low:Number(c.prices.usd_foil)};
-  const autoFinish = treatment && priceMap[treatment] ? treatment : Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal';
+  const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : treatment && priceMap[treatment] ? treatment : Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal';
   const exactTcgUrl = c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '';
   return applyQplSelectedVariant({
     source: 'scryfall',
