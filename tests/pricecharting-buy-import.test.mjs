@@ -29,8 +29,8 @@ assert.equal(categoryFrom('Baseball Cards 2024 Topps'), 'Sports Card');
 
 // The Buy tab: an IMPORT button and the importer.
 const html = fs.readFileSync('dashboard.html', 'utf8'), app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
-assert.match(html, /<input type="file" id="bl-import-file" accept="\.csv,text\/csv" style="display:none" onchange="importCollectionToBuyList\(this\.files\[0\]\);this\.value=''">/);
+assert.match(html, /<input type="file" id="bl-import-file" accept="\.csv,text\/csv,\.txt,text\/plain" style="display:none" onchange="importCollectionToBuyList\(this\.files\[0\]\);this\.value=''">/);
 assert.match(app, /async function importCollectionToBuyList\(file\)\{/);
-assert.match(app, /const \{ format, items, skipped \} = mod\.importRows\(await file\.text\(\)\);/);
+assert.match(app, /const \{ format, items, skipped \} = mod\.importRows\(fileText\);/);
 assert.match(app, /if\(copies > 1000\) return toast_dash/);
 console.log('PriceCharting / Collectr export into the Buy tab passed');
