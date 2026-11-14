@@ -209,40 +209,136 @@ export function createWorld3D(canvas, { w = 240, h = 189 } = {}) {
   scene.add(dropG, itemG);
   const host = person([58, 90, 176], [30, 40, 60]), champ = person([226, 226, 232], null); scene.add(host, champ);
   const tile = (x, y) => new THREE.Vector3(x + 0.5 - MAP_W / 2, 0, y + 0.5);
+  // THE SCENERY (store, 2026-11-14: "now the paths and scenery!"): dirt paths with stone edging (cobbles in the city, packed
+  // snow, gravel in the cave), wooden bridges with rails, rippling water, each area's own trees (round trees and pines,
+  // dense woods with mushrooms, snowy pines, palms on the beach, bare dead trees in the graveyard and the volcano, trees
+  // in planters in the city), tall grass in three greens, flowers in four colours, mossy boulders, gabled houses with
+  // windows and chimneys, fences, signs, lamps that glow at night, gravestones and crosses, lava that pulses with smoke
+  // rising, cave walls with torches, beach umbrellas, mountains on the skyline and clouds drifting over. All placed from the
+  // route's tiles and the tile's own number (the same route looks the same every time; nothing by chance).
+  let water = null, lavaM = null, smoke = [], clouds = [], glows = [];
+  const fixedOf = (x, y, k = 0) => ((Math.sin(x * 12.9898 + y * 78.233 + k * 37.719) * 43758.5453) % 1 + 1) % 1;
+  function waveTex() { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = '#3a8ae0'; x.fillRect(0, 0, 64, 64); x.strokeStyle = '#9fd6ff'; x.lineWidth = 2; for (let y = 6; y < 64; y += 14) { x.beginPath(); for (let xx = 0; xx <= 64; xx += 4) x.lineTo(xx, y + Math.sin(xx / 64 * Math.PI * 4) * 2.5); x.stroke(); } const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; return t; }
   function build() {
-    if (routeG) scene.remove(routeG); routeG = new THREE.Group(); scene.add(routeG);
-    const g = route.grid, n = MAP_W * MAP_H, ground = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.2, 1), new THREE.MeshLambertMaterial(), n), m4 = new THREE.Matrix4(), c = new THREE.Color();
-    let i = 0; const kinds = {};
+    if (routeG) scene.remove(routeG); routeG = new THREE.Group(); scene.add(routeG); smoke = []; clouds = []; glows = [];
+    const g = route.grid, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), sc = new THREE.Vector3(), c = new THREE.Color();
+    const bio = y => route.biomeAt(y) || 'meadow', kinds = {}, at2 = (x, y) => g[y]?.[x];
+    const groundColor = (t, b) => t === 1 ? (b === 'city' ? [104, 104, 116] : b === 'snow' ? [196, 210, 228] : b === 'cave' ? [128, 112, 94] : b === 'volcano' ? [58, 46, 42] : b === 'beach' ? [156, 112, 70] : [214, 186, 132])
+      : t === 14 ? [240, 216, 150] : t === 19 ? [244, 248, 255] : t === 20 ? [176, 176, 184] : t === 18 ? [106, 92, 76] : t === 24 ? [90, 64, 52] : t === 17 ? [96, 82, 70]
+      : b === 'snow' ? [236, 242, 250] : b === 'beach' ? [232, 210, 150] : b === 'cave' ? [106, 92, 76] : b === 'volcano' ? [90, 64, 52] : b === 'city' ? [176, 176, 184] : b === 'graveyard' ? [96, 132, 82] : b === 'woods' ? [84, 150, 70] : [124, 200, 88];
+    // The ground: a block a tile, its own shade of its colour.
+    const n = MAP_W * MAP_H, ground = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.2, 1), new THREE.MeshLambertMaterial(), n); let i = 0;
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-      const t = g[y][x], base = [3, 9, 10, 13, 21, 22].includes(t) ? (route.biomeAt(y) === 'snow' ? 19 : route.biomeAt(y) === 'city' ? 20 : route.biomeAt(y) === 'cave' ? 18 : route.biomeAt(y) === 'volcano' ? 24 : 0) : [5, 6, 7, 11, 12].includes(t) ? 1 : t;
-      const p = tile(x, y), lift = t === 4 || t === 23 ? -0.12 : t === 16 ? 0.15 : t === 17 ? 0.7 : 0;
-      m4.makeScale(1, t === 17 ? 8 : 1, 1); m4.setPosition(p.x, lift - 0.1, p.z); ground.setMatrixAt(i, m4);
-      const rc = (TILE_RAMPS[base] || TILE_RAMPS[0])[t === 4 ? 1 : t === 23 ? 1 : t === 17 ? 2 : 1]; ground.setColorAt(i, c.setRGB(rc[0] / 255, rc[1] / 255, rc[2] / 255)); i++;
-      (kinds[t] ||= []).push(p);
+      const t = g[y][x], b = bio(y), p = tile(x, y), cliff = t === 17, low = t === 4 || t === 23, ledge = t === 16;
+      m4.compose(v3.set(p.x, (low ? -0.25 : ledge ? 0.05 : t === 1 ? -0.04 : 0) - 0.1 + (cliff ? 0.7 : 0), p.z), q.identity(), sc.set(1, cliff ? 8 : 1, 1)); ground.setMatrixAt(i, m4);
+      const gc = groundColor(t === 3 || t === 9 || t === 10 || t === 13 || t === 2 || t === 21 || t === 22 || t === 8 ? 0 : t, b), j = 0.92 + fixedOf(x, y) * 0.14;
+      ground.setColorAt(i++, c.setRGB(gc[0] / 255 * j, gc[1] / 255 * j, gc[2] / 255 * j)); (kinds[t] ||= []).push({ p, x, y, b });
     }
     ground.instanceMatrix.needsUpdate = true; ground.instanceColor.needsUpdate = true; routeG.add(ground);
-    const inst = (list, geo, material, f) => { if (!list?.length) return; const m = new THREE.InstancedMesh(geo, material, list.length); list.forEach((p, k) => { f(m4, p, k); m.setMatrixAt(k, m4); }); m.instanceMatrix.needsUpdate = true; routeG.add(m); };
-    // Trees (pines in the snow), flowers, tall grass, boulders, lamps, gravestones, lava glow.
-    const snowy = p => route.biomeAt(Math.floor(p.z)) === 'snow';
-    inst(kinds[3], new THREE.CylinderGeometry(0.08, 0.12, 0.5, 6), mat([107, 74, 42]), (m, p) => m.makeTranslation(p.x, 0.25, p.z));
-    inst(kinds[3], new THREE.ConeGeometry(0.42, 1.1, 8), mat([47, 127, 58]), (m, p, k) => { m.makeScale(1, 1 + ((k * 7) % 5) * 0.08, 1); m.setPosition(p.x, 0.95, p.z); });
-    inst((kinds[3] || []).filter(snowy), new THREE.ConeGeometry(0.3, 0.45, 8), mat([250, 250, 255]), (m, p) => m.makeTranslation(p.x, 1.35, p.z));
-    inst(kinds[2], new THREE.ConeGeometry(0.12, 0.45, 4), mat([60, 150, 50]), (m, p, k) => { m.makeTranslation(p.x + ((k % 3) - 1) * 0.22, 0.22, p.z + (((k >> 1) % 3) - 1) * 0.22); });
-    inst(kinds[9], new THREE.SphereGeometry(0.08, 6, 5), mat([242, 84, 132]), (m, p, k) => m.makeTranslation(p.x + ((k % 3) - 1) * 0.25, 0.08, p.z + (((k >> 2) % 3) - 1) * 0.25));
-    inst(kinds[13], new THREE.DodecahedronGeometry(0.4), mat([150, 150, 140]), (m, p) => m.makeTranslation(p.x, 0.3, p.z));
-    inst(kinds[21], new THREE.CylinderGeometry(0.04, 0.05, 1.4, 6), mat([60, 60, 70]), (m, p) => m.makeTranslation(p.x, 0.7, p.z));
-    inst(kinds[21], new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff3a0 }), (m, p) => m.makeTranslation(p.x, 1.45, p.z));
-    inst(kinds[22], new THREE.BoxGeometry(0.4, 0.55, 0.12), mat([170, 170, 182]), (m, p) => m.makeTranslation(p.x, 0.27, p.z));
-    inst(kinds[23], new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshBasicMaterial({ color: 0xff7a1a }), (m, p) => m.makeTranslation(p.x, -0.1, p.z));
-    inst(kinds[4], new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshPhongMaterial({ color: 0x3a8ae0, transparent: true, opacity: 0.85, shininess: 120 }), (m, p) => m.makeTranslation(p.x, -0.05, p.z));
-    // Houses: the wall and roof tiles grouped into buildings.
-    inst(kinds[5], new THREE.BoxGeometry(1, 1.2, 1), mat([240, 232, 214]), (m, p) => m.makeTranslation(p.x, 0.6, p.z));
-    inst(kinds[6], new THREE.BoxGeometry(1, 0.5, 1), mat([210, 80, 64]), (m, p) => m.makeTranslation(p.x, 1.35, p.z));
-    inst(kinds[7], new THREE.BoxGeometry(0.5, 0.8, 1.02), mat([120, 72, 34]), (m, p) => m.makeTranslation(p.x, 0.4, p.z));
-    inst([...(kinds[11] || []), ...(kinds[12] || [])], new THREE.BoxGeometry(1.02, 0.4, 1.02), mat([255, 210, 64]), (m, p) => m.makeTranslation(p.x, 1.2, p.z));
-    inst(kinds[8], new THREE.BoxGeometry(1, 0.35, 0.08), mat([200, 170, 120]), (m, p) => m.makeTranslation(p.x, 0.18, p.z));
+    const inst = (list, geo, material, f) => { if (!list?.length) return null; const m = new THREE.InstancedMesh(geo, material, list.length); list.forEach((o, k) => { f(m4, o, k); m.setMatrixAt(k, m4); }); m.instanceMatrix.needsUpdate = true; routeG.add(m); return m; };
+    const put = (x, y, z, sx = 1, sy = 1, sz = 1, ry = 0, rx = 0, rz = 0) => m4.compose(v3.set(x, y, z), q.setFromEuler(e.set(rx, ry, rz)), sc.set(sx, sy, sz));
+    // PATH EDGING: small stones along each side of the path where it meets something else.
+    const edges = []; for (const o of kinds[1] || []) for (const [dx, dy, rot] of [[1, 0, 0], [-1, 0, 0], [0, 1, 1], [0, -1, 1]]) { const nt = at2(o.x + dx, o.y + dy); if (nt !== 1 && nt !== 15 && nt !== undefined) for (let k = -1; k <= 1; k++) edges.push({ p: o.p, dx, dy, k, rot, b: o.b }); }
+    inst(edges, new THREE.DodecahedronGeometry(0.09), mat([150, 140, 126]), (m, o) => put(o.p.x + o.dx * 0.47 + (o.rot ? o.k * 0.3 : 0), 0.02, o.p.z + o.dy * 0.47 + (o.rot ? 0 : o.k * 0.3), 1, 0.6, 1, o.k));
+    // City cobbles: dark seams across the paving.
+    inst((kinds[1] || []).filter(o => o.b === 'city'), new THREE.BoxGeometry(0.96, 0.02, 0.04), mat([70, 70, 80]), (m, o) => put(o.p.x, 0.065, o.p.z));
+    // The beach's boardwalk: plank seams.
+    const planks = []; for (const o of (kinds[1] || []).filter(o2 => o2.b === 'beach')) for (let k = -2; k <= 2; k++) planks.push({ o, k });
+    inst(planks, new THREE.BoxGeometry(0.98, 0.02, 0.025), mat([110, 76, 44]), (m, pl) => put(pl.o.p.x, 0.065, pl.o.p.z + pl.k * 0.2));
+    // BRIDGES: planks and rails.
+    inst(kinds[15], new THREE.BoxGeometry(1, 0.1, 0.9), mat([168, 118, 70]), (m, o) => put(o.p.x, 0.02, o.p.z));
+    const bridgeSides = []; for (const o of kinds[15] || []) for (const s2 of [-1, 1]) bridgeSides.push({ o, s2 });
+    inst(bridgeSides, new THREE.BoxGeometry(0.08, 0.45, 0.08), mat([120, 80, 44]), (m, b2) => put(b2.o.p.x, 0.25, b2.o.p.z + b2.s2 * 0.45));
+    inst(bridgeSides, new THREE.BoxGeometry(1, 0.06, 0.06), mat([140, 96, 54]), (m, b2) => put(b2.o.p.x, 0.42, b2.o.p.z + b2.s2 * 0.45));
+    // WATER: one sheet with ripples that drift.
+    const wTex = waveTex(); water = inst(kinds[4], new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshPhongMaterial({ map: wTex, transparent: true, opacity: 0.88, shininess: 140, specular: 0xffffff }), (m, o) => put(o.p.x, -0.1, o.p.z)); if (water) water.userData.tex = wTex;
+    // TREES, by area.
+    const trees = { round: [], pine: [], snowpine: [], palm: [], dead: [], planter: [] };
+    for (const o of kinds[3] || []) { const b = o.b, f = fixedOf(o.x, o.y, 1); (b === 'snow' ? trees.snowpine : b === 'beach' ? trees.palm : b === 'graveyard' || b === 'volcano' ? trees.dead : b === 'city' ? trees.planter : b === 'woods' ? (f < 0.7 ? trees.pine : trees.round) : (f < 0.35 ? trees.pine : trees.round)).push(o); }
+    const hgt = o => 0.85 + fixedOf(o.x, o.y, 2) * 0.4;
+    inst([...trees.round, ...trees.pine, ...trees.snowpine], new THREE.CylinderGeometry(0.07, 0.12, 0.6, 7), mat([112, 76, 44]), (m, o) => put(o.p.x, 0.3, o.p.z, 1, hgt(o), 1));
+    inst(trees.round, new THREE.IcosahedronGeometry(0.42, 1), mat([64, 150, 62]), (m, o) => put(o.p.x, 0.85 * hgt(o), o.p.z, 1, 0.95, 1, o.x));
+    inst(trees.round, new THREE.IcosahedronGeometry(0.3, 1), mat([88, 176, 74]), (m, o) => put(o.p.x + 0.12, 1.15 * hgt(o), o.p.z + 0.08, 1, 1, 1, o.y));
+    for (const [list, col2] of [[trees.pine, [38, 112, 60]], [trees.snowpine, [40, 100, 70]]]) { inst(list, new THREE.ConeGeometry(0.45, 0.8, 8), mat(col2), (m, o) => put(o.p.x, 0.75 * hgt(o), o.p.z, 1, hgt(o), 1)); inst(list, new THREE.ConeGeometry(0.33, 0.6, 8), mat(col2), (m, o) => put(o.p.x, 1.15 * hgt(o), o.p.z, 1, hgt(o), 1)); }
+    inst(trees.snowpine, new THREE.ConeGeometry(0.25, 0.32, 8), mat([250, 252, 255]), (m, o) => put(o.p.x, 1.48 * hgt(o), o.p.z));
+    inst(trees.snowpine, new THREE.ConeGeometry(0.46, 0.12, 8), mat([250, 252, 255]), (m, o) => put(o.p.x, 0.62 * hgt(o), o.p.z));
+    // Palms: a leaning trunk, fronds.
+    inst(trees.palm, new THREE.CylinderGeometry(0.06, 0.1, 1.5, 7), mat([156, 116, 70]), (m, o) => put(o.p.x + 0.12, 0.72, o.p.z, 1, 1, 1, 0, 0, -0.18));
+    const fronds = []; for (const o of trees.palm) for (let k = 0; k < 6; k++) fronds.push({ o, k });
+    inst(fronds, new THREE.ConeGeometry(0.1, 0.8, 4), mat([60, 160, 70]), (m, f2) => put(f2.o.p.x + 0.26 + Math.cos(f2.k * 1.05) * 0.3, 1.42, f2.o.p.z + Math.sin(f2.k * 1.05) * 0.3, 1, 1, 0.3, -f2.k * 1.05, 0, 1.3));
+    // Dead trees: a bare trunk, two crooked branches.
+    inst(trees.dead, new THREE.CylinderGeometry(0.05, 0.1, 1.2, 6), mat([70, 60, 56]), (m, o) => put(o.p.x, 0.6, o.p.z, 1, 1, 1, 0, 0, 0.08));
+    const dbr = []; for (const o of trees.dead) for (const s2 of [-1, 1]) dbr.push({ o, s2 });
+    inst(dbr, new THREE.CylinderGeometry(0.025, 0.045, 0.55, 5), mat([70, 60, 56]), (m, b2) => put(b2.o.p.x + b2.s2 * 0.18, 0.95 + b2.s2 * 0.1, b2.o.p.z, 1, 1, 1, 0, 0, b2.s2 * -0.9));
+    // City trees: a little round tree in a stone planter.
+    inst(trees.planter, new THREE.BoxGeometry(0.6, 0.3, 0.6), mat([150, 146, 140]), (m, o) => put(o.p.x, 0.15, o.p.z));
+    inst(trees.planter, new THREE.IcosahedronGeometry(0.32, 1), mat([74, 160, 70]), (m, o) => put(o.p.x, 0.75, o.p.z));
+    inst(trees.planter, new THREE.CylinderGeometry(0.05, 0.06, 0.4, 6), mat([112, 76, 44]), (m, o) => put(o.p.x, 0.45, o.p.z));
+    // Mushrooms in the woods.
+    const shrooms = (kinds[0] || []).filter(o => o.b === 'woods' && fixedOf(o.x, o.y, 3) < 0.08);
+    inst(shrooms, new THREE.CylinderGeometry(0.03, 0.04, 0.14, 6), mat([240, 230, 210]), (m, o) => put(o.p.x + 0.2, 0.07, o.p.z));
+    inst(shrooms, new THREE.SphereGeometry(0.1, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat([220, 50, 50]), (m, o) => put(o.p.x + 0.2, 0.13, o.p.z));
+    // TALL GRASS: blades in three greens, leaning.
+    const blades = []; for (const o of kinds[2] || []) for (let k = 0; k < 7; k++) blades.push({ o, k });
+    const bladeM = inst(blades, new THREE.ConeGeometry(0.05, 0.55, 3), new THREE.MeshLambertMaterial(), (m, b2) => put(b2.o.p.x + (fixedOf(b2.o.x, b2.o.y, b2.k) - 0.5) * 0.85, 0.26, b2.o.p.z + (fixedOf(b2.o.y, b2.o.x, b2.k) - 0.5) * 0.85, 1, 0.8 + fixedOf(b2.o.x, b2.k) * 0.5, 1, 0, (fixedOf(b2.k, b2.o.x) - 0.5) * 0.5, (fixedOf(b2.o.y, b2.k) - 0.5) * 0.5));
+    if (bladeM) { blades.forEach((b2, k) => { const sh = [[60, 150, 50], [84, 176, 62], [44, 120, 40]][b2.k % 3]; bladeM.setColorAt(k, c.setRGB(sh[0] / 255, sh[1] / 255, sh[2] / 255)); }); bladeM.instanceColor.needsUpdate = true; }
+    // FLOWERS: four colours on stems.
+    const fl = []; for (const o of kinds[9] || []) for (let k = 0; k < 4; k++) fl.push({ o, k });
+    inst(fl, new THREE.CylinderGeometry(0.01, 0.01, 0.2, 4), mat([60, 140, 50]), (m, f2) => put(f2.o.p.x + (fixedOf(f2.o.x, f2.k) - 0.5) * 0.8, 0.1, f2.o.p.z + (fixedOf(f2.k, f2.o.y) - 0.5) * 0.8));
+    const flM = inst(fl, new THREE.IcosahedronGeometry(0.07, 0), new THREE.MeshLambertMaterial(), (m, f2) => put(f2.o.p.x + (fixedOf(f2.o.x, f2.k) - 0.5) * 0.8, 0.22, f2.o.p.z + (fixedOf(f2.k, f2.o.y) - 0.5) * 0.8));
+    if (flM) { fl.forEach((f2, k) => { const fc = [[242, 84, 132], [255, 214, 60], [250, 250, 250], [170, 110, 230]][(f2.k + f2.o.x) % 4]; flM.setColorAt(k, c.setRGB(fc[0] / 255, fc[1] / 255, fc[2] / 255)); }); flM.instanceColor.needsUpdate = true; }
+    // BOULDERS: each its own size and turn; moss on top in the woods.
+    inst(kinds[13], new THREE.DodecahedronGeometry(0.4, 0), mat([150, 148, 140]), (m, o) => { const s3 = 0.8 + fixedOf(o.x, o.y, 4) * 0.5; put(o.p.x, 0.25 * s3, o.p.z, s3, s3 * 0.8, s3, fixedOf(o.y, o.x) * 3); });
+    inst((kinds[13] || []).filter(o => o.b === 'woods' || o.b === 'rocky'), new THREE.SphereGeometry(0.3, 8, 4, 0, Math.PI * 2, 0, Math.PI / 3), mat([90, 150, 70]), (m, o) => put(o.p.x, 0.42, o.p.z));
+    // HOUSES: walls with windows, a gabled roof, a door, a chimney.
+    inst(kinds[5], new THREE.BoxGeometry(1, 1.2, 1), mat([240, 232, 214]), (m, o) => put(o.p.x, 0.6, o.p.z));
+    inst((kinds[5] || []).filter(o => at2(o.x, o.y + 1) !== 5 && at2(o.x, o.y + 1) !== 7), new THREE.BoxGeometry(0.34, 0.34, 0.04), mat([90, 140, 200], { emissive: 0x112233 }), (m, o) => put(o.p.x, 0.75, o.p.z + 0.51));
+    inst(kinds[6], new THREE.CylinderGeometry(0.62, 0.62, 1.02, 3), mat([200, 70, 58]), (m, o) => put(o.p.x, 1.48, o.p.z, 1, 1, 1, 0, 0, Math.PI / 2));
+    inst((kinds[6] || []).filter(o => fixedOf(o.x, o.y, 6) < 0.2), new THREE.BoxGeometry(0.2, 0.5, 0.2), mat([130, 90, 70]), (m, o) => put(o.p.x + 0.2, 1.8, o.p.z));
+    inst(kinds[7], new THREE.BoxGeometry(0.45, 0.8, 0.06), mat([120, 72, 34]), (m, o) => put(o.p.x, 0.4, o.p.z + 0.5));
+    inst([...(kinds[11] || []), ...(kinds[12] || [])], new THREE.BoxGeometry(0.9, 0.36, 0.08), mat([255, 210, 64], { emissive: 0x332200 }), (m, o) => put(o.p.x, 1.05, o.p.z + 0.52));
+    // FENCES and SIGNS.
+    inst(kinds[8], new THREE.BoxGeometry(0.08, 0.5, 0.08), mat([220, 196, 150]), (m, o) => put(o.p.x - 0.4, 0.25, o.p.z));
+    inst(kinds[8], new THREE.BoxGeometry(1, 0.07, 0.05), mat([220, 196, 150]), (m, o) => put(o.p.x, 0.38, o.p.z));
+    inst(kinds[8], new THREE.BoxGeometry(1, 0.07, 0.05), mat([220, 196, 150]), (m, o) => put(o.p.x, 0.18, o.p.z));
+    inst(kinds[10], new THREE.CylinderGeometry(0.04, 0.04, 0.8, 6), mat([120, 82, 46]), (m, o) => put(o.p.x, 0.4, o.p.z));
+    inst(kinds[10], new THREE.BoxGeometry(0.55, 0.35, 0.06), mat([200, 160, 100]), (m, o) => put(o.p.x, 0.78, o.p.z + 0.03));
+    // LAMPS: a post, an arm, a glowing lamp (brighter at night).
+    inst(kinds[21], new THREE.CylinderGeometry(0.04, 0.06, 1.5, 6), mat([50, 54, 64]), (m, o) => put(o.p.x, 0.75, o.p.z));
+    const lampM = inst(kinds[21], new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshBasicMaterial({ color: 0xfff1a0 }), (m, o) => put(o.p.x, 1.52, o.p.z)); if (lampM) glows.push(lampM);
+    // GRAVESTONES (rounded) and CROSSES, by the tile's number.
+    const graves = kinds[22] || [], crosses = graves.filter(o => fixedOf(o.x, o.y, 7) < 0.35), stones = graves.filter(o => fixedOf(o.x, o.y, 7) >= 0.35);
+    inst(stones, new THREE.BoxGeometry(0.42, 0.45, 0.12), mat([168, 168, 178]), (m, o) => put(o.p.x, 0.22, o.p.z, 1, 1, 1, (fixedOf(o.x, o.y) - 0.5) * 0.3, 0, (fixedOf(o.y, o.x) - 0.5) * 0.15));
+    inst(stones, new THREE.CylinderGeometry(0.21, 0.21, 0.12, 12, 1, false, 0, Math.PI), mat([168, 168, 178]), (m, o) => put(o.p.x, 0.45, o.p.z, 1, 1, 1, (fixedOf(o.x, o.y) - 0.5) * 0.3, Math.PI / 2, 0));
+    inst(crosses, new THREE.BoxGeometry(0.1, 0.65, 0.1), mat([150, 150, 160]), (m, o) => put(o.p.x, 0.32, o.p.z));
+    inst(crosses, new THREE.BoxGeometry(0.4, 0.1, 0.1), mat([150, 150, 160]), (m, o) => put(o.p.x, 0.48, o.p.z));
+    // LAVA: glowing, pulsing; smoke rising here and there.
+    lavaM = inst(kinds[23], new THREE.BoxGeometry(1, 0.05, 1), new THREE.MeshBasicMaterial({ color: 0xff6a10 }), (m, o) => put(o.p.x, -0.12, o.p.z));
+    for (const o of (kinds[23] || []).filter(o2 => fixedOf(o2.x, o2.y, 8) < 0.12)) for (let k = 0; k < 4; k++) { const puff = ball(0.2, new THREE.MeshLambertMaterial({ color: 0x777070, transparent: true, opacity: 0.5, depthWrite: false }), 8); puff.position.set(o.p.x, 0, o.p.z); puff.userData.k = k; routeG.add(puff); smoke.push(puff); }
+    // CAVE: the walls get jagged tops, torches on some.
+    inst((kinds[17] || []).filter(o => fixedOf(o.x, o.y, 9) < 0.5), new THREE.ConeGeometry(0.4, 0.8, 5), mat([84, 72, 62]), (m, o) => put(o.p.x, 1.9, o.p.z, 1, 1, 1, o.x));
+    const torches = (kinds[18] || []).filter(o => fixedOf(o.x, o.y, 10) < 0.06);
+    inst(torches, new THREE.CylinderGeometry(0.03, 0.03, 0.6, 5), mat([90, 60, 30]), (m, o) => put(o.p.x, 0.3, o.p.z));
+    const flameM = inst(torches, new THREE.ConeGeometry(0.08, 0.2, 6), new THREE.MeshBasicMaterial({ color: 0xffa020 }), (m, o) => put(o.p.x, 0.68, o.p.z)); if (flameM) glows.push(flameM);
+    // BEACH: umbrellas on the sand.
+    const umb = (kinds[14] || []).filter(o => o.b === 'beach' && fixedOf(o.x, o.y, 11) < 0.04);
+    inst(umb, new THREE.CylinderGeometry(0.025, 0.025, 1.1, 5), mat([240, 240, 240]), (m, o) => put(o.p.x, 0.55, o.p.z));
+    const umM = inst(umb, new THREE.ConeGeometry(0.55, 0.3, 8), new THREE.MeshLambertMaterial(), (m, o) => put(o.p.x, 1.15, o.p.z));
+    if (umM) { umb.forEach((o, k) => { const uc = [[240, 70, 70], [60, 130, 230], [250, 200, 40]][k % 3]; umM.setColorAt(k, c.setRGB(uc[0] / 255, uc[1] / 255, uc[2] / 255)); }); umM.instanceColor.needsUpdate = true; }
+    // SNOW: soft mounds.
+    inst((kinds[19] || []).filter(o => fixedOf(o.x, o.y, 12) < 0.12), new THREE.SphereGeometry(0.35, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), mat([250, 252, 255]), (m, o) => put(o.p.x, 0, o.p.z, 1, 0.5, 1));
+    // THE SKYLINE: mountains past the edges, clouds drifting over.
+    for (let k = 0; k < 14; k++) { const side = k % 2 ? 1 : -1, z = (k >> 1) * (MAP_H / 7) + 6, hm = 6 + fixedOf(k, 1) * 6, mtn = new THREE.Mesh(new THREE.ConeGeometry(4 + fixedOf(k, 2) * 3, hm, 6), mat(route.biomeAt(Math.min(MAP_H - 1, Math.floor(z))) === 'snow' ? [210, 220, 236] : [104, 128, 150])); mtn.position.set(side * (MAP_W / 2 + 5 + fixedOf(k, 3) * 4), hm / 2 - 0.2, z); routeG.add(mtn); }
+    for (let k = 0; k < 10; k++) { const cl = new THREE.Group(); for (let p2 = 0; p2 < 3; p2++) at(cl, ball(0.9 - p2 * 0.15, new THREE.MeshLambertMaterial({ color: 0xffffff }), 10), p2 * 0.9 - 0.9, fixedOf(k, p2) * 0.3, 0).scale.set(1, 0.55, 0.8); cl.position.set((fixedOf(k, 5) - 0.5) * 30, 8 + fixedOf(k, 6) * 3, k * 13); routeG.add(cl); clouds.push(cl); }
     // The route's items.
     itemG.clear(); for (const it of route.items) { const p = posAt(route, it.t), o = ball(0.16, mat(it.kind === 'STONE' ? [140, 255, 120] : it.kind === 'CANDY' ? [255, 140, 220] : it.kind === 'COIN' ? [255, 210, 60] : [240, 80, 80], { emissive: 0x222222 }), 12); o.position.copy(tile(p.x, p.y)).setY(0.4); o.userData.t = it.t; itemG.add(o); }
+  }
+  function sceneTick(t, day) {
+    if (water?.userData.tex) { water.userData.tex.offset.x = t * 0.04; water.userData.tex.offset.y = Math.sin(t * 0.7) * 0.03; }
+    if (lavaM) lavaM.material.color.setRGB(1, 0.36 + 0.12 * Math.sin(t * 3), 0.04);
+    for (const puff of smoke) { const life = ((t * 0.25 + puff.userData.k * 0.25) % 1); puff.position.y = life * 3; puff.scale.setScalar(0.6 + life * 1.6); puff.material.opacity = 0.5 * (1 - life); }
+    for (const cl of clouds) cl.position.x = ((cl.position.x + 0.004 + 16) % 32) - 16;
+    for (const gm of glows) gm.material.color.setRGB(1, day === 'night' ? 0.95 : 0.85, day === 'night' ? 0.6 : 0.45);
   }
   function set(s) {
     if (first || s.floor !== state.floor || (s.area ?? area) !== area) { area = s.area ?? area; route = routeFor(s.floor, area); build(); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); first = false; }
@@ -262,6 +358,7 @@ export function createWorld3D(canvas, { w = 240, h = 189 } = {}) {
     cam.position.set(me.x * 0.6, 7.5, me.z + 7.5); cam.lookAt(me.x * 0.6, 0, me.z - 3);
     const day = tod || timeOfDay(), sk = SKY[day] || SKY.day; scene.background = new THREE.Color(sk[0]); scene.fog = new THREE.Fog(sk[1], 14, 30);
     hemi.intensity = day === 'night' ? 0.5 : 1.15; sun.intensity = day === 'night' ? 0.25 : 1.2; sun.color.set(day === 'sunset' ? 0xffb070 : 0xffffff);
+    sceneTick(t, day);
     r.render(scene, cam); ctx.drawImage(gl, 0, 0);
   }
   return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };

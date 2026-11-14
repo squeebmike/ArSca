@@ -103,7 +103,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=3')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=4')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
 }
@@ -124,4 +124,10 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   assert.ok(src.includes("const look = hashOf(nm + 'look');") && src.includes('const eyeKind = (look >>> 4) % 3;'));
   assert.ok(!/Math\.random/.test(b3));
   console.log('Beast models: passed');
+}
+// The 3D route's scenery (2026-11-14).
+{
+  const b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8');
+  for (const k of ['PATH EDGING', 'BRIDGES: planks and rails', 'WATER: one sheet with ripples', 'Palms:', 'Dead trees:', 'HOUSES: walls with windows', 'LAVA: glowing, pulsing', 'THE SKYLINE', 'function sceneTick(']) assert.ok(b3.includes(k), k);
+  console.log('3D scenery: passed');
 }
