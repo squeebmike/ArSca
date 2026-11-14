@@ -54,7 +54,7 @@ export const weatherOn = (b, route) => (b?.weather && b.weather.route === route 
 export const BEAST_SIZE = 32;
 const TYPES = ['blob', 'biped', 'quad', 'bird', 'bug', 'serpent'];
 const lineOf = nm => Object.values(EVOLUTIONS).find(l => l.includes(nm));
-export function beastType(name) { const nm0 = String(name).toUpperCase(), line = lineOf(nm0), nm = line ? line[0] : nm0; if (nm === 'SLABBIT') return 'biped'; if (nm === 'TOPLOADON') return 'quad'; if (nm === 'SLEEVIL') return 'biped'; if (/MOTH|OWL/.test(nm)) return 'bird'; if (/SNAIL|TOAD/.test(nm)) return 'blob'; if (/IMP|PUP/.test(nm)) return 'biped'; if (/OX|AROO/.test(nm)) return 'quad'; return TYPES[hashOf(nm + 't') % TYPES.length]; }
+export function beastType(name) { const nm0 = String(name).toUpperCase(), line = lineOf(nm0), nm = line ? line[0] : nm0; if (nm === 'SPIDER-CHEEKS') return 'baboon'; if (nm === 'SLABBIT') return 'biped'; if (nm === 'TOPLOADON') return 'quad'; if (nm === 'SLEEVIL') return 'biped'; if (/MOTH|OWL/.test(nm)) return 'bird'; if (/SNAIL|TOAD/.test(nm)) return 'blob'; if (/IMP|PUP/.test(nm)) return 'biped'; if (/OX|AROO/.test(nm)) return 'quad'; return TYPES[hashOf(nm + 't') % TYPES.length]; }
 export function makeBeast(name, { back = false } = {}) {
   const nm = String(name).toUpperCase(), type = beastType(nm), r = seq(hashOf(nm)), N = BEAST_SIZE;
   const shape = { w: 0.9 + r() * 0.25, h: 0.9 + r() * 0.2, ear: Math.floor(r() * 3), tail: r() < 0.7, spots: r() < 0.5, horn: r() < 0.3 };
@@ -96,6 +96,16 @@ function drawFrame(nm, type, sh, f, back, shut = false) {
     for (const s of [-1, 1]) { for (let k = 0; k < 7; k++) line(cx + s * 8, 17, cx + s * (13 + k * 0.3), 10 + flap + k * 2, 2); } // wings
     for (const s of [-1, 1]) line(cx + s * 3, 26, cx + s * 4, 30, 3); // legs
     eyeY = Math.round(14 - breath * 0.4); mouthY = eyeY + 4;
+  } else if (type === 'baboon') {
+    // SPIDER-CHEEKS: sitting up, hunched, the long spindly arms down to the ground, a shaggy mane, a long muzzle.
+    line(cx + 9, 27, cx + 14, 22 + sway, 2, 2); line(cx + 14, 22 + sway, cx + 13, 17 + sway, 2, 1); // the tail, up and over
+    blob(cx - 7, 27, 4, 3, 2); blob(cx + 7, 27, 4, 3, 2); // haunches
+    if (back) { blob(cx - 3, 27, 3, 2.4, 0); blob(cx + 3, 27, 3, 2.4, 0); } // the red behind (seen from the back)
+    blob(cx, 21 - breath * 0.4, 8.5, 6.5); // the body
+    for (const s of [-1, 1]) { line(cx + s * 8, 15, cx + s * 11, 29 + (s * sway > 0 ? -1 : 0), 3, 2); blob(cx + s * 11, 29, 1.8, 1.3, 3); } // long spindly arms, knuckles down
+    blob(cx, 15 - breath * 0.4, 11, 5.5, 2); for (let x = cx - 10; x <= cx + 10; x += 2) px(x, 20 + (x % 4 ? 1 : 0) - Math.round(breath * 0.4), 2); // the mane, shaggy at the hem
+    blob(cx, 9 - breath * 0.5, 6, 5.2); for (const s of [-1, 1]) blob(cx + s * 6.5, 8, 1.4, 1.6, 2); // the head, little ears
+    eyeY = Math.round(8 - breath * 0.5); eyeDX = 2; mouthY = eyeY + 9;
   } else if (type === 'bug') {
     for (let k = 0; k < 3; k++) for (const s of [-1, 1]) line(cx + s * 6, 18 + k * 3, cx + s * (12 + ((k + f) % 2)), 21 + k * 3, 3); // six legs
     blob(cx, 22 - breath * 0.3, 7, 6, 2); blob(cx, 14 - breath * 0.4, 7.5, 6); // abdomen, head
@@ -107,13 +117,13 @@ function drawFrame(nm, type, sh, f, back, shut = false) {
   }
   // Ears or horns (on the head).
   const headTop = g.findIndex(row => row.some(v => v >= 0));
-  if (type !== 'bird' && type !== 'bug') {
+  if (type !== 'bird' && type !== 'bug' && type !== 'baboon') {
     if (sh.ear === 0 || /SLABBIT/.test(nm)) for (const s of [-1, 1]) { line(cx + s * 3, headTop + 1, cx + s * 5, headTop - 6, 1, 2); line(cx + s * 3.5, headTop, cx + s * 5, headTop - 4, 0); } // long ears
     else if (sh.ear === 1) for (const s of [-1, 1]) { blob(cx + s * 5, headTop + 1, 2.4, 2.4, 1); } // round ears
     if (sh.horn) line(cx, headTop + 1, cx, headTop - 3, 0, 1);
   }
   // Spots.
-  if (sh.spots && type !== 'bird') for (const [x, y] of [[cx + 4, 21], [cx - 5, 24], [cx + 1, 25]]) if (g[Math.round(y)]?.[Math.round(x)] >= 0) px(x, y, 2);
+  if (sh.spots && type !== 'bird' && type !== 'baboon') for (const [x, y] of [[cx + 4, 21], [cx - 5, 24], [cx + 1, 25]]) if (g[Math.round(y)]?.[Math.round(x)] >= 0) px(x, y, 2);
   // ── the collector bits ──
   if (/SLAB|GRAIL|KEY/.test(nm) && !back) { for (let y = 17; y < 26; y++) for (let x = cx - 5; x <= cx + 5; x++) if (g[y]?.[x] >= 0) g[y][x] = y === 17 || y === 25 || x === cx - 5 || x === cx + 5 ? 3 : y < 20 ? 2 : 0; px(cx - 1, 18, 0); px(cx, 18, 0); px(cx + 2, 18, 0); px(cx + 3, 18, 0); } // a grading label on its belly
   if (/TOPLOAD/.test(nm)) for (let y = headTop - 4; y < headTop + 2; y++) for (let x = cx - 4; x <= cx + 4; x++) if (y >= 0 && (y === headTop - 4 || x === cx - 4 || x === cx + 4)) px(x, y, 3); // the top-loader crest
@@ -127,7 +137,12 @@ function drawFrame(nm, type, sh, f, back, shut = false) {
   if (look % 3 === 1) for (let y = 0; y < N; y++) if (y % 5 === 2) for (let x = 0; x < N; x++) if (g[y][x] === 1) g[y][x] = 2;
   if (look % 3 === 2 && !back) for (let y = 18; y < 28; y++) for (let x = 0; x < N; x++) if (g[y][x] === 1 && Math.abs(x - cx) < 5) g[y][x] = 0;
   // ── the face (front only) ──
-  if (!back) {
+  if (!back && type === 'baboon') {
+    for (let x = cx - 4; x <= cx + 4; x++) px(x, eyeY - 2, 3); // the heavy brow
+    for (const s of [-1, 1]) { px(cx + s * 2, eyeY, 3); px(cx + s * 2 - (s > 0 ? 1 : 0), eyeY, 3); px(cx + s * 2, eyeY - 1, 0); } // small close-set eyes
+    blob(cx, eyeY + 5, 3, 4.2, 0); line(cx - 1, eyeY + 2, cx + 1, eyeY + 2, 2); // the long muzzle
+    px(cx - 1, eyeY + 7, 3); px(cx + 1, eyeY + 7, 3); line(cx - 2, eyeY + 9, cx + 2, eyeY + 9, 3); // nostrils, the mouth
+  } else if (!back) {
     const eyeKind = (look >>> 4) % 3;
     if (shut || eyeKind === 2) for (const s of [-1, 1]) { const ex = cx + s * eyeDX; line(ex - 2, eyeY, ex + 1, eyeY, 3); if (eyeKind === 2 && !shut) line(ex - 2, eyeY - 1, ex + 1, eyeY - 1, 3); } // a blink, or sleepy eyes
     else for (const s of [-1, 1]) { const ex = cx + s * eyeDX; for (let y = -3; y <= 3; y++) for (let x = -2; x <= 2; x++) { const e = (x / 2.5) ** 2 + (y / 3.4) ** 2; if (e <= 1) px(ex + x, eyeY + y, e > 0.62 ? 3 : 0); } for (const [a, c] of [[0, 0], [-s, 0], [0, 1], [-s, 1]]) px(ex + a, eyeY + c, 3); px(ex - s, eyeY - 1, 0); if (eyeKind === 1) line(ex - 3, eyeY - 4 - (s > 0 ? 0 : 1), ex + 2, eyeY - 4 - (s > 0 ? 1 : 0), 3); } // big eyes looking a little inward, a glint (angry: a slanted brow)
@@ -274,7 +289,8 @@ export function itemsFor(route) { const f = Math.max(1, route | 0); return ITEM_
 // GYMS (store, 2026-11-14): every 5th route ends at a gym; its leader's beast has twice the HP, its badge is a gym badge.
 export const GYM_EVERY = 5;
 export const isGym = route => (Math.max(1, route | 0)) % GYM_EVERY === 0;
-// The first gym is MR FISTER's (store, 2026-11-14), his beast GRAILFIST.
+// The first gym is MR FISTER's (store, 2026-11-14). His beast is SPIDER-CHEEKS, a baboon (store: "Fister pokemon should be
+// called spider-cheeks. It's a baboon"): long spindly arms, a shaggy mane, a long muzzle and a bright red behind.
 // THE GYM LEADERS (store, 2026-11-14: "cool trainers. Or thematic. Not AI lameness slop"): five, each one a person
 // you'd meet in the hobby turned up to eleven -- their own look, their own arena, their own signature move.
 //   MR FISTER     -- the gauntlet and the comics (route 5).
@@ -283,7 +299,7 @@ export const isGym = route => (Math.max(1, route | 0)) % GYM_EVERY === 0;
 //   THE ARCHIVIST -- the keeper of the back-issue stacks: long coat, round glasses, a lantern; he knows where every book is.
 //   THE INKER     -- a con-floor ink artist: tattoo sleeves, an inky apron, a brush pen as long as a spear.
 // The sixth gym is Mr Fister again, and every badge brings them back tougher (rematches).
-export const GYM_LEADERS = [['MR FISTER', 'GRAILFIST'], ['THE GRADER', 'SLABTITAN'], ['FOIL QUEEN', 'HOLOPHOENIX'], ['THE ARCHIVIST', 'LONGBOXODON'], ['THE INKER', 'INKWYRM']];
+export const GYM_LEADERS = [['MR FISTER', 'SPIDER-CHEEKS'], ['THE GRADER', 'SLABTITAN'], ['FOIL QUEEN', 'HOLOPHOENIX'], ['THE ARCHIVIST', 'LONGBOXODON'], ['THE INKER', 'INKWYRM']];
 export const GYMS = {
   'MR FISTER': { id: 'fister', arena: 'THE GAUNTLET', moves: ['COMIC STORM'], line: 'THE GAUNTLET PICKS THE GRAIL.' },
   'THE GRADER': { id: 'grader', arena: 'THE GRADING LAB', moves: ['PERFECT 10', 'UV SCAN', 'CENTERING CHECK'], line: 'EVERY CORNER. EVERY EDGE.' },
@@ -468,7 +484,7 @@ export const TREE_RAMPS = { beach: ramp('#faf2c4', '#f0d892', '#9a6a3a', '#1f7a2
 export const PEOPLE_RAMP = ramp('#fff2e2', '#f2b892', '#3a5ab0', '#181820'), ICON_RAMP = ramp('#ffffff', '#ffd040', '#f05050', '#202020'), UI_RAMP = ramp('#f8f8f8', '#d4dce6', '#6f88a4', '#202830');
 const hsl = (h, sat, l) => { const a = sat * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
 const beastRamps = new Map();
-export function beastRamp(name) { const n = String(name).toUpperCase(); if (!beastRamps.has(n)) { const h = hashOf(n + 'hue') % 360; beastRamps.set(n, [hsl(h, 0.75, 0.88), hsl(h, 0.6, 0.62), hsl(h, 0.55, 0.38), [24, 22, 34]]); } return beastRamps.get(n); }
+export function beastRamp(name) { const n = String(name).toUpperCase(); if (n === 'SPIDER-CHEEKS' && !beastRamps.has(n)) beastRamps.set(n, [[236, 168, 168], [150, 140, 100], [94, 84, 58], [24, 22, 34]]); if (!beastRamps.has(n)) { const h = hashOf(n + 'hue') % 360; beastRamps.set(n, [hsl(h, 0.75, 0.88), hsl(h, 0.6, 0.62), hsl(h, 0.55, 0.38), [24, 22, 34]]); } return beastRamps.get(n); }
 const TINTS = { sunset: [1.08, 0.86, 0.72], night: [0.55, 0.62, 0.95] };
 const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = PAL[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
 // One tile's pixel (shade) at (u, v) inside it; tm for the waving grass and water.
@@ -897,12 +913,12 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale);
     // Words in a crisp pixel font, at the screen's size.
     const U = gbaB ? UI_RAMP : GB, S = scale, tx = (s, x, y, size = 7, c = U[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
-    tx(b.foe.name.slice(0, 11), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5); tx('L' + (b.mine.level || 1), 214, 87, 6);
-    tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
+    tx(b.foe.name.slice(0, 13), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5); tx('L' + (b.mine.level || 1), 214, 87, 6);
+    tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
     if (nds) {
       // DS: the bottom screen -- dark, the line of text, the four moves as big rounded touch buttons.
       ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
-      ctx.fillStyle = '#f8f8f8'; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 8 * S, 117 * S);
+      ctx.fillStyle = '#f8f8f8'; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 8 * S, 117 * S);
       moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); tx((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? [32, 40, 48] : [255, 255, 255]); });
     } else moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${U[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? U[0] : U[3]); });
   }

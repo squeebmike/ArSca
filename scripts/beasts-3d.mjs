@@ -5,7 +5,7 @@
 // Original models built from simple shapes here; nothing from any game. Nothing by chance.
 import * as THREE from '../assets/vendor/three-0.160.0.module.min.js';
 import { buildBoss3D, fisterCoverTextures } from './live-studio-3d.mjs';
-import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, gymMoveFor, gymOf, DEFAULT_MOVES, STARTER } from './beasts.mjs?v=17';
+import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, gymMoveFor, gymOf, DEFAULT_MOVES, STARTER } from './beasts.mjs?v=18';
 import { buildLeader3D, buildArena3D, signatureFx } from './beasts-gyms-3d.mjs?v=1';
 
 const col = c => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
@@ -37,6 +37,7 @@ function outline(group, w = 0.035) { const add = []; group.traverse(o => { if (o
 export function planOf(name) {
   const nm = String(name).toUpperCase(), h = hashOf(nm + 'plan');
   // The starters keep their plan; others: a fixed share become the newer plans.
+  if (nm === 'SPIDER-CHEEKS') return 'baboon';
   if (/^(SLABBIT|SLABBUNNY|GRADEZILLA|TOPLOADON|TOPLOADRAKE|TITANLOADER|SLEEVIL|SLEEVILLAIN|OVERSLEEVOR)$/.test(nm)) return beastType(nm);
   if (/GRAIL|TITAN|GOLEM|SLABTITAN/.test(nm)) return 'golem'; if (/LONGBOX|ODON/.test(nm)) return 'quad'; if (/PHOENIX|DRAKE|WYRM/.test(nm)) return 'dragon'; if (/WRAITH|GHOST|SPOOK/.test(nm)) return 'ghost';
   return h % 5 < 2 ? EXTRA_PLANS[(h >>> 3) % EXTRA_PLANS.length] : beastType(nm);
@@ -67,7 +68,7 @@ export function buildBeast3D(name) {
     else { const fl = at(t, cone(0.12, 0.35, new THREE.MeshBasicMaterial({ color: 0xffa020 }), 8), 0, 0.25, -0.25); fl.userData.noOutline = true; at(t, cone(0.06, 0.2, new THREE.MeshBasicMaterial({ color: 0xfff060 }), 8), 0, 0.22, -0.22).userData.noOutline = true; }
     return t; };
   const spikes = (p, y, z0, n) => { for (let i = 0; i < n; i++) at(p, cone(0.07, 0.22, dark, 6), 0, y, z0 - i * 0.16).rotation.x = -0.5; };
-  if (plan === 'blob') { const b = at(g, ball(0.62, body, 28), 0, 0.5, 0); b.scale.set(1.15, 0.85, 1); if (pat === 'belly') at(g, ball(0.45, belly, 20), 0, 0.42, 0.25).scale.set(1, 0.7, 0.6); parts.head = b; face(g, 0.22, 0.7, 0.5); topper(g, 0.85, 0.22); }
+  if (plan === 'baboon') { /* built below */ } else if (plan === 'blob') { const b = at(g, ball(0.62, body, 28), 0, 0.5, 0); b.scale.set(1.15, 0.85, 1); if (pat === 'belly') at(g, ball(0.45, belly, 20), 0, 0.42, 0.25).scale.set(1, 0.7, 0.6); parts.head = b; face(g, 0.22, 0.7, 0.5); topper(g, 0.85, 0.22); }
   else if (plan === 'biped') {
     for (const sx of [-1, 1]) parts.legs.push(at(g, ball(0.17, dark, 14), sx * 0.24, 0.12, 0.05));
     at(g, ball(0.42, body, 24), 0, 0.55, 0).scale.set(1, 1.05, 0.9); if (pat !== 'plain') at(g, ball(0.3, belly, 18), 0, 0.5, 0.18).scale.set(1, 1.1, 0.6);
@@ -114,6 +115,30 @@ export function buildBeast3D(name) {
     for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 1.7; at(g, ball(0.21 - k * 0.006, k % 2 ? body : dark, 14), Math.cos(a) * 0.45, 0.18 + k * 0.025, Math.sin(a) * 0.45 - 0.1); }
     const head = at(g, new THREE.Group(), 0.45, 0.9, 0.15); parts.head = head; at(head, ball(0.3, body, 20), 0, 0, 0).scale.set(1, 0.85, 1.2); face(head, 0.12, 0.08, 0.3, 0.85); topper(head, 0.18, 0.12);
   }
+  if (plan === 'baboon') {
+    // SPIDER-CHEEKS, Mr Fister's baboon: olive fur, a darker shaggy mane over the shoulders, a long pink muzzle under a
+    // heavy brow, small amber eyes set close, long spindly arms down to its knuckles, a hooked tail -- and the red behind.
+    const fur = toon([138, 130, 92]), mane = toon([96, 88, 60]), skin = toon([214, 150, 150]), red = toon([226, 48, 58]), dk = toon([40, 34, 30]);
+    const torso = at(g, ball(0.44, fur, 22), 0, 0.8, -0.1); torso.scale.set(1, 1.1, 0.95); torso.rotation.x = 0.4;
+    at(g, ball(0.3, toon([170, 160, 118]), 16), 0, 0.72, 0.18).scale.set(1, 1.2, 0.6); // a paler chest
+    // The mane: a shaggy cape over the shoulders, longer at the back.
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, back = Math.max(0, -Math.sin(a)), sp = at(g, cone(0.15, 0.48 + back * 0.3, mane, 6), Math.cos(a) * 0.4, 1.2 - back * 0.1, Math.sin(a) * 0.34 - 0.02); sp.rotation.set(Math.PI + Math.sin(a) * (0.9 + back * 0.4), 0, -Math.cos(a) * 1.05); }
+    at(g, ball(0.4, mane, 18), 0, 1.24, -0.04).scale.set(1.15, 0.55, 1.05);
+    for (const sx of [-1, 1]) { at(g, ball(0.25, fur, 14), sx * 0.3, 0.3, -0.12).scale.set(1, 0.8, 1.35); at(g, ball(0.16, red, 14), sx * 0.12, 0.4, -0.5).scale.set(1, 1.1, 0.8); } // haunches, the red behind
+    // Long spindly arms: the upper arm out from the shoulder, an elbow, the forearm down to the knuckles.
+    for (const sx of [-1, 1]) { const arm = at(g, new THREE.Group(), sx * 0.42, 1.12, 0.16); const up = at(arm, cyl(0.065, 0.055, 0.55, fur, 8), sx * 0.12, -0.25, 0.04); up.rotation.z = sx * 0.45; at(arm, ball(0.07, fur, 8), sx * 0.24, -0.5, 0.08); const fore = at(arm, cyl(0.05, 0.045, 0.6, fur, 8), sx * 0.22, -0.8, 0.14); fore.rotation.set(-0.15, 0, -sx * 0.08); at(arm, ball(0.085, dk, 10), sx * 0.2, -1.1, 0.2).scale.set(1.25, 0.6, 1.5); parts.legs.push(arm); }
+    // The head, pushed forward: a heavy brow, small amber eyes set close, the long muzzle sloping down to the nose.
+    const head = at(g, new THREE.Group(), 0, 1.5, 0.3); parts.head = head;
+    at(head, ball(0.24, fur, 18), 0, 0, 0).scale.set(1, 0.95, 0.95);
+    const face = toon([120, 92, 92]); at(head, ball(0.17, face, 14), 0, -0.02, 0.12).scale.set(1, 0.9, 0.8);
+    const muz = at(head, cyl(0.07, 0.12, 0.42, skin, 14), 0, -0.12, 0.33); muz.rotation.x = Math.PI / 2 + 0.35; at(head, ball(0.075, toon([70, 52, 52]), 10), 0, -0.2, 0.53).scale.set(1, 0.8, 0.9);
+    for (const sx of [-1, 1]) at(head, ball(0.016, dk, 6), sx * 0.03, -0.17, 0.59);
+    at(head, cyl(0.06, 0.06, 0.012, dk, 8), 0, -0.27, 0.42).rotation.x = Math.PI / 2;
+    const brow = at(head, new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.06, 0.1), dk), 0, 0.07, 0.19); brow.rotation.x = -0.25;
+    const amber = new THREE.MeshBasicMaterial({ color: 0xffb020 }); for (const sx of [-1, 1]) { at(head, ball(0.035, amber, 10), sx * 0.07, 0.01, 0.23); at(head, ball(0.018, eyeB, 8), sx * 0.07, 0.01, 0.255); at(head, ball(0.06, fur, 10), sx * 0.23, 0.03, -0.02).scale.set(0.5, 1, 1); }
+    // The tail: up off the back and hooked over.
+    const tl = at(g, new THREE.Group(), 0, 0.45, -0.55); parts.tail = tl; for (let k = 0; k < 8; k++) { const a = k / 7 * 2.4; at(tl, ball(0.075 - k * 0.005, fur, 8), 0, Math.sin(a) * 0.45 + k * 0.03, -0.12 - (1 - Math.cos(a)) * 0.22); }
+  }
   if (stage) g.scale.setScalar(1 + 0.12 * stage);
   if (stage >= 2) for (const sx of [-1, 1]) at(g, new THREE.Mesh(new THREE.OctahedronGeometry(0.12), accent), sx * 0.42, 0.95, 0.12); // armour studs at the last stage
   if (/FOIL|HOLO/.test(nm)) g.traverse(o => { if (o.material?.isMeshToonMaterial) o.material.emissive = new THREE.Color(0x222244); });
@@ -138,7 +163,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   let b = null, mineM = null, foeM = null, mineName = '', foeName = '', moves = DEFAULT_MOVES, pick = 0, msg = '', anim = null, foeAnim = null, evo = null, raf = 0, last = 0, key = '', introAt = -1e9, lastTenth = 10, foeHits = 0, shownFoe = 1;
   const shot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), new THREE.MeshBasicMaterial({ color: 0xffe14a })); shot.visible = false; scene.add(shot);
   // MR FISTER'S GYM IN 3D (store, 2026-11-14): on a gym fight against him, the field turns into his arena -- a dark floor,
-  // a green ring under each platform, green spotlights -- and he stands behind GRAILFIST pumping the gauntlet, throwing the
+  // a green ring under each platform, green spotlights -- and he stands behind SPIDER-CHEEKS pumping the gauntlet, throwing the
   // store's comics (the gauntlet's covers) at your beast every time his beast attacks.
   const arena = new THREE.Group(); arena.visible = false; scene.add(arena);
   { const fl = new THREE.Mesh(new THREE.CircleGeometry(9, 48), new THREE.MeshLambertMaterial({ color: 0x15201a })); fl.rotation.x = -Math.PI / 2; fl.position.y = 0.005; arena.add(fl);
@@ -155,12 +180,12 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   const say = (t, ms = 2600) => { msg = t; clearTimeout(say.t); say.t = setTimeout(() => { msg = ''; }, ms); };
   function ui() {
     const S = scale, f = (s, x, y, size = 6, c = '#202830') => { ctx.fillStyle = c; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
-    const box = (x, y, w, hh, name, hp, lv) => { ctx.fillStyle = '#f8f8f8ee'; ctx.strokeStyle = '#202830'; ctx.lineWidth = 2 * S; ctx.beginPath(); ctx.roundRect(x * S, y * S, w * S, hh * S, 6 * S); ctx.fill(); ctx.stroke(); f(name.slice(0, 11), x + 6, y + 11, 6); if (lv) f('L' + lv, x + w - 26, y + 11, 6); ctx.fillStyle = '#3a4250'; ctx.fillRect((x + 20) * S, (y + 16) * S, (w - 28) * S, 5 * S); ctx.fillStyle = hp < 0.25 ? '#e84a3a' : hp < 0.5 ? '#f2c230' : '#3ccf5a'; ctx.fillRect((x + 21) * S, (y + 17) * S, Math.max(0, (w - 30) * hp) * S, 3 * S); f('HP', x + 6, y + 21, 5); };
+    const box = (x, y, w, hh, name, hp, lv) => { ctx.fillStyle = '#f8f8f8ee'; ctx.strokeStyle = '#202830'; ctx.lineWidth = 2 * S; ctx.beginPath(); ctx.roundRect(x * S, y * S, w * S, hh * S, 6 * S); ctx.fill(); ctx.stroke(); f(name.slice(0, lv ? 11 : 13), x + 6, y + 11, 6); if (lv) f('L' + lv, x + w - 26, y + 11, 6); ctx.fillStyle = '#3a4250'; ctx.fillRect((x + 20) * S, (y + 16) * S, (w - 28) * S, 5 * S); ctx.fillStyle = hp < 0.25 ? '#e84a3a' : hp < 0.5 ? '#f2c230' : '#3ccf5a'; ctx.fillRect((x + 21) * S, (y + 17) * S, Math.max(0, (w - 30) * hp) * S, 3 * S); f('HP', x + 6, y + 21, 5); };
     if (b) { box(6, 6, 104, 26, b.foe.name, Math.max(0, shownFoe)); box(130, 72, 104, 28, b.mine.name, b.mine.hp, b.mine.level || 1); }
     // The DS-style touch panel: the line of text, then the four moves as big rounded buttons.
     ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
     const introT = (performance.now() - introAt) / 2400;
-    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
+    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
     moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); f((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? '#202830' : '#ffffff'); });
   }
   function frame(now) {
@@ -216,7 +241,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
 // trees, houses with roofs, water, boulders, snow, lava, lamps and gravestones; the host and Champ as little 3D people,
 // your beast following in 3D, the route's items and chat's gifts bobbing on the path; the camera over your shoulder,
 // tilted like the handhelds. Drawn into the same 2D canvas the flat route uses (so the screens don't change).
-import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs?v=17';
+import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs?v=18';
 const SKY = { day: [0x8fd0ff, 0xd8f0ff], sunset: [0xf2a46a, 0xffd9b0], night: [0x1a2350, 0x3a4a80] };
 function person(shirt, cap) {
   const g = new THREE.Group(), skin = mat([242, 184, 146]);
