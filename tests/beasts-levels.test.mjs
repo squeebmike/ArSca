@@ -13,7 +13,9 @@ for (const st of B.STARTERS) { assert.equal(B.EVOLUTIONS[st][0], st); assert.equ
 for (const n of Object.values(B.EVOLUTIONS).flat()) assert.ok(!/pok[eé]|chu|saur|mon$/i.test(n), n);
 // Sales walk the levels: every dollar is XP; a new move every 5 levels; the evolution at 10.
 let b = B.emptyBeasts('w'); const evs = []; for (let i = 0; i < 45; i++) { const r = B.addBeastXp(b, 10, S); b = r.beasts; evs.push(...r.events); }
-assert.equal(b.exp, 450); assert.ok(evs.some(e => e.kind === 'level' && e.level === 5 && e.learn)); assert.ok(evs.some(e => e.kind === 'evolve' && e.level === 10 && e.stage === 1));
+// Items on the path add their own XP on top (tests/beasts-items-gyms.test.mjs).
+const itemXp = evs.filter(e => e.kind === 'item' && B.ITEM_XP[e.item]).reduce((n, e) => n + B.beastGoal(S, e.route) * B.ITEM_XP[e.item], 0);
+assert.ok(Math.abs(b.exp - (450 + itemXp)) < 0.05, b.exp + ' vs ' + (450 + itemXp)); b = { ...b, exp: 450 }; assert.ok(evs.some(e => e.kind === 'level' && e.level === 5 && e.learn)); assert.ok(evs.some(e => e.kind === 'evolve' && e.level === 10 && e.stage === 1));
 // The moment on screen: an evolution beats everything; a plain level up leaves the sale its own moment.
 const evo = B.beastMoment([{ kind: 'caught', name: 'X' }, { kind: 'level', level: 10, learn: true }, { kind: 'evolve', level: 10, stage: 1 }], 'SLEEVIL', 'Free giveaway');
 assert.deepEqual([evo.beastEvent, evo.fromName, evo.beastName, evo.reward], ['evolve', 'SLEEVIL', 'SLEEVILLAIN', 'Free giveaway']);

@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.1';
+  const STUDIO_V='2026.11.14.5';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -99,10 +99,12 @@
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
   <label>WHEN YOUR BEAST EVOLVES (LV 10 and LV 20), everyone watching gets<input name="beastsEvolveReward" maxlength="120" placeholder="e.g. Free giveaway in the Whatnot tool"></label>
   <small>Levels: every $1 sold is 1 XP (follows, shares and bookmarks count too); a new attack to learn every 5 levels -- chat names it (➕ ADD CHAT'S ATTACK). The level lasts the week. The reward is for the whole room, never buyers only.</small>
+  <label>TIME OF DAY ON THE ROUTE (BEASTS)<select name="beastsTimeOfDay"><option value="">AUTO (the clock)</option><option value="day">DAY</option><option value="sunset">SUNSET</option><option value="night">NIGHT (fireflies)</option></select></label>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
   <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) (the chibi walkers are always used now; the face photos below are kept but no longer replace them).</small>
   <div class="mana-row beast-faces"><label>YOUR FACE (a photo)<input type="file" accept="image/*" id="beast-face-file"></label><canvas id="beast-face-view" width="12" height="12"></canvas><label>CHAMP'S FACE<input type="file" accept="image/*" id="beast-buddy-file"></label><canvas id="beast-buddy-view" width="12" height="12"></canvas></div>
   <input type="hidden" name="beastsFace"><input type="hidden" name="beastsBuddy">
+  <div class="mana-row"><label>✊ MR FISTER'S FACE (a front-facing photo -- it's mapped onto his 3D head; it stays in the studio, not in the code)<input type="file" accept="image/*" id="fister-face-file"></label><img id="fister-face-view" alt="" style="width:64px;height:74px;object-fit:cover;border-radius:8px"><button type="button" class="mana-btn" id="fister-face-clear">CLEAR</button></div>
   <label>YOUR BEAST'S 4 ATTACKS (one a line)<textarea name="beastsMoves" rows="4" placeholder="LOWBALL&#10;PRICE CHECK&#10;SLEEVE UP&#10;BENT CORNER"></textarea></label>
   <h3>🗡 Dungeon settings</h3>
   ${box('dungeonOn','Dungeon on: the sign is the mana flask (sales, follows, shares and bookmarks fill it)')}
@@ -128,7 +130,7 @@
   <h3>Quick</h3>
   <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button><button type="button" data-toggle="finale" data-key="V">FINALE ON/OFF <kbd>V</kbd></button></div>
   <h3>Effects</h3>
-  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
+  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
   <h3>ByteRider_97</h3>
   <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${box('mascotSounds','ByteRider sounds')}${box('showHype','Hype meter')}${box('mascotSaysMarquee','ByteRider says the marquee lines')}${num('mascotSayEvery','…one every (seconds)',10,600)}${box('mascotBorder','His bezel round the screen')}${box('mascotIdleFace','Keep a faint face up between reactions')}${num('mascotScale','Face size (%)',40,150)}${num('mascotFaceY','Face height on screen',250,1650)}</div>
@@ -184,6 +186,9 @@
     // LONG BOX BEASTS: your face and Champ's from a photo (12 x 12, four greens -- kept in the settings, no upload);
     // chat's new attack goes in as the 4th.
     const faceIn=(fileId,field,viewId)=>{const inp=host.querySelector(fileId);if(!inp||inp.dataset.on)return;inp.dataset.on=1;inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;run(async()=>{const B=await import('./beasts.mjs?v='+STUDIO_V);const url=URL.createObjectURL(f);const im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(Error('Could not read that photo'));im.src=url;});form.elements.namedItem(field).value=B.faceFromImage(im);URL.revokeObjectURL(url);drawFace(viewId,field);const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Face saved -- it walks the route now.';});};};
+    // Mr Fister's face: the middle of the photo (head and beard), 112 x 128, as a small JPEG to the studio.
+    const ff=host.querySelector('#fister-face-file');if(ff&&!ff.dataset.on){ff.dataset.on=1;ff.onchange=()=>{const f=ff.files?.[0];if(!f)return;const im=new Image();im.onload=()=>run(async()=>{const c=document.createElement('canvas');c.width=112;c.height=128;const x=c.getContext('2d'),w=im.naturalWidth,h=im.naturalHeight,s=Math.min(w,h*0.875)*0.62,cx=w/2,cy=h*0.42;x.drawImage(im,cx-s/2,cy-s*0.5714,s,s*1.1428,0,0,112,128);const face=c.toDataURL('image/jpeg',0.82);URL.revokeObjectURL(im.src);const v=host.querySelector('#fister-face-view');if(v)v.src=face;if(!connectedStore){status.textContent='Mr Fister\'s face is ready -- connect to send it to the show.';return;}await api('fister-face',{face});status.textContent='Mr Fister\'s face is on his 3D head.';});im.src=URL.createObjectURL(f);};}
+    const fc=host.querySelector('#fister-face-clear');if(fc&&!fc.dataset.on){fc.dataset.on=1;fc.onclick=()=>run(async()=>{const v=host.querySelector('#fister-face-view');if(v)v.removeAttribute('src');if(connectedStore)await api('fister-face',{face:''});status.textContent='Mr Fister\'s face cleared.';});}
     faceIn('#beast-face-file','beastsFace','#beast-face-view');faceIn('#beast-buddy-file','beastsBuddy','#beast-buddy-view');
     const addMove=host.querySelector('#beast-add-move');if(addMove)addMove.onclick=()=>run(async()=>{const nm=String(host.querySelector('#beast-new-move').value||'').trim().toUpperCase().slice(0,16);if(!nm)throw Error('Type the attack chat came up with');const el=form.elements.namedItem('beastsMoves');const cur=String(el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const base=cur.length?cur:['LOWBALL','PRICE CHECK','SLEEVE UP','BENT CORNER'];el.value=[...base.slice(0,3),nm].join('\n');const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);host.querySelector('#beast-new-move').value='';status.textContent='New attack: '+nm+' (slot 4).';});
     // THE GAME, in one tap (the setting is saved and the screens switch).
@@ -390,6 +395,12 @@
     const lists=[...groups.values()].map(l=>l.sort((a,b)=>(b.price||0)-(a.price||0)).slice(0,30));
     if(!lists.length)return;
     const pick=[];for(let k=0;pick.length<24&&k<24*lists.length;k++){const l=lists[k%lists.length],n=Math.floor(k/lists.length);if(n<l.length)pick.push(l[(day*7+n)%l.length]);} // each in turn, starting somewhere new each day (no repeats)
+    // MR FISTER's gauntlet (2026-11-14: "comics from our inventory embedded in it like the power stones. Ratios mostly.
+    // Fall back to foils"): up to 5 covers tagged ratio (an incentive / 1:N variant) or foil, the priciest first.
+    const isRatio=i=>i.isIncentive===true||/\b1\s*:\s*\d+|\bratio\b|\bincentive\b/i.test([i.name,i.variant,i.set].join(' ')),isFoil=i=>/\bfoil\b/i.test([i.name,i.variant].join(' '));
+    const comicsIn=inventory().filter(i=>i.status==='in_stock'&&/comic/i.test(String(i.category||''))&&(https(i.thumbnail)||https(i.imageUrl))).sort((a,b)=>(Number(b.market||b.marketPrice||0))-(Number(a.market||a.marketPrice||0)));
+    const glove=[...comicsIn.filter(isRatio).map(i=>({...stageItem(i),tag:'ratio'})),...comicsIn.filter(i=>!isRatio(i)&&isFoil(i)).map(i=>({...stageItem(i),tag:'foil'}))].filter(it=>it.image&&!chanceFn(it.title+' '+it.detail)).slice(0,5);
+    pick.splice(Math.max(0,24-glove.length),glove.length,...glove);
     const uniq=[...new Map(pick.map(p=>[p.image,p])).values()];
     if(JSON.stringify((current||[]).map(p=>p.image))===JSON.stringify(uniq.map(p=>p.image)))return;
     took(await api('pics',{pics:uniq}));

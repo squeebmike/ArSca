@@ -53,8 +53,8 @@ export const DEFAULT_STUDIO = Object.freeze({
   ...DUNGEON_DEFAULTS,
 });
 // mascot: a ByteRider_97 reaction or line from the dashboard (no burst).
-export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room', 'chest', 'found', 'trivia', 'move', 'beast'];
-export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!', room: 'CHAT PICKED A DOOR!', chest: 'TREASURE CHEST!', found: 'FOUND IT!', trivia: 'TRIVIA!', beast: 'LONG BOX BEASTS!' };
+export const EFFECTS = ['coin', 'jackpot', 'countdown', 'sold', 'ready', 'gameover', 'clear', 'boss', 'giveaway', 'winner', 'mascot', 'floor', 'unlock', 'tap', 'room', 'chest', 'found', 'trivia', 'move', 'beast', 'fister'];
+export const EFFECT_LABELS = { coin: 'INSERT COIN', jackpot: 'BIG HIT!', countdown: 'COUNTDOWN', sold: 'SOLD!', ready: 'PLAYER 1 READY', gameover: 'GAME OVER', clear: 'CLEAR', boss: 'BOSS DEFEATED!', giveaway: 'FREE GIVEAWAY!', winner: 'GIVEAWAY WINNER!', mascot: 'BYTERIDER_97', floor: 'FLOOR CLEARED!', unlock: 'UNLOCKED!', tap: 'MANA!', room: 'CHAT PICKED A DOOR!', chest: 'TREASURE CHEST!', found: 'FOUND IT!', trivia: 'TRIVIA!', beast: 'LONG BOX BEASTS!', fister: 'MR FISTER!' };
 // Comic sound effects for a sale (a cycle, not chance -- the next one in line).
 export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', 'KA-CHING!', 'THWIP!', 'SNIKT!', 'BOOM!'];
 // Words for games of chance / raffles: not allowed on the sign or the boss reward.
@@ -105,6 +105,7 @@ export function validateSettings(input) {
   if (!['ps1', 'n64'].includes(full.bossStyle)) throw new Error('Invalid bossStyle');
   if (!['dungeon', 'beasts', 'vending'].includes(full.gameMode)) throw new Error('Invalid gameMode');
   if (!['overlay', 'green'].includes(full.beastsBattle)) throw new Error('Invalid beastsBattle');
+  if (!['', 'day', 'sunset', 'night'].includes(full.beastsTimeOfDay ?? '')) throw new Error('Invalid beastsTimeOfDay');
   for (const k of ['beastsFace', 'beastsBuddy']) if (full[k] && !/^[0-3]{144}$/.test(full[k])) throw new Error('Invalid ' + k);
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
   const WHERE = { beastsMoves: 'attacks', beastsEvolveReward: 'evolution reward', message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' };
@@ -195,7 +196,7 @@ const cleanText = (v, n) => String(v || '').replace(/[\u0000-\u001f]/g, ' ').tri
 const cleanUrl = v => { const s = String(v || '').trim(); return /^https:\/\/[^\s"'<>]{1,600}$/.test(s) ? s : ''; };
 export function validateStage(input) {
   if (!input || typeof input !== 'object') throw new Error('Stage required');
-  const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price), ...(/^[0-9a-f-]{36}$/i.test(String(v.id || '')) ? { id: String(v.id) } : {}), ...(['comic', 'sealed', 'card'].includes(v.kind) ? { kind: v.kind } : {}) } : null;
+  const item = v => v && typeof v === 'object' ? { title: cleanText(v.title, 90), detail: cleanText(v.detail, 90), image: cleanUrl(v.image), price: money(v.price), ...(/^[0-9a-f-]{36}$/i.test(String(v.id || '')) ? { id: String(v.id) } : {}), ...(['comic', 'sealed', 'card'].includes(v.kind) ? { kind: v.kind } : {}), ...(['ratio', 'foil'].includes(v.tag) ? { tag: v.tag } : {}) } : null;
   const now = item(input.now);
   const next = Array.isArray(input.next) ? input.next.slice(0, 60).map(item).filter(x => x && x.title) : [];
   for (const t of [now?.title, now?.detail, ...next.map(n => n.title)]) { const w = chanceWordIn(t); if (w) throw new Error(`"${w}" reads as a game of chance -- Whatnot doesn't allow those.`); }
@@ -220,7 +221,7 @@ export function whatnotEffect(event, settings, now = Date.now()) {
   const big = amount?.currency === settings.currency && Number.isFinite(Number(amount.amount)) && Number(amount.amount) >= settings.jackpotAmount;
   return { kind: big ? 'jackpot' : 'sold', at };
 }
-const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000, chest: 8000, found: 8000, trivia: 7000, beast: 7000 };
+const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000, chest: 8000, found: 8000, trivia: 7000, beast: 7000, fister: 7500 };
 export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (!EFFECTS.includes(kind)) throw new Error('Unknown effect');
   const length = kind === 'countdown' ? settings.countdownSeconds * 1000 + 1200 : DURATION[kind] ?? 5000;

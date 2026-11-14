@@ -14,7 +14,7 @@ assert.ok(B.isGym(5) && B.isGym(10) && !B.isGym(4));
 assert.equal(B.toGym(3), 2); assert.equal(B.toGym(5), 0); assert.equal(B.toGym(6), 4);
 const s = { beastsGoal: 100 };
 assert.equal(B.rivalMax(s, 5), 2 * B.rivalMax(s, 4) * (B.beastGoal(s, 5) / B.beastGoal(s, 4)));
-assert.ok(B.rivalFor(5).gym && /^LEADER /.test(B.rivalFor(5).name) && !B.rivalFor(4).gym);
+assert.ok(B.rivalFor(5).gym && B.rivalFor(5).name === 'MR FISTER' && /^LEADER /.test(B.rivalFor(10).name) && !B.rivalFor(4).gym, 'the first gym is Mr Fister');
 let bs = { ...B.emptyBeasts('w'), route: 5 };
 const r = B.addBeastXp(bs, 100 + 100, s, 1);
 const badge = r.events.find(e => e.kind === 'badge');
@@ -40,4 +40,38 @@ const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf
 assert.ok(!/Math\.random/.test(src), 'no Math.random in beasts');
 const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
 assert.ok(room.includes('s.beasts = addBeastDrop(s.beasts, kind, s.settings, now);'), 'a tap drops a gift');
+// What the items do: walking past a CANDY / STONE / COIN is bonus XP (a share of the goal); a BERRY / POTION / ETHER
+// or chat's gift is stamina (the beast lasts 25% longer each, this route); stamina resets with the next route.
+{
+  const items = B.itemsFor(1), goal = B.beastGoal(s, 1);
+  const xpBonus = items.reduce((n, it) => n + goal * (B.ITEM_XP[it.kind] || 0), 0), staminaN = items.filter(it => !B.ITEM_XP[it.kind]).length;
+  let w = B.addBeastDrop({ ...B.emptyBeasts('w'), xp: 0 }, 'share', s, 1);
+  const r1 = B.addBeastXp(w, goal - 0.01, s, 2);
+  assert.equal(r1.events.filter(e => e.kind === 'item').length, items.length + 1, 'every item and the gift picked up');
+  assert.ok(Math.abs(r1.beasts.exp - (goal - 0.01 + xpBonus)) < 0.02, 'XP items add their bonus');
+  assert.equal(r1.beasts.stamina, staminaN + 1);
+  assert.equal(B.publicBeasts(r1.beasts, s).drainMs, B.drainFor(staminaN + 1));
+  assert.ok(B.beastHpFrom(1000, 1000 + B.BEAST_DRAIN_MS, B.drainFor(2)) > 0.3, 'stamina slows the drain');
+  const r2 = B.addBeastXp(r1.beasts, 0.01 + B.rivalMax(s, 1), s, 3);
+  assert.equal(r2.beasts.stamina, 0, 'a new route starts fresh');
+  const again = B.addBeastXp(r1.beasts, 0.001, s, 4);
+  assert.equal(again.events.filter(e => e.kind === 'item').length, 0, 'nothing picked up twice');
+  assert.equal(B.drainFor(99), B.BEAST_DRAIN_MS * 2, 'stamina tops out at double');
+}
 console.log('Beasts items, gifts, country, gyms, time of day: passed');
+// Mr Fister (2026-11-14): first dungeon boss, first gym leader, his face from the remote (never in the code).
+{
+  const bosses = await import('../scripts/live-studio-bosses.mjs'), dun = await import('../scripts/live-studio-dungeon.mjs');
+  assert.equal(dun.bossForFloor(1), 'fister'); assert.equal(bosses.BOSSES.fister.move, 'comics');
+  const r = (f => readFileSync(new URL('../scripts/' + f, import.meta.url), 'utf8'));
+  const g3 = r('live-studio-3d.mjs'), room = r('live-studio-room.mjs'), api = r('live-studio-api.mjs'), ov = r('live-studio-overlay.mjs'), ctl = r('live-studio-controls.js'), fp = r('shed-crawl-fp.mjs');
+  assert.ok(g3.includes('  fister(root) {') && g3.includes('export function setFisterFace(') && g3.includes('export function setFisterCovers('));
+  assert.ok(room.includes('setFisterFace(face) {') && room.includes("fisterFace:state.fisterFace || ''") && api.includes("/live-studio/fister-face"));
+  assert.ok(ov.includes("if(e.kind==='fister'&&fisterView)") && ov.includes("case 'fister':") && ctl.includes("['fister','✊ MR FISTER']") && ctl.includes("tag:'ratio'"));
+  assert.ok(fp.includes("if (mv === 'comics')") && fp.includes('bossFeet = feetOf('), 'the comic storm; the boss on its feet');
+  const M = await import('../scripts/live-studio-model.mjs');
+  assert.ok(M.EFFECTS.includes('fister'));
+  const { DurableObject } = { DurableObject: class {} };
+  assert.throws(() => { const f = String('data:image/png;base64,AAAA'); if (f && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(f) || f.length > 40000)) throw new Error('Face: a small JPEG only'); }, /small JPEG/);
+  console.log('Mr Fister: passed');
+}

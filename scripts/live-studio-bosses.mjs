@@ -9,6 +9,22 @@ const eye = (x, y, mad = false) => `<circle cx="${x}" cy="${y}" r="4" fill="#fff
 const svg = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${body}</svg>`;
 
 export const BOSSES = {
+  // MR FISTER (store, 2026-11-14: "I need Mr Fister as the 1st dungeon boss ... his fist is like a power glove with
+  // comics from our inventory embedded in it like the power stones"): a friend of the shop, drawn here from scratch --
+  // backwards cap, full beard, black tee, and THE GAUNTLET OF GRAILS raised: a steel glove glowing green with comic
+  // covers set in the knuckles. Original art; no one else's characters or logos.
+  fister: { name: 'MR FISTER', taunt: 'IF I CAN DO IT, YOU CAN!', move: 'comics', svg: svg(
+    `<circle cx="32" cy="30" r="29" fill="#39ff14" fill-opacity=".16"/>` +
+    `<path d="M12 64 L15 42 Q32 34 49 42 L52 64 Z" fill="#111317" ${ink}/>` +
+    `<path d="M22 40 Q32 46 42 40" fill="none" stroke="#2a2d33" stroke-width="2"/>` +
+    `<ellipse cx="30" cy="27" rx="11" ry="12" fill="#c98b61" ${ink}/>` +
+    `<path d="M19 28 Q19 41 30 42 Q41 41 41 28 Q38 34 30 34 Q22 34 19 28 Z" fill="#2a1a12" ${ink}/>` +
+    `<path d="M26 35 Q30 38 34 35" fill="none" stroke="#c98b61" stroke-width="1.5"/>` +
+    `<path d="M18 22 Q18 11 30 11 Q42 11 42 22 Q30 19 18 22 Z" fill="#1d3b24" ${ink}/><path d="M18 21 L11 24" stroke="#1d3b24" stroke-width="5" stroke-linecap="round"/>` +
+    `<path d="M23 24 L28 25 M33 25 L38 24" stroke="${K}" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="28" r="1.3" fill="${K}"/><circle cx="35" cy="28" r="1.3" fill="${K}"/>` +
+    `<path d="M19 46 L12 22" stroke="#111317" stroke-width="8" stroke-linecap="round"/>` + // his right arm up (our left)
+    `<rect x="4" y="6" width="15" height="17" rx="4" fill="#7c8590" ${ink}/><rect x="4" y="6" width="15" height="17" rx="4" fill="none" stroke="#39ff14" stroke-width="1.5"/>` +
+    `<rect x="6" y="8" width="3" height="4" fill="#ff3fd2"/><rect x="10" y="8" width="3" height="4" fill="#22e6ff"/><rect x="14" y="8" width="3" height="4" fill="#ffe23d"/><rect x="9" y="15" width="5" height="5" fill="#ff2a4f"/>`) },
   scalper: { name: 'THE SCALPER', taunt: 'LIMIT ONE? NOT FOR ME!', svg: svg(
     // Trench coat, hood, shades, grin, an armful of sealed boxes.
     `<path d="M14 62 L18 34 Q32 28 46 34 L50 62 Z" fill="#3b1b5e" ${ink}/>` +
@@ -106,7 +122,7 @@ export const BOSSES = {
     [[14, 16], [32, 8], [50, 16]].map(([x, y]) => `<rect x="${x - 7}" y="${y - 6}" width="14" height="18" rx="2" fill="#e0f2fe" fill-opacity=".8" ${ink}/><rect x="${x - 5}" y="${y - 4}" width="10" height="12" fill="#f43f5e"/>` + `<circle cx="${x - 2}" cy="${y + 1}" r="1.6" fill="#fff"/><circle cx="${x + 2}" cy="${y + 1}" r="1.6" fill="#fff"/>`).join('')) },
 };
 // Which boss guards which floor: each shed its own, then all of them in turn.
-export const BOSS_ORDER = ['mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon', 'hydra', 'scalper', 'flipper', 'grader', 'dinged', 'shipping'];
+export const BOSS_ORDER = ['fister', 'mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon', 'hydra', 'scalper', 'flipper', 'grader', 'dinged', 'shipping'];
 // What each of the first five does when it gets angry.
 for (const [id, move] of [['scalper', 'snatch'], ['flipper', 'barrage'], ['dinged', 'chomp'], ['grader', 'curse'], ['shipping', 'trash']]) BOSSES[id].move = move;
 export const BOSS_IDS = Object.keys(BOSSES);

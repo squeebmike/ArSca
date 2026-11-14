@@ -73,6 +73,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   beastsGoal: 100,    // Beasts: route 1's goal ($) to reach the rival (its own track, apart from the dungeon's floors)
   beastsGrowth: 15,
   beastsEvolveReward: '', // Beasts: what everyone watching gets when your beast evolves ("Free giveaway in the Whatnot tool") -- for the whole room, never buyers only   // Beasts: each route needs this % more
+  beastsTimeOfDay: '', // Beasts' overworld colors: '' (auto, by the show computer's clock), 'day', 'sunset' or 'night' (store, 2026-11-14)
   beastsBattle: 'overlay', // where the battle shows: 'overlay' (in front of the hosts) or 'green' (the green screen, behind them)
   dungeonComics: true, // the shed's and dungeon's walls and stands show comics only (store, 2026-11-12: "keep it comics")
   miniMap: true,       // the mini-map in the green screen's corner, filling in as the crawl walks
@@ -88,7 +89,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
 });
 export const DUNGEON_LIMITS = { beastsGoal: [5, 1000000], beastsGrowth: [0, 100], secretTaps: [0, 500], lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
-export const DUNGEON_STRINGS = { gameMode: 12, beastsBattle: 8, beastsEvolveReward: 120, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
+export const DUNGEON_STRINGS = { gameMode: 12, beastsBattle: 8, beastsTimeOfDay: 8, beastsEvolveReward: 120, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.
 export const CHEST_AT = [0.16, 0.47, 0.8];

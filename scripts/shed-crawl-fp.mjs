@@ -15,6 +15,10 @@
 // walk you forward. At two fixed spots the view turns to rummage through a
 // shelf ("SEARCHING THE LONG BOXES..."). The boss waits in the last room.
 export const VIEW_W = 240, VIEW_H = 96;
+// PROPS STAY IN THE HALL (store, 2026-11-14: "make the props stay where they are and move normal. But when they are on
+// the same plane as the host, it'll display in front of the host. Right now it looks like things float around"): a prop
+// moves with the hall like everything else and only crosses over in front of the hosts once it's right beside you.
+export const NEAR_PROP = 0.7, NEAR_CHEST = 1.0;
 
 // ── Layouts: routes through a GRID x GRID map. Walls are carved around them. ──
 // Store, 2026-11-12: "bigger dungeons ... more area to cover ... sheds and
@@ -673,10 +677,14 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     bossAnim = null;
     if (!sourceCanvas) { bossPx = null; return; }
     // The 3D boss, photographed through its idle animation (live-studio-3d.mjs bakeBoss).
-    if (sourceCanvas.frames?.length) { bossAnim = sourceCanvas; bossPx = sourceCanvas.frames[0]; return; }
+    if (sourceCanvas.frames?.length) { bossAnim = sourceCanvas; bossPx = sourceCanvas.frames[0]; bossFeet = feetOf(sourceCanvas.frames); return; }
     const c = sourceCanvas.getContext('2d'), d = c.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-    bossPx = { w: sourceCanvas.width, h: sourceCanvas.height, data: d.data };
+    bossPx = { w: sourceCanvas.width, h: sourceCanvas.height, data: d.data }; bossFeet = feetOf([bossPx]);
   }
+  // THE BOSS STANDS ON THE FLOOR (store, 2026-11-14: "boss needs to be on the floor. It floats now"): the 3D
+  // photos have empty space under the feet; the drawing reads only down to the lowest row the boss covers.
+  let bossFeet = 1;
+  function feetOf(frames) { let low = 0; for (const f of frames) for (let y = f.h - 1; y > low; y--) { let hit = false; for (let x = 0; x < f.w; x++) if (f.data[(y * f.w + x) * 4 + 3] > 128) { hit = true; break; } if (hit) { low = y; break; } } return low ? Math.min(1, (low + 1) / frames[0].h) : 1; }
   function set(next, afterKo = false) {
     // THE BOSS GOES DOWN (2026-11-13: "keep going -- what else does it need?"):
     // the arena holds for the knockout (2.6 s), then you go down to the next floor.
@@ -909,7 +917,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       if (s.kind === 'boss' && clockNow - koAt < 2600) { const rx2 = s.x - pose.x, ry2 = s.y - pose.y; bossRect = { scx: Math.floor((VW / 2) * (1 + (inv * (dirY * rx2 - dirX * ry2)) / tY)), top: horizon + Math.floor(VH / tY / 2) - Math.floor(Math.floor(VH / tY) * (map.layout.arena ? 1.9 : 1.5)), size: Math.floor(Math.floor(VH / tY) * (map.layout.arena ? 1.9 : 1.5)), tY }; return; } // a critter right in your face isn't drawn huge
       // Passing in front of the hosts on the overlay right now (props in front): not drawn here too.
       if (s.kind === 'eyes' && (tm / 5 + (s.idx || 0) * 0.37) % 1 < 0.05) return; // they blink
-      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && (!CRITTERS.has(s.kind) || s.swoop)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05; if (FG ? !close : close) return; } else if (FG) return;
+      if (state.hideNear && s.kind !== 'boss' && s.kind !== 'eyes' && (!CRITTERS.has(s.kind) || s.swoop)) { const fwd = rx * Math.cos(pose.ang) + ry * Math.sin(pose.ang), side = -rx * Math.sin(pose.ang) + ry * Math.cos(pose.ang); const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? NEAR_CHEST : NEAR_PROP) && Math.abs(side) <= 1.05; if (FG ? !close : close) return; } else if (FG) return;
       const it = s.idx != null && s.kind !== 'chest' ? itemFor(s, picKinds) : null, pd = it ? pics[it.i] : null, how = it?.how;
       // A 3D prop: the photo taken from the angle you see it from (8 around), and its frame.
       const named = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind, base = named === 'rat2' ? 'rat' : named === 'bat2' ? 'bat' : named;
@@ -934,7 +942,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
         const u = (sx - (scx - (size >> 1))) / size;
         for (let sy = Math.max(0, top); sy < Math.min(VH, top + size); sy++) {
           const v = (sy - top) / size; let col = null, glow = false;
-          if (s.kind === 'boss') { bossRect = { scx, top, size, tY }; const bxp = Math.floor(u * bossPx.w), byp = Math.floor(v * bossPx.h), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
+          if (s.kind === 'boss') { bossRect = { scx, top, size, tY }; const bxp = Math.floor(u * bossPx.w), byp = Math.min(bossPx.h - 1, Math.floor(v * bossFeet * bossPx.h)), bi = (byp * bossPx.w + bxp) * 4; if (bossPx.data[bi + 3] > 128) col = [bossPx.data[bi], bossPx.data[bi + 1], bossPx.data[bi + 2]]; }
           else if (pd) {
             // The store's item, by what it is: a comic leaning in the hall, a
             // sealed box on a folding table, a card in a top loader on a stand.
@@ -959,7 +967,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     // gleam from chests? we want it to appear 3D and that we are there"):
     // anything closer than FXN cells goes on the front layer, over the hosts,
     // half see-through; the rest stays in the hall behind them.
-    const FRONT = FG || !!state.hideNear, FXN = 3.05; // the same reach as the chests in front (3 cells), so a chest and its gleam are on the same side of the hosts
+    const FRONT = FG || !!state.hideNear, FXN = NEAR_CHEST + 0.05; // the same reach as the chests in front (3 cells), so a chest and its gleam are on the same side of the hosts
     const fx = (i, col, a, tY) => {
       if (FG) { if (tY >= FXN || a <= 0) return; const o = data[i + 3] / 255, na = a + o * (1 - a); data[i] = (col[0] * a + data[i] * o * (1 - a)) / na; data[i + 1] = (col[1] * a + data[i + 1] * o * (1 - a)) / na; data[i + 2] = (col[2] * a + data[i + 2] * o * (1 - a)) / na; data[i + 3] = na * 255; return; }
       if (FRONT && tY < FXN) return;
@@ -1059,6 +1067,21 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       // From the boss's mouth toward you, spread a little each way (a fixed spread).
       const stream = (n, speed, spread, z0, z1, r, cols, gap = 0, sq = false) => { for (let k = 0; k < n; k++) { const ph = ((atkA * speed + k / n) % 1), wob = Math.sin(k * 2.4) * spread * ph, w = Math.cos(k * 1.7) * Math.min(0.25, spread * 0.2) * ph; if (atkA * speed < k / n * gap) continue; dot(B[0] + (pose.x - B[0]) * ph * 0.95 - Math.sin(pose.ang) * wob, B[1] + (pose.y - B[1]) * ph * 0.95 + Math.cos(pose.ang) * wob, z0 + (z1 - z0) * ph + w, r * (0.5 + ph), cols[k % cols.length], sq); } };
       if (mv === 'fire') stream(48, 2.2, 0.9, 0.62, 0.35, 0.05, [[255, 220, 90], [255, 140, 30], [240, 70, 20], [255, 250, 200]]);
+      // COMIC STORM (store, 2026-11-14: Mr Fister "throws comics from our inventory at us"): the store's own covers
+      // fly out of the boss room at you, turning end over end (fixed paths, no dice).
+      if (mv === 'comics') for (let k = 0; k < 14; k++) {
+        if (atkA * 1.1 < k / 14) continue;
+        const ph = (atkA * 1.1 + k / 14) % 1, wob = Math.sin(k * 2.4) * 0.9 * ph, x = B[0] + (pose.x - B[0]) * ph * 0.95 - Math.sin(pose.ang) * wob, y = B[1] + (pose.y - B[1]) * ph * 0.95 + Math.cos(pose.ang) * wob, z = 0.62 - 0.22 * ph;
+        const rx = x - pose.x, ry = y - pose.y, tX = inv * (dirY * rx - dirX * ry), tY = inv * (-planeY * rx + planeX * ry); if (tY <= 0.2) continue;
+        const sx = Math.floor((VW / 2) * (1 + tX / tY)), sy = horizon + Math.floor((0.5 - z) * VH / tY), hh = Math.max(3, Math.round(0.11 * (0.5 + ph) * VH / tY * 2)), turn = Math.cos(tm * 7 + k * 1.3), ww = Math.max(1, Math.round(hh * 0.66 * Math.abs(turn)));
+        const pd = pics.length ? pics[k % pics.length] : null;
+        for (let yy = sy - (hh >> 1); yy < sy + (hh >> 1); yy++) for (let xx = sx - (ww >> 1); xx < sx + (ww >> 1) + 1; xx++) {
+          if (xx < 0 || xx >= VW || yy < 0 || yy >= VH || tY > zbuf[xx] + 0.3) continue;
+          const u = (xx - (sx - (ww >> 1))) / Math.max(1, ww), v = (yy - (sy - (hh >> 1))) / hh, edge = u < 0.06 || u > 0.94 || v < 0.04 || v > 0.96;
+          let col = [235, 235, 225]; if (!edge && pd && turn > 0) { const ti = (Math.min(PIC_H - 1, Math.floor(v * PIC_H)) * PIC_W + Math.min(PIC_W - 1, Math.floor((u) * PIC_W))) * 3; col = [pd[ti], pd[ti + 1], pd[ti + 2]]; } else if (edge) col = [20, 16, 24];
+          fx((yy * VW + xx) * 4, col, 0.97, tY);
+        }
+      }
       if (mv === 'barrage') stream(26, 1.5, 0.9, 0.6, 0.45, 0.07, [[250, 250, 240], [255, 236, 150], [240, 240, 255]], 1, true); // price tags flying at you
       if (mv === 'curse') { stream(18, 0.9, 1.6, 0.75, 0.5, 0.06, [[140, 255, 150], [200, 120, 255]]); for (let k = 0; k < 16; k++) { const a = tm * 1.8 + k * 0.39, r = 0.9 + Math.sin(tm * 2 + k) * 0.25; dot(pose.x + Math.cos(a) * r, pose.y + Math.sin(a) * r, 0.5 + Math.sin(a * 2) * 0.25, 0.06, k % 2 ? [120, 255, 140] : [200, 120, 255]); } }
       if (mv === 'trash') for (let k = 0; k < 28; k++) { const fall = Math.min(1, Math.max(0, atkA * 2.2 - k * 0.07)), bounce = fall >= 1 ? Math.abs(Math.sin((atkA * 2.2 - k * 0.07 - 1) * 9)) * 0.08 * Math.max(0, 1 - (atkA * 2.2 - k * 0.07 - 1)) : 0; dot(pose.x + Math.cos(k * 2.1) * (0.4 + (k % 3) * 0.35) + Math.cos(pose.ang) * 1.6, pose.y + Math.sin(k * 2.1) * (0.4 + (k % 3) * 0.35) + Math.sin(pose.ang) * 1.6, 1 - fall * 0.92 + bounce, 0.08 + (k % 3) * 0.02, [[150, 156, 166], [201, 138, 60], [70, 70, 76], [90, 140, 70]][k % 4]); }
@@ -1163,7 +1186,7 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
     // The store item you're walking right past (its index in setPictures' list), for a sharp close-up.
     nearItem() { return seenPic && clockNow - seenPic.at < 400 ? seenPic.i : -1; },
     // The boss's attack in the arena: 'fire' | 'flood' | 'barrage' | 'chomp' | 'snatch' | 'curse' | 'trash'.
-    attack(move) { atk = { move: ['fire', 'flood', 'barrage', 'chomp', 'snatch', 'curse', 'trash'].includes(move) ? move : 'chomp', at: performance.now() }; },
+    attack(move) { atk = { move: ['fire', 'flood', 'barrage', 'chomp', 'snatch', 'curse', 'trash', 'comics'].includes(move) ? move : 'chomp', at: performance.now() }; },
     // Where the camera's looking right now (the props in front follow the hall, not the screen).
     view() { return { look, pitch: pitchNow, scout: scoutNow, fov: FOV }; },
     // The host's joystick: { yaw, pitch } (-1..1) to look; { action: 'scout' | 'back' }.

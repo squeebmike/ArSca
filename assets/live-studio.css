@@ -336,10 +336,10 @@ body.mana-center #mana-crawl.bar{transform:translateY(342px)}
 #mana-vote.trivia #mana-vote-title{font-size:30px;line-height:1.3;margin:6px 0}
 /* The item reveal: the real item's photo spinning in 3D. */
 #mana-reveal{position:absolute;left:190px;width:700px;z-index:8;pointer-events:none;text-align:center;opacity:0}
-#mana-reveal.on{animation:mana-reveal-in 7.6s ease-out forwards}
+#mana-reveal.on{animation:mana-reveal-in 12s ease-out forwards}
 #mana-reveal-label{font-family:'Luckiest Guy',Bangers,sans-serif;font-size:54px;color:var(--yel);-webkit-text-stroke:2px var(--ink);text-shadow:4px 4px 0 #6f1fac}
 .mana-reveal-stage{perspective:900px;height:410px;display:flex;align-items:center;justify-content:center}
-.mana-reveal-card{position:relative;width:280px;height:390px;transform-style:preserve-3d;animation:mana-reveal-spin 3.2s linear infinite}
+.mana-reveal-card{position:relative;width:280px;height:390px;transform-style:preserve-3d;animation:mana-reveal-spin 1.5s linear infinite}
 #mana-reveal-img,.mana-reveal-back{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:14px;backface-visibility:hidden;background:#0b0612;border:6px solid #ffe14a;box-shadow:0 0 40px #ffe14a,0 0 90px #ff3fd277;box-sizing:border-box}
 .mana-reveal-back{transform:rotateY(180deg);display:flex;align-items:center;justify-content:center;font:400 22px 'Press Start 2P',monospace;color:#b4ff3a;text-align:center;padding:20px}
 #mana-reveal-title{font-family:Bangers,sans-serif;font-size:36px;letter-spacing:1px;color:#fff;text-shadow:3px 3px 0 var(--ink);margin-top:6px}
@@ -389,7 +389,7 @@ body.mana-center #mana-crawl.bar{transform:translateY(342px)}
 .mana-reveal-stage{position:relative}
 .mana-reveal-rays{position:absolute;left:50%;top:50%;width:900px;height:900px;margin:-450px 0 0 -450px;opacity:0;pointer-events:none;border-radius:50%;
   background:repeating-conic-gradient(from 0deg,#fff6b0cc 0deg 7deg,transparent 7deg 22deg);-webkit-mask:radial-gradient(circle,#000 0 28%,transparent 62%);mask:radial-gradient(circle,#000 0 28%,transparent 62%)}
-#mana-reveal.on .mana-reveal-rays{animation:mana-rays 7.6s linear forwards}
+#mana-reveal.on .mana-reveal-rays{animation:mana-rays 12s linear forwards}
 #mana-reveal.chest-mode.on .mana-reveal-lift{animation:mana-item-rise 1.6s cubic-bezier(.2,1.3,.4,1) .55s both}
 #mana-reveal.chest-mode #mana-reveal-label{animation:mana-got .5s cubic-bezier(.2,2,.4,1) 1.3s both}
 @keyframes mana-item-rise{0%{transform:translateY(330px) scale(.18);opacity:0}25%{opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
@@ -523,3 +523,9 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 #beast-shelf{position:absolute;left:180px;z-index:7;border:4px solid #0f380f;border-radius:10px;box-shadow:0 6px 0 #000a}
 #mana-cbar-sub.evo-soon{color:#9bbc0f;animation:vm-blink 1s infinite;text-shadow:0 0 10px #9bbc0f}
 @keyframes vm-blink{50%{opacity:.55}}
+
+/* MR FISTER (2026-11-14): the MR FISTER button -- his 3D likeness rises in, pumping the gauntlet; smooth (not PS1). */
+#mana-fister{position:absolute;left:50%;top:150px;width:560px;height:560px;margin-left:-280px;z-index:9;pointer-events:none;opacity:0;transform:translateY(120px) scale(.6);filter:drop-shadow(0 0 30px #39ff1488) drop-shadow(0 14px 14px #000a)}
+#mana-fister.on{animation:mana-fister-in 7.5s cubic-bezier(.2,1.3,.4,1) forwards}
+@keyframes mana-fister-in{0%{opacity:0;transform:translateY(120px) scale(.6)}10%{opacity:1;transform:translateY(-10px) scale(1.05)}16%{transform:translateY(0) scale(1)}88%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(40px) scale(.9)}}
+#mana-effect.k-fister #mana-effect-art{display:none}

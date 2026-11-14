@@ -8,7 +8,7 @@ const B = await import('../scripts/beasts.mjs'), M = await import('../scripts/li
 const S = { ...M.DEFAULT_STUDIO, beastsGoal: 100, beastsGrowth: 10 };
 // 1. The engine: dollars walk the route, the three wild beasts fall as you pass, the rival steps up, a badge.
 let b = B.emptyBeasts('2026-11-11');
-const onRoute = r => ({ ...r, events: r.events.filter(e => e.kind !== 'level' && e.kind !== 'evolve') }); // levels: tests/beasts-levels.test.mjs
+const onRoute = r => ({ ...r, events: r.events.filter(e => e.kind !== 'level' && e.kind !== 'evolve' && e.kind !== 'item') }); // levels: tests/beasts-levels.test.mjs; items: tests/beasts-items-gyms.test.mjs
 let r = onRoute(B.addBeastXp(b, 25, S, 1)); assert.equal(r.events.length, 0); b = r.beasts; assert.equal(b.xp, 25);
 r = onRoute(B.addBeastXp(b, 10, S, 2)); assert.deepEqual(r.events.map(e => e.kind), ['caught']); assert.equal(r.events[0].name, B.wildName(1, 0)); b = r.beasts;
 r = onRoute(B.addBeastXp(b, 70, S, 3)); assert.deepEqual(r.events.map(e => e.kind), ['caught', 'caught', 'rival']); b = r.beasts;

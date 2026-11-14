@@ -360,7 +360,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   const ov6 = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(ov6.includes("const eye=fpLib.eyePose(fgCache.L,fgCache.grid,Math.min(0.99,fgShown+cam.scout))") && ov6.includes('if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;'), 'props in front are the hall\'s props, beside and just ahead');
   const src = readFileSync(new URL('../scripts/shed-crawl-fp.mjs', import.meta.url), 'utf8');
-  assert.ok(src.includes("const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? 3 : 1.6) && Math.abs(side) <= 1.05; if (FG ? !close : close) return;"), 'the hall hides what is passing in front');
+  assert.ok(src.includes("const close = fwd >= 0.15 && fwd <= (s.kind === 'chest' ? NEAR_CHEST : NEAR_PROP) && Math.abs(side) <= 1.05; if (FG ? !close : close) return;") && fp.NEAR_PROP <= 0.8 && fp.NEAR_CHEST <= 1.1, 'the hall hides what is passing in front');
   assert.ok(src.includes('export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H'), 'the window crawl has its default size');
   assert.equal(DEFAULT_STUDIO.panelAlpha, 70); assert.throws(() => validateSettings({ panelAlpha: 101 }), /Invalid panelAlpha/); assert.ok(validateSettings({ panelAlpha: 0 }));
   assert.match(readFileSync(new URL('../assets/live-studio.css', import.meta.url), 'utf8'), /rgb\(74 29 150\/var\(--pa,1\)\)/);
@@ -426,13 +426,13 @@ console.log('live-studio-dungeon: ok');
   const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
   assert.ok(room.includes("chestText: 'FREE GIVEAWAY!'") && room.includes('chestGiveaway: true'));
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
-  assert.ok(ov.includes("reach=p.kind==='chest'?3:1.6") && ov.includes('FREE TO ENTER IN THE WHATNOT APP'));
+  assert.ok(ov.includes("reach=p.kind==='chest'?fpLib.NEAR_CHEST:fpLib.NEAR_PROP") && ov.includes('FREE TO ENTER IN THE WHATNOT APP'));
 }
 {
   // 2026-11-12: "the bosses are lame" -- each shed its own boss, and real fights.
   const { bossForFloor, SHEDS } = await import('../scripts/live-studio-dungeon.mjs');
-  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map(bossForFloor), ['mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon']);
-  assert.equal(SHEDS[6], 'THE SHED BENEATH THE SHED'); assert.equal(bossForFloor(8), 'hydra'); assert.equal(bossForFloor(9), 'scalper');
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map(bossForFloor), ['fister', 'mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer']);
+  assert.equal(SHEDS[6], 'THE SHED BENEATH THE SHED'); assert.equal(bossForFloor(9), 'hydra'); assert.equal(bossForFloor(10), 'scalper');
   const ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   for (const k of ['function bossIntro(b,d)', 'function bossCombo()', 'function bossRage(b,d)', 'function bossMove(b,stage)', 'function bossKO()', "if(key!==rageKey){rageKey=key;rageSeen=stage;return;}", "setTimeout(()=>card.classList.remove('snatched'),3000)"]) assert.ok(ov.includes(k), k);
   assert.ok(!/Math\.random/.test(ov.slice(ov.indexOf('function bossIntro'), ov.indexOf('function paintForeground'))), 'no chance in the fights');

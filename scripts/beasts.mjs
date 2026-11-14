@@ -254,8 +254,17 @@ export function itemsFor(route) { const f = Math.max(1, route | 0); return ITEM_
 // GYMS (store, 2026-11-14): every 5th route ends at a gym; its leader's beast has twice the HP, its badge is a gym badge.
 export const GYM_EVERY = 5;
 export const isGym = route => (Math.max(1, route | 0)) % GYM_EVERY === 0;
-export const GYM_LEADERS = [['LEADER GRADY', 'SLABTITAN'], ['LEADER FOLIA', 'HOLOPHOENIX'], ['LEADER MINTY', 'GEMMINTAUR'], ['LEADER KEYS', 'KEYSTONEX'], ['LEADER VARIA', 'VARIANTRIX']];
+// The first gym is MR FISTER's (store, 2026-11-14), his beast GRAILFIST.
+export const GYM_LEADERS = [['MR FISTER', 'GRAILFIST'], ['LEADER GRADY', 'SLABTITAN'], ['LEADER FOLIA', 'HOLOPHOENIX'], ['LEADER MINTY', 'GEMMINTAUR'], ['LEADER KEYS', 'KEYSTONEX'], ['LEADER VARIA', 'VARIANTRIX']];
 export const toGym = route => { const r = Math.max(1, route | 0); return (GYM_EVERY - (r % GYM_EVERY)) % GYM_EVERY; };
+// WHAT THE ITEMS DO (store, 2026-11-14: "make items do something"): CANDY, a STONE and a COIN are bonus XP for your
+// beast (a share of the route's goal -- levels and evolutions, never the walk itself); a BERRY, POTION, ETHER or
+// chat's gift is STAMINA: your beast lasts longer between sales this route (+25% each, up to double). Fixed amounts.
+export const ITEM_XP = { CANDY: 0.1, STONE: 0.25, COIN: 0.05 };
+export const STAMINA_ITEMS = ['BERRY', 'POTION', 'ETHER', 'GIFT'], STAMINA_STEP = 0.25, STAMINA_MAX = 4;
+export const drainFor = stamina => Math.round(BEAST_DRAIN_MS * (1 + STAMINA_STEP * Math.min(STAMINA_MAX, Math.max(0, stamina | 0))));
+// The route progress (0..1 of the goal) where the walk reaches t (the inverse of walkAt).
+export function pctForWalk(t) { let lo = 0, hi = 1; for (let k = 0; k < 30; k++) { const m = (lo + hi) / 2; if (walkAt(m) < t) lo = m; else hi = m; } return hi; }
 // CHAT'S GIFTS (store, 2026-11-14): a follow, share or bookmark the host taps in drops a gift a few steps ahead on
 // the path (for everyone watching -- nothing tied to buying, no names).
 export const DROP_AHEAD = 0.04;
@@ -289,7 +298,7 @@ export const FOE_MOVES = ['PAPER CUT', 'DOG EAR', 'SPINE ROLL', 'SUN FADE', 'STA
 export const foeMoveFor = (name, n = 0) => FOE_MOVES[(hashOf(String(name)) + n) % FOE_MOVES.length];
 export const BEAST_DRAIN_MS = 5 * 60000;
 // Your beast's HP from the last sale or chat tap (lastAt): full, draining to 0 over BEAST_DRAIN_MS.
-export function beastHpFrom(lastAt, now = Date.now()) { const l = Number(lastAt) || 0; if (!l) return 1; return Math.max(0, Math.min(1, 1 - (now - l) / BEAST_DRAIN_MS)); }
+export function beastHpFrom(lastAt, now = Date.now(), drainMs = BEAST_DRAIN_MS) { const l = Number(lastAt) || 0; if (!l) return 1; return Math.max(0, Math.min(1, 1 - (now - l) / Math.max(60000, Number(drainMs) || BEAST_DRAIN_MS))); }
 export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {}) {
   if (!d) return null;
   const lv = Number(d.level) || 1, mine = { name: formName(starter, lv), level: lv, hp: Math.max(0, Math.min(1, battery)) };
@@ -349,8 +358,7 @@ export function ensureBeasts(b, week = '') { if (b && b.week === week) return b;
 export function addBeastXp(bIn, amount, s, now = Date.now()) {
   const b = { ...bIn, caught: [...(bIn.caught || [])], badges: [...(bIn.badges || [])] }, events = [];
   if (!(amount > 0)) return { beasts: b, events };
-  const lv0 = levelFor(b.exp || 0); b.exp = r2b((b.exp || 0) + amount); const lv1 = levelFor(b.exp);
-  if (lv1 > lv0) { const learn = Math.floor(lv1 / LEARN_EVERY) > Math.floor(lv0 / LEARN_EVERY); events.push({ kind: 'level', level: lv1, learn }); const st0 = stageFor(lv0), st1 = stageFor(lv1); if (st1 > st0) events.push({ kind: 'evolve', level: lv1, stage: st1 }); }
+  const lv0 = levelFor(b.exp || 0); let bonus = 0;
   let left = r2b(amount);
   for (let guard = 0; left > 0 && guard < 60; guard++) {
     if (b.phase === 'route') {
@@ -358,14 +366,19 @@ export function addBeastXp(bIn, amount, s, now = Date.now()) {
       const take = Math.min(left, need); b.xp = r2b(b.xp + take); left = r2b(left - take);
       const after = b.xp / goal;
       ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const name = wildName(b.route, k); b.caught.push({ name, route: b.route, at: now }); events.push({ kind: 'caught', name, route: b.route }); } });
+      // Items and chat's gifts picked up on the way.
+      for (const it of itemsFor(b.route)) { const at = pctForWalk(it.t); if (before < at && after >= at) { if (ITEM_XP[it.kind]) bonus = r2b(bonus + goal * ITEM_XP[it.kind]); else b.stamina = (b.stamina || 0) + 1; events.push({ kind: 'item', item: it.kind, route: b.route }); } }
+      b.drops = (b.drops || []).map(d => { if (d.route !== b.route || d.got) return d; const at = pctForWalk(d.t); if (before < at && after >= at) { b.stamina = (b.stamina || 0) + 1; events.push({ kind: 'item', item: 'GIFT', route: b.route }); return { ...d, got: true }; } return d; });
       if (b.xp >= goal) { b.phase = 'rival'; b.rivalHp = rivalMax(s, b.route); const rv = rivalFor(b.route); events.push({ kind: 'rival', route: b.route, trainer: rv.name, beast: rv.beast }); }
     } else {
       if (left < b.rivalHp) { b.rivalHp = r2b(b.rivalHp - left); left = 0; break; }
       left = r2b(left - b.rivalHp); const rv = rivalFor(b.route);
       b.badges.push({ route: b.route, trainer: rv.name, at: now, ...(rv.gym ? { gym: true } : {}) }); events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length, ...(rv.gym ? { gym: true } : {}) });
-      b.route += 1; b.phase = 'route'; b.xp = 0; b.rivalHp = 0;
+      b.route += 1; b.phase = 'route'; b.xp = 0; b.rivalHp = 0; b.stamina = 0;
     }
   }
+  b.exp = r2b((b.exp || 0) + amount + bonus); const lv1 = levelFor(b.exp);
+  if (lv1 > lv0) { const learn = Math.floor(lv1 / LEARN_EVERY) > Math.floor(lv0 / LEARN_EVERY); events.unshift({ kind: 'level', level: lv1, learn }); const st0 = stageFor(lv0), st1 = stageFor(lv1); if (st1 > st0) events.splice(1, 0, { kind: 'evolve', level: lv1, stage: st1 }); }
   b.lastAt = now;
   return { beasts: b, events };
 }
@@ -379,7 +392,7 @@ export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.n
 // What the screens see (floor and pct keep the drawing code's names: floor is the route).
 export function publicBeasts(bIn, s, starter = '') {
   const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
-  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
 }
 
 // ── drawing ──────────────────────────────────────────────────────────────────
@@ -438,6 +451,7 @@ export function drawSprite(img, W, x0, y0, who, dir, step) {
 // THE TRAINERS in a battle, bigger (40 x 48): the host and Champ side by side
 // at the start of every battle; drawn from shapes here (original, not traced).
 export function drawTrainer(img, W, x0, y0, who) {
+  if (who === 'fister') return drawFisterTrainer(img, W, x0, y0);
   const P = (x, y, s) => put(img, W, x0 + Math.round(x), y0 + Math.round(y), s), champ = who === 'champ';
   const hx = 20, hy = champ ? 15 : 14, rx = champ ? 11 : 9.5, ry = champ ? 11.5 : 10.5;
   // The body first: the jersey (host) or the big hoodie (Champ), an arm out front.
@@ -462,6 +476,26 @@ export function drawTrainer(img, W, x0, y0, who) {
     for (let y = hy + 4; y < hy + 12; y++) for (let x = 0; x < 40; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1.12 && (y > hy + 5 || Math.abs(x - hx) > 6)) P(x, y, (y === hy + 6 && Math.abs(x - hx) < 3) ? 0 : 3); } // the beard, a grin
     P(hx - rx + 1, hy + 1, 1); P(hx - rx + 1, hy + 2, 1); // an ear
   }
+}
+// MR FISTER, GYM LEADER (store, 2026-11-14: "what does his gym leader look like?"): in the battle's four greens -- the
+// cap on backwards, a full beard to a goatee point, a black tee, and THE GAUNTLET raised on his right fist (our left)
+// with its four stones and a glow round it. Drawn here from shapes (original).
+function drawFisterTrainer(img, W, x0, y0) {
+  const P = (x, y, s) => put(img, W, x0 + Math.round(x), y0 + Math.round(y), s), hx = 26, hy = 20, rx = 9, ry = 10;
+  for (let y = 31; y < 54; y++) for (let x = hx - 13; x <= hx + 13; x++) P(x, y, x === hx - 13 || x === hx + 13 || y === 31 ? 3 : x - (hx - 13) < 3 ? 2 : 3); // the black tee (lit on the left)
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 48; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1) P(x, y, d > 0.84 ? 3 : 0); } // the head
+  for (let y = 0; y < 36; y++) for (let x = 0; x < 48; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2; if (d <= 1 && y < hy - 3) P(x, y, y === hy - 4 ? 2 : 3); } // the cap's crown
+  for (let x = hx + rx - 2; x < hx + rx + 6; x++) { P(x, hy - 4, 3); P(x, hy - 3, 3); } // the brim, out the back
+  for (let x = hx - 6; x < hx - 1; x++) P(x, hy - 1, 3); for (let x = hx + 2; x < hx + 7; x++) P(x, hy - 1, 3); // brows
+  P(hx - 4, hy + 1, 3); P(hx + 4, hy + 1, 3); // eyes
+  for (let y = hy + 3; y < hy + 15; y++) for (let x = 0; x < 48; x++) { const d = ((x - hx) / rx) ** 2 + ((y - hy) / ry) ** 2, point = y >= hy + 9 && Math.abs(x - hx) <= hy + 14 - y; if ((d <= 1.1 && (y > hy + 4 || Math.abs(x - hx) > 6)) || point) P(x, y, (y === hy + 6 && Math.abs(x - hx) < 3) ? 0 : 3); } // the beard to a goatee point
+  // The right arm up (our left), the gauntlet: a glow ring, the glove, four stones.
+  for (let k = 0; k < 14; k++) { P(hx - 12 - (k >> 2), 30 - k, 3); P(hx - 11 - (k >> 2), 30 - k, 2); P(hx - 13 - (k >> 2), 30 - k, 3); }
+  const gx = hx - 21, gy = 4;
+  for (let y = -7; y <= 15; y++) for (let x = -7; x <= 18; x++) { const d = ((x - 5.5) / 12) ** 2 + ((y - 4) / 11) ** 2; if (d <= 1 && d > 0.72 && (x + y) % 2 === 0) P(gx + x, gy + y, 1); } // the glow
+  for (let y = 0; y < 10; y++) for (let x = 0; x < 12; x++) P(gx + x, gy + y, x === 0 || x === 11 || y === 0 || y === 9 ? 3 : 1);
+  for (let k = 0; k < 4; k++) { P(gx + 2 + k * 2.5, gy + 2, 0); P(gx + 2 + k * 2.5, gy + 3, 2); }
+  for (let x = 1; x < 11; x++) P(gx + x, gy + 6, 3);
 }
 // You (or your buddy): a big chibi head (your face, 12 x 12) on a small body,
 // two-frame walk, four directions. Facing up you see the back of your head.
@@ -492,7 +526,7 @@ const ICONS = {
   GIFT: ['33.33.33', '.330033.', '33333333', '30030003', '30030003', '33333333', '30030003', '33333333'],
 };
 function drawIcon(img, W, x0, y0, name) { (ICONS[name] || ICONS.GIFT).forEach((row, y) => { for (let x = 0; x < 8; x++) { const ch = row[x]; if (ch !== '.') put(img, W, x0 + x, y0 + y, +ch); } }); }
-const ITEM_SAYS = { BERRY: 'GOT A BERRY!', POTION: 'GOT A POTION!', CANDY: 'GOT A CANDY!', STONE: 'GOT AN EVO STONE!', ETHER: 'GOT AN ETHER!', COIN: 'GOT A COIN!' };
+const ITEM_SAYS = { BERRY: 'BERRY! +STAMINA', POTION: 'POTION! +STAMINA', CANDY: 'CANDY! +XP', STONE: 'EVO STONE! +XP', ETHER: 'ETHER! +STAMINA', COIN: 'COIN! +XP' };
 
 // THE OVERWORLD on a canvas: the route, you walking it, your buddy a step behind.
 export function createWorld(canvas, { w = 240, h = 189 } = {}) {
@@ -512,7 +546,7 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     const walking = shown < target - 0.0005; if (walking) shown = Math.min(target, shown + dt * Math.max(3.2 / route.len, (target - shown) / 10)); else if (shown > target) shown = target;
     const p = posAt(route, shown), q = posAt(route, Math.max(0, shown - 1.3 / route.len));
     // Picking things up as you pass them: the route's items, then chat's gifts.
-    if (shown > lastShown) { const got = route.items.filter(it => it.t > lastShown && it.t <= shown).pop(), gift = drops.filter(d => d.t > lastShown && d.t <= shown).pop(); if (gift) { said = 'CHAT GIFT: ' + String(gift.kind).toUpperCase().slice(0, 8) + '!'; saidAt = now; } else if (got) { said = ITEM_SAYS[got.kind] || 'FOUND SOMETHING!'; saidAt = now; } }
+    if (shown > lastShown) { const got = route.items.filter(it => it.t > lastShown && it.t <= shown).pop(), gift = drops.filter(d => d.t > lastShown && d.t <= shown).pop(); if (gift) { said = 'CHAT GIFT: ' + String(gift.kind).toUpperCase().slice(0, 8) + '! +STAMINA'; saidAt = now; } else if (got) { said = ITEM_SAYS[got.kind] || 'FOUND SOMETHING!'; saidAt = now; } }
     lastShown = shown;
     PAL = PALETTES[tod || timeOfDay()] || GB;
     // Facing the way you're walking (2026-11-13: "change directions"): across on a turn, up on a straight run.
@@ -576,8 +610,9 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     if (it >= 0 && it < 1) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
       drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
-      if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival' || !rival) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (b.kind === 'rival' && b.trainer === 'MR FISTER') drawTrainer(img, W, 160 + slide, 6, 'fister');
+      else if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
+      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;

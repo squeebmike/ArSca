@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=8').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=10').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false, vendOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -254,7 +254,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         // A sale landing on the boss: the hall shakes (the overlay flashes over the hosts at the same time).
         const hp = d.phase === 'boss' ? Number(d.boss?.hp) : NaN; if (hp < lastHp) fp.hit?.(); lastHp = hp;
         // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
-        if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
+        if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; if (bossId === 'fister' && gl3d?.setFisterCovers) { const g = [...shedPics.filter(p => p.tag === 'ratio'), ...shedPics.filter(p => p.tag === 'foil'), ...shedPics.filter(p => p.kind === 'comic' && !p.tag)].map(p => img(p.image)).slice(0, 5); gl3d.setFisterCovers(g); setTimeout(() => { if (bossId !== 'fister') return; try { const a2 = gl3d.bakeBoss('fister', { size: 96 }); if (a2) fp.setBoss(a2); } catch {} }, 4000); } try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
       };
       // THE CLOSE-UP (2026-11-12: "item images need to be clearer, so we can tell
       // what they are"): the item you're walking right past, sharp, with its name and price.
@@ -271,7 +271,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       let battle = null, battleOn = false, rivalArt = '';
       const batteryOf = d => { const last = Math.max(Number(stats?.lastSaleAt) || 0, Number(d?.lastAt) || 0); return last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / 360000)) : 1; };
       const paintBattle = d => {
-        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
+        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset, d.drainMs), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
         if (!battle) battle = beasts.createBattle(bcv, { scale: 3 });
         battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0 });
@@ -297,7 +297,10 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
       let settings0 = {}, lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
+      let faceShown = '';
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
+        // Mr Fister's face (the remote's photo): on his 3D head, and the boss's photos retaken if he's up.
+        if (typeof m.fisterFace === 'string' && m.fisterFace !== faceShown && gl3d?.setFisterFace) { faceShown = m.fisterFace; gl3d.setFisterFace(m.fisterFace); setTimeout(() => { if (bossId !== 'fister') return; try { const a2 = gl3d.bakeBoss('fister', { size: 96 }); if (a2) fp.setBoss(a2); } catch {} }, 1500); }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
         if (m.type === 'attack') { if (beastsOn || vendOn) return; const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode === 'dungeon'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) lastMachine = m.machine; if (lastMachine) drawMachine(lastMachine, vmLook()); paint(); if (m.effect && (m.type === 'effect' || m.fresh)) battleFx(m.effect); };
       setInterval(paint, 5000);
