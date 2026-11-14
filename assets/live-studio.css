@@ -527,5 +527,7 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 /* MR FISTER (2026-11-14): the MR FISTER button -- his 3D likeness rises in, pumping the gauntlet; smooth (not PS1). */
 #mana-fister{position:absolute;left:50%;top:150px;width:560px;height:560px;margin-left:-280px;z-index:9;pointer-events:none;opacity:0;transform:translateY(120px) scale(.6);filter:drop-shadow(0 0 30px #39ff1488) drop-shadow(0 14px 14px #000a)}
 #mana-fister.on{animation:mana-fister-in 7.5s cubic-bezier(.2,1.3,.4,1) forwards}
+#mana-effect.k-fistergoo #mana-effect-art{display:none}
+#mana-effect.k-fistergoo #mana-effect-word{color:#39ff14}
 @keyframes mana-fister-in{0%{opacity:0;transform:translateY(120px) scale(.6)}10%{opacity:1;transform:translateY(-10px) scale(1.05)}16%{transform:translateY(0) scale(1)}88%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(40px) scale(.9)}}
 #mana-effect.k-fister #mana-effect-art{display:none}
