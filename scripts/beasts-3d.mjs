@@ -13,43 +13,112 @@ const cyl = (a, b, h, m, s = 12) => new THREE.Mesh(new THREE.CylinderGeometry(a,
 const cone = (r, h, m, s = 10) => new THREE.Mesh(new THREE.ConeGeometry(r, h, s), m);
 const at = (p, o, x = 0, y = 0, z = 0) => { o.position.set(x, y, z); p.add(o); return o; };
 
-// One beast, built from its name: body type, colours, ears or horns, a tail, big eyes (front) -- and an idle animation.
+// BETTER MODELS, MORE VARIATIONS (store, 2026-11-14): each beast built from its name -- one of eleven body plans (blob,
+// biped, four-legged, bird, bug, serpent, fish, dragon, golem, ghost, sprout), toon-shaded with a dark outline like the
+// handhelds' 3D era, and its own mix of parts: ears or horns or a crest, a tail (thin, fluffy, leaf, flame), back spikes
+// or fins, spots or stripes or a belly patch, round or angry or sleepy eyes, a grin with fangs; evolved forms grow
+// bigger with more spikes and armour plates. The same name always makes the same beast (no dice). Original designs.
+const EXTRA_PLANS = ['fish', 'dragon', 'golem', 'ghost', 'sprout'];
+const toonGrad = (() => { let t = null; return () => { if (t) return t; const d = new Uint8Array([90, 170, 255]); t = new THREE.DataTexture(d, 3, 1, THREE.RedFormat); t.needsUpdate = true; t.minFilter = t.magFilter = THREE.NearestFilter; return t; }; })();
+const patternTex = new Map();
+function pattern(kind, a, b) {
+  const k = kind + a.join() + b.join(); if (patternTex.has(k)) return patternTex.get(k);
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.fillStyle = `rgb(${a})`; x.fillRect(0, 0, 64, 64); x.fillStyle = `rgb(${b})`;
+  if (kind === 'spots') for (const [px, py, r] of [[12, 14, 6], [40, 10, 5], [26, 36, 7], [52, 42, 5], [10, 52, 5], [44, 58, 4]]) { x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill(); }
+  else if (kind === 'stripes') for (let y = 0; y < 64; y += 16) x.fillRect(0, y, 64, 6);
+  else if (kind === 'diamonds') for (let y = 0; y < 64; y += 16) for (let xx = (y / 16 % 2) * 8; xx < 64; xx += 16) { x.beginPath(); x.moveTo(xx + 8, y); x.lineTo(xx + 14, y + 8); x.lineTo(xx + 8, y + 16); x.lineTo(xx + 2, y + 8); x.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; patternTex.set(k, t); return t;
+}
+const toon = (c, o = {}) => new THREE.MeshToonMaterial({ color: col(c), gradientMap: toonGrad(), ...o });
+const OUTLINE = new THREE.MeshBasicMaterial({ color: 0x15121c, side: THREE.BackSide });
+function outline(group, w = 0.035) { const add = []; group.traverse(o => { if (o.isMesh && !o.userData.noOutline && o.geometry && o.material !== OUTLINE) add.push(o); }); for (const o of add) { const h = new THREE.Mesh(o.geometry, OUTLINE); h.userData.noOutline = true; const sz = new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3()), m = Math.max(0.05, Math.min(sz.x, sz.y, sz.z) || 0.1); h.scale.setScalar(Math.min(1.14, 1 + w / m * 2)); o.add(h); } }
+export function planOf(name) {
+  const nm = String(name).toUpperCase(), h = hashOf(nm + 'plan');
+  // The starters keep their plan; others: a fixed share become the newer plans.
+  if (/^(SLABBIT|SLABBUNNY|GRADEZILLA|TOPLOADON|TOPLOADRAKE|TITANLOADER|SLEEVIL|SLEEVILLAIN|OVERSLEEVOR)$/.test(nm)) return beastType(nm);
+  if (/GRAIL|TITAN|GOLEM|SLABTITAN/.test(nm)) return 'golem'; if (/PHOENIX|DRAKE|WYRM/.test(nm)) return 'dragon'; if (/WRAITH|GHOST|SPOOK/.test(nm)) return 'ghost';
+  return h % 5 < 2 ? EXTRA_PLANS[(h >>> 3) % EXTRA_PLANS.length] : beastType(nm);
+}
 export function buildBeast3D(name) {
-  const nm = String(name).toUpperCase(), type = beastType(nm), r = beastRamp(nm), h = hashOf(nm);
-  const body = mat(r[1]), belly = mat(r[0]), dark = mat(r[2]), eyeW = mat([250, 250, 250], { shininess: 90 }), eyeB = mat([20, 20, 28], { shininess: 120 });
-  const g = new THREE.Group(), parts = { legs: [], wings: [], tail: null, head: null };
-  const eyes = (p, x, y, z, s = 1) => { for (const sx of [-1, 1]) { at(p, ball(0.11 * s, eyeW, 12), sx * x, y, z).scale.set(1, 1.2, 0.6); at(p, ball(0.055 * s, eyeB, 10), sx * x * 0.95, y - 0.01, z + 0.05 * s); at(p, ball(0.02 * s, eyeW, 6), sx * x * 0.9 - 0.02, y + 0.03, z + 0.08 * s); } };
-  if (type === 'blob') { const b = at(g, ball(0.62, body, 24), 0, 0.5, 0); b.scale.set(1.15, 0.85, 1); at(g, ball(0.45, belly, 18), 0, 0.42, 0.25).scale.set(1, 0.7, 0.6); parts.head = b; eyes(g, 0.22, 0.72, 0.5); }
-  else if (type === 'biped') {
-    for (const sx of [-1, 1]) parts.legs.push(at(g, ball(0.16, dark, 12), sx * 0.24, 0.12, 0.05));
-    at(g, ball(0.42, body, 20), 0, 0.55, 0).scale.set(1, 1.05, 0.9); at(g, ball(0.3, belly, 16), 0, 0.5, 0.18).scale.set(1, 1.1, 0.6);
-    for (const sx of [-1, 1]) at(g, ball(0.11, body, 10), sx * 0.44, 0.6, 0.05).scale.set(0.8, 1.4, 0.8);
-    const head = at(g, new THREE.Group(), 0, 1.15, 0.02); parts.head = head; at(head, ball(0.4, body, 20), 0, 0, 0);
-    eyes(head, 0.16, 0.02, 0.33); if (h % 2 === 0 || /SLABBIT/.test(nm)) for (const sx of [-1, 1]) { const e = at(head, cone(0.09, 0.5, body), sx * 0.17, 0.48, -0.02); e.rotation.z = sx * -0.2; }
-    else for (const sx of [-1, 1]) at(head, ball(0.12, body, 10), sx * 0.3, 0.3, 0);
-  } else if (type === 'quad') {
-    const b = at(g, ball(0.5, body, 20), 0, 0.55, -0.1); b.scale.set(0.95, 0.75, 1.35);
-    for (const [x, z] of [[-0.3, 0.35], [0.3, 0.35], [-0.3, -0.5], [0.3, -0.5]]) parts.legs.push(at(g, cyl(0.1, 0.08, 0.42, dark), x, 0.2, z));
-    const head = at(g, new THREE.Group(), 0, 0.85, 0.6); parts.head = head; at(head, ball(0.33, body, 18), 0, 0, 0); at(head, ball(0.18, belly, 12), 0, -0.1, 0.22);
-    eyes(head, 0.14, 0.08, 0.26, 0.9); for (const sx of [-1, 1]) at(head, cone(0.07, 0.25, dark), sx * 0.2, 0.3, -0.05);
-    parts.tail = at(g, cone(0.08, 0.5, body), 0, 0.7, -0.75); parts.tail.rotation.x = -1.1;
-  } else if (type === 'bird') {
-    at(g, ball(0.48, body, 20), 0, 0.7, 0); at(g, ball(0.32, belly, 16), 0, 0.62, 0.25).scale.set(1, 1.1, 0.6);
-    eyes(g, 0.17, 0.85, 0.4); at(g, cone(0.08, 0.2, mat([255, 196, 60])), 0, 0.74, 0.5).rotation.x = Math.PI / 2;
-    for (const sx of [-1, 1]) { const w = at(g, new THREE.Group(), sx * 0.42, 0.75, 0); const f = at(w, ball(0.3, dark, 12), sx * 0.25, 0, 0); f.scale.set(1.3, 0.25, 0.8); parts.wings.push(w); }
-    for (const sx of [-1, 1]) at(g, cyl(0.03, 0.03, 0.3, mat([255, 196, 60])), sx * 0.15, 0.15, 0);
-  } else if (type === 'bug') {
-    at(g, ball(0.38, dark, 18), 0, 0.42, -0.35).scale.set(1, 0.8, 1.2); const hd = at(g, ball(0.36, body, 18), 0, 0.55, 0.2); parts.head = hd;
-    eyes(g, 0.15, 0.62, 0.5, 0.9);
-    for (let k = 0; k < 3; k++) for (const sx of [-1, 1]) { const l = at(g, cyl(0.025, 0.02, 0.5, dark, 6), sx * 0.35, 0.2, -0.1 - k * 0.2); l.rotation.z = sx * 1.0; parts.legs.push(l); }
-    for (const sx of [-1, 1]) { const a = at(g, cyl(0.015, 0.015, 0.4, dark, 6), sx * 0.12, 0.95, 0.3); a.rotation.z = sx * -0.4; }
+  const nm = String(name).toUpperCase(), plan = planOf(nm), r = beastRamp(nm), h = hashOf(nm), bit = (k, n = 2) => (h >>> (k * 3)) % n;
+  const stage = /ZILLA|TITAN|OVERSLEEV|LOADER$/.test(nm) ? 2 : /BUNNY|DRAKE|VILLAIN/.test(nm) ? 1 : 0;
+  const pat = ['plain', 'spots', 'stripes', 'diamonds', 'belly'][bit(1, 5)];
+  const body = pat === 'plain' || pat === 'belly' ? toon(r[1]) : toon([255, 255, 255], { map: pattern(pat, r[1], r[2]) }), belly = toon(r[0]), dark = toon(r[2]), accent = toon(r[(bit(2, 2) ? 0 : 3)]);
+  const eyeW = toon([250, 250, 250]), eyeB = new THREE.MeshBasicMaterial({ color: 0x14121c }), shine = new THREE.MeshBasicMaterial({ color: 0xffffff }), mouthM = new THREE.MeshBasicMaterial({ color: 0x5a1a22 }), fang = toon([255, 255, 255]);
+  const g = new THREE.Group(), parts = { legs: [], wings: [], tail: null, head: null, float: plan === 'ghost' };
+  const eyeStyle = ['round', 'angry', 'sleepy'][bit(3, 3)];
+  const face = (p, x, y, z, s = 1) => {
+    for (const sx of [-1, 1]) { const e = at(p, ball(0.11 * s, eyeW, 14), sx * x, y, z); e.scale.set(1, eyeStyle === 'sleepy' ? 0.55 : 1.2, 0.6); at(p, ball(0.06 * s, eyeB, 10), sx * x * 0.95, y - 0.01, z + 0.05 * s).scale.set(1, eyeStyle === 'sleepy' ? 0.5 : 1.1, 1); at(p, ball(0.022 * s, shine, 6), sx * x * 0.9 - 0.02, y + 0.035, z + 0.085 * s);
+      if (eyeStyle === 'angry') { const br = at(p, new THREE.Mesh(new THREE.BoxGeometry(0.2 * s, 0.04 * s, 0.04), eyeB), sx * x, y + 0.14 * s, z + 0.04); br.rotation.z = sx * -0.45; } }
+    const m = at(p, new THREE.Mesh(new THREE.TorusGeometry(0.07 * s, 0.016 * s, 6, 14, Math.PI), mouthM), 0, y - 0.15 * s, z + 0.04); m.rotation.z = Math.PI;
+    if (bit(4, 2) || stage) for (const sx of [-1, 1]) at(p, cone(0.018 * s, 0.05 * s, fang, 6), sx * 0.04 * s, y - 0.2 * s, z + 0.05).rotation.x = Math.PI;
+  };
+  // What tops the head: long ears, round ears, horns, a crest, or nothing.
+  const topper = (p, y, sp = 0.17) => { const k = bit(5, 5); if (k === 0) for (const sx of [-1, 1]) { const e = at(p, cone(0.08, 0.48, body, 10), sx * sp, y + 0.25, -0.02); e.rotation.z = sx * -0.25; at(e, cone(0.045, 0.3, belly, 8), 0, -0.04, 0.03); }
+    else if (k === 1) for (const sx of [-1, 1]) at(p, ball(0.12, body, 12), sx * (sp + 0.1), y + 0.12, 0);
+    else if (k === 2 || stage >= 2) for (const sx of [-1, 1]) { const hn = at(p, cone(0.06, 0.35, accent, 8), sx * sp * 0.8, y + 0.2, 0.02); hn.rotation.z = sx * -0.35; }
+    else if (k === 3) for (let i = 0; i < 3; i++) at(p, cone(0.06, 0.26 - i * 0.04, accent, 6), 0, y + 0.18, -0.12 * i).rotation.x = -0.4; };
+  const tailOf = (p, x, y, z) => { const k = bit(6, 4), t = new THREE.Group(); t.position.set(x, y, z); p.add(t);
+    if (k === 0) { const c = at(t, cone(0.08, 0.6, body, 8), 0, 0, -0.25); c.rotation.x = -1.2; }
+    else if (k === 1) { at(t, ball(0.2, belly, 12), 0, 0.05, -0.15).scale.set(1, 1.2, 1.3); }
+    else if (k === 2) { const lf = at(t, ball(0.22, toon([90, 200, 90]), 10), 0, 0.15, -0.3); lf.scale.set(0.35, 1.2, 1); }
+    else { const fl = at(t, cone(0.12, 0.35, new THREE.MeshBasicMaterial({ color: 0xffa020 }), 8), 0, 0.25, -0.25); fl.userData.noOutline = true; at(t, cone(0.06, 0.2, new THREE.MeshBasicMaterial({ color: 0xfff060 }), 8), 0, 0.22, -0.22).userData.noOutline = true; }
+    return t; };
+  const spikes = (p, y, z0, n) => { for (let i = 0; i < n; i++) at(p, cone(0.07, 0.22, dark, 6), 0, y, z0 - i * 0.16).rotation.x = -0.5; };
+  if (plan === 'blob') { const b = at(g, ball(0.62, body, 28), 0, 0.5, 0); b.scale.set(1.15, 0.85, 1); if (pat === 'belly') at(g, ball(0.45, belly, 20), 0, 0.42, 0.25).scale.set(1, 0.7, 0.6); parts.head = b; face(g, 0.22, 0.7, 0.5); topper(g, 0.85, 0.22); }
+  else if (plan === 'biped') {
+    for (const sx of [-1, 1]) parts.legs.push(at(g, ball(0.17, dark, 14), sx * 0.24, 0.12, 0.05));
+    at(g, ball(0.42, body, 24), 0, 0.55, 0).scale.set(1, 1.05, 0.9); if (pat !== 'plain') at(g, ball(0.3, belly, 18), 0, 0.5, 0.18).scale.set(1, 1.1, 0.6);
+    for (const sx of [-1, 1]) at(g, ball(0.12, body, 12), sx * 0.45, 0.6, 0.05).scale.set(0.8, 1.4, 0.8);
+    const head = at(g, new THREE.Group(), 0, 1.15, 0.02); parts.head = head; at(head, ball(0.4, body, 24), 0, 0, 0); face(head, 0.16, 0.02, 0.33); topper(head, 0.3);
+    parts.tail = tailOf(g, 0, 0.45, -0.35); if (stage) spikes(g, 0.85, -0.3, 2 + stage);
+  } else if (plan === 'quad' || plan === 'dragon') {
+    const b = at(g, ball(0.5, body, 24), 0, 0.6, -0.1); b.scale.set(0.95, 0.78, 1.4);
+    for (const [x, z] of [[-0.3, 0.38], [0.3, 0.38], [-0.3, -0.5], [0.3, -0.5]]) { const l = at(g, new THREE.Group(), x, 0.42, z); at(l, cyl(0.11, 0.09, 0.42, dark, 10), 0, -0.21, 0); at(l, ball(0.11, dark, 8), 0, -0.42, 0.04).scale.set(1, 0.6, 1.3); parts.legs.push(l); }
+    const head = at(g, new THREE.Group(), 0, 0.95, 0.62); parts.head = head; at(head, ball(0.33, body, 20), 0, 0, 0); at(head, ball(0.19, belly, 14), 0, -0.1, 0.22).scale.set(1.1, 0.8, 1);
+    face(head, 0.14, 0.08, 0.26, 0.9); topper(head, 0.22, 0.15); parts.tail = tailOf(g, 0, 0.7, -0.75); spikes(g, 1.0, 0.2, 2 + stage * 2);
+    // Dragon wings: three long finger bones with a membrane between them, folded back a little.
+    if (plan === 'dragon') for (const sx of [-1, 1]) { const w = at(g, new THREE.Group(), sx * 0.32, 1.05, -0.15); w.rotation.y = sx * 0.4; for (let f = 0; f < 3; f++) { const bone = at(w, cyl(0.03, 0.015, 0.75 - f * 0.12, dark, 6), sx * (0.3 + f * 0.05), 0.25 - f * 0.12, -f * 0.12); bone.rotation.z = sx * (-1.0 + f * 0.35); } const mem = at(w, ball(0.45, toon(r[0], { side: THREE.DoubleSide, transparent: true, opacity: 0.85 }), 14), sx * 0.42, 0.12, -0.12); mem.scale.set(1, 0.6, 0.06); mem.rotation.z = sx * -0.5; mem.userData.noOutline = true; parts.wings.push(w); }
+  } else if (plan === 'bird') {
+    at(g, ball(0.48, body, 24), 0, 0.72, 0); at(g, ball(0.32, belly, 18), 0, 0.64, 0.25).scale.set(1, 1.1, 0.6);
+    face(g, 0.17, 0.88, 0.4); at(g, cone(0.08, 0.22, toon([255, 196, 60]), 8), 0, 0.76, 0.52).rotation.x = Math.PI / 2; topper(g, 1.0, 0.1);
+    for (const sx of [-1, 1]) { const w = at(g, new THREE.Group(), sx * 0.42, 0.78, 0); for (let f = 0; f < 3; f++) { const fe = at(w, ball(0.28 - f * 0.05, f ? dark : body, 12), sx * (0.2 + f * 0.12), -f * 0.06, -f * 0.05); fe.scale.set(1.3, 0.22, 0.75); } parts.wings.push(w); }
+    for (const sx of [-1, 1]) at(g, cyl(0.03, 0.03, 0.32, toon([255, 196, 60]), 6), sx * 0.15, 0.17, 0); parts.tail = tailOf(g, 0, 0.65, -0.4);
+  } else if (plan === 'bug') {
+    at(g, ball(0.4, dark, 20), 0, 0.42, -0.38).scale.set(1, 0.8, 1.25); const hd = at(g, ball(0.36, body, 20), 0, 0.56, 0.2); parts.head = hd;
+    face(g, 0.15, 0.62, 0.5, 0.9);
+    for (let k = 0; k < 3; k++) for (const sx of [-1, 1]) { const l = at(g, cyl(0.03, 0.02, 0.5, dark, 6), sx * 0.35, 0.2, -0.1 - k * 0.2); l.rotation.z = sx * 1.0; parts.legs.push(l); }
+    for (const sx of [-1, 1]) { const a = at(g, cyl(0.016, 0.016, 0.42, dark, 6), sx * 0.12, 0.96, 0.3); a.rotation.z = sx * -0.4; at(a, ball(0.05, accent, 8), 0, 0.22, 0); }
+    if (bit(7, 2)) for (const sx of [-1, 1]) { const w = at(g, new THREE.Group(), sx * 0.2, 0.75, -0.3); const m = at(w, ball(0.35, new THREE.MeshPhongMaterial({ color: 0xcfe9ff, transparent: true, opacity: 0.55, shininess: 120 }), 12), sx * 0.3, 0.1, 0); m.scale.set(1, 0.15, 0.6); m.userData.noOutline = true; parts.wings.push(w); }
+  } else if (plan === 'fish') {
+    const b = at(g, ball(0.5, body, 24), 0, 0.65, 0); b.scale.set(0.8, 0.9, 1.3); parts.head = b; face(g, 0.2, 0.75, 0.55);
+    for (const sx of [-1, 1]) { const fin = at(g, cone(0.18, 0.4, accent, 3), sx * 0.42, 0.55, 0.1); fin.rotation.z = sx * 1.9; fin.scale.set(1, 1, 0.3); parts.wings.push(fin); }
+    const top = at(g, cone(0.22, 0.5, accent, 3), 0, 1.15, -0.1); top.scale.set(0.3, 1, 1);
+    const tl = at(g, new THREE.Group(), 0, 0.65, -0.65); at(tl, cone(0.3, 0.45, accent, 3), 0, 0, -0.15).rotation.x = -Math.PI / 2; parts.tail = tl; parts.float = true;
+  } else if (plan === 'golem') {
+    const torso = at(g, new THREE.Mesh(new THREE.DodecahedronGeometry(0.55), body), 0, 0.85, 0); torso.scale.set(1.1, 1, 0.85);
+    for (const sx of [-1, 1]) { parts.legs.push(at(g, new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.45, 0.32), dark), sx * 0.25, 0.22, 0)); const arm = at(g, new THREE.Mesh(new THREE.DodecahedronGeometry(0.22), dark), sx * 0.7, 0.75, 0.1); arm.scale.set(1, 1.6, 1); }
+    const head = at(g, new THREE.Group(), 0, 1.45, 0.05); parts.head = head; at(head, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.45), body), 0, 0, 0); face(head, 0.12, 0.02, 0.24, 0.85);
+    for (let k = 0; k < 4 + stage * 2; k++) at(g, new THREE.Mesh(new THREE.OctahedronGeometry(0.1), accent), Math.cos(k * 1.7) * 0.45, 1.0 + Math.sin(k * 2.3) * 0.25, 0.35);
+  } else if (plan === 'ghost') {
+    const b = at(g, ball(0.5, body, 24), 0, 0.95, 0); b.scale.set(1, 1.1, 0.9); parts.head = b; face(g, 0.18, 1.02, 0.42);
+    for (let k = 0; k < 5; k++) at(g, cone(0.14, 0.4, body, 8), Math.cos(k * 1.26) * 0.32, 0.45, Math.sin(k * 1.26) * 0.28).rotation.x = Math.PI;
+    for (const sx of [-1, 1]) { const arm = at(g, ball(0.12, body, 10), sx * 0.55, 0.95, 0.1); arm.scale.set(1.4, 0.7, 0.7); parts.wings.push(arm); } parts.float = true;
+  } else if (plan === 'sprout') {
+    const pot = at(g, cyl(0.38, 0.3, 0.45, dark, 16), 0, 0.22, 0); const b = at(g, ball(0.42, body, 22), 0, 0.72, 0); parts.head = b; face(g, 0.17, 0.75, 0.36);
+    for (let k = 0; k < 3; k++) { const lf = at(g, ball(0.25, toon([90, 200, 90]), 10), Math.cos(k * 2.1) * 0.2, 1.25, Math.sin(k * 2.1) * 0.2); lf.scale.set(0.35, 1.2, 1); lf.rotation.z = Math.cos(k * 2.1) * 0.6; parts.wings.push(lf); }
+    if (bit(8, 2)) at(g, ball(0.12, toon([255, 120, 180]), 10), 0, 1.5, 0);
   } else {
-    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 1.6; at(g, ball(0.2 - k * 0.006, k % 2 ? body : dark, 12), Math.cos(a) * 0.45, 0.18 + k * 0.02, Math.sin(a) * 0.45 - 0.1); }
-    const head = at(g, new THREE.Group(), 0.45, 0.85, 0.15); parts.head = head; at(head, ball(0.3, body, 18), 0, 0, 0).scale.set(1, 0.85, 1.2); eyes(head, 0.12, 0.08, 0.28, 0.85);
+    for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 1.7; at(g, ball(0.21 - k * 0.006, k % 2 ? body : dark, 14), Math.cos(a) * 0.45, 0.18 + k * 0.025, Math.sin(a) * 0.45 - 0.1); }
+    const head = at(g, new THREE.Group(), 0.45, 0.9, 0.15); parts.head = head; at(head, ball(0.3, body, 20), 0, 0, 0).scale.set(1, 0.85, 1.2); face(head, 0.12, 0.08, 0.3, 0.85); topper(head, 0.18, 0.12);
   }
-  if (/FOIL|HOLO/.test(nm)) g.traverse(o => { if (o.material?.shininess !== undefined) { o.material.shininess = 160; o.material.specular = new THREE.Color(0xffffff); } });
-  g.userData = { parts, tick(t) { g.position.y = Math.abs(Math.sin(t * 2.2)) * 0.04; const p = parts; if (p.head) p.head.rotation.y = Math.sin(t * 1.3) * 0.15; p.legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 4 + i) * 0.08; }); p.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * Math.sin(t * 7) * 0.4; }); if (p.tail) p.tail.rotation.z = Math.sin(t * 3) * 0.3; } };
-  return g;
+  if (stage) g.scale.setScalar(1 + 0.12 * stage);
+  if (stage >= 2) for (const sx of [-1, 1]) at(g, new THREE.Mesh(new THREE.OctahedronGeometry(0.12), accent), sx * 0.42, 0.95, 0.12); // armour studs at the last stage
+  if (/FOIL|HOLO/.test(nm)) g.traverse(o => { if (o.material?.isMeshToonMaterial) o.material.emissive = new THREE.Color(0x222244); });
+  outline(g);
+  const outer = new THREE.Group(); outer.add(g); // the bob is the inner group's, so placing and fainting move the outer one
+  outer.userData = { parts, plan, tick(t) { const p = parts; g.position.y = (p.float ? 0.25 + Math.sin(t * 1.8) * 0.12 : Math.abs(Math.sin(t * 2.2)) * 0.04); if (p.head) p.head.rotation.y = Math.sin(t * 1.3) * 0.15; p.legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 4 + i) * 0.1; }); p.wings.forEach((w, i) => { w.rotation.z = (i % 2 ? -1 : 1) * Math.sin(t * 7) * 0.35; }); if (p.tail) p.tail.rotation.y = Math.sin(t * 3) * 0.4; } };
+  return outer;
 }
 
 export function createBattle3D(canvas, { scale = 3 } = {}) {

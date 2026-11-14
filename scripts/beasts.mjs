@@ -111,10 +111,15 @@ function drawFrame(nm, type, sh, f, back, shut = false) {
   if (/MINT/.test(nm)) { line(cx + 1, headTop - 1, cx + 3, headTop - 5, 2); blob(cx + 4, headTop - 5, 2, 1.3, 1); }
   if (/BENT|CREASE/.test(nm)) for (let k = 0; k < 4; k++) line(cx + 6 + k, headTop + k, cx + 9, headTop + k, -1);
   if (/PENNY/.test(nm)) { blob(cx + 9, 26, 2.6, 2.6, 0); px(cx + 9, 26, 2); }
+  // MORE VARIATIONS (2026-11-14): stripes or a belly patch by name, and three kinds of eyes (round, angry, sleepy).
+  const look = hashOf(nm + 'look');
+  if (look % 3 === 1) for (let y = 0; y < N; y++) if (y % 5 === 2) for (let x = 0; x < N; x++) if (g[y][x] === 1) g[y][x] = 2;
+  if (look % 3 === 2 && !back) for (let y = 18; y < 28; y++) for (let x = 0; x < N; x++) if (g[y][x] === 1 && Math.abs(x - cx) < 5) g[y][x] = 0;
   // ── the face (front only) ──
   if (!back) {
-    if (shut) for (const s of [-1, 1]) { const ex = cx + s * eyeDX; line(ex - 2, eyeY, ex + 1, eyeY, 3); } // a blink
-    else for (const s of [-1, 1]) { const ex = cx + s * eyeDX; for (let y = -3; y <= 3; y++) for (let x = -2; x <= 2; x++) { const e = (x / 2.5) ** 2 + (y / 3.4) ** 2; if (e <= 1) px(ex + x, eyeY + y, e > 0.62 ? 3 : 0); } for (const [a, c] of [[0, 0], [-s, 0], [0, 1], [-s, 1]]) px(ex + a, eyeY + c, 3); px(ex - s, eyeY - 1, 0); } // big eyes looking a little inward, a glint
+    const eyeKind = (look >>> 4) % 3;
+    if (shut || eyeKind === 2) for (const s of [-1, 1]) { const ex = cx + s * eyeDX; line(ex - 2, eyeY, ex + 1, eyeY, 3); if (eyeKind === 2 && !shut) line(ex - 2, eyeY - 1, ex + 1, eyeY - 1, 3); } // a blink, or sleepy eyes
+    else for (const s of [-1, 1]) { const ex = cx + s * eyeDX; for (let y = -3; y <= 3; y++) for (let x = -2; x <= 2; x++) { const e = (x / 2.5) ** 2 + (y / 3.4) ** 2; if (e <= 1) px(ex + x, eyeY + y, e > 0.62 ? 3 : 0); } for (const [a, c] of [[0, 0], [-s, 0], [0, 1], [-s, 1]]) px(ex + a, eyeY + c, 3); px(ex - s, eyeY - 1, 0); if (eyeKind === 1) line(ex - 3, eyeY - 4 - (s > 0 ? 0 : 1), ex + 2, eyeY - 4 - (s > 0 ? 1 : 0), 3); } // big eyes looking a little inward, a glint (angry: a slanted brow)
     const grin = hashOf(nm + 'm') % 3; if (grin === 0) line(cx - 2, mouthY, cx + 2, mouthY, 3); else if (grin === 1) { line(cx - 2, mouthY, cx + 2, mouthY, 3); px(cx - 3, mouthY - 1, 3); px(cx + 3, mouthY - 1, 3); px(cx + 1, mouthY + 1, 0); } else { blob(cx, mouthY + 1, 2, 1.4, 2); px(cx, mouthY + 1, 3); }
     if (type === 'bird') { px(cx, eyeY + 3, 3); px(cx - 1, eyeY + 3, 3); px(cx, eyeY + 4, 3); } // a beak
   } else {

@@ -103,7 +103,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=2')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=3')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
 }
@@ -116,4 +116,12 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   assert.ok(room.includes("else if (kind === 'area') options = areaOptions(") && room.includes("if (v.kind === 'area')"));
   assert.ok(b3.includes('export function createWorld3D(canvas') && sb.includes("b3d.createWorld3D(canvas"));
   console.log('Area vote + 3D route: passed');
+}
+// Better models, more variations (2026-11-14): eleven body plans, toon outline, parts by name; 2D stripes and eye kinds.
+{
+  const b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8');
+  for (const k of ["'fish', 'dragon', 'golem', 'ghost', 'sprout'", 'MeshToonMaterial', 'function outline(', 'export function planOf(', "['round', 'angry', 'sleepy']"]) assert.ok(b3.includes(k), k);
+  assert.ok(src.includes("const look = hashOf(nm + 'look');") && src.includes('const eyeKind = (look >>> 4) % 3;'));
+  assert.ok(!/Math\.random/.test(b3));
+  console.log('Beast models: passed');
 }
