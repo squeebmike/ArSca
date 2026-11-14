@@ -92,7 +92,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
 // Symbiote Mr Fister, his beard, the back of his cap (2026-11-14).
 {
   const g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8'), ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
-  assert.ok(g3.includes('SYMBIOTE MODE') && g3.includes("mode(name, on) { model?.mode?.(name, on); }") && !g3.includes('the goatee point'), 'symbiote mode; no cone beard');
+  assert.ok(g3.includes("cracks: () => paintTex('cracks'") && g3.includes('Big green bug eyes') && g3.includes('SYMBIOTE MODE') && g3.includes("mode(name, on) { model?.mode?.(name, on); }") && !g3.includes('the goatee point'), 'symbiote mode; no cone beard');
   assert.ok(g3.includes('his fist emblem on the back of the cap'));
   assert.ok(ov.includes("fisterView.mode('goo',e.kind==='fistergoo')") && ctl.includes("['fistergoo','🖤 SYMBIOTE FISTER']"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.ok(M.EFFECTS.includes('fistergoo'));

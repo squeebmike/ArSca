@@ -107,6 +107,10 @@ const fisterMaps = {
   denim: () => paintTex('denim', 128, 128, (x, w, h) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h); for (let d = -h; d < w; d += 3) { x.strokeStyle = `rgba(0,0,30,${0.12 + 0.08 * fixed(d, 2)})`; x.beginPath(); x.moveTo(d, h); x.lineTo(d + h, 0); x.stroke(); } for (let k = 0; k < 300; k++) { x.fillStyle = `rgba(255,255,255,${fixed(k, 9) * 0.15})`; x.fillRect(fixed(k, 10) * w, fixed(k, 11) * h, 2, 1); } }, [3, 3]),
   hair: () => paintTex('hair', 128, 128, (x, w, h) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h); for (let k = 0; k < 700; k++) { const x0 = fixed(k, 12) * w, y0 = fixed(k, 13) * h, l = 4 + fixed(k, 14) * 8, a = Math.PI / 2 + (fixed(k, 15) - 0.5) * 0.7; x.strokeStyle = `rgba(0,0,0,${0.25 + fixed(k, 16) * 0.35})`; x.lineWidth = 1; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x0 + Math.cos(a) * l, y0 + Math.sin(a) * l); x.stroke(); } }, [3, 3]),
   steel: () => paintTex('steel', 128, 128, (x, w, h) => { const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#c9cdd2'); g.addColorStop(1, '#ffffff'); x.fillStyle = g; x.fillRect(0, 0, w, h); for (let y = 0; y < h; y++) { x.fillStyle = `rgba(0,0,0,${0.03 + 0.05 * fixed(y, 17)})`; x.fillRect(0, y, w, 1); } for (let k = 0; k < 24; k++) { x.strokeStyle = 'rgba(40,40,40,.35)'; const x0 = fixed(k, 18) * w, y0 = fixed(k, 19) * h; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x0 + (fixed(k, 20) - 0.5) * 30, y0 + (fixed(k, 21) - 0.5) * 10); x.stroke(); } }),
+  // Glowing cracks for the symbiote goo: branching lines, a fixed pattern, lit only where the lines are.
+  cracks: () => paintTex('cracks', 256, 256, (x, w, h) => { x.fillStyle = '#000'; x.fillRect(0, 0, w, h); x.strokeStyle = '#7dff5a'; x.shadowColor = '#39ff14'; x.shadowBlur = 6; x.lineCap = 'round';
+    const branch = (x0, y0, a, len, wd, depth, k) => { if (depth > 4 || len < 4) return; let px = x0, py = y0; x.lineWidth = wd; x.beginPath(); x.moveTo(px, py); for (let s = 0; s < 6; s++) { a += (fixed(k, s + depth * 7) - 0.5) * 0.9; px += Math.cos(a) * len / 6; py += Math.sin(a) * len / 6; x.lineTo(px, py); } x.stroke(); branch(px, py, a + 0.6, len * 0.65, wd * 0.7, depth + 1, k * 3 + 1); if (fixed(k, depth) > 0.35) branch(px, py, a - 0.7, len * 0.6, wd * 0.65, depth + 1, k * 3 + 2); };
+    for (let k = 0; k < 9; k++) branch(fixed(k, 30) * w, fixed(k, 31) * h, fixed(k, 32) * Math.PI * 2, 90, 3.2, 0, k + 1); }, [2, 2]),
   emblem: () => paintTex('emblem', 128, 128, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#39ff14'; x.beginPath(); x.arc(64, 64, 58, 0, Math.PI * 2); x.fill(); x.fillStyle = '#0b0f0c'; x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2); x.fill(); x.fillStyle = '#39ff14'; x.fillRect(38, 46, 52, 34); for (let k = 0; k < 4; k++) x.fillRect(40 + k * 13, 34, 10, 14); x.fillRect(46, 80, 30, 22); x.fillStyle = '#0b0f0c'; for (let k = 1; k < 4; k++) x.fillRect(38 + k * 13 - 2, 34, 2, 14); }),
 };
 function fisterSkin() { return fisterSkinMat || (fisterSkinMat = mat(0xc4865e, { shininess: 22, specular: 0x332222, map: typeof document === 'undefined' ? null : fisterMaps.skin() })); }
@@ -223,11 +227,17 @@ const BUILD = {
     const glowFloor = add(root, new THREE.Mesh(new THREE.CircleGeometry(0.9, 32), glowM(0.12)), 0, -1.54, 0); glowFloor.rotation.x = -Math.PI / 2;
     // SYMBIOTE MODE (store, 2026-11-14: "hit the button and he looks venomized"): our own take -- black goo spreads up from
     // the gauntlet over all of him, glossy, with green veins, glowing green eyes and goo tendrils whipping off his back.
-    const gooMats = [skin, tee, jeans, beard, cap, faceM].map(m => ({ m, c: m === skin ? fisterSkin().color : m.color.clone(), sh: m.shininess })); // his skin follows the photo's tone (the shared master)
+    const crackMap = fisterMaps.cracks();
+    const gooMats = [skin, tee, jeans, beard, cap, faceM].map(m => { m.emissiveMap = crackMap; m.emissive = new THREE.Color(0, 0, 0); m.needsUpdate = true; return { m, c: m === skin ? fisterSkin().color : m.color.clone(), sh: m.shininess }; }); // his skin follows the photo's tone (the shared master)
     const gooBlack = new THREE.Color(0x050607);
     const tendrils = [], gooTex = mat(0x050607, { shininess: 220, specular: 0x8899aa });
     for (let k = 0; k < 6; k++) { const g = new THREE.Group(); g.position.set((k % 3 - 1) * 0.28, 0.15 + Math.floor(k / 3) * 0.12, -0.25); body.add(g); const balls = []; for (let n = 0; n < 16; n++) balls.push(add(g, ball(0.12 * (1 - n / 19), gooTex, 10), 0, 0, 0)); g.visible = false; tendrils.push({ g, balls, k }); }
-    const gooEyes = []; for (const sx of [-1, 1]) { const e = add(head, new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: 0x39ff14 })), sx * 0.1, 0.06, 0.33); e.scale.set(1.5, 0.6, 1); e.rotation.z = sx * -0.35; e.visible = false; gooEyes.push(e); }
+    // Big green bug eyes: glossy, bulging, slanted, glowing from inside, a glint on each.
+    const gooEyes = []; for (const sx of [-1, 1]) { const e = new THREE.Group(); e.position.set(sx * 0.12, 0.06, 0.24); e.rotation.set(0, sx * 0.35, sx * -0.45); head.add(e);
+      const lens = add(e, ball(0.1, new THREE.MeshPhongMaterial({ color: 0x1fbf10, emissive: 0x39ff14, emissiveIntensity: 0.9, shininess: 200, specular: 0xffffff }), 20), 0, 0, 0); lens.scale.set(1.25, 0.85, 0.75);
+      add(e, ball(0.12, new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending }), 14), 0, 0, 0).scale.set(1.3, 0.9, 0.8);
+      add(e, ball(0.022, new THREE.MeshBasicMaterial({ color: 0xffffff }), 8), -0.03 * sx, 0.035, 0.07);
+      e.visible = false; gooEyes.push(e); }
     let gooOn = false, gooK = 0, gooAt = 0;
     const seeded = (k, m) => ((Math.sin(k * 12.9898 + m * 78.233) * 43758.5453) % 1 + 1) % 1; // fixed per particle, no dice
     const ease = (a, b, k) => a + (b - a) * (k < 0 ? 0 : k > 1 ? 1 : k * k * (3 - 2 * k));
@@ -235,7 +245,11 @@ const BUILD = {
       // The goo: spreading in over 1.5 s (or peeling back off), from the gauntlet up.
       if (gooAt < 0) gooAt = t; const gk = gooOn ? Math.min(1, (t - gooAt) / 1.5) : Math.max(0, gooK - 0.05); gooK = gk;
       for (const o of gooMats) { o.m.color.copy(o.c).lerp(gooBlack, gk); if ('shininess' in o.m) o.m.shininess = o.sh + (220 - o.sh) * gk; }
-      gooEyes.forEach(e => { e.visible = gk > 0.6; e.material.color.setRGB(0.22, 1, 0.08).multiplyScalar(0.7 + 0.3 * Math.sin(t * 8)); });
+      gooEyes.forEach(e => { e.visible = gk > 0.5; e.scale.setScalar(Math.min(1, (gk - 0.5) * 3) * (1 + 0.04 * Math.sin(t * 6))); });
+      // The cracks: green glowing through the goo, pulsing, brighter as it takes hold.
+      const crackGlow = gk * (0.75 + 0.25 * Math.sin(t * 5));
+      for (const o of gooMats) o.m.emissive.setRGB(0.22 * crackGlow, 1 * crackGlow, 0.08 * crackGlow);
+      feats.visible = !fisterFaceOn && gk < 0.5;
       tendrils.forEach(({ g, balls, k }) => { g.visible = gk > 0.3; const reach = Math.min(1, (gk - 0.3) / 0.7); balls.forEach((b, n) => { const u = n / balls.length, a = k * 1.05 + Math.sin(t * 2.2 + k) * 0.5; b.position.set(Math.cos(a) * u * 1.3 * reach + Math.sin(t * 4 + n * 0.7 + k) * 0.1 * u, (Math.sin(a) * 0.8 + 0.45) * u * reach + Math.sin(t * 3 + n * 0.5) * 0.12 * u, -u * 0.45 * reach); }); });
       veins.forEach(v => { v.scale.set(1 + 2 * gk, 1, 1 + 2 * gk); });
       // THE FIST PUMP (1.8 s): wind up low, explode upward, hold it high with a shake, settle.
