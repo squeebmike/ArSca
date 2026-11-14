@@ -59,3 +59,19 @@ assert.ok(room.includes('s.beasts = addBeastDrop(s.beasts, kind, s.settings, now
   assert.equal(B.drainFor(99), B.BEAST_DRAIN_MS * 2, 'stamina tops out at double');
 }
 console.log('Beasts items, gifts, country, gyms, time of day: passed');
+// Mr Fister (2026-11-14): first dungeon boss, first gym leader, his face from the remote (never in the code).
+{
+  const bosses = await import('../scripts/live-studio-bosses.mjs'), dun = await import('../scripts/live-studio-dungeon.mjs');
+  assert.equal(dun.bossForFloor(1), 'fister'); assert.equal(bosses.BOSSES.fister.move, 'comics');
+  const r = (f => readFileSync(new URL('../scripts/' + f, import.meta.url), 'utf8'));
+  const g3 = r('live-studio-3d.mjs'), room = r('live-studio-room.mjs'), api = r('live-studio-api.mjs'), ov = r('live-studio-overlay.mjs'), ctl = r('live-studio-controls.js'), fp = r('shed-crawl-fp.mjs');
+  assert.ok(g3.includes('  fister(root) {') && g3.includes('export function setFisterFace(') && g3.includes('export function setFisterCovers('));
+  assert.ok(room.includes('setFisterFace(face) {') && room.includes("fisterFace:state.fisterFace || ''") && api.includes("/live-studio/fister-face"));
+  assert.ok(ov.includes("if(e.kind==='fister'&&fisterView)") && ov.includes("case 'fister':") && ctl.includes("['fister','✊ MR FISTER']") && ctl.includes("tag:'ratio'"));
+  assert.ok(fp.includes("if (mv === 'comics')") && fp.includes('bossFeet = feetOf('), 'the comic storm; the boss on its feet');
+  const M = await import('../scripts/live-studio-model.mjs');
+  assert.ok(M.EFFECTS.includes('fister'));
+  const { DurableObject } = { DurableObject: class {} };
+  assert.throws(() => { const f = String('data:image/png;base64,AAAA'); if (f && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(f) || f.length > 40000)) throw new Error('Face: a small JPEG only'); }, /small JPEG/);
+  console.log('Mr Fister: passed');
+}

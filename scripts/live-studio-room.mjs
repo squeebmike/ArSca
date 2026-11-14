@@ -44,7 +44,7 @@ export class ManaLiveStudio extends DurableObject {
     return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), beasts: publicBeasts(state.beasts, state.settings, state.beastStarter || ''), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
   }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], machine:this.pubMachine(state), serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], fisterFace:state.fisterFace || '', machine:this.pubMachine(state), serverNow:Date.now() };
   }
   // Which game is on.
   beastsOn(s) { return s.settings.gameMode === 'beasts'; }
@@ -271,6 +271,15 @@ export class ManaLiveStudio extends DurableObject {
     const cam = { yaw: clamp(input.yaw), pitch: clamp(input.pitch), action: ['scout', 'back'].includes(input.action) ? input.action : '', at: now };
     this.broadcast({ type: 'camera', cam, serverNow: now });
     return { cam };
+  }
+  // MR FISTER's face (store, 2026-11-14: "use the picture so we get his face to map over"): a small JPEG the remote
+  // cropped from his photo, kept in the room (never in the code), mapped onto his 3D head. '' clears it.
+  setFisterFace(face) {
+    const f = String(face || '');
+    if (f && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(f) || f.length > 40000)) throw new Error('Face: a small JPEG only');
+    const s = this.read(); s.fisterFace = f; this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
+    return this.publicState(s);
   }
   setPics(list) {
     const s = this.read();

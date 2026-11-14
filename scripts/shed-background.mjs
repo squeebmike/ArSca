@@ -297,7 +297,10 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
       let settings0 = {}, lastHp = NaN, hideNear = true, rage = { key: '', seen: -1 }, testUntil = 0;
+      let faceShown = '';
       onState = m => { if (m.type === 'camera') { fp?.setCamera?.(m.cam); return; }
+        // Mr Fister's face (the remote's photo): on his 3D head, and the boss's photos retaken if he's up.
+        if (typeof m.fisterFace === 'string' && m.fisterFace !== faceShown && gl3d?.setFisterFace) { faceShown = m.fisterFace; gl3d.setFisterFace(m.fisterFace); setTimeout(() => { if (bossId !== 'fister') return; try { const a2 = gl3d.bakeBoss('fister', { size: 96 }); if (a2) fp.setBoss(a2); } catch {} }, 1500); }
         // The remote's TEST A BOSS ATTACK: into the arena for 8 seconds, and the boss attacks.
         if (m.type === 'attack') { if (beastsOn || vendOn) return; const d = stats?.dungeon; testUntil = Date.now() + 8000; if (d) { paint(); setTimeout(() => fp.attack(bosses.bossById(d.boss.character).move), 2600); setTimeout(paint, 8100); } return; } if (m.settings) { settings0 = m.settings; miniOn = m.settings.miniMap !== false && m.settings.gameMode === 'dungeon'; if ((m.settings.crawlSharp === true) !== sharp) { sharp = m.settings.crawlSharp === true; topH = 0; build(850); bossId = ''; } hideNear = m.settings.foreground !== false && m.settings.dungeonOn !== false; canvas.style.visibility = m.settings.crawlWindow === true ? 'hidden' : ''; } if (m.settings && Number.isFinite(Number(m.settings.y))) build(m.settings.y); if (Number.isFinite(m.serverNow)) offset = m.serverNow - Date.now(); if (m.stats) stats = m.stats; if (m.stage) stage = m.stage; if (Array.isArray(m.pics)) shedPics = m.pics; if (m.machine) lastMachine = m.machine; if (lastMachine) drawMachine(lastMachine, vmLook()); paint(); if (m.effect && (m.type === 'effect' || m.fresh)) battleFx(m.effect); };
       setInterval(paint, 5000);

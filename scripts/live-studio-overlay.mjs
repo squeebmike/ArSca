@@ -21,7 +21,7 @@ let hype={level:0,at:Date.now()};
 let lastNowTitle=null, soldLine=0, lastPhase='';
 // Polished-N64 3D (scripts/live-studio-3d.mjs): the boss and the coins. If
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
-let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null, fisterView=null, fisterCovers='';
+let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null, fisterView=null, fisterCovers='', fisterFaceShown='';
 import('./live-studio-3d.mjs').then(m=>{
   gl3d=m;fpBoss='';
   try{
@@ -30,7 +30,7 @@ import('./live-studio-3d.mjs').then(m=>{
     effectBoss=m.createBossView($('mana-effect-boss'),{size:420,fov:28,ps1});
     coinLayer=m.createCoinLayer($('mana-coins-3d'));
     // MR FISTER's pop-up: his own smooth view (the stream's "PS2" look, not the PS1 one).
-    fisterView=m.createBossView($('mana-fister'),{size:560,fov:26,ps1:false});fisterView.set('fister');fisterCovers='';setGauntlet();
+    fisterView=m.createBossView($('mana-fister'),{size:560,fov:20,ps1:false,lookY:0.55});fisterView.set('fister');fisterCovers='';setGauntlet();if(fisterFaceShown)m.setFisterFace(fisterFaceShown);
     gl=m;document.body.classList.add('mana-3d');drawnBoss='';apply(settings);bossView.start();
     // Read-only peek for tests: is 3D on, which boss, how many coins in the air.
     window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels(),ps1:bossView.ps1,exploded:effectBoss.exploded});
@@ -637,6 +637,7 @@ function connect() {
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
+    if(typeof m.fisterFace==='string'&&m.fisterFace!==fisterFaceShown){fisterFaceShown=m.fisterFace;gl3d?.setFisterFace?.(m.fisterFace);}
     if(m.machine||m.settings)paintMachine(m.machine||machine);
     if(m.stats)paintStats(m.stats,m.type==='effect'||m.type==='stats');
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};
