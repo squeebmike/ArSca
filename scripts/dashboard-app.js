@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.14.2-mtg-paste';
+const APP_VERSION = '2026.11.14.3-byterider-home';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -41800,9 +41800,13 @@ function currentBuySessionCustomer(){
 // leftover fractional cent, not from any actual override. Flooring the
 // basis first means a 100% offer on a $36.88 item is a clean $36.00: the
 // price the item is actually bought/written up at.
+// THE CORRECT MATH (store, 2026-11-14: "Let's just make it do the correct math" -- a 191-card Magic list showed a
+// $268 offer on $163 of market at 100%): every card is its real market value, to the cent, times the offer %.
+// No whole-dollar flooring of the market (a $0.75 card counted as $0), no $1 minimum per card, no flat bulk
+// prices -- so 100% is exactly the market and Offer % reads true.
 function buyItemPricingBasis(item){
   const raw = Number(item.market || item.priceUsed || 0);
-  return raw > 0 ? Math.floor(raw) : 0;
+  return raw > 0 ? Math.round(raw * 100) / 100 : 0;
 }
 function buyItemOfferValue(item, pctOverride){
   // BUY OFFER ROUNDING: offers/cost basis are whole dollars, rounded DOWN
@@ -41822,9 +41826,8 @@ function buyItemOfferValue(item, pctOverride){
   // $1.01-$1.99 card, doesn't land on a sane whole-dollar number either way.
   // Store policy prices the whole bracket directly instead: a clean $1.00 at
   // a full (100%) offer, or a flat $0.50 at anything less than that.
-  const raw = Number(item.market || item.priceUsed || 0);
-  if(raw > 0 && raw < 2) return pct >= 1 ? 1 : 0.5;
-  return roundBuyOffer(buyItemPricingBasis(item) * pct);
+  // Market x %, rounded down to the cent.
+  return Math.floor(buyItemPricingBasis(item) * pct * 100 + 1e-6) / 100;
 }
 // A card research genuinely can't find a price for still needs to be
 // buyable -- the customer's offer gets typed straight into the $offer
@@ -49867,6 +49870,8 @@ window.linkWhatnotListingsNow = linkWhatnotListingsNow;
 const BYTE_DASH_LINES = ['SCAN SOMETHING. I\'M BORED.', 'PRICE SYNC HAS CHANGES WAITING? JUST SAYING.', 'GO LIVE ON WHATNOT. I\'LL HANDLE THE HYPE.', 'I\'M NOT RUNNING EVERYTHING. (I AM.)', 'COUNT TWICE, SHIP ONCE.', 'THE SCALPER FEARS YOU.'];
 window.byteRiderDash = null;
 async function mountDashByteRider(){
+  // The Mana Pocket's own mascot (2026-11-14: "does Dave have the ByteRider_97? He shouldn't"): other stores never get him.
+  if(getActiveStoreId() !== HOME_STORE_ID){ document.getElementById('byterider-dash')?.remove(); window.byteRiderDash = null; return; }
   try { if(localStorage.getItem('byterider-dash-hidden') === '1' || document.getElementById('byterider-dash')) return; } catch(_) {}
   let m;
   try { m = await import('./byterider.mjs?v=' + encodeURIComponent(APP_VERSION)); } catch(_) { return; }
@@ -49903,6 +49908,7 @@ async function mountDashByteRider(){
 // bag, expenses or any item. He looks it up; he can't change anything.
 const staffByteRiderChat = [];
 function openStaffByteRider(){
+  if(getActiveStoreId() !== HOME_STORE_ID) return;
   let box = document.getElementById('byterider-staff');
   if(box){ box.style.display = box.style.display === 'none' ? 'flex' : 'none'; box.querySelector('input')?.focus(); return; }
   box = document.createElement('div');
