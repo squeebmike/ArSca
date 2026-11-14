@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.14.6-mtg-chart';
+const APP_VERSION = '2026.11.14.7-mtg-chart-why';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36803,7 +36803,8 @@ async function openQplChartModal(idx, range='3M'){
     if(!modal){ modal = document.createElement('div'); modal.id = 'qpl-chart-modal'; modal.className = 'qpl-chart-modal'; modal.addEventListener('click', e => { if(e.target === modal) closeQplChartModal(); }); document.body.appendChild(modal); }
     modal.innerHTML = '<div class="qpl-chart-card"><div style="color:var(--dim);font-size:11px;padding:14px 0">Loading the price chart...</div></div>';
     modal.classList.add('on');
-    const points = await fetchMtgChartHistory(r, r.graphDuration).catch(() => null);
+    r._mtgChartMiss = '';
+    const points = await fetchMtgChartHistory(r, r.graphDuration).catch(e => { r._mtgChartMiss = 'JustTCG: ' + (e?.message || e); return null; });
     if(points && points.length > 1){
       const rr = { ...r, selectedVariant:{ ...(r.selectedVariant || {}), marketPrice:Number(r.market || 0), priceHistory:points }, chartSource:'JustTCG (TCGplayer sales) history' };
       modal.innerHTML = qplChartModalHtml(rr, idx);
@@ -36841,6 +36842,7 @@ async function openQplChartModal(idx, range='3M'){
           <div><div class="qpl-price">${price?'$'+price.toFixed(2):'—'}</div>
           <div class="qpl-price-sub">${escHtml(finish)} · Scryfall</div></div>
         </div>
+        ${r._mtgChartMiss ? `<div style="font-size:10px;color:var(--gold);margin-top:10px">No chart: ${escHtml(r._mtgChartMiss)}</div>` : ''}
         ${bodyHtml}
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">${extLinks}</div>
       </div>`;
@@ -36949,6 +36951,7 @@ function mtgChartPoints(list){
 function mtgChartFinishKey(v = {}){ const t = [v.finishName, v.printing, v.finish].join(' '); return /etch/i.test(t) ? 'etched_foil' : /foil/i.test(t) ? 'foil' : 'normal'; }
 async function fetchMtgChartHistory(r, duration = '90d'){
   const id = String(r.tcgplayerId || r.tcgPlayerId || r.raw?.tcgplayer_id || '').trim(); if(!id) return null;
+  if(!['7d','30d','90d','180d'].includes(duration)) duration = '180d';
   const fin = mtgFinishPriceFamily(r.selectedFinish || r.finish || 'normal'), key = id + '|' + duration;
   let entry = _mtgChartMem.get(key) || mtgChartCacheRead()[key];
   if(!entry || Date.now() - Number(entry.at || 0) >= MTG_CHART_TTL){
@@ -36956,7 +36959,7 @@ async function fetchMtgChartHistory(r, duration = '90d'){
     const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/tcgplayer/' + encodeURIComponent(id) + '?' + new URLSearchParams({ priceHistoryDuration:duration, storeId:getActiveStoreId() }).toString(), { cache:'no-store' });
     const data = await res.json().catch(() => ({}));
     const match = data.matches?.[0] || data.card || null;
-    if(!res.ok || !match) return null;
+    if(!res.ok || !match){ r._mtgChartMiss = 'JustTCG: ' + (data.error || (res.ok ? 'no match for this TCGplayer product' : 'HTTP ' + res.status)); return null; }
     const byFinish = {};
     for(const v of (match.availableVariants || [])){
       if(String(v.condition || 'NM').toUpperCase() !== 'NM') continue;
@@ -36966,7 +36969,9 @@ async function fetchMtgChartHistory(r, duration = '90d'){
     entry = { at:Date.now(), byFinish };
     mtgChartCacheWrite(key, entry);
   }
-  return entry.byFinish?.[fin] || null;
+  const pts = entry.byFinish?.[fin] || null;
+  if(!pts) r._mtgChartMiss = 'JustTCG has no ' + qplFinishLabel(fin) + ' Near Mint history for this printing' + (Object.keys(entry.byFinish || {}).length ? ' (has: ' + Object.keys(entry.byFinish).map(qplFinishLabel).join(', ') + ')' : '') + '.';
+  return pts;
 }
 function closeQplChartModal(){ document.getElementById('qpl-chart-modal')?.classList.remove('on'); }
 
