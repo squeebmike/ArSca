@@ -21,7 +21,7 @@ let hype={level:0,at:Date.now()};
 let lastNowTitle=null, soldLine=0, lastPhase='';
 // Polished-N64 3D (scripts/live-studio-3d.mjs): the boss and the coins. If
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
-let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null;
+let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null, fisterView=null, fisterCovers='';
 import('./live-studio-3d.mjs').then(m=>{
   gl3d=m;fpBoss='';
   try{
@@ -29,6 +29,8 @@ import('./live-studio-3d.mjs').then(m=>{
     bossView=m.createBossView($('mana-boss-3d'),{size:280,ps1});
     effectBoss=m.createBossView($('mana-effect-boss'),{size:420,fov:28,ps1});
     coinLayer=m.createCoinLayer($('mana-coins-3d'));
+    // MR FISTER's pop-up: his own smooth view (the stream's "PS2" look, not the PS1 one).
+    fisterView=m.createBossView($('mana-fister'),{size:560,fov:26,ps1:false});fisterView.set('fister');fisterCovers='';setGauntlet();
     gl=m;document.body.classList.add('mana-3d');drawnBoss='';apply(settings);bossView.start();
     // Read-only peek for tests: is 3D on, which boss, how many coins in the air.
     window.manaStudio3d=()=>({boss:bossView.id,coins:coinLayer.count,bossPixels:bossView.litPixels(),ps1:bossView.ps1,exploded:effectBoss.exploded});
@@ -149,7 +151,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=19').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=20').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked){fp.setModels(baked);front?.setModels(baked);}}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -177,7 +179,7 @@ function paintCrawl(d,center){
   if(win&&fp){
     fp.set({floor:d.floor,shed:d.shed,pct:d.pct,phase:d.phase,chests:[0,1,2].map(k=>(d.opened||[]).includes(k)),boxes:[0,1].map(k=>!!d.boxes?.[k]?.open),secret:d.secret?{frac:d.secret.frac,broken:d.secret.broken}:null,merchant:stats.vote?.kind==='merchant',day:fpLib.dayPhase(stats.startedAt,Date.now()+offset),weather:fpLib.weatherFor(d.floor,Date.now()+offset),battery:batt,fork:d.fork||''});
     // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
-    if(fpBoss!==d.boss.character){fpBoss=d.boss.character;let anim=null;try{anim=gl3d?.bakeBoss?.(fpBoss,{size:96});}catch{}if(anim)fp.setBoss(anim);else void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
+    if(fpBoss!==d.boss.character){fpBoss=d.boss.character;let anim=null;if(fpBoss==='fister'){setGauntlet();setTimeout(()=>{if(fpBoss!=='fister')return;try{const a2=gl3d?.bakeBoss?.('fister',{size:96});if(a2)fp.setBoss(a2);}catch{}},4000);}try{anim=gl3d?.bakeBoss?.(fpBoss,{size:96});}catch{}if(anim)fp.setBoss(anim);else void drawBoss(fpBossCanvas,fpBoss,{size:48}).then(ok=>{if(ok)fp.setBoss(fpBossCanvas);});}
     if(!fpOn){fp.start();fpOn=true;}
     loadPictures();
   }
@@ -204,7 +206,9 @@ function paintCrawl(d,center){
 const FG_KINDS=['comics','pic','dollarbin','cardbox','pic','figure','pizza','pic','bucket','cardbox'];
 // The store's own items pass by in front too, in top loaders (2026-11-11).
 let fgImgs=[],fgUrls=[],baked=null;const fgShot=Object.assign(document.createElement('canvas'),{width:64,height:64});
-function loadFgPics(){const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgUrls=urls;fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
+// The gauntlet's stones: the store's ratio comics first, then foils, then any comic photo (through the image proxy).
+function setGauntlet(){if(!gl3d?.setFisterCovers)return;const list=[...shedPics.filter(p=>p.tag==='ratio'),...shedPics.filter(p=>p.tag==='foil'),...shedPics.filter(p=>p.kind==='comic'&&!p.tag)].map(p=>p.image).filter(Boolean).slice(0,5),key=list.join('|');if(!list.length||key===fisterCovers)return;fisterCovers=key;gl3d.setFisterCovers(list.map(studioImg));}
+function loadFgPics(){setGauntlet();const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24);fgUrls=urls;fgImgs=urls.map(u=>{const im=new Image();im.crossOrigin='anonymous';im.src=studioImg(u);return im;});}
 let fgShown=-1,fgTarget=0,fgFloor=0,fgOpened=[],fgBoxes=[],fgLast=0,fgIdx=0;
 // ── Boss fights (2026-11-12: "the bosses are lame") ──────────────────────
 // The entrance: lights flicker, a versus card slams in with the boss and its line.
@@ -356,10 +360,10 @@ function fgFrame(now){
   fgCam={x:Math.abs(cam.look)>1.2?0:-540*Math.tan(cam.look)/cam.fov,y:cam.pitch*fpH*0.28,hide:Math.abs(cam.look)>0.9};
   // Beside you and just ahead: fwd 0.15..1.6 cells, within a cell to the side.
   const near={'-1':null,'1':null};
-  for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx,reach=p.kind==='chest'?3:1.6;if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
+  for(const p of fgCache.props){const rx=p.x-eye.x,ry=p.y-eye.y,fwd=rx*dx+ry*dy,side=rx*-dy+ry*dx,reach=p.kind==='chest'?fpLib.NEAR_CHEST:fpLib.NEAR_PROP;if(fwd<0.15||fwd>reach||Math.abs(side)>1.05)continue;const k=side<0?'-1':'1';if(!near[k]||fwd<near[k].fwd)near[k]={...p,fwd};}
   for(const k of ['-1','1']){const cv=$(k==='-1'?'mana-fg-l':'mana-fg-r'),p=near[k];
     if(!p||fgCam.hide){cv.style.opacity='0';continue;}
-    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/(p.kind==='chest'?2.85:1.45))),p.kind,Number(k),p.kind==='chest'?fgOpened.includes(p.idx):p.kind==='lockbox'&&fgBoxes.includes(p.idx),p.idx);}
+    fgSide(cv,Math.min(0.98,Math.max(0.02,1-(p.fwd-0.15)/((p.kind==='chest'?fpLib.NEAR_CHEST:fpLib.NEAR_PROP)-0.15))),p.kind,Number(k),p.kind==='chest'?fgOpened.includes(p.idx):p.kind==='lockbox'&&fgBoxes.includes(p.idx),p.idx);}
 }
 requestAnimationFrame(fgFrame);
 function showPeek(t){const el=$('mana-fp-peek');el.textContent=t;el.classList.remove('on');void el.offsetWidth;el.classList.add('on');}
@@ -390,7 +394,7 @@ function revealItem(e){
   el.classList.toggle('from-chest',!!src);
   if(src){const top=parseFloat(el.style.top)||0,cx=src.x*1080/src.w,cy=src.y*850/src.h;el.style.setProperty('--fx',(cx-540)+'px');el.style.setProperty('--fy',(cy-(top+(isChest?260:240)))+'px');}
   el.classList.remove('mana-hidden','on');void el.offsetWidth;el.classList.add('on');
-  clearTimeout(revealItem.t);revealItem.t=setTimeout(()=>el.classList.add('mana-hidden'),7600);
+  clearTimeout(revealItem.t);revealItem.t=setTimeout(()=>el.classList.add('mana-hidden'),12000); // longer on screen, more spins (2026-11-14)
 }
 // CHAT PICKS: the numbered choices chat votes on (the host taps the winner).
 // An open door vote shows on its own.
@@ -552,6 +556,8 @@ function receiveEffect(e,initial=false) {
   if(initial && e.kind!=='countdown') return;
   if(played.has(e.id)) return;
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
+  // MR FISTER: he rises in, pumping the gauntlet (the line under him is the usual burst).
+  if(e.kind==='fister'&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.stop();},7600);}
   // A ByteRider reaction or line from the dashboard: just him, no burst.
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
   // BEASTS: chat picked an attack -- your beast uses it now.
@@ -587,6 +593,7 @@ function words(e) {
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
     // Show start: a boss-fight intro card.
     // Beasts' own moments.
+    case 'fister': return ['MR FISTER!','IF I CAN DO IT, YOU CAN!','THE GAUNTLET OF GRAILS'];
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];
       if(e.beastEvent==='learn')return [(e.beastName||'YOUR BEAST')+' HIT LV '+(e.level||'')+'!','IT CAN LEARN A NEW ATTACK','CHAT: NAME IT!'];
       return e.beastEvent==='badge'?[(e.gym?'GYM BADGE! ROUTE ':'ROUTE ')+(e.route||'')+(e.gym?'':' BADGE!'),'BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];

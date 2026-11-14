@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=9').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=9').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false, vendOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -254,7 +254,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         // A sale landing on the boss: the hall shakes (the overlay flashes over the hosts at the same time).
         const hp = d.phase === 'boss' ? Number(d.boss?.hp) : NaN; if (hp < lastHp) fp.hit?.(); lastHp = hp;
         // The boss in the arena: the 3D model, moving (flat pixel art without WebGL).
-        if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
+        if (bossId !== d.boss.character) { bossId = d.boss.character; let anim = null; if (bossId === 'fister' && gl3d?.setFisterCovers) { const g = [...shedPics.filter(p => p.tag === 'ratio'), ...shedPics.filter(p => p.tag === 'foil'), ...shedPics.filter(p => p.kind === 'comic' && !p.tag)].map(p => img(p.image)).slice(0, 5); gl3d.setFisterCovers(g); setTimeout(() => { if (bossId !== 'fister') return; try { const a2 = gl3d.bakeBoss('fister', { size: 96 }); if (a2) fp.setBoss(a2); } catch {} }, 4000); } try { anim = gl3d?.bakeBoss?.(bossId, { size: 96 }); } catch {} if (anim) fp.setBoss(anim); else void bosses.drawBoss(bossCanvas, bossId, { size: 48 }).then(ok => { if (ok) fp.setBoss(bossCanvas); }); }
       };
       // THE CLOSE-UP (2026-11-12: "item images need to be clearer, so we can tell
       // what they are"): the item you're walking right past, sharp, with its name and price.

@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.2';
+  const STUDIO_V='2026.11.14.3';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -129,7 +129,7 @@
   <h3>Quick</h3>
   <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button><button type="button" data-toggle="finale" data-key="V">FINALE ON/OFF <kbd>V</kbd></button></div>
   <h3>Effects</h3>
-  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
+  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
   <h3>ByteRider_97</h3>
   <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${box('mascotSounds','ByteRider sounds')}${box('showHype','Hype meter')}${box('mascotSaysMarquee','ByteRider says the marquee lines')}${num('mascotSayEvery','…one every (seconds)',10,600)}${box('mascotBorder','His bezel round the screen')}${box('mascotIdleFace','Keep a faint face up between reactions')}${num('mascotScale','Face size (%)',40,150)}${num('mascotFaceY','Face height on screen',250,1650)}</div>
@@ -391,6 +391,12 @@
     const lists=[...groups.values()].map(l=>l.sort((a,b)=>(b.price||0)-(a.price||0)).slice(0,30));
     if(!lists.length)return;
     const pick=[];for(let k=0;pick.length<24&&k<24*lists.length;k++){const l=lists[k%lists.length],n=Math.floor(k/lists.length);if(n<l.length)pick.push(l[(day*7+n)%l.length]);} // each in turn, starting somewhere new each day (no repeats)
+    // MR FISTER's gauntlet (2026-11-14: "comics from our inventory embedded in it like the power stones. Ratios mostly.
+    // Fall back to foils"): up to 5 covers tagged ratio (an incentive / 1:N variant) or foil, the priciest first.
+    const isRatio=i=>i.isIncentive===true||/\b1\s*:\s*\d+|\bratio\b|\bincentive\b/i.test([i.name,i.variant,i.set].join(' ')),isFoil=i=>/\bfoil\b/i.test([i.name,i.variant].join(' '));
+    const comicsIn=inventory().filter(i=>i.status==='in_stock'&&/comic/i.test(String(i.category||''))&&(https(i.thumbnail)||https(i.imageUrl))).sort((a,b)=>(Number(b.market||b.marketPrice||0))-(Number(a.market||a.marketPrice||0)));
+    const glove=[...comicsIn.filter(isRatio).map(i=>({...stageItem(i),tag:'ratio'})),...comicsIn.filter(i=>!isRatio(i)&&isFoil(i)).map(i=>({...stageItem(i),tag:'foil'}))].filter(it=>it.image&&!chanceFn(it.title+' '+it.detail)).slice(0,5);
+    pick.splice(Math.max(0,24-glove.length),glove.length,...glove);
     const uniq=[...new Map(pick.map(p=>[p.image,p])).values()];
     if(JSON.stringify((current||[]).map(p=>p.image))===JSON.stringify(uniq.map(p=>p.image)))return;
     took(await api('pics',{pics:uniq}));

@@ -254,7 +254,8 @@ export function itemsFor(route) { const f = Math.max(1, route | 0); return ITEM_
 // GYMS (store, 2026-11-14): every 5th route ends at a gym; its leader's beast has twice the HP, its badge is a gym badge.
 export const GYM_EVERY = 5;
 export const isGym = route => (Math.max(1, route | 0)) % GYM_EVERY === 0;
-export const GYM_LEADERS = [['LEADER GRADY', 'SLABTITAN'], ['LEADER FOLIA', 'HOLOPHOENIX'], ['LEADER MINTY', 'GEMMINTAUR'], ['LEADER KEYS', 'KEYSTONEX'], ['LEADER VARIA', 'VARIANTRIX']];
+// The first gym is MR FISTER's (store, 2026-11-14), his beast GRAILFIST.
+export const GYM_LEADERS = [['MR FISTER', 'GRAILFIST'], ['LEADER GRADY', 'SLABTITAN'], ['LEADER FOLIA', 'HOLOPHOENIX'], ['LEADER MINTY', 'GEMMINTAUR'], ['LEADER KEYS', 'KEYSTONEX'], ['LEADER VARIA', 'VARIANTRIX']];
 export const toGym = route => { const r = Math.max(1, route | 0); return (GYM_EVERY - (r % GYM_EVERY)) % GYM_EVERY; };
 // WHAT THE ITEMS DO (store, 2026-11-14: "make items do something"): CANDY, a STONE and a COIN are bonus XP for your
 // beast (a share of the route's goal -- levels and evolutions, never the walk itself); a BERRY, POTION, ETHER or

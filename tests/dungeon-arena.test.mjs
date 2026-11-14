@@ -134,7 +134,7 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
 }
 // 11. See-through glow and particles in front of the hosts; the polish (2026-11-13: "add all those features").
 {
-  assert.match(fp, /const FRONT = FG \|\| !!state\.hideNear, FXN = 3\.05;/, 'particles as close as the chests in front go on the front layer');
+  assert.match(fp, /const FRONT = FG \|\| !!state\.hideNear, FXN = NEAR_CHEST \+ 0\.05;/, 'particles as close as the chests in front go on the front layer');
   assert.match(fp, /const fx = \(i, col, a, tY\) => \{/); assert.match(fp, /glowAt\(pr\.x, pr\.y, 0\.22, 0\.42, \[255, 210, 90\]/, 'the chest\'s gleam');
   assert.match(fp, /chestBurst\[k\] = performance\.now\(\)/, 'a chest opening bursts');
   assert.match(fp, /hit\(\) \{ hitAt = performance\.now\(\); \}/); assert.match(fp, /screenOf\(kind, idx\)/);

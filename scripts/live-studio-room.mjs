@@ -274,7 +274,7 @@ export class ManaLiveStudio extends DurableObject {
   }
   setPics(list) {
     const s = this.read();
-    s.pics = validateStage({ now: null, next: (Array.isArray(list) ? list : []).slice(0, 24) }).next.filter(x => x.image).map(x => ({ title: x.title, image: x.image, ...(x.kind ? { kind: x.kind } : {}) }));
+    s.pics = validateStage({ now: null, next: (Array.isArray(list) ? list : []).slice(0, 24) }).next.filter(x => x.image).map(x => ({ title: x.title, image: x.image, ...(x.kind ? { kind: x.kind } : {}), ...(x.tag ? { tag: x.tag } : {}) }));
     this.write(s);
     this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);

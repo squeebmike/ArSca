@@ -73,9 +73,86 @@ function legs(parent, m, { y = -1.05, x = 0.32, len = 0.4 } = {}) {
   return out;
 }
 
+// ── MR FISTER's gauntlet covers ─────────────────────────────────────────
+// The store's own comic covers set in the glove like power stones (ratio variants first, foils next): five small
+// canvases every Mr Fister model shares; setFisterCovers() paints the covers in as they load (until then, a glowing
+// green placeholder). Images come through the studio's image proxy so WebGL can use them.
+let fisterTex = null;
+function fisterTextures() {
+  if (fisterTex) return fisterTex;
+  fisterTex = Array.from({ length: 5 }, (_, k) => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 96; const x = c.getContext('2d');
+    const g = x.createLinearGradient(0, 0, 64, 96); g.addColorStop(0, ['#39ff14', '#22e6ff', '#ff3fd2', '#ffe23d', '#ff2a4f'][k]); g.addColorStop(1, '#0b0612');
+    x.fillStyle = g; x.fillRect(0, 0, 64, 96); x.strokeStyle = '#fff'; x.lineWidth = 4; x.strokeRect(2, 2, 60, 92);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  });
+  return fisterTex;
+}
+export function setFisterCovers(urls = []) {
+  if (typeof document === 'undefined') return;
+  const list = (urls || []).filter(Boolean).slice(0, 5); if (!list.length) return;
+  const tex = fisterTextures();
+  tex.forEach((t, k) => {
+    const src = list[k % list.length], im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => { try { const x = t.image.getContext('2d'), sc = Math.max(64 / im.naturalWidth, 96 / im.naturalHeight); x.drawImage(im, (64 - im.naturalWidth * sc) / 2, (96 - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc); x.strokeStyle = '#39ff14'; x.lineWidth = 4; x.strokeRect(2, 2, 60, 92); t.needsUpdate = true; } catch {} };
+    im.src = src;
+  });
+}
+
 // ── the bosses ─────────────────────────────────────────────────────────
 // Each returns { root, tick(t) } -- tick runs the idle animation.
 const BUILD = {
+  fister(root) {
+    // MR FISTER (store, 2026-11-14): a friend of the shop, built from scratch -- backwards cap, full beard, black tee,
+    // and THE GAUNTLET OF GRAILS pumped in the air: steel, glowing green, the store's comic covers in the knuckles.
+    const skin = mat(0xc4865e, { shininess: 30 }), tee = mat(0x15171c, { shininess: 20 }), jeans = flat(0x262a33), beard = mat(0x21140d, { shininess: 10 });
+    const cap = mat(0x1e3a26, { shininess: 40 }), steel = mat(0x9aa3ad, { shininess: 160, specular: 0xffffff }), glow = new THREE.MeshBasicMaterial({ color: 0x39ff14 });
+    legs(root, jeans, { y: -0.95, x: 0.26, len: 0.52 });
+    const torso = add(root, cyl(0.52, 0.42, 1.02, tee, 14), 0, -0.42, 0); torso.scale.set(1, 1, 0.7);
+    for (const sx of [-1, 1]) add(root, ball(0.22, tee, 12), sx * 0.5, 0.02, 0).scale.set(1, 0.85, 0.8); // the shoulders
+    add(root, cyl(0.17, 0.2, 0.18, skin, 10), 0, 0.17, 0);
+    // The head: face, ears, nose, brows, a full beard and moustache, the cap on backwards.
+    const head = new THREE.Group(); head.position.set(0, 0.55, 0.02); root.add(head);
+    add(head, ball(0.4, skin, 18), 0, 0, 0).scale.set(0.95, 1.08, 0.95);
+    for (const sx of [-1, 1]) add(head, ball(0.08, skin, 8), sx * 0.38, -0.02, -0.02).scale.set(0.6, 1, 1);
+    add(head, ball(0.07, skin, 8), 0, -0.04, 0.38).scale.set(1, 1.1, 1.1);
+    const beardM = new THREE.Mesh(new THREE.SphereGeometry(0.415, 18, 12, 0, Math.PI * 2, Math.PI * 0.6, Math.PI * 0.4), beard); beardM.position.set(0, 0.0, 0.015); beardM.scale.set(0.99, 1.2, 1.03); head.add(beardM);
+    for (const sx of [-1, 1]) { const side = add(head, box(0.05, 0.2, 0.16, beard), sx * 0.355, -0.08, 0.12); side.rotation.y = sx * 0.5; } // the sideburns down into the beard
+    add(head, box(0.24, 0.045, 0.06, beard), 0, -0.12, 0.375);
+    add(head, box(0.13, 0.035, 0.05, mat(0x6b2f2a)), 0, -0.19, 0.4);
+    for (const sx of [-1, 1]) { add(head, ball(0.035, mat(0x0b0612, { shininess: 120 }), 8), sx * 0.13, 0.06, 0.35); const br = add(head, box(0.15, 0.035, 0.04, beard), sx * 0.13, 0.15, 0.36); br.rotation.z = sx * 0.12; }
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.425, 18, 10, 0, Math.PI * 2, 0, Math.PI * 0.5), cap); crown.position.set(0, 0.16, -0.03); crown.scale.set(1, 0.9, 1.02); head.add(crown);
+    add(head, cyl(0.43, 0.43, 0.05, cap, 18), 0, 0.165, -0.03); // the cap's band
+    const brim = add(head, box(0.42, 0.04, 0.32, cap), 0, 0.12, -0.5); brim.rotation.x = -0.18;
+    add(head, ball(0.04, cap, 6), 0, 0.53, -0.02);
+    // The left arm down, the right arm up with the gauntlet.
+    const armL = new THREE.Group(); armL.position.set(-0.6, -0.05, 0); root.add(armL); armL.rotation.z = -0.18;
+    add(armL, cyl(0.17, 0.15, 0.3, tee, 10), 0, -0.12, 0); add(armL, limb(skin, 0.75, 0.11), 0, -0.55, 0);
+    add(armL, ball(0.13, skin, 10), 0, -0.95, 0.02);
+    const shoulder = new THREE.Group(); shoulder.position.set(0.6, -0.05, 0); root.add(shoulder);
+    add(shoulder, cyl(0.17, 0.15, 0.3, tee, 10), 0, -0.12, 0); add(shoulder, limb(skin, 0.42, 0.11), 0, -0.4, 0);
+    const elbow = new THREE.Group(); elbow.position.set(0, -0.58, 0); shoulder.add(elbow);
+    add(elbow, limb(skin, 0.42, 0.1), 0, -0.2, 0);
+    const fist = new THREE.Group(); fist.position.set(0, -0.55, 0); fist.scale.setScalar(1.45); elbow.add(fist);
+    add(fist, box(0.36, 0.34, 0.32, steel), 0, -0.04, 0);
+    add(fist, cyl(0.15, 0.19, 0.16, steel, 10), 0, 0.17, 0);
+    for (const [y, h] of [[0.12, 0.03], [-0.21, 0.03]]) add(fist, box(0.4, h, 0.36, glow), 0, y, 0);
+    // The stones: five covers -- four on the knuckles, the big one on the back of the hand.
+    const tex = fisterTextures(), stones = [];
+    for (let k = 0; k < 4; k++) { const st = add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.07, 0.1), new THREE.MeshBasicMaterial({ map: tex[k] })), -0.12 + k * 0.08, -0.12, 0.165); stones.push(st); }
+    const big = add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.24), new THREE.MeshBasicMaterial({ map: tex[4] })), 0, 0.0, -0.165); big.rotation.y = Math.PI; stones.push(big);
+    const big2 = add(fist, new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.2), new THREE.MeshBasicMaterial({ map: tex[4] })), 0.185, 0, 0); big2.rotation.y = Math.PI / 2; stones.push(big2);
+    const aura = add(fist, ball(0.34, new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.18, depthWrite: false }), 12), 0, 0, 0);
+    const lamp = new THREE.PointLight(0x39ff14, 2.2, 3.5); fist.add(lamp);
+    return { tick(t) {
+      // The fist pump: up, punch higher, back down a touch -- about once a second.
+      const p = (t * 0.9) % 1, up = p < 0.35 ? p / 0.35 : 1 - (p - 0.35) / 0.65, pop = Math.sin(Math.min(1, up) * Math.PI / 2);
+      shoulder.rotation.z = 2.35 + 0.35 * pop; elbow.rotation.z = -0.9 + 0.75 * pop; fist.rotation.z = 0.3 - 0.3 * pop;
+      head.rotation.x = -0.08 * pop; head.rotation.y = Math.sin(t * 0.8) * 0.12; torso.rotation.y = Math.sin(t * 0.8) * 0.05;
+      const g = 0.6 + 0.4 * Math.sin(t * 6); aura.material.opacity = 0.12 + 0.16 * g; aura.scale.setScalar(1 + 0.15 * g); lamp.intensity = 1.6 + 1.6 * g;
+      armL.rotation.x = Math.sin(t * 1.8) * 0.06;
+    }, pump: () => {} };
+  },
   scalper(root) {
     const coat = flat(0xc98a4b), hood = flat(0x2b2f3a), skin = mat(0xf2c38b);
     const body = add(root, cyl(0.42, 0.78, 1.5, coat, 9), 0, -0.25, 0);

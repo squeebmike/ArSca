@@ -14,7 +14,7 @@ assert.ok(B.isGym(5) && B.isGym(10) && !B.isGym(4));
 assert.equal(B.toGym(3), 2); assert.equal(B.toGym(5), 0); assert.equal(B.toGym(6), 4);
 const s = { beastsGoal: 100 };
 assert.equal(B.rivalMax(s, 5), 2 * B.rivalMax(s, 4) * (B.beastGoal(s, 5) / B.beastGoal(s, 4)));
-assert.ok(B.rivalFor(5).gym && /^LEADER /.test(B.rivalFor(5).name) && !B.rivalFor(4).gym);
+assert.ok(B.rivalFor(5).gym && B.rivalFor(5).name === 'MR FISTER' && /^LEADER /.test(B.rivalFor(10).name) && !B.rivalFor(4).gym, 'the first gym is Mr Fister');
 let bs = { ...B.emptyBeasts('w'), route: 5 };
 const r = B.addBeastXp(bs, 100 + 100, s, 1);
 const badge = r.events.find(e => e.kind === 'badge');
