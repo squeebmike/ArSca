@@ -77,3 +77,11 @@ console.log('Vending machine, spots, the battle on the green screen, and the gam
 for (const k of ['<span class="vm-was">', "' flash'", '⚡ FLASH SALE', 'ENDS IN ', '.vm-was{']) assert.ok(vsrc.includes(k), k);
 for (const k of ['if (input.flash && typeof input.flash', 'wasPrice: was, price: now, flashUntil: until', 'if (input.flashEnd === true) m.items = m.items.map(unflash);']) assert.ok(room.includes(k), k);
 for (const k of ['id="vm-fl-go"', 'id="vm-fl-end"', "vmb('#vm-fl-go'", 'if(body.flash){']) assert.ok(ctl.includes(k), k);
+
+// SHARE A SCREEN (2026-11-14: "display something from my screen to OBS ... my FOC screen while we do orders"): WebRTC from
+// the remote to the overlay; the studio only passes the handshake on, and the overlay may only send its answer.
+{ const api = read('scripts/live-studio-api.mjs');
+  for (const k of ["getDisplayMedia(", "api('screen',{offer:pc.localDescription.sdp", "api('screen',{poll:d.id})", 'id="scr-go"', 'id="scr-stop"', 'id="scr-layout"']) assert.ok(ctl.includes(k), k);
+  for (const k of ["if(m.type==='screen'){screenOffer(m.screen);return;}", "type:'screen-answer',id:sc.id", "#mana-screen.corner{", "#mana-screen.full{"]) assert.ok(ov.includes(k), k);
+  for (const k of ['  screen(input = {}) {', "m.type === 'screen-answer' && this.scr && m.id === this.scr.id && !this.scr.answer", "ws.close(1008,'Read-only overlay')"]) assert.ok(room.includes(k), k);
+  assert.ok(api.includes("url.pathname==='/live-studio/screen'")); }

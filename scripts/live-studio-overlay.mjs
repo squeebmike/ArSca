@@ -275,7 +275,7 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=16').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=17').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
@@ -295,7 +295,7 @@ function paintBeasts(d){
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   // 3DS: the battle in 3D (scripts/beasts-3d.mjs); the others: the pixel battle in their colours.
   const want3d=settings.beastsGfx==='3ds';if(battle&&battle3d!==want3d){battle.stop();battle=null;beastsOn=false;}
-  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=6').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
+  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=7').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
   battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0,gfx:settings.beastsGfx||'gbc'});
   // The rival trainer: the boss's own art, in four greens.
   cv.style.top=Math.max(0,Number(settings.y)-560)+'px';
@@ -640,6 +640,28 @@ function draw() {
   combo.classList.toggle('on',on);
   requestAnimationFrame(draw);
 }
+// SHARE A SCREEN (store, 2026-11-14: "show my FOC screen while we do orders, so people can watch along"): the remote
+// shares a window or tab; it arrives here straight from that computer (WebRTC, peer to peer) and shows in a framed box
+// -- in the corner, on the right half, or full screen -- with what it is written on top. Only the handshake goes
+// through the studio.
+const SCR_ICE=[{urls:'stun:stun.cloudflare.com:3478'}];
+let scrPc=null,scrBox=null;
+function screenBox(){
+  if(scrBox)return scrBox;
+  const st=document.createElement('style');st.textContent=`#mana-screen{position:fixed;z-index:60;background:#0d0f14;border:6px solid #141018;border-radius:18px;box-shadow:0 0 0 4px #ffd84a,0 18px 50px #000a;overflow:hidden;display:flex;flex-direction:column;transition:all .5s cubic-bezier(.2,.9,.3,1.2)}#mana-screen[hidden]{display:none}#mana-screen.corner{right:2.5%;top:16%;width:44%;aspect-ratio:16/10.6}#mana-screen.half{right:1.2%;top:3%;width:48%;bottom:3%}#mana-screen.full{inset:2%}#mana-screen b{display:flex;align-items:center;gap:.6em;padding:.45em .8em;background:#ffd84a;color:#141018;font:900 clamp(14px,1.6vw,30px)/1 system-ui,sans-serif;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mana-screen b i{font-style:normal;background:#e8213a;color:#fff;border-radius:6px;padding:.15em .45em;font-size:.75em;animation:mana-scr-live 1.4s infinite}#mana-screen video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}@keyframes mana-scr-live{50%{opacity:.45}}`;
+  document.head.appendChild(st);scrBox=document.createElement('div');scrBox.id='mana-screen';scrBox.hidden=true;scrBox.innerHTML='<b><i>● LIVE</i><span></span></b><video autoplay muted playsinline></video>';document.body.appendChild(scrBox);return scrBox;
+}
+function screenLook(layout,title){const b=screenBox();b.className=['corner','half','full'].includes(layout)?layout:'corner';b.querySelector('span').textContent='📺 '+(title||'FOLLOW ALONG');}
+function closeScreen(){if(scrPc){try{scrPc.close();}catch{}scrPc=null;}if(scrBox){scrBox.hidden=true;const v=scrBox.querySelector('video');v.srcObject=null;}}
+function screenOffer(sc){
+  closeScreen();if(!sc||typeof sc.offer!=='string'||typeof RTCPeerConnection!=='function')return;
+  const pc=new RTCPeerConnection({iceServers:SCR_ICE});scrPc=pc;
+  pc.ontrack=ev=>{if(scrPc!==pc)return;const b=screenBox();b.querySelector('video').srcObject=ev.streams[0]||new MediaStream([ev.track]);screenLook(sc.layout,sc.title);b.hidden=false;};
+  pc.onconnectionstatechange=()=>{if(scrPc===pc&&['failed','closed','disconnected'].includes(pc.connectionState))setTimeout(()=>{if(scrPc===pc&&pc.connectionState!=='connected')closeScreen();},pc.connectionState==='disconnected'?5000:0);};
+  (async()=>{await pc.setRemoteDescription({type:'offer',sdp:sc.offer});await pc.setLocalDescription(await pc.createAnswer());
+    await new Promise(res=>{if(pc.iceGatheringState==='complete')return res();const t=setTimeout(res,2500);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);res();}});});
+    if(scrPc===pc&&socket?.readyState===1)socket.send(JSON.stringify({type:'screen-answer',id:sc.id,sdp:pc.localDescription.sdp}));})().catch(()=>{});
+}
 function connect() {
   if(!endpoint || !store || !token) return;
   let url;try {url=new URL(endpoint);if(url.protocol!=='https:' && !(url.protocol==='http:' && ['localhost','127.0.0.1'].includes(url.hostname)))return;}catch{return;}
@@ -648,6 +670,8 @@ function connect() {
   socket.onopen=()=>socket.send(JSON.stringify({token}));
   socket.onmessage=ev=>{try {const m=JSON.parse(ev.data);offset=m.serverNow-Date.now();retry=0;
     if(m.type==='camera'){fp?.setCamera?.(m.cam);front?.setCamera?.(m.cam);return;}
+    if(m.type==='screen'){screenOffer(m.screen);return;}
+    if(m.type==='screen-look'){if(scrBox&&!scrBox.hidden)screenLook(m.layout,m.title);return;}
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}

@@ -5,7 +5,8 @@
 // Original models built from simple shapes here; nothing from any game. Nothing by chance.
 import * as THREE from '../assets/vendor/three-0.160.0.module.min.js';
 import { buildBoss3D, fisterCoverTextures } from './live-studio-3d.mjs';
-import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, DEFAULT_MOVES, STARTER } from './beasts.mjs';
+import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, gymMoveFor, gymOf, DEFAULT_MOVES, STARTER } from './beasts.mjs?v=17';
+import { buildLeader3D, buildArena3D, signatureFx } from './beasts-gyms-3d.mjs?v=1';
 
 const col = c => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
 const mat = (c, o = {}) => new THREE.MeshPhongMaterial({ color: col(c), shininess: 40, ...o });
@@ -37,7 +38,7 @@ export function planOf(name) {
   const nm = String(name).toUpperCase(), h = hashOf(nm + 'plan');
   // The starters keep their plan; others: a fixed share become the newer plans.
   if (/^(SLABBIT|SLABBUNNY|GRADEZILLA|TOPLOADON|TOPLOADRAKE|TITANLOADER|SLEEVIL|SLEEVILLAIN|OVERSLEEVOR)$/.test(nm)) return beastType(nm);
-  if (/GRAIL|TITAN|GOLEM|SLABTITAN/.test(nm)) return 'golem'; if (/PHOENIX|DRAKE|WYRM/.test(nm)) return 'dragon'; if (/WRAITH|GHOST|SPOOK/.test(nm)) return 'ghost';
+  if (/GRAIL|TITAN|GOLEM|SLABTITAN/.test(nm)) return 'golem'; if (/LONGBOX|ODON/.test(nm)) return 'quad'; if (/PHOENIX|DRAKE|WYRM/.test(nm)) return 'dragon'; if (/WRAITH|GHOST|SPOOK/.test(nm)) return 'ghost';
   return h % 5 < 2 ? EXTRA_PLANS[(h >>> 3) % EXTRA_PLANS.length] : beastType(nm);
 }
 export function buildBeast3D(name) {
@@ -130,9 +131,10 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6fae4a, 1.2)); const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(-3, 6, 4); scene.add(sun);
   const cam = new THREE.PerspectiveCamera(36, W / 106, 0.1, 60); cam.position.set(-0.4, 1.5, 5.6); cam.lookAt(0.9, 0.6, -1.4);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: 0x8ccf6a })); ground.rotation.x = -Math.PI / 2; scene.add(ground);
-  const pad = (x, z, rad) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.05, 0.12, 40), new THREE.MeshLambertMaterial({ color: 0x5fa845 })); p.position.set(x, 0.06, z); scene.add(p); const rim = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.04, 6, 40), new THREE.MeshLambertMaterial({ color: 0x3c7a2a })); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.12, z); scene.add(rim); return p; };
+  const pads = [], pad = (x, z, rad) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.05, 0.12, 40), new THREE.MeshLambertMaterial({ color: 0x5fa845 })); p.position.set(x, 0.06, z); scene.add(p); const rim = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.04, 6, 40), new THREE.MeshLambertMaterial({ color: 0x3c7a2a })); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.12, z); scene.add(rim); pads.push([p, rim]); return p; };
+  const trees = new THREE.Group(); scene.add(trees);
   pad(2.3, -2.2, 1.1); pad(-1.5, 1.7, 1.2);
-  for (let k = 0; k < 7; k++) { const tr = new THREE.Group(); tr.position.set(-6 + k * 2.3, 0, -8 - (k % 3)); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6b4a2a })); tk.position.y = 0.6; tr.add(tk); const lf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), new THREE.MeshLambertMaterial({ color: 0x3f8f3a })); lf.position.y = 1.7; tr.add(lf); scene.add(tr); }
+  for (let k = 0; k < 7; k++) { const tr = new THREE.Group(); tr.position.set(-6 + k * 2.3, 0, -8 - (k % 3)); trees.add(tr); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6b4a2a })); tk.position.y = 0.6; tr.add(tk); const lf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), new THREE.MeshLambertMaterial({ color: 0x3f8f3a })); lf.position.y = 1.7; tr.add(lf); }
   let b = null, mineM = null, foeM = null, mineName = '', foeName = '', moves = DEFAULT_MOVES, pick = 0, msg = '', anim = null, foeAnim = null, evo = null, raf = 0, last = 0, key = '', introAt = -1e9, lastTenth = 10, foeHits = 0, shownFoe = 1;
   const shot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), new THREE.MeshBasicMaterial({ color: 0xffe14a })); shot.visible = false; scene.add(shot);
   // MR FISTER'S GYM IN 3D (store, 2026-11-14): on a gym fight against him, the field turns into his arena -- a dark floor,
@@ -143,6 +145,10 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     for (const [x, z, rr] of [[2.3, -2.2, 1.35], [-1.5, 1.7, 1.45]]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(rr, 0.05, 8, 48), new THREE.MeshBasicMaterial({ color: 0x39ff14 })); ring.rotation.x = Math.PI / 2; ring.position.set(x, 0.14, z); arena.add(ring); }
     for (const x of [-4, 6]) { const beam = new THREE.Mesh(new THREE.ConeGeometry(1.6, 8, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })); beam.position.set(x, 4, -5); beam.rotation.z = x < 0 ? -0.35 : 0.35; arena.add(beam); } }
   let fister = null, fisterTick = null, thrown = [];
+  // THE OTHER FOUR LEADERS (scripts/beasts-gyms-3d.mjs): each in their own arena, built the first time they're fought.
+  const leaders = {}, arenas = {}; let fx = [], gymId = '';
+  const ensureLeader = id => { if (leaders[id] || !buildLeader3D) return; const l = buildLeader3D(id); if (!l) return; l.g.position.set(4.9, 0, -5.0); l.g.rotation.y = -0.5; l.g.scale.setScalar(1.3); scene.add(l.g); leaders[id] = l; const key = new THREE.SpotLight(0xffffff, 1.8, 14, 0.5, 0.6); key.position.set(2, 6, 1); key.target = l.g; scene.add(key); l.key = key; const ar = buildArena3D(id); scene.add(ar); arenas[id] = ar; };
+  const signature = () => { const l = leaders[gymId]; if (!l || !mineM) return; const from = new THREE.Vector3(); (l.hand || l.g).getWorldPosition(from); fx.push(signatureFx(gymId, scene, from, mineM.position.clone())); };
   const ensureFister = () => { if (fister) return; fister = new THREE.Group(); const root = new THREE.Group(); fister.add(root); fisterTick = buildBoss3D('fister', root).tick; fister.position.set(4.75, 1.62, -3.9); fister.rotation.y = -0.6; fister.scale.setScalar(1.05); scene.add(fister); const lamp = new THREE.PointLight(0x7dff5a, 2.5, 6); lamp.position.set(3.2, 2.5, -2.5); fister.add(lamp); const key = new THREE.SpotLight(0xffffff, 2.2, 14, 0.5, 0.5); key.position.set(1.5, 6, 2); key.target = fister; scene.add(key); };
   const throwComics = () => { if (!fister || !mineM) return; const tex = fisterCoverTextures(); for (let k = 0; k < 4; k++) { const card = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.62), new THREE.MeshBasicMaterial({ map: tex[k % Math.max(1, tex.length)] || null, color: tex.length ? 0xffffff : 0x39ff14, side: THREE.DoubleSide })); card.position.set(4.0, 4.0, -3.1); card.userData = { at: performance.now() + k * 160, from: card.position.clone(), k }; scene.add(card); thrown.push(card); } };
   const place = (name, mine) => { const m = buildBeast3D(name); if (mine) { m.position.set(-1.5, 0.12, 1.7); m.rotation.y = 2.5; m.scale.setScalar(0.95); } else { m.position.set(2.3, 0.12, -2.2); m.rotation.y = -0.55; m.scale.setScalar(1.15); } scene.add(m); return m; };
@@ -154,21 +160,23 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     // The DS-style touch panel: the line of text, then the four moves as big rounded buttons.
     ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
     const introT = (performance.now() - introAt) / 2400;
-    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
+    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
     moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); f((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? '#202830' : '#ffffff'); });
   }
   function frame(now) {
     raf = requestAnimationFrame(frame); if (now - last < 33) return; last = now; const t = now / 1000;
     if (mineM) mineM.userData.tick(t); if (foeM) foeM.userData.tick(t + 1.3);
     // Intro: the foe drops in, yours slides in.
-    const it = (now - introAt) / 1600; if (foeM && it < 1) { foeM.position.y = 0.12 + Math.max(0, 1 - it * 1.6) * 3; } if (mineM && it < 1) mineM.position.x = -1.5 - Math.max(0, 1 - it * 1.3) * 3;
+    const it = Math.min(1, (now - introAt) / 1600), landing = now - introAt < 3200; if (foeM && landing) { foeM.position.y = 0.12 + Math.max(0, 1 - it * 1.6) * 3; } if (mineM && landing) mineM.position.x = -1.5 - Math.max(0, 1 - it * 1.3) * 3; // (keeps setting the landing spot a while, so a slow frame never leaves one in the air)
     // Attacks: a glowing shot from one to the other, the one hit flashing and shaking.
     const a = anim ? (now - anim.at) / 1200 : -1, fa = foeAnim ? (now - foeAnim.at) / 1200 : -1;
     shot.visible = false;
     if (a >= 0 && a < 0.6 && mineM && foeM) { shot.visible = true; shot.position.lerpVectors(mineM.position, foeM.position, a / 0.6).add(new THREE.Vector3(0, 0.8 + Math.sin(a / 0.6 * Math.PI) * 0.8, 0)); }
-    if (fa >= 0 && fa < 0.6 && mineM && foeM) { shot.visible = true; shot.position.lerpVectors(foeM.position, mineM.position, fa / 0.6).add(new THREE.Vector3(0, 0.8 + Math.sin(fa / 0.6 * Math.PI) * 0.6, 0)); }
+    if (fa >= 0 && fa < 0.6 && mineM && foeM && !foeAnim?.sig) { shot.visible = true; shot.position.lerpVectors(foeM.position, mineM.position, fa / 0.6).add(new THREE.Vector3(0, 0.8 + Math.sin(fa / 0.6 * Math.PI) * 0.6, 0)); }
     // Mr Fister: pumping the gauntlet; his thrown comics turning end over end on their way to your beast.
     if (fister && fister.visible) fisterTick?.(t);
+    for (const id in leaders) if (leaders[id].g.visible) { leaders[id].tick(t); arenas[id].userData.tick(t); }
+    fx = fx.filter(e => e.update(now));
     thrown = thrown.filter(card => { const k = (now - card.userData.at) / 900; if (k < 0) { card.visible = false; return true; } card.visible = true; if (k >= 1) { scene.remove(card); return false; } const to = mineM ? mineM.position.clone().add(new THREE.Vector3(0, 0.8, 0)) : new THREE.Vector3(); card.position.lerpVectors(card.userData.from, to, k).add(new THREE.Vector3(Math.sin(card.userData.k * 2) * 0.6 * Math.sin(k * Math.PI), Math.sin(k * Math.PI) * 1.2, 0)); card.rotation.set(k * 9 + card.userData.k, k * 7, k * 5); return true; });
     if (foeM) foeM.rotation.z = a > 0.55 && a < 0.9 ? Math.sin(now / 20) * 0.15 : 0; if (mineM) mineM.rotation.z = fa > 0.55 && fa < 0.9 ? Math.sin(now / 20) * 0.15 : 0;
     if (a >= 1) anim = null; if (fa >= 1) foeAnim = null;
@@ -182,11 +190,15 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   return {
     set(next, { moves: mv, pick: p } = {}) {
       const k = next ? next.kind + '|' + next.foe.name : '';
-      if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (next.trainer === 'MR FISTER') setTimeout(() => throwComics(), 2200); } // he opens with a throw
-      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 1600) { const m = next.trainer === 'MR FISTER' ? 'COMIC STORM' : foeMoveFor(next.foe.name, foeHits++); foeAnim = { kind: moveAnim(m), at: performance.now() }; if (next.trainer === 'MR FISTER') throwComics(); say((next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + m + '!'); } lastTenth = tenth; }
+      if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (next.trainer === 'MR FISTER') setTimeout(() => throwComics(), 2200); else if (next.gym) setTimeout(() => { if (b === next || (b && b.trainer === next.trainer)) signature(); }, 2300); } // they open with their signature move
+      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 1600) { const gm = gymMoveFor(next.trainer, foeHits), m = gm || foeMoveFor(next.foe.name, foeHits); foeHits++; const sig = !!next.gym && next.trainer !== 'MR FISTER' && gm === gymOf(next.trainer).moves[0]; foeAnim = { kind: moveAnim(m), at: performance.now(), sig }; if (next.trainer === 'MR FISTER') throwComics(); else if (sig) signature(); say((next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + m + '!'); } lastTenth = tenth; }
       key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p;
-      const gym = !!(b && b.kind === 'rival' && b.trainer === 'MR FISTER'); if (gym) ensureFister(); if (fister) fister.visible = gym; arena.visible = gym; ground.visible = !gym;
-      scene.background = new THREE.Color(gym ? 0x0b1410 : 0x9fd6ff); scene.fog = new THREE.Fog(gym ? 0x0b1410 : 0x9fd6ff, 9, 20);
+      gymId = b && b.kind === 'rival' ? (b.gym || (b.trainer === 'MR FISTER' ? 'fister' : '')) : '';
+      const gym = gymId === 'fister'; if (gym) ensureFister(); if (fister) fister.visible = gym; arena.visible = gym;
+      if (gymId && !gym) ensureLeader(gymId); for (const id in leaders) { const on = id === gymId; leaders[id].g.visible = on; leaders[id].key.visible = on; arenas[id].visible = on; }
+      const cfg = gymId && !gym ? arenas[gymId]?.userData : null; ground.visible = !gymId; trees.visible = !gymId;
+      for (const [p, rim] of pads) { p.material.color.set(cfg ? cfg.pad : 0x5fa845); rim.material.color.set(cfg ? cfg.rim : 0x3c7a2a); }
+      const sky = cfg ? cfg.sky : gym ? 0x0b1410 : 0x9fd6ff; scene.background = new THREE.Color(sky); scene.fog = new THREE.Fog(sky, cfg ? cfg.fog[0] : 9, cfg ? cfg.fog[1] : 20);
       if (b && b.mine.name !== mineName) { if (mineM) scene.remove(mineM); mineName = b.mine.name; mineM = place(mineName, true); }
       if (b && b.foe.name !== foeName) { if (foeM) scene.remove(foeM); foeName = b.foe.name; foeM = place(foeName, false); }
       if (!b) { if (mineM) scene.remove(mineM); if (foeM) scene.remove(foeM); mineM = foeM = null; mineName = foeName = ''; }
@@ -204,7 +216,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
 // trees, houses with roofs, water, boulders, snow, lava, lamps and gravestones; the host and Champ as little 3D people,
 // your beast following in 3D, the route's items and chat's gifts bobbing on the path; the camera over your shoulder,
 // tilted like the handhelds. Drawn into the same 2D canvas the flat route uses (so the screens don't change).
-import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs';
+import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs?v=17';
 const SKY = { day: [0x8fd0ff, 0xd8f0ff], sunset: [0xf2a46a, 0xffd9b0], night: [0x1a2350, 0x3a4a80] };
 function person(shirt, cap) {
   const g = new THREE.Group(), skin = mat([242, 184, 146]);

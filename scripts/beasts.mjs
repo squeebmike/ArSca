@@ -36,7 +36,14 @@ const SUF = ['BIT', 'LING', 'OON', 'AROO', 'OX', 'ISH', 'MOTH', 'TOAD', 'IMP', '
 // WEATHER (store, 2026-11-14: chat picks it): rain, a heatwave or a blizzard brings out its own wild beasts.
 export const WEATHERS = { clear: ['☀️', 'CLEAR SKIES'], rain: ['🌧️', 'RAIN'], heat: ['🔥', 'HEATWAVE'], snow: ['❄️', 'BLIZZARD'], fog: ['🌫️', 'FOG'] };
 const WEATHER_PRE = { rain: ['SOAK', 'DRIP', 'PUDDLE', 'SPLASH'], heat: ['SCORCH', 'EMBER', 'SUNBURN', 'BLAZE'], snow: ['FROST', 'SLEET', 'ICICLE', 'FLURRY'], fog: ['MIST', 'MURK', 'HAZE', 'GLOOM'] };
-export function wildName(floor, k, weather = '') { const f = Math.max(1, floor | 0), wp = WEATHER_PRE[weather]; return (wp ? wp[(f + k * 3) % wp.length] : PRE[(f * 5 + k * 7) % PRE.length]) + SUF[(f * 3 + k * 5) % SUF.length]; }
+// NIGHT BEASTS (store, 2026-11-14): after dark (8 pm to 6 am Pacific, or the host's NIGHT setting) the middle patch of
+// grass on every route has a beast you can only catch at night. Chat's weather still wins over it.
+const NIGHT_PRE = ['MOON', 'NOCTI', 'LANTERN', 'STAR', 'DUSK', 'OWLET', 'CANDLE', 'ECLIPSE'], NIGHT_SUF = ['MOTH', 'OWL', 'BAT', 'WISP', 'FOX', 'TOAD'];
+export const NIGHT_PATCH = 1;
+export const isNightBeast = name => NIGHT_PRE.some(p => String(name).startsWith(p)) && NIGHT_SUF.some(x => String(name).endsWith(x));
+export function wildName(floor, k, weather = '', night = false) { const f = Math.max(1, floor | 0), wp = WEATHER_PRE[weather]; if (!wp && night && k === NIGHT_PATCH) return NIGHT_PRE[(f * 3 + 1) % NIGHT_PRE.length] + NIGHT_SUF[(f * 5 + 2) % NIGHT_SUF.length]; return (wp ? wp[(f + k * 3) % wp.length] : PRE[(f * 5 + k * 7) % PRE.length]) + SUF[(f * 3 + k * 5) % SUF.length]; }
+// Is it night for the show? The host's TIME OF DAY setting, else the clock in Pacific time (the store's).
+export function nightFor(s, now = Date.now()) { const t = s?.beastsTimeOfDay; if (t) return t === 'night'; let h; try { h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', hour: 'numeric', hourCycle: 'h23' }).format(new Date(now))); } catch { h = new Date(now).getHours(); } return h >= 20 || h < 6; }
 export const weatherOn = (b, route) => (b?.weather && b.weather.route === route ? b.weather.kind : '');
 // A beast's look, made from its name (2026-11-13: "need better and animated
 // sprites for the mons"): 32 x 32, four idle frames (it breathes; its tail,
@@ -268,7 +275,24 @@ export function itemsFor(route) { const f = Math.max(1, route | 0); return ITEM_
 export const GYM_EVERY = 5;
 export const isGym = route => (Math.max(1, route | 0)) % GYM_EVERY === 0;
 // The first gym is MR FISTER's (store, 2026-11-14), his beast GRAILFIST.
-export const GYM_LEADERS = [['MR FISTER', 'GRAILFIST'], ['LEADER GRADY', 'SLABTITAN'], ['LEADER FOLIA', 'HOLOPHOENIX'], ['LEADER MINTY', 'GEMMINTAUR'], ['LEADER KEYS', 'KEYSTONEX'], ['LEADER VARIA', 'VARIANTRIX']];
+// THE GYM LEADERS (store, 2026-11-14: "cool trainers. Or thematic. Not AI lameness slop"): five, each one a person
+// you'd meet in the hobby turned up to eleven -- their own look, their own arena, their own signature move.
+//   MR FISTER     -- the gauntlet and the comics (route 5).
+//   THE GRADER    -- a grading-lab tech: lab coat, a loupe that glows, a slab held up to the light. Nothing gets past her.
+//   FOIL QUEEN    -- a cape of shifting holo foil, a crown of fanned cards; royalty of the pull.
+//   THE ARCHIVIST -- the keeper of the back-issue stacks: long coat, round glasses, a lantern; he knows where every book is.
+//   THE INKER     -- a con-floor ink artist: tattoo sleeves, an inky apron, a brush pen as long as a spear.
+// The sixth gym is Mr Fister again, and every badge brings them back tougher (rematches).
+export const GYM_LEADERS = [['MR FISTER', 'GRAILFIST'], ['THE GRADER', 'SLABTITAN'], ['FOIL QUEEN', 'HOLOPHOENIX'], ['THE ARCHIVIST', 'LONGBOXODON'], ['THE INKER', 'INKWYRM']];
+export const GYMS = {
+  'MR FISTER': { id: 'fister', arena: 'THE GAUNTLET', moves: ['COMIC STORM'], line: 'THE GAUNTLET PICKS THE GRAIL.' },
+  'THE GRADER': { id: 'grader', arena: 'THE GRADING LAB', moves: ['PERFECT 10', 'UV SCAN', 'CENTERING CHECK'], line: 'EVERY CORNER. EVERY EDGE.' },
+  'FOIL QUEEN': { id: 'foil', arena: 'THE PRISM HALL', moves: ['PRISM BURST', 'REFRACTOR', 'RAINBOW FOIL'], line: 'KNEEL BEFORE THE SHINE.' },
+  'THE ARCHIVIST': { id: 'archivist', arena: 'THE STACKS', moves: ['BOX AVALANCHE', 'BAG AND BOARD', 'DUST CLOUD'], line: 'EVERY ISSUE HAS ITS PLACE.' },
+  'THE INKER': { id: 'inker', arena: 'THE SPLASH PAGE', moves: ['SPLASH PAGE', 'CROSSHATCH', 'BLEED LINE'], line: 'HOLD STILL. I DON\'T ERASE.' },
+};
+export const gymOf = trainer => GYMS[String(trainer || '')] || null;
+export const gymMoveFor = (trainer, n = 0) => { const g = gymOf(trainer); return g ? g.moves[Math.max(0, n | 0) % g.moves.length] : ''; };
 export const toGym = route => { const r = Math.max(1, route | 0); return (GYM_EVERY - (r % GYM_EVERY)) % GYM_EVERY; };
 // WHAT THE ITEMS DO (store, 2026-11-14: "make items do something"): CANDY, a STONE and a COIN are bonus XP for your
 // beast (a share of the route's goal -- levels and evolutions, never the walk itself); a BERRY, POTION, ETHER or
@@ -315,9 +339,9 @@ export function beastHpFrom(lastAt, now = Date.now(), drainMs = BEAST_DRAIN_MS) 
 export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {}) {
   if (!d) return null;
   const lv = Number(d.level) || 1, mine = { name: formName(starter, lv), level: lv, hp: Math.max(0, Math.min(1, battery)) };
-  if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name, rematch: Number(d.rematch) || 0 }; }
+  if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name, gym: gymOf(rv.name)?.id || '', rematch: Number(d.rematch) || 0 }; }
   const pct = Math.max(0, Math.min(1, (d.pct || 0) / 100));
-  for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k, d.weather || ''), hp: 1 - (pct - a) / (b - a) } }; }
+  for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k, d.weather || '', !!d.night), hp: 1 - (pct - a) / (b - a) }, ...(!d.weather && d.night && k === NIGHT_PATCH ? { night: true } : {}) }; }
   return null;
 }
 export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1; f <= d.floor; f++) for (let k = 0; k < ENCOUNTERS.length; k++) if (f < d.floor || (d.phase === 'boss' || (d.pct || 0) / 100 >= ENCOUNTERS[k][1])) out.push(wildName(f, k)); return out; }
@@ -383,7 +407,7 @@ export function addBeastXp(bIn, amount, s, now = Date.now()) {
       const goal = beastGoal(s, b.route), before = b.xp / goal, need = r2b(goal - b.xp);
       const take = Math.min(left, need); b.xp = r2b(b.xp + take); left = r2b(left - take);
       const after = b.xp / goal;
-      ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const name = wildName(b.route, k, weatherOn(b, b.route)); b.caught.push({ name, route: b.route, at: now }); events.push({ kind: 'caught', name, route: b.route }); } });
+      ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const wx = weatherOn(b, b.route), nt = !wx && k === NIGHT_PATCH && nightFor(s, now), name = wildName(b.route, k, wx, nt); b.caught.push({ name, route: b.route, at: now, ...(nt ? { night: true } : {}) }); events.push({ kind: 'caught', name, route: b.route, ...(nt ? { night: true } : {}) }); } });
       // Items and chat's gifts picked up on the way.
       for (const it of itemsFor(b.route)) { const at = pctForWalk(it.t); if (before < at && after >= at) { if (ITEM_XP[it.kind]) bonus = r2b(bonus + goal * ITEM_XP[it.kind]); else b.stamina = (b.stamina || 0) + 1; events.push({ kind: 'item', item: it.kind, route: b.route }); } }
       b.drops = (b.drops || []).map(d => { if (d.route !== b.route || d.got) return d; const at = pctForWalk(d.t); if (before < at && after >= at) { b.stamina = (b.stamina || 0) + 1; events.push({ kind: 'item', item: 'GIFT', route: b.route }); return { ...d, got: true }; } return d; });
@@ -410,7 +434,7 @@ export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.n
 // What the screens see (floor and pct keep the drawing code's names: floor is the route).
 export function publicBeasts(bIn, s, starter = '') {
   const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route, rematchesOf(b, b.route)), rv = rivalFor(b.route), rival = b.phase === 'rival';
-  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), area: (b.areas || {})[b.route] || '', nextArea: (b.areas || {})[b.route + 1] || '', weather: weatherOn(b, b.route), rematch: rematchesOf(b, b.route), drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), area: (b.areas || {})[b.route] || '', nextArea: (b.areas || {})[b.route + 1] || '', weather: weatherOn(b, b.route), night: nightFor(s), rematch: rematchesOf(b, b.route), drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
 }
 
 // ── drawing ──────────────────────────────────────────────────────────────────
@@ -516,6 +540,7 @@ export function drawSprite(img, W, x0, y0, who, dir, step) {
 // at the start of every battle; drawn from shapes here (original, not traced).
 export function drawTrainer(img, W, x0, y0, who) {
   if (who === 'fister') return drawFisterTrainer(img, W, x0, y0);
+  if (LEADER_SPRITES[who]) return drawLeader(img, W, x0, y0, who);
   const P = (x, y, s) => put(img, W, x0 + Math.round(x), y0 + Math.round(y), s), champ = who === 'champ';
   const hx = 20, hy = champ ? 15 : 14, rx = champ ? 11 : 9.5, ry = champ ? 11.5 : 10.5;
   // The body first: the jersey (host) or the big hoodie (Champ), an arm out front.
@@ -560,6 +585,133 @@ function drawFisterTrainer(img, W, x0, y0) {
   for (let y = 0; y < 10; y++) for (let x = 0; x < 12; x++) P(gx + x, gy + y, x === 0 || x === 11 || y === 0 || y === 9 ? 3 : 1);
   for (let k = 0; k < 4; k++) { P(gx + 2 + k * 2.5, gy + 2, 0); P(gx + 2 + k * 2.5, gy + 3, 2); }
   for (let x = 1; x < 11; x++) P(gx + x, gy + 6, 3);
+}
+// THE OTHER FOUR GYM LEADERS in the battle (48 x 54, our own shapes): four shades like everyone else; on GBA and up each
+// has its own colours (and the Foil Queen's cape runs through the rainbow).
+const LEADER_RAMPS = {
+  grader: ['#ffffff', '#f1c9a6', '#8a5cf0', '#17141f'],
+  foil: ['#fff7ff', '#f3c6ae', '#c9a2ff', '#1b1630'],
+  archivist: ['#f4ead2', '#e6b48e', '#7a5a3a', '#1d1610'],
+  inker: ['#fbf6ea', '#e9b088', '#d23b3b', '#121214'],
+};
+// The platforms in each arena: a steel plate, a mirror disc, a rug on the boards, a white page with an inked rim.
+const ARENA_PADS = { grader: ['#ffffff', '#d8dbe8', '#a9a2cf', '#4b4466'], foil: ['#c9c2ff', '#5a4fa0', '#2c2558', '#0c0a1e'], archivist: ['#e8c47a', '#a8402e', '#6e2a20', '#2a140c'], inker: ['#ffffff', '#f4f0e4', '#c8c2b0', '#121214'] };
+const FOIL_BANDS = ['#ff6b9e', '#ffb347', '#ffe95c', '#6dfc9b', '#5fd3ff', '#9b7bff'];
+const LEADER_SPRITES = {
+  grader(P, L) {
+    const hx = 25, hy = 18;
+    // The lab coat (long, white, a dark turtleneck in the V), lapels, a pocket with two pens.
+    for (let y = 30; y < 54; y++) { const w = 11 + ((y - 30) >> 3); for (let x = hx - w; x <= hx + w; x++) P(x, y, x === hx - w || x === hx + w || y === 30 ? 3 : 0); }
+    for (let y = 30; y < 41; y++) { const k = (y - 30) >> 1; for (let x = hx - 4 + k; x <= hx + 4 - k; x++) P(x, y, 3); P(hx - 5 + k, y, 2); P(hx + 5 - k, y, 2); }
+    for (let y = 41; y < 54; y++) P(hx, y, 2); P(hx - 8, 42, 3); for (let x = hx - 9; x < hx - 4; x++) P(x, 41, 2); P(hx - 7, 39, 2); P(hx - 7, 40, 2); P(hx - 6, 39, 3); P(hx - 6, 40, 3);
+    L.head(hx, hy, 8.5, 10);
+    // Silver hair, slicked straight back, a sharp part.
+    L.ell(hx, hy - 2, 9.2, 9.5, (x, y, d) => y < hy - 4 || (d > 0.75 && y < hy + 1 && x > hx + 3) ? (d > 0.86 ? 3 : (x + y) % 3 ? 1 : 2) : -1);
+    for (let y = hy - 11; y < hy - 4; y++) P(hx - 3, y, 3);
+    // A narrow look: flat brows, her left eye plain, her right eye behind THE LOUPE (a glowing ring, a strap round her head).
+    for (let x = hx + 2; x < hx + 7; x++) P(x, hy - 1, 3); P(hx + 4, hy + 1, 3); P(hx + 5, hy + 1, 3);
+    for (let x = hx + 4; x < hx + 10; x++) P(x, hy - 3, 2);
+    L.ell(hx - 4, hy + 1, 3.6, 3.6, (x, y, d) => d > 0.55 ? 3 : (x + y) % 2 ? 1 : 0);
+    for (let x = hx - 2; x <= hx + 1; x++) P(x, hy + 7, 3);
+    // Her left arm up (our right): a purple glove holding a SLAB to the light, the 10 on its label.
+    for (let k = 0; k < 15; k++) { P(hx + 11 + (k >> 2), 31 - k, 3); P(hx + 12 + (k >> 2), 31 - k, 0); P(hx + 13 + (k >> 2), 31 - k, 3); }
+    const sx = hx + 11, sy = 0; L.rect(sx, sy, 13, 18, 3); L.rect(sx + 1, sy + 1, 11, 16, 0); L.rect(sx + 1, sy + 1, 11, 4, 2); L.text(sx + 2, sy + 1, '10', 0); L.rect(sx + 3, sy + 7, 7, 8, 1); L.rect(sx + 4, sy + 8, 5, 6, 2);
+    L.rect(sx + 2, sy + 16, 5, 3, 2); // the glove
+  },
+  foil(P, L) {
+    const hx = 25, hy = 19;
+    // The holo cape: wide from the shoulders to the floor, in shifting bands (L.band picks the colour on GBA).
+    for (let y = 29; y < 54; y++) { const w = 12 + Math.round((y - 29) * 0.42); for (let x = hx - w; x <= hx + w; x++) { const edge = x === hx - w || x === hx + w; if (edge) P(x, y, 3); else L.band(x, y, ((x + y * 2) >> 2)); } }
+    // The gown (dark) and a high collar.
+    for (let y = 30; y < 54; y++) { const w = 6 + ((y - 30) >> 3); for (let x = hx - w; x <= hx + w; x++) P(x, y, x === hx - w || x === hx + w ? 3 : y % 6 === 0 && x === hx ? 2 : 3); }
+    for (let x = hx - 7; x <= hx + 7; x++) { P(x, 29, 3); P(x, 28, Math.abs(x - hx) > 4 ? 2 : -1); }
+    L.head(hx, hy, 8, 9.5);
+    // A platinum bob to the jaw, the fringe dead straight.
+    L.ell(hx, hy + 1, 10, 11, (x, y, d) => (y < hy - 3 || (Math.abs(x - hx) > 6 && y < hy + 8)) ? (d > 0.88 ? 3 : (x * 3 + y) % 5 ? 0 : 2) : -1);
+    for (let x = hx - 7; x <= hx + 7; x++) P(x, hy - 3, 3);
+    // Eyes with a sweep of liner, a dark lip.
+    for (const ex of [hx - 4, hx + 3]) { P(ex, hy + 1, 3); P(ex + 1, hy + 1, 3); P(ex + (ex < hx ? -1 : 2), hy, 3); }
+    P(hx - 1, hy + 6, 2); P(hx, hy + 6, 3); P(hx + 1, hy + 6, 2);
+    // THE CROWN: five cards fanned up from her head, the middle one tallest.
+    [[-8, 5], [-4, 8], [0, 10], [4, 8], [8, 5]].forEach(([dx, hgt], k) => { const cx = hx + dx - 1, top = hy - 10 - hgt; L.rect(cx, top, 4, hgt + 2, 3); for (let y = top + 1; y < top + hgt + 1; y++) for (let x = cx + 1; x < cx + 3; x++) L.band(x, y, k + (y >> 1)); });
+    // A hand up (our left) with three foil cards fanned out.
+    for (let k = 0; k < 12; k++) { P(hx - 12 - (k >> 2), 30 - k, 3); P(hx - 11 - (k >> 2), 30 - k, 1); }
+    [[-21, 6], [-18, 4], [-15, 6]].forEach(([dx, top], k) => { L.rect(hx + dx, top, 6, 10, 3); for (let y = top + 1; y < top + 9; y++) for (let x = hx + dx + 1; x < hx + dx + 5; x++) L.band(x, y, k * 2 + y); });
+  },
+  archivist(P, L) {
+    const hx = 24, hy = 15;
+    // A long duster coat to the floor, the collar up, a cardigan and a key ring at the belt.
+    for (let y = 26; y < 54; y++) { const w = 9 + ((y - 26) >> 2); for (let x = hx - w; x <= hx + w; x++) P(x, y, x === hx - w || x === hx + w || y === 26 ? 3 : 2); }
+    for (let y = 27; y < 46; y++) for (let x = hx - 3; x <= hx + 3; x++) P(x, y, Math.abs(x - hx) === 3 ? 3 : (y % 3 === 0 && x === hx) ? 3 : 1);
+    for (let y = 22; y < 28; y++) { P(hx - 9 + (y - 22), y, 3); P(hx + 9 - (y - 22), y, 3); }
+    L.ell(hx + 6, 44, 2.2, 2.2, (x, y, d) => d > 0.4 ? 3 : -1);
+    L.head(hx, hy, 7, 9.5);
+    // Grey hair: thin on top, long at the back and the sides.
+    L.ell(hx, hy - 1, 8.4, 10.6, (x, y, d) => (d > 0.72 && (y < hy - 3 || Math.abs(x - hx) > 5)) ? (d > 0.9 ? 3 : 1) : -1);
+    // ROUND SPECTACLES, the lamplight in them, a long nose, a neat moustache.
+    for (const ex of [hx - 3, hx + 3]) L.ell(ex, hy + 1, 2.6, 2.6, (x, y, d) => d > 0.5 ? 3 : (x + y) % 3 ? 0 : 1);
+    P(hx, hy + 1, 3); P(hx, hy + 3, 3); P(hx, hy + 4, 3);
+    for (let x = hx - 3; x <= hx + 3; x++) P(x, hy + 6, 2); P(hx - 4, hy + 7, 2); P(hx + 4, hy + 7, 2);
+    // His arm down (our left), a LANTERN glowing at his side.
+    for (let k = 0; k < 9; k++) { P(hx - 10 - (k >> 2), 28 + k, 3); P(hx - 11 - (k >> 2), 28 + k, 2); }
+    const lx = hx - 19, ly = 37; L.ell(lx + 4, ly + 6, 9, 9, (x, y, d) => d > 0.7 && (x + y) % 2 === 0 ? 0 : -1);
+    P(lx + 3, ly - 2, 3); P(lx + 4, ly - 3, 3); P(lx + 5, ly - 2, 3); L.rect(lx, ly, 9, 2, 3); L.rect(lx, ly + 2, 9, 9, 3); L.rect(lx + 1, ly + 3, 7, 7, 0); L.rect(lx + 3, ly + 4, 3, 5, 1); L.rect(lx, ly + 11, 9, 2, 3);
+  },
+  inker(P, L) {
+    const hx = 26, hy = 18;
+    // A black tee, an apron splashed with ink, headphones round the neck.
+    for (let y = 30; y < 54; y++) for (let x = hx - 12; x <= hx + 12; x++) P(x, y, 3);
+    for (let y = 34; y < 54; y++) for (let x = hx - 8; x <= hx + 8; x++) P(x, y, x === hx - 8 || x === hx + 8 ? 2 : 0);
+    for (let y = 30; y < 34; y++) { P(hx - 7, y, 0); P(hx + 7, y, 0); }
+    for (const [x, y, r] of [[hx - 4, 38, 1.6], [hx + 3, 44, 2.2], [hx - 2, 49, 1.2], [hx + 5, 36, 1], [hx - 6, 45, 1]]) L.ell(x, y, r, r, () => 3);
+    for (let x = hx - 9; x <= hx + 9; x++) if (Math.abs(x - hx) > 5) P(x, 29 + (Math.abs(x - hx) > 7 ? 0 : 1), 2); L.rect(hx - 10, 28, 3, 4, 3); L.rect(hx + 8, 28, 3, 4, 3);
+    L.head(hx, hy, 8.5, 10);
+    // Shaggy black hair over a red bandana, its knot tails out the side.
+    L.ell(hx, hy - 3, 9.5, 8, (x, y, d) => y < hy - 4 ? 3 : -1);
+    for (let k = 0; k < 6; k++) { P(hx - 8 + k * 3, hy - 11 - (k % 2), 3); P(hx - 7 + k * 3, hy - 12 - (k % 2) * 2, 3); }
+    for (let x = hx - 9; x <= hx + 9; x++) { P(x, hy - 4, 2); P(x, hy - 3, 2); } P(hx + 10, hy - 3, 2); P(hx + 11, hy - 2, 2); P(hx + 12, hy - 1, 2); P(hx + 10, hy - 1, 2);
+    // A sideways grin, a squint, a smear of ink on the cheek.
+    for (let x = hx - 6; x < hx - 1; x++) P(x, hy, 3); P(hx + 3, hy + 1, 3); P(hx + 4, hy + 1, 3); P(hx + 5, hy, 3);
+    P(hx - 5, hy + 1, 3); P(hx - 4, hy + 1, 3);
+    for (let x = hx - 2; x <= hx + 3; x++) P(x, hy + 6 - (x > hx + 1 ? 1 : 0), 3); P(hx + 5, hy + 4, 3); P(hx + 6, hy + 4, 3);
+    // A tattooed arm (our left) gripping THE BRUSH PEN, longer than she is tall, a drip off the tip.
+    for (let k = 0; k < 9; k++) { P(hx - 12 - k, 33 - (k >> 1), 1); P(hx - 12 - k, 34 - (k >> 1), (k % 3) ? 1 : 3); P(hx - 12 - k, 35 - (k >> 1), 3); }
+    for (let k = 0; k < 54; k++) { const x = hx - 25 + Math.round(k * 0.16), y = 53 - k; if (y < 0) break; P(x, y, 3); P(x + 1, y, k > 46 ? 3 : 2); P(x + 2, y, 3); }
+    for (let k = 0; k < 5; k++) P(hx - 16 + (k >> 2), k - 1, 3); P(hx - 15, 6, 3); P(hx - 15, 9, 3); // the tip, a drip
+  },
+};
+// THEIR ARENAS behind the battle (the top 106 rows): the lab's UV tubes over a tiled floor, the prism hall's rainbow
+// beams, the stacks of long boxes, the inked comic page. Fixed, moving only with the clock.
+function arenaBg(img, W, id, tm, gba) {
+  const H = 106, set = (x, y, c) => { const i = (y * W + x) * 4; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; };
+  const g = (k) => gba ? null : GB[k];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let c;
+    if (id === 'grader') { const tube = (y === 10 || y === 11 || y === 26 || y === 27) && (x % 60) > 6 && (x % 60) < 54, glow = Math.abs(y - 10.5) < 4 || Math.abs(y - 26.5) < 4, floor = y > 60, tile = floor && ((x + (y - 60) * 2) % 24 === 0 || (y - 60) % 9 === 0), rack = y > 34 && y < 58 && (x % 40 < 30) && ((y - 34) % 8 === 0 || (x % 40) % 6 === 0);
+      c = gba ? (tube ? [250, 240, 255] : glow ? [214, 196, 255] : tile ? [200, 204, 220] : rack ? [150, 140, 190] : floor ? [236, 238, 246] : [226, 222, 244]) : g(tube ? 0 : tile || rack ? 2 : glow ? 0 : 1); }
+    else if (id === 'foil') { const beam = Math.floor(((x - y * 0.6 + tm * 14) % 200 + 200) % 200 / 33), inBeam = (((x - y * 0.6 + tm * 14) % 33) + 33) % 33 < 14 && y < 70, star = (x * 7 + y * 13) % 97 === 0;
+      c = gba ? (star ? [255, 255, 255] : inBeam ? hex(FOIL_BANDS[beam % FOIL_BANDS.length]).map(v => Math.round(v * 0.28 + 22)) : y > 70 ? [30, 26, 60] : [18, 16, 40]) : g(star ? 0 : inBeam ? 1 : 3); }
+    else if (id === 'archivist') { const col = Math.floor(x / 26), top = 8 + ((col * 37) % 5) * 7, box = y > top && y < 72, seam = box && ((y - top) % 11 === 0 || x % 26 === 0), label = box && (y - top) % 11 === 5 && (x % 26) > 8 && (x % 26) < 18, bulb = Math.hypot(x - 60 - 120 * ((x / 120) | 0) - 0, y - 6) < 3, floor = y >= 72;
+      c = gba ? (seam ? [70, 52, 36] : label ? [120, 100, 80] : box ? [214, 200, 170] : floor ? [96, 66, 40] : bulb ? [255, 230, 150] : [40, 30, 24]) : g(seam ? 3 : label ? 2 : box ? 1 : floor ? 2 : 3); }
+    else if (id === 'inker') { const panel = (x % 80 < 3) || (y % 53 < 3) , dot = ((x % 6) - 3) ** 2 + ((y % 6) - 3) ** 2 < (Math.floor(x / 80) % 2 ? 4 : 2), tint = Math.floor(x / 80) + Math.floor(y / 53) * 3;
+      c = gba ? (panel ? [18, 18, 20] : dot ? [[255, 90, 140], [80, 200, 255], [255, 220, 60]][tint % 3] : [250, 246, 234]) : g(panel ? 3 : dot ? 1 : 0); }
+    if (c) set(x, y, c);
+  }
+}
+function drawLeader(img, W, x0, y0, who) {
+  const keep = PAL, gba = PAL !== GB && PAL !== PALETTES.sunset && PAL !== PALETTES.night;
+  if (gba) PAL = ramp(...LEADER_RAMPS[who]);
+  const base = PAL, bands = gba ? FOIL_BANDS.map(c => ramp(c, c, c, c)) : null;
+  const P = (x, y, sh) => { if (sh >= 0) put(img, W, x0 + Math.round(x), y0 + Math.round(y), sh); };
+  const L = {
+    rect(x, y, w, h, sh) { for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) P(x + xx, y + yy, sh); },
+    ell(cx, cy, rx, ry, f) { for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) { const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2; if (d <= 1) P(x, y, f(x, y, d)); } },
+    head(cx, cy, rx, ry) { L.ell(cx, cy, rx, ry, (x, y, d) => d > 0.84 ? 3 : 1); L.ell(cx - 2, cy - 2, rx * 0.45, ry * 0.4, () => 0); },
+    text(x, y, str, sh) { text3(img, W, x0 + x, y0 + y, str, sh); },
+    band(x, y, k) { if (!bands) { P(x, y, [0, 1, 2, 1][((k % 4) + 4) % 4]); return; } PAL = bands[((k % bands.length) + bands.length) % bands.length]; P(x, y, 0); PAL = base; },
+  };
+  LEADER_SPRITES[who](P, L);
+  PAL = keep;
 }
 // You (or your buddy): a big chibi head (your face, 12 x 12) on a small body,
 // two-frame walk, four directions. Facing up you see the back of your head.
@@ -694,18 +846,20 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     const gbaB = gfx !== 'gbc', nds = gfx === 'nds' || gfx === '3ds'; PAL = gbaB ? UI_RAMP : GB;
     // GBA: a sky over a field; GBC: the plain lightest green.
     for (let i = 0; i < img.data.length; i += 4) { const y = (i / 4 / W) | 0, c = !gbaB ? GB[0] : y < 60 ? [176 + y, 216 + (y >> 1), 248] : [196, 232, 160]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; }
+    if (b && b.kind === 'rival' && b.gym && b.gym !== 'fister') arenaBg(img, W, b.gym, tm, gbaB);
     if (!b) { PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); return; }
     // Their patch of ground (top right), yours (bottom left).
-    if (gbaB) PAL = TILE_RAMPS[2]; patch(184, 66, 34, 7); patch(60, 104, 46, 8); if (gbaB) PAL = UI_RAMP;
+    const pad = b && b.kind === 'rival' && b.gym && b.gym !== 'fister' ? ARENA_PADS[b.gym] : null;
+    if (gbaB) PAL = pad ? ramp(...pad) : TILE_RAMPS[2]; patch(184, 66, 34, 7); patch(60, 104, 46, 8); if (gbaB) PAL = UI_RAMP;
     const a = anim ? (now - anim.at) / 1300 : -1, hitT = a >= 0.55 && a < 0.85, shake = hitT ? Math.round(Math.sin(now / 18) * 3) : 0, bob = k => Math.round(Math.sin(tm * 3 + k) * 1.5);
     // THE INTRO (2.4 s): the host and Champ on the left, the rival on the right, then the beasts.
     const it = (now - introAt) / 2400;
     if (it >= 0 && it < 1) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
       if (gbaB) PAL = PEOPLE_RAMP; drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
-      if (b.kind === 'rival' && b.trainer === 'MR FISTER') drawTrainer(img, W, 160 + slide, 6, 'fister');
+      if (b.kind === 'rival' && b.gym) drawTrainer(img, W, 160 + slide, 6, b.gym);
       else if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && !b.gym)) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? (b.gym && it > 0.3 && gymOf(b.trainer) ? '"' + gymOf(b.trainer).line + '"' : b.trainer.slice(0, 20) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!')) : (b.night ? 'A NIGHT-ONLY ' : 'A WILD ') + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;
@@ -755,7 +909,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
   return {
     set(next, { moves: mv, pick: p, gfx: g } = {}) { if (g) gfx = GFX.includes(g) ? g : 'gbc'; const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); } key = k;
       // The foe hits back: a hit for every tenth of HP your beast loses; at 0 it faints; back up, it's back.
-      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 2400) { const mv = foeMoveFor(next.foe.name, foeHits++); foeAnim = { kind: moveAnim(mv), at: performance.now() }; msg = (next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + mv + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } if (next.mine.hp <= 0 && (b.mine?.hp ?? 1) > 0) faintAt = performance.now(); if (next.mine.hp > 0 && (b.mine?.hp ?? 1) <= 0) { msg = next.mine.name + ' IS BACK ON ITS FEET!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } lastTenth = tenth; }
+      if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 2400) { const mv = gymMoveFor(next.trainer, foeHits) || foeMoveFor(next.foe.name, foeHits); foeHits++; foeAnim = { kind: moveAnim(mv), at: performance.now() }; msg = (next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + mv + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } if (next.mine.hp <= 0 && (b.mine?.hp ?? 1) > 0) faintAt = performance.now(); if (next.mine.hp > 0 && (b.mine?.hp ?? 1) <= 0) { msg = next.mine.name + ' IS BACK ON ITS FEET!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } lastTenth = tenth; }
       b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (!b) { msg = ''; shownFoe = 1; } },
     // The rival trainer, from any picture (the boss's art), turned into four greens at 44 x 44.
     setRival(src) { if (!src) { rival = null; return; } const c = document.createElement('canvas'); c.width = c.height = 44; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(src, 0, 0, 44, 44); const d = x.getImageData(0, 0, 44, 44).data; rival = new Int8Array(44 * 44); for (let i = 0; i < rival.length; i++) { const a = d[i * 4 + 3], l = d[i * 4] * 0.3 + d[i * 4 + 1] * 0.59 + d[i * 4 + 2] * 0.11; rival[i] = a < 120 ? -1 : l > 190 ? 0 : l > 130 ? 1 : l > 70 ? 2 : 3; } },

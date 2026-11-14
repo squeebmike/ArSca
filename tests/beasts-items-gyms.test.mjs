@@ -14,7 +14,7 @@ assert.ok(B.isGym(5) && B.isGym(10) && !B.isGym(4));
 assert.equal(B.toGym(3), 2); assert.equal(B.toGym(5), 0); assert.equal(B.toGym(6), 4);
 const s = { beastsGoal: 100 };
 assert.equal(B.rivalMax(s, 5), 2 * B.rivalMax(s, 4) * (B.beastGoal(s, 5) / B.beastGoal(s, 4)));
-assert.ok(B.rivalFor(5).gym && B.rivalFor(5).name === 'MR FISTER' && /^LEADER /.test(B.rivalFor(10).name) && !B.rivalFor(4).gym, 'the first gym is Mr Fister');
+assert.ok(B.rivalFor(5).gym && B.rivalFor(5).name === 'MR FISTER' && B.rivalFor(10).name === 'THE GRADER' && !B.rivalFor(4).gym, 'the first gym is Mr Fister');
 let bs = { ...B.emptyBeasts('w'), route: 5 };
 const r = B.addBeastXp(bs, 100 + 100, s, 1);
 const badge = r.events.find(e => e.kind === 'badge');
@@ -103,7 +103,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=6')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=7')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
 }
@@ -141,7 +141,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
 {
   const b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8');
   assert.ok(g3.includes('export function buildBoss3D(id, root)') && g3.includes('export function fisterCoverTextures()'));
-  assert.ok(b3.includes("MR FISTER'S GYM IN 3D") && b3.includes('const throwComics = () =>') && b3.includes("'COMIC STORM'"));
+  assert.ok(b3.includes("MR FISTER'S GYM IN 3D") && b3.includes('const throwComics = () =>') && B.gymMoveFor('MR FISTER', 3) === 'COMIC STORM' && b3.includes("if (next.trainer === 'MR FISTER') throwComics()"));
   console.log('3D gym fight: passed');
 }
 
@@ -169,3 +169,22 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   assert.equal(B.rematchesOf(back, 5), 1); const r2 = B.addBeastXp(back, 100, s, 2), ev = r2.events.find(e => e.kind === 'rival');
   assert.equal(ev.rematch, 1, 'WANTS A REMATCH!'); assert.equal(r2.beasts.rivalHp, B.rivalMax(s, 5, 1));
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'); assert.ok(src.includes('WANTS A REMATCH!')); assert.ok(!/Math\.random/.test(src)); }
+
+// 8. NIGHT BEASTS (2026-11-14): after dark the middle patch has a beast you only see at night; weather still wins.
+{ assert.ok(B.isNightBeast(B.wildName(3, B.NIGHT_PATCH, '', true)), 'a night-only beast'); assert.equal(B.wildName(3, 0, '', true), B.wildName(3, 0), 'only the middle patch changes');
+  assert.ok(!B.isNightBeast(B.wildName(3, B.NIGHT_PATCH)), 'not in the day'); assert.equal(B.wildName(3, B.NIGHT_PATCH, 'rain', true), B.wildName(3, B.NIGHT_PATCH, 'rain'), 'weather wins');
+  assert.equal(B.nightFor({ beastsTimeOfDay: 'night' }), true); assert.equal(B.nightFor({ beastsTimeOfDay: 'day' }), false);
+  assert.equal(B.nightFor({}, Date.parse('2026-11-15T06:00:00Z')), true, '10 pm Pacific'); assert.equal(B.nightFor({}, Date.parse('2026-11-14T20:00:00Z')), false, 'noon Pacific');
+  const w = B.battleFrom({ floor: 2, phase: 'floor', pct: (B.ENCOUNTERS[B.NIGHT_PATCH][0] + 0.01) * 100, night: true }); assert.equal(w.night, true); assert.ok(B.isNightBeast(w.foe.name));
+  const s = { beastsGoal: 100, beastsTimeOfDay: 'night' }; const r = B.addBeastXp({ ...B.emptyBeasts('w'), route: 2 }, 99, s, 1); const c = r.events.filter(e => e.kind === 'caught');
+  assert.ok(c.some(e => e.night && B.isNightBeast(e.name)), 'caught at night'); assert.equal(B.publicBeasts(r.beasts, s).night, true); }
+// 9b. THE GYM LEADERS (2026-11-14: "cool trainers. Or thematic"): five, each with an arena, a signature move and a line.
+{ assert.deepEqual(B.GYM_LEADERS.map(g => g[0]), ['MR FISTER', 'THE GRADER', 'FOIL QUEEN', 'THE ARCHIVIST', 'THE INKER']);
+  assert.deepEqual([5, 10, 15, 20, 25, 30].map(r => B.rivalFor(r).name), ['MR FISTER', 'THE GRADER', 'FOIL QUEEN', 'THE ARCHIVIST', 'THE INKER', 'MR FISTER']);
+  for (const [name] of B.GYM_LEADERS) { const g = B.gymOf(name); assert.ok(g && g.id && g.arena && g.moves.length && g.line.length <= 30, name); assert.equal(B.gymMoveFor(name, 0), g.moves[0], 'opens with the signature'); }
+  assert.equal(B.gymMoveFor('SCALPER STEVE', 0), '', 'route rivals use beast moves');
+  assert.equal(B.battleFrom({ floor: 10, phase: 'boss', pct: 50 }).gym, 'grader'); assert.equal(B.battleFrom({ floor: 4, phase: 'boss', pct: 50 }).gym, '');
+  const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), g3 = readFileSync(new URL('../scripts/beasts-gyms-3d.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8');
+  for (const id of ['grader', 'foil', 'archivist', 'inker']) { assert.ok(new RegExp('\\n  ' + id + '\\(P, L\\) \\{').test(src), 'pixel sprite ' + id); assert.ok(new RegExp('\\n  ' + id + '\\(\\) \\{').test(g3), '3D model ' + id); assert.ok(g3.includes("id === '" + id + "'"), 'arena + move ' + id); }
+  for (const k of ["from './beasts.mjs?v=17'", "from './beasts-gyms-3d.mjs?v=1'", 'signatureFx(gymId, scene, from', "if (b && b.kind === 'rival' && b.gym && b.gym !== 'fister') arenaBg("]) assert.ok((b3 + src).includes(k), k);
+  assert.ok(!/Math\.random/.test(g3), 'nothing by chance'); assert.ok(!/pok[eé]mon|nintendo|marvel/i.test(g3.replace(/^\/\/.*$/gm, '')), 'our own designs'); }

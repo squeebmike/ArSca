@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.13';
+  const STUDIO_V='2026.11.14.14';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -141,6 +141,9 @@
   <h3>Effects</h3>
   <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER'],['fistergoo','🖤 SYMBIOTE FISTER'],['spotlight','🔦 SPOTLIGHT NOW PLAYING']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
+  <h3>📺 Share a screen</h3>
+  <div class="mana-row"><label>WHAT IT IS<input id="scr-title" maxlength="40" placeholder="FOC ORDERS -- FOLLOW ALONG"></label><label>WHERE<select id="scr-layout"><option value="corner">CORNER</option><option value="half">RIGHT HALF</option><option value="full">FULL SCREEN</option></select></label><button type="button" id="scr-go">📺 SHARE A SCREEN</button><button type="button" id="scr-stop">STOP SHARING</button></div>
+  <small>Pick a window or a tab on this computer (your FOC page, the order list) and it shows live in the overlay in OBS, in a frame with the words above on it. Use Chrome or Edge on a computer, and keep this tab open while it's shared. On the computer that runs OBS you can also just add OBS's own Window Capture.</small>
   <h3>ByteRider_97</h3>
   <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${box('mascotSounds','ByteRider sounds')}${box('showHype','Hype meter')}${box('mascotSaysMarquee','ByteRider says the marquee lines')}${num('mascotSayEvery','…one every (seconds)',10,600)}${box('mascotBorder','His bezel round the screen')}${box('mascotIdleFace','Keep a faint face up between reactions')}${num('mascotScale','Face size (%)',40,150)}${num('mascotFaceY','Face height on screen',250,1650)}</div>
   <small>The phone screen is his monitor: his face pops onto it when he reacts, then clears so the cameras show. He reacts on his own to sales, big hits, the boss K.O., countdowns, giveaways and winners, the show starting and ending, and each new item up. Whatnot doesn't send follows or auction starts, so those are buttons here. He naps after 5 quiet minutes.</small>
@@ -348,6 +351,26 @@
   host.querySelector('#mana-floor-name-go').onclick=()=>run(async()=>{const n=host.querySelector('#mana-floor-name').value.trim();const x=await api('floor-name',{name:n});took(x);status.textContent=n?'Floor named "'+n.toUpperCase()+'".':'Floor name cleared.';});
   host.querySelector('#mana-vote-open').onclick=e=>{const b=e.target.closest('[data-vote]');if(b)run(async()=>{const x=await api('vote-open',{kind:b.dataset.vote});took(x);status.textContent='Vote is on screen. Tap the winner below.';});};
   host.querySelector('#mana-reset-week').onclick=()=>run(async()=>{const bm=values().gameMode==='beasts';if(!confirm(bm?'Start Long Box Beasts over at route 1 (no badges, no beasts beaten)? The dungeon is not touched.':'Start the week over at floor 1 with no stars? Long Box Beasts is not touched.'))return;const d=await api('dungeon-adjust',{resetWeek:true});took(d);status.textContent=bm?'Beasts reset: route 1.':'Week reset: floor 1.';});
+  // SHARE A SCREEN: this computer's window or tab, straight to the overlay (WebRTC); only the handshake goes through the studio.
+  let scrPc=null,scrStream=null,scrId='';
+  const scrLook=()=>({layout:host.querySelector('#scr-layout').value,title:host.querySelector('#scr-title').value||'FOC ORDERS -- FOLLOW ALONG'});
+  async function stopScreen(tell){scrStream?.getTracks().forEach(t=>t.stop());try{scrPc?.close();}catch{}scrPc=scrStream=null;const was=scrId;scrId='';if(tell&&was)await api('screen',{stop:true});}
+  host.querySelector('#scr-go').onclick=()=>run(async()=>{
+    if(!navigator.mediaDevices?.getDisplayMedia||typeof RTCPeerConnection!=='function')throw Error('This browser can\'t share a screen -- use Chrome or Edge on a computer.');
+    if(!connectedStore)await connect();
+    await stopScreen(false);
+    const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:15,max:30}},audio:false});
+    const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'}]});scrPc=pc;scrStream=stream;
+    for(const t of stream.getTracks())pc.addTrack(t,stream);
+    stream.getVideoTracks()[0].onended=()=>{if(scrPc===pc)void run(async()=>{await stopScreen(true);status.textContent='Screen share stopped.';});};
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise(res=>{if(pc.iceGatheringState==='complete')return res();const t=setTimeout(res,2500);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);res();}});});
+    const d=await api('screen',{offer:pc.localDescription.sdp,...scrLook()});scrId=d.id;status.textContent='Waiting for the overlay in OBS...';
+    for(let k=0;k<40;k++){await new Promise(r=>setTimeout(r,750));if(scrId!==d.id)return;const r=await api('screen',{poll:d.id});if(r.answer){await pc.setRemoteDescription({type:'answer',sdp:r.answer});status.textContent='📺 Sharing -- it\'s on the overlay. STOP SHARING (or the browser\'s Stop) ends it.';return;}}
+    await stopScreen(true);throw Error('The overlay didn\'t answer. Is the overlay open in OBS and connected? Try again.');
+  });
+  host.querySelector('#scr-stop').onclick=()=>run(async()=>{await stopScreen(false);await api('screen',{stop:true});status.textContent='Screen share stopped.';});
+  for(const id of ['#scr-layout','#scr-title'])host.querySelector(id).onchange=()=>{if(scrId)void run(()=>api('screen',scrLook()));};
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
   // ByteRider_97: a reaction or a line, on stream (and in the preview).
   // Store, 2026-11-02 (on a phone): "I didn't see it animate in the preview."

@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=16').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=17').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false, vendOn = false, world3d = false, b3d = null;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -234,7 +234,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (beasts && settings0.gameMode === 'beasts') {
           // 3DS: the route in real 3D (scripts/beasts-3d.mjs); the others: the pixel route.
           const want3d = settings0.beastsGfx === '3ds'; if (beastsOn && world3d !== want3d) { world?.stop(); world = null; beastsOn = false; }
-          if (!beastsOn) { if (want3d && !b3d) { import('./beasts-3d.mjs?v=6').then(m => { b3d = m; paint(); }).catch(() => {}); return; } fp?.stop(); world = want3d ? b3d.createWorld3D(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }) : beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world3d = want3d; world.start(); beastsOn = true; mini.hidden = true; }
+          if (!beastsOn) { if (want3d && !b3d) { import('./beasts-3d.mjs?v=7').then(m => { b3d = m; paint(); }).catch(() => {}); return; } fp?.stop(); world = want3d ? b3d.createWorld3D(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }) : beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world3d = want3d; world.start(); beastsOn = true; mini.hidden = true; }
           world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '', drops: d.drops || [], timeOfDay: settings0.beastsTimeOfDay || '', area: d.area || '', weather: d.weather || '', gfx: settings0.beastsGfx || 'gbc', follower: settings0.beastsFollow !== false ? (d.form || '') : '' });
           bubble.classList.remove('on'); paintBattle(d); // the dungeon's boss taunt stays out of the route
           return;
@@ -276,7 +276,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset, d.drainMs), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
         const want3d = settings0.beastsGfx === '3ds'; if (battle && battle3d !== want3d) { battle.stop(); battle = null; battleOn = false; }
-        if (!battle) { if (want3d) { if (!b3d) { import('./beasts-3d.mjs?v=6').then(m => { b3d = m; paintBattle(d); }).catch(() => {}); return; } battle = b3d.createBattle3D(bcv, { scale: 3 }); } else battle = beasts.createBattle(bcv, { scale: 3 }); battle3d = want3d; }
+        if (!battle) { if (want3d) { if (!b3d) { import('./beasts-3d.mjs?v=7').then(m => { b3d = m; paintBattle(d); }).catch(() => {}); return; } battle = b3d.createBattle3D(bcv, { scale: 3 }); } else battle = beasts.createBattle(bcv, { scale: 3 }); battle3d = want3d; }
         battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0, gfx: settings0.beastsGfx || 'gbc' });
         if (!battleOn) { battle.start(); battleOn = true; }
       };

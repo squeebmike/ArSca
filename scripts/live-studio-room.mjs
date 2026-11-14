@@ -274,6 +274,23 @@ export class ManaLiveStudio extends DurableObject {
   // The host's camera (2026-11-12: "can I move the camera from the dashboard?
   // joystick?"): look around, scout ahead, look back. Not saved -- only passed
   // on to the screens; how far along the floor you are still comes from mana.
+  // SHARE A SCREEN (store, 2026-11-14: "a way to display something from my screen to OBS ... show my FOC screen while we
+  // do orders, so people can watch along"): the picture goes straight from the remote's computer to the overlay in OBS
+  // (WebRTC, peer to peer). Only the handshake -- two short text blobs -- passes through here; nothing is stored.
+  screen(input = {}) {
+    const now = Date.now(), lay = v => (['corner', 'half', 'full'].includes(v) ? v : 'corner'), title = v => String(v || '').replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 40).toUpperCase();
+    if (input.stop === true) { this.scr = null; this.broadcast({ type: 'screen', screen: null, serverNow: now }); return { stopped: true }; }
+    if (typeof input.offer === 'string') {
+      if (input.offer.length > 20000 || !input.offer.startsWith('v=0')) throw new Error('That screen share did not start right -- try again');
+      this.scrN = (this.scrN || 0) + 1; const id = now.toString(36) + '-' + this.scrN;
+      this.scr = { id, answer: '', layout: lay(input.layout), title: title(input.title) };
+      this.broadcast({ type: 'screen', screen: { id, offer: input.offer, layout: this.scr.layout, title: this.scr.title }, serverNow: now });
+      return { id };
+    }
+    if (typeof input.poll === 'string') return { answer: this.scr && this.scr.id === input.poll ? this.scr.answer : '' };
+    if (this.scr && (input.layout !== undefined || input.title !== undefined)) { if (input.layout !== undefined) this.scr.layout = lay(input.layout); if (input.title !== undefined) this.scr.title = title(input.title); this.broadcast({ type: 'screen-look', layout: this.scr.layout, title: this.scr.title, serverNow: now }); return { layout: this.scr.layout }; }
+    throw new Error('No screen is being shared');
+  }
   camera(input = {}) {
     const clamp = v => Math.max(-1, Math.min(1, Number(v) || 0)), now = Date.now();
     const cam = { yaw: clamp(input.yaw), pitch: clamp(input.pitch), action: ['scout', 'back'].includes(input.action) ? input.action : '', at: now };
@@ -476,7 +493,12 @@ export class ManaLiveStudio extends DurableObject {
   }
   async webSocketMessage(ws,message) {
     const a=ws.deserializeAttachment();
-    if (a?.authenticated) { ws.close(1008,'Read-only overlay'); return; }
+    if (a?.authenticated) {
+      // The one thing an overlay may send: its half of a screen-share handshake.
+      let m = null; if (typeof message === 'string' && message.length <= 20000) { try { m = JSON.parse(message); } catch {} }
+      if (m && m.type === 'screen-answer' && this.scr && m.id === this.scr.id && !this.scr.answer && typeof m.sdp === 'string' && m.sdp.startsWith('v=0') && m.sdp.length <= 20000) { this.scr.answer = m.sdp; return; }
+      if (m && m.type === 'screen-answer') return;
+      ws.close(1008,'Read-only overlay'); return; }
     if (typeof message !== 'string' || message.length > 200 || a.expires < Date.now()) {ws.close(1008,'Invalid authentication');return;}
     let token; try { token=JSON.parse(message).token; } catch { ws.close(1008,'Invalid authentication');return; }
     if (typeof token !== 'string' || token.length !== 72) {ws.close(1008,'Invalid authentication');return;}

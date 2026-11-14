@@ -39,6 +39,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/beast-move') return deps.json({ok:true,...await room.pickMove(Number(body.index))});
     if (url.pathname==='/live-studio/machine') return deps.json({ok:true,...await room.setMachine(body)});
     // The Shed Dungeon: a follow / share / bookmark tapped in, or a fix.
+    if (url.pathname==='/live-studio/screen') return deps.json({ok:true,...room.screen(body)});
     if (url.pathname==='/live-studio/camera') return deps.json({ok:true,...room.camera(body)});
     if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await withChest(await room.dungeonTap(String(body.kind||'')))});
     if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await withChest(await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true}))});
