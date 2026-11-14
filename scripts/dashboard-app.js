@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.14.5-mtg-list-cards';
+const APP_VERSION = '2026.11.14.6-mtg-chart';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36796,6 +36796,23 @@ async function openQplChartModal(idx, range='3M'){
   if(!r) return;
   r.graphRangeLabel = range;
   r.graphDuration = qplChartRangeToDuration(range);
+  // MTG: price history from JustTCG (TCGplayer sales), fetched ONLY when CHART is tapped -- one call per card,
+  // range and 12 hours, never for cards nobody charts (store, 2026-11-14). Falls back to the PriceCharting table.
+  if(r.source === 'scryfall' && !r.selectedVariant?.priceHistory?.length && mtgOfflineSearchMode() !== 'offline_only' && (r.tcgplayerId || r.tcgPlayerId || r.raw?.tcgplayer_id)){
+    let modal = document.getElementById('qpl-chart-modal');
+    if(!modal){ modal = document.createElement('div'); modal.id = 'qpl-chart-modal'; modal.className = 'qpl-chart-modal'; modal.addEventListener('click', e => { if(e.target === modal) closeQplChartModal(); }); document.body.appendChild(modal); }
+    modal.innerHTML = '<div class="qpl-chart-card"><div style="color:var(--dim);font-size:11px;padding:14px 0">Loading the price chart...</div></div>';
+    modal.classList.add('on');
+    const points = await fetchMtgChartHistory(r, r.graphDuration).catch(() => null);
+    if(points && points.length > 1){
+      const rr = { ...r, selectedVariant:{ ...(r.selectedVariant || {}), marketPrice:Number(r.market || 0), priceHistory:points }, chartSource:'JustTCG (TCGplayer sales) history' };
+      modal.innerHTML = qplChartModalHtml(rr, idx);
+      modal.querySelector('.qpl-chart-card')?.insertAdjacentHTML('beforeend', '<div style="font-size:10px;color:var(--dim);margin-top:6px">Chart: JustTCG history for this printing, ' + escHtml(qplFinishLabel(r.selectedFinish || r.finish || 'normal')) + ', Near Mint. Loaded on tap only.</div>');
+      const panel = buySignalPanelHtml(rr, idx);
+      if(panel) modal.querySelector('.qpl-chart-card')?.insertAdjacentHTML('beforeend', panel);
+      return;
+    }
+  }
   // MTG (Scryfall): no Scryfall history API — show PriceCharting guide prices + external links
   if(r.source === 'scryfall' && !r.selectedVariant?.priceHistory?.length) {
     const scryfallUri = r.raw?.scryfall_uri || r.raw?.uri || '';
@@ -36909,6 +36926,48 @@ async function openQplChartModal(idx, range='3M'){
   modal.classList.add('on');
 }
 
+// One JustTCG call for an MTG printing's history (all its finishes, Near Mint), kept 12 hours on this device per
+// card and range; returns the points for the finish being looked at, or null.
+const MTG_CHART_CACHE_KEY = 'mtg_chart_history_v1', MTG_CHART_TTL = 12 * 3600000;
+const _mtgChartMem = new Map();
+function mtgChartCacheRead(){ try { return JSON.parse(localStorage.getItem(MTG_CHART_CACHE_KEY) || '{}') || {}; } catch(e) { return {}; } }
+function mtgChartCacheWrite(key, entry){
+  _mtgChartMem.set(key, entry);
+  try {
+    const all = mtgChartCacheRead(); all[key] = entry;
+    const keep = Object.entries(all).filter(([, v]) => Date.now() - Number(v.at || 0) < MTG_CHART_TTL).sort((a, b) => b[1].at - a[1].at).slice(0, 60);
+    localStorage.setItem(MTG_CHART_CACHE_KEY, JSON.stringify(Object.fromEntries(keep)));
+  } catch(e) {}
+}
+function mtgChartPoints(list){
+  return (Array.isArray(list) ? list : []).map(p => {
+    const t = p?.t ?? p?.timestamp;
+    const date = p?.date || (Number(t) > 0 ? new Date(Number(t) * (Number(t) < 1e12 ? 1000 : 1)).toISOString().slice(0, 10) : '');
+    return { date, price:Number(p?.price ?? p?.p ?? p?.marketPrice ?? p?.market ?? 0) };
+  }).filter(p => p.date && p.price > 0).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+function mtgChartFinishKey(v = {}){ const t = [v.finishName, v.printing, v.finish].join(' '); return /etch/i.test(t) ? 'etched_foil' : /foil/i.test(t) ? 'foil' : 'normal'; }
+async function fetchMtgChartHistory(r, duration = '90d'){
+  const id = String(r.tcgplayerId || r.tcgPlayerId || r.raw?.tcgplayer_id || '').trim(); if(!id) return null;
+  const fin = mtgFinishPriceFamily(r.selectedFinish || r.finish || 'normal'), key = id + '|' + duration;
+  let entry = _mtgChartMem.get(key) || mtgChartCacheRead()[key];
+  if(!entry || Date.now() - Number(entry.at || 0) >= MTG_CHART_TTL){
+    if(!navigator.onLine) return null;
+    const res = await storeWorkerFetch(WORKER + '/pricing/justtcg/tcgplayer/' + encodeURIComponent(id) + '?' + new URLSearchParams({ priceHistoryDuration:duration, storeId:getActiveStoreId() }).toString(), { cache:'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const match = data.matches?.[0] || data.card || null;
+    if(!res.ok || !match) return null;
+    const byFinish = {};
+    for(const v of (match.availableVariants || [])){
+      if(String(v.condition || 'NM').toUpperCase() !== 'NM') continue;
+      const k = mtgChartFinishKey(v), pts = mtgChartPoints(v.priceHistory);
+      if(pts.length && !byFinish[k]) byFinish[k] = pts;
+    }
+    entry = { at:Date.now(), byFinish };
+    mtgChartCacheWrite(key, entry);
+  }
+  return entry.byFinish?.[fin] || null;
+}
 function closeQplChartModal(){ document.getElementById('qpl-chart-modal')?.classList.remove('on'); }
 
 // ── Buy signal (scripts/buy-signal.js) ──
