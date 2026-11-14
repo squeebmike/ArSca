@@ -40,4 +40,22 @@ const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf
 assert.ok(!/Math\.random/.test(src), 'no Math.random in beasts');
 const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
 assert.ok(room.includes('s.beasts = addBeastDrop(s.beasts, kind, s.settings, now);'), 'a tap drops a gift');
+// What the items do: walking past a CANDY / STONE / COIN is bonus XP (a share of the goal); a BERRY / POTION / ETHER
+// or chat's gift is stamina (the beast lasts 25% longer each, this route); stamina resets with the next route.
+{
+  const items = B.itemsFor(1), goal = B.beastGoal(s, 1);
+  const xpBonus = items.reduce((n, it) => n + goal * (B.ITEM_XP[it.kind] || 0), 0), staminaN = items.filter(it => !B.ITEM_XP[it.kind]).length;
+  let w = B.addBeastDrop({ ...B.emptyBeasts('w'), xp: 0 }, 'share', s, 1);
+  const r1 = B.addBeastXp(w, goal - 0.01, s, 2);
+  assert.equal(r1.events.filter(e => e.kind === 'item').length, items.length + 1, 'every item and the gift picked up');
+  assert.ok(Math.abs(r1.beasts.exp - (goal - 0.01 + xpBonus)) < 0.02, 'XP items add their bonus');
+  assert.equal(r1.beasts.stamina, staminaN + 1);
+  assert.equal(B.publicBeasts(r1.beasts, s).drainMs, B.drainFor(staminaN + 1));
+  assert.ok(B.beastHpFrom(1000, 1000 + B.BEAST_DRAIN_MS, B.drainFor(2)) > 0.3, 'stamina slows the drain');
+  const r2 = B.addBeastXp(r1.beasts, 0.01 + B.rivalMax(s, 1), s, 3);
+  assert.equal(r2.beasts.stamina, 0, 'a new route starts fresh');
+  const again = B.addBeastXp(r1.beasts, 0.001, s, 4);
+  assert.equal(again.events.filter(e => e.kind === 'item').length, 0, 'nothing picked up twice');
+  assert.equal(B.drainFor(99), B.BEAST_DRAIN_MS * 2, 'stamina tops out at double');
+}
 console.log('Beasts items, gifts, country, gyms, time of day: passed');

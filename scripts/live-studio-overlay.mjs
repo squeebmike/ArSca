@@ -132,7 +132,7 @@ function paintDungeon(d){
     $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':d.gym?'GYM ROUTE! '+usd(Math.max(0,d.goal-d.xp))+' MORE TO CHALLENGE '+rv.name+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!'+(d.toGym?' · GYM IN '+d.toGym+' ROUTE'+(d.toGym>1?'S':''):'');
     $('mana-cbar-sub').classList.toggle('evo-soon',!!evoSoon);
     $('mana-dungeon-floor').textContent='ROUTE '+d.route;$('mana-dungeon-shed').textContent='LONG BOX BEASTS';
-    $('mana-dungeon-stars').textContent=(d.form||'')+' LV '+(d.level||1)+(d.badges?' · BADGES '+d.badges:'');
+    $('mana-dungeon-stars').textContent=(d.form||'')+' LV '+(d.level||1)+(d.badges?' · BADGES '+d.badges:'')+(d.stamina?' · STAMINA '+(100+25*d.stamina)+'%':'');
     $('mana-dungeon-next').textContent=(d.toNext?d.toNext+' XP TO LV '+((d.level||1)+1):'MAX LEVEL')+(d.dex?' · BEASTDEX '+d.dex:'');
     return;
   }
@@ -270,7 +270,7 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=8').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=9').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
@@ -285,7 +285,7 @@ function paintBeasts(d){
   if(sh&&beastsLib){const on=beastMode()&&!!d&&(d.caught||[]).length>0&&settings.visible!==false;sh.classList.toggle('mana-hidden',!on);if(on){const k=(d.caught||[]).join(',')+'|'+d.dex;if(k!==shelfKey){shelfKey=k;beastsLib.drawShelf(sh,d.caught,{count:d.dex,scale:2});}sh.style.top=Math.max(0,Number(settings.y)-660)+'px';}}
   // A level up: the line in the battle box and a float on the sign.
   if(beastMode()&&d?.level){if(shownLevel&&d.level>shownLevel){battle?.levelUp?.(d.form||'',d.level);const m=document.createElement('b');m.textContent='LV '+d.level+'!';$('mana-sign-hits')?.append(m);setTimeout(()=>m.remove(),1800);}shownLevel=d.level;}
-  const b=beastMode()&&settings.beastsBattle!=='green'&&beastsLib&&d?beastsLib.battleFrom(d,{battery:beastsLib.beastHpFrom?beastsLib.beastHpFrom(Math.max(Number(stats.lastSaleAt)||0,Number(d.lastAt)||0),Date.now()+offset):batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
+  const b=beastMode()&&settings.beastsBattle!=='green'&&beastsLib&&d?beastsLib.battleFrom(d,{battery:beastsLib.beastHpFrom?beastsLib.beastHpFrom(Math.max(Number(stats.lastSaleAt)||0,Number(d.lastAt)||0),Date.now()+offset,d.drainMs):batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
   cv.classList.toggle('mana-hidden',!b);
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   if(!battle)battle=beastsLib.createBattle(cv,{scale:3});

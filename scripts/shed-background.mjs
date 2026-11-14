@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=8').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=19'), import('./live-studio-bosses.mjs'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs').catch(() => null), import('./beasts.mjs?v=9').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false, vendOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -271,7 +271,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       let battle = null, battleOn = false, rivalArt = '';
       const batteryOf = d => { const last = Math.max(Number(stats?.lastSaleAt) || 0, Number(d?.lastAt) || 0); return last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / 360000)) : 1; };
       const paintBattle = d => {
-        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
+        const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset, d.drainMs), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
         if (!battle) battle = beasts.createBattle(bcv, { scale: 3 });
         battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0 });

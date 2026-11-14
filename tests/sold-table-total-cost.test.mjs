@@ -11,7 +11,10 @@ const dashboard = fs.readFileSync('dashboard.html', 'utf8');
 
 assert.match(dashboard, /const qty=Math\.max\(1,Number\(i\.quantity \?\? i\.soldQuantity \?\? 1\)\);\s*\n\s*const totalCost=Number\(i\.cost\|\|0\)\*qty;/, 'renderSoldTable must extend the per-unit cost by quantity before displaying it, matching how salePrice is already extended');
 assert.match(dashboard, /const pft=Number\(i\.profit \|\| \(\(i\.salePrice \|\| 0\) - totalCost\) \|\| 0\);/, 'the profit fallback calculation must also use the quantity-extended total cost, not the raw per-unit cost');
-assert.match(dashboard, /<td class="pp pd">\$\{totalCost>0\?fd\$\(totalCost\):'—'\}<\/td>/, 'the displayed COST column must show the extended total cost, not the raw per-unit i.cost');
+// 2026-11-14: COST split into BOOK COST (what we paid; the extended total when a row has no split) and FEES.
+assert.match(dashboard, /const bookCost=i\.bookCost!=null\?Number\(i\.bookCost\|\|0\):totalCost, fees=i\.fees!=null\?Number\(i\.fees\|\|0\):0;/, 'BOOK COST falls back to the extended total cost');
+assert.match(dashboard, /<td class="pp pd">\$\{bookCost>0\?fd\$\(bookCost\):'—'\}<\/td>\s*<td class="pp pd">\$\{fees>0\?fd\$\(fees\):'—'\}<\/td>/, 'BOOK COST and FEES columns');
+assert.ok(dashboard.includes("bookCost:Number(line.cost_basis || 0), fees:Math.max(0,"), 'ledger rows carry the split');
 assert.ok(!/<td class="pp pd">\$\{i\.cost>0\?fd\$\(i\.cost\):'—'\}<\/td>/.test(dashboard), 'the old per-unit-only cost display must be gone from renderSoldTable');
 
 console.log('Sold table total-cost display contract checks passed');

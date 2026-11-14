@@ -105,6 +105,7 @@ export function validateSettings(input) {
   if (!['ps1', 'n64'].includes(full.bossStyle)) throw new Error('Invalid bossStyle');
   if (!['dungeon', 'beasts', 'vending'].includes(full.gameMode)) throw new Error('Invalid gameMode');
   if (!['overlay', 'green'].includes(full.beastsBattle)) throw new Error('Invalid beastsBattle');
+  if (!['', 'day', 'sunset', 'night'].includes(full.beastsTimeOfDay ?? '')) throw new Error('Invalid beastsTimeOfDay');
   for (const k of ['beastsFace', 'beastsBuddy']) if (full[k] && !/^[0-3]{144}$/.test(full[k])) throw new Error('Invalid ' + k);
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
   const WHERE = { beastsMoves: 'attacks', beastsEvolveReward: 'evolution reward', message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' };

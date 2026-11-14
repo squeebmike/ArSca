@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.14.8-pc-weekly';
+const APP_VERSION = '2026.11.14.9-sold-fees';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16081,6 +16081,9 @@ async function loadLedgerSoldRows(){
         category, categoryName:category, quantity, salePrice,
         // Per-unit, like every other sold row -- renderSoldTable multiplies by quantity.
         cost:(salePrice - profit) / quantity, profit,
+        // Split for the Sold list (store, 2026-11-14): what the item cost us, and the selling fees (eBay etc.)
+        // -- the line's profit already takes both off.
+        bookCost:Number(line.cost_basis || 0), fees:Math.max(0, Math.round((Number(line.adjusted_price || 0) - Number(line.profit ?? (Number(line.adjusted_price || 0) - Number(line.cost_basis || 0))) - Number(line.cost_basis || 0)) * 100) / 100),
         channel, soldAt:sale.completed_at || sale.created_at || '', status:'sold',
         source:'ledger', shopId:line.item_id || '', saleId:sale.id,
       });
@@ -18243,7 +18246,7 @@ function renderSoldTable(){
   const sourceRows=ledgerSoldRows || soldData.concat(getUnlinkedTransactionRows(soldData));
   const rows=sourceRows.filter(i=>!q||(i.name||'').toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)).sort((a,b)=>new Date(b.soldAt||0)-new Date(a.soldAt||0));
   const tb=document.getElementById('sold-body');
-  if(!rows.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-t">NO SALES YET</div></div></td></tr>`;return;}
   const isVoidableSaleId=id=>/^[0-9a-f-]{36}$/i.test(id||'');
   tb.innerHTML=rows.slice(0,100).map(i=>{
     const d=new Date(i.soldAt||0);
@@ -18258,12 +18261,15 @@ function renderSoldTable(){
     const qty=Math.max(1,Number(i.quantity ?? i.soldQuantity ?? 1));
     const totalCost=Number(i.cost||0)*qty;
     const pft=Number(i.profit || ((i.salePrice || 0) - totalCost) || 0);
+    // BOOK COST and FEES apart (store, 2026-11-14); rows without the split show their whole cost as book cost.
+    const bookCost=i.bookCost!=null?Number(i.bookCost||0):totalCost, fees=i.fees!=null?Number(i.fees||0):0;
     return `<tr>
       <td><span class="nc">${i.name}</span></td>
       <td><span class="sc2">${i.set||'—'}</span></td>
       <td><span class="ct ${String(i.categoryName || i.category || '').replace(/[^A-Za-z]/g,'')}">${i.categoryName || i.category || 'Unknown'}</span></td>
       <td class="pp pm">${i.salePrice>0?fd$(i.salePrice):'—'}</td>
-      <td class="pp pd">${totalCost>0?fd$(totalCost):'—'}</td>
+      <td class="pp pd">${bookCost>0?fd$(bookCost):'—'}</td>
+      <td class="pp pd">${fees>0?fd$(fees):'—'}</td>
       <td class="pp ${pft>=0?'pos':'neg'}">${pft?(pft>=0?'+':'')+fd$(pft):'—'}</td>
       <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${i.channel||'—'}</td>
       <td style="font-family:var(--font-mono);font-size:9px;color:var(--dim)">${ds}</td>

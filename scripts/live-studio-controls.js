@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.1';
+  const STUDIO_V='2026.11.14.2';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -99,6 +99,7 @@
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
   <label>WHEN YOUR BEAST EVOLVES (LV 10 and LV 20), everyone watching gets<input name="beastsEvolveReward" maxlength="120" placeholder="e.g. Free giveaway in the Whatnot tool"></label>
   <small>Levels: every $1 sold is 1 XP (follows, shares and bookmarks count too); a new attack to learn every 5 levels -- chat names it (➕ ADD CHAT'S ATTACK). The level lasts the week. The reward is for the whole room, never buyers only.</small>
+  <label>TIME OF DAY ON THE ROUTE (BEASTS)<select name="beastsTimeOfDay"><option value="">AUTO (the clock)</option><option value="day">DAY</option><option value="sunset">SUNSET</option><option value="night">NIGHT (fireflies)</option></select></label>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
   <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) (the chibi walkers are always used now; the face photos below are kept but no longer replace them).</small>
   <div class="mana-row beast-faces"><label>YOUR FACE (a photo)<input type="file" accept="image/*" id="beast-face-file"></label><canvas id="beast-face-view" width="12" height="12"></canvas><label>CHAMP'S FACE<input type="file" accept="image/*" id="beast-buddy-file"></label><canvas id="beast-buddy-view" width="12" height="12"></canvas></div>
