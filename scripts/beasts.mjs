@@ -401,6 +401,29 @@ export function publicBeasts(bIn, s, starter = '') {
 export const PALETTES = { day: GB, sunset: [[248, 208, 144], [224, 148, 96], [140, 72, 64], [48, 22, 34]], night: [[150, 170, 214], [92, 108, 168], [42, 50, 102], [10, 14, 40]] };
 export const timeOfDay = (hour = new Date().getHours()) => hour >= 17 && hour < 20 ? 'sunset' : hour >= 20 || hour < 6 ? 'night' : 'day';
 let PAL = GB;
+// GRAPHICS SETTINGS (store, 2026-11-14: "a new graphics setting for the pokemon side -- GBC, GBA ... modelled kind of
+// like the corresponding games"): 'gbc' is the four greens; 'gba' is full colour -- each kind of ground its own four
+// colours, the people and the beasts in colour (each beast its own hue, from its name), a bright battle screen.
+// Original colours and art; nothing copied from any game.
+export const GFX = ['gbc', 'gba'];
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const ramp = (...hs) => hs.map(hex);
+export const TILE_RAMPS = {
+  0: ramp('#b8e888', '#7cc858', '#4f9634', '#285018'), 1: ramp('#f4e6b8', '#dcc493', '#b08f5c', '#6c4c2c'), 2: ramp('#98da62', '#5cb43a', '#327a22', '#174010'),
+  3: ramp('#b8e888', '#7cc858', '#2f7f3a', '#123a1c'), 4: ramp('#c8ecff', '#74bcf2', '#3a7cc8', '#183870'), 5: ramp('#fbf4e4', '#dccdb4', '#a48b72', '#504030'),
+  6: ramp('#ffb4a4', '#e2604e', '#a42c2c', '#521212'), 7: ramp('#e6c496', '#b4844f', '#744422', '#301808'), 8: ramp('#7cc858', '#d6bc92', '#94693a', '#483018'),
+  9: ramp('#ffd6ec', '#7cc858', '#f25484', '#285018'), 10: ramp('#f6e7c4', '#7cc858', '#a5753e', '#4a2c14'), 11: ramp('#ffffff', '#e8e8e8', '#ffd040', '#202020'),
+  12: ramp('#ffffff', '#e8e8e8', '#ff8040', '#202020'), 13: ramp('#e4e4dc', '#a8a8a0', '#727268', '#383830'), 14: ramp('#faf2c4', '#f0d892', '#c8a862', '#806838'),
+  15: ramp('#f2d4a2', '#c89a62', '#906232', '#482810'), 16: ramp('#b8e888', '#7cc858', '#6b5a3a', '#3a2c18'), 17: ramp('#ac9c84', '#7a6a5a', '#524238', '#282018'),
+  18: ramp('#9c8c74', '#726252', '#4a4238', '#201810'), 19: ramp('#ffffff', '#e2f2ff', '#a8c8e8', '#587898'), 20: ramp('#ececec', '#c2c2ca', '#92929a', '#52525a'),
+  21: ramp('#fff8b4', '#c2c2ca', '#92929a', '#303038'), 22: ramp('#e4e4ec', '#8ab86a', '#6a6a7a', '#303040'), 23: ramp('#fff284', '#f8a232', '#d2421a', '#601008'),
+  24: ramp('#866652', '#64443a', '#422a22', '#201010'),
+};
+export const PEOPLE_RAMP = ramp('#fff2e2', '#f2b892', '#3a5ab0', '#181820'), ICON_RAMP = ramp('#ffffff', '#ffd040', '#f05050', '#202020'), UI_RAMP = ramp('#f8f8f8', '#d4dce6', '#6f88a4', '#202830');
+const hsl = (h, sat, l) => { const a = sat * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
+const beastRamps = new Map();
+export function beastRamp(name) { const n = String(name).toUpperCase(); if (!beastRamps.has(n)) { const h = hashOf(n + 'hue') % 360; beastRamps.set(n, [hsl(h, 0.75, 0.88), hsl(h, 0.6, 0.62), hsl(h, 0.55, 0.38), [24, 22, 34]]); } return beastRamps.get(n); }
+const TINTS = { sunset: [1.08, 0.86, 0.72], night: [0.55, 0.62, 0.95] };
 const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = PAL[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
 // One tile's pixel (shade) at (u, v) inside it; tm for the waving grass and water.
 function tileShade(t, u, v, tx, ty, tm) {
@@ -528,16 +551,18 @@ const ICONS = {
 function drawIcon(img, W, x0, y0, name) { (ICONS[name] || ICONS.GIFT).forEach((row, y) => { for (let x = 0; x < 8; x++) { const ch = row[x]; if (ch !== '.') put(img, W, x0 + x, y0 + y, +ch); } }); }
 const ITEM_SAYS = { BERRY: 'BERRY! +STAMINA', POTION: 'POTION! +STAMINA', CANDY: 'CANDY! +XP', STONE: 'EVO STONE! +XP', ETHER: 'ETHER! +STAMINA', COIN: 'COIN! +XP' };
 
+const followerCache = new Map();
+function followerBeast(name) { if (!followerCache.has(name)) followerCache.set(name, makeBeast(name)); return followerCache.get(name); }
 // THE OVERWORLD on a canvas: the route, you walking it, your buddy a step behind.
 export function createWorld(canvas, { w = 240, h = 189 } = {}) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
-  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null;
+  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '';
   function set(s) {
     if (first || s.floor !== state.floor) { route = routeFor(s.floor); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
     const wasBattle = battleOf(state), isBattle = battleOf(s);
     if (isBattle && !wasBattle) exclaim = performance.now(); // a "!" over your head as the beast jumps out
-    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay) tod = s.timeOfDay;
+    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay !== undefined) tod = s.timeOfDay || null; if (s.gfx) gfx = GFX.includes(s.gfx) ? s.gfx : 'gbc'; if (s.follower !== undefined) follower = String(s.follower || '');
   }
   const battleOf = s => s.phase === 'boss' || ENCOUNTERS.some(([a, b]) => (s.pct || 0) / 100 >= a && (s.pct || 0) / 100 < b);
   function frame(now) {
@@ -548,16 +573,17 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     // Picking things up as you pass them: the route's items, then chat's gifts.
     if (shown > lastShown) { const got = route.items.filter(it => it.t > lastShown && it.t <= shown).pop(), gift = drops.filter(d => d.t > lastShown && d.t <= shown).pop(); if (gift) { said = 'CHAT GIFT: ' + String(gift.kind).toUpperCase().slice(0, 8) + '! +STAMINA'; saidAt = now; } else if (got) { said = ITEM_SAYS[got.kind] || 'FOUND SOMETHING!'; saidAt = now; } }
     lastShown = shown;
-    PAL = PALETTES[tod || timeOfDay()] || GB;
+    const gba = gfx === 'gba', day = tod || timeOfDay(); PAL = gba ? GB : PALETTES[day] || GB;
     // Facing the way you're walking (2026-11-13: "change directions"): across on a turn, up on a straight run.
     if (walking) { step = Math.floor(tm * 6) % 2; dir = p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : p.dy < 0 ? 'up' : p.dy > 0 ? 'down' : dir; } else step = 0;
     // The camera follows you (kept inside the map).
     const camX = Math.max(0, Math.min(MAP_W * T - w, (p.x + 0.5) * T - w / 2)), camY = Math.max(0, Math.min(MAP_H * T - h, (p.y + 0.5) * T - h * 0.58));
     // In a cave it's dark: the host's lantern lights a circle around them.
     const hx = (p.x + 0.5) * T - camX, hy = (p.y + 0.5) * T - camY - 8, cave = route.biomeAt(Math.round(p.y)) === 'cave';
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; let sh = tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm); if (cave || route.biomeAt(ty) === 'cave') { const d2 = (x - hx) ** 2 + (y - hy) ** 2, flick = Math.sin(tm * 9) * 3; if (d2 > (54 + flick) ** 2) sh = 3; else if (d2 > (38 + flick) ** 2) sh = Math.min(3, sh + 1); } put(img, w, x, y, sh); }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; let sh = tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm); if (cave || route.biomeAt(ty) === 'cave') { const d2 = (x - hx) ** 2 + (y - hy) ** 2, flick = Math.sin(tm * 9) * 3; if (d2 > (54 + flick) ** 2) sh = 3; else if (d2 > (38 + flick) ** 2) sh = Math.min(3, sh + 1); } if (gba) { const c = (TILE_RAMPS[t] || TILE_RAMPS[0])[sh], i = (y * w + x) * 4; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; } else put(img, w, x, y, sh); }
     // The items still on the path, and chat's gifts (they bob).
     const bobY = Math.round(Math.sin(tm * 4) * 1.5);
+    if (gba) PAL = ICON_RAMP;
     for (const it of route.items) if (it.t > shown + 0.001) { const ip = posAt(route, it.t); drawIcon(img, w, Math.round((ip.x + 0.5) * T - camX - 4), Math.round((ip.y + 0.5) * T - camY - 6) + bobY, it.kind); }
     for (const d of drops) if (d.t > shown + 0.001) { const ip = posAt(route, d.t); drawIcon(img, w, Math.round((ip.x + 0.5) * T - camX - 4), Math.round((ip.y + 0.5) * T - camY - 6) - bobY, 'GIFT'); }
     // The shop signs.
@@ -565,16 +591,24 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     // Your buddy, then you (you're in front).
     const sx = x => Math.round((x + 0.5) * T - camX - 8), sy = y => Math.round((y + 0.5) * T - camY - 18);
     // Always the chibi walkers (2026-11-13: "why no chibi?" -- a saved face photo used to swap in the old face sprite).
+    // YOUR BEAST FOLLOWS YOU (store, 2026-11-14: "the ones where the mon follows you should have it follow us"): a step
+    // behind Champ, half size, hopping as it walks.
+    if (follower) { const fq = posAt(route, Math.max(0, shown - 2.7 / route.len)), bt = followerBeast(follower), fr = bt.frames[Math.floor(tm * 4) % 4], fx0 = sx(fq.x) + 0, fy0 = sy(fq.y) + 10 - (walking ? Math.abs(Math.sin(tm * 8)) * 2 : 0) | 0; PAL = gba ? beastRamp(follower) : PAL;
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const v = fr[y * 2 + 1][dir === 'left' ? 31 - x * 2 : x * 2]; if (v >= 0) put(img, w, fx0 + x, fy0 + y, v); } }
+    if (gba) PAL = PEOPLE_RAMP;
     drawSprite(img, w, sx(q.x), sy(q.y) + 6, 'champ', dir, walking ? 1 - step : 0);
     drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);
     if (performance.now() - exclaim < 1400) text3(img, w, sx(p.x) + 7, sy(p.y) - 14, '!', 3);
     // Fireflies at night (they drift on the clock, no dice).
     if ((tod || timeOfDay()) === 'night') for (let k = 0; k < 9; k++) { const fx = Math.round((k * 53 + Math.sin(tm * 0.6 + k) * 22 + tm * 4) % w), fy = Math.round((k * 37 + Math.cos(tm * 0.5 + k * 2) * 16) % h); if ((Math.floor(tm * 2) + k) % 3) { put(img, w, fx, fy, 0); put(img, w, fx + 1, fy, 1); } }
+    if (gba) PAL = UI_RAMP;
     // What you picked up, over your head; the bag count in the corner.
     if (now - saidAt < 2200 && said) { const tw = said.length * 4 + 4, bx = Math.max(1, Math.min(w - tw - 1, sx(p.x) + 8 - tw / 2)), by = Math.max(1, sy(p.y) - 24); for (let yy = by; yy < by + 9; yy++) for (let xx = bx; xx < bx + tw; xx++) put(img, w, xx, yy, yy === by || yy === by + 8 || xx === bx || xx === bx + tw - 1 ? 3 : 0); text3(img, w, bx + 2, by + 2, said, 3); }
     const bag = (state.floor - 1) * ITEM_SPOTS.length + route.items.filter(it => it.t <= shown).length + drops.filter(d => d.t <= shown).length;
     for (let yy = 1; yy < 10; yy++) for (let xx = 1; xx < 40; xx++) put(img, w, xx, yy, yy === 1 || yy === 9 || xx === 1 || xx === 39 ? 3 : 0); text3(img, w, 4, 3, 'BAG ' + bag, 3);
     PAL = GB;
+    // GBA colours at sunset and night: the whole screen warmed or cooled.
+    const tint = gba && TINTS[day]; if (tint) for (let i = 0; i < img.data.length; i += 4) { img.data[i] *= tint[0]; img.data[i + 1] *= tint[1]; img.data[i + 2] *= tint[2]; }
     ctx.putImageData(img, 0, 0);
   }
   return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };
@@ -590,29 +624,31 @@ export function createBattle(canvas, { scale = 3 } = {}) {
   // and the line of text in the box along the bottom. Our own boxes and art.
   const W = 240, H = 160; canvas.width = W * scale; canvas.height = H * scale;
   const ctx = canvas.getContext('2d'), low = document.createElement('canvas'); low.width = W; low.height = H; const lx = low.getContext('2d'), img = lx.createImageData(W, H);
-  let b = null, moves = DEFAULT_MOVES, pick = 0, anim = null, foeAnim = null, evo = null, foeHits = 0, lastTenth = 10, faintAt = 0, raf = 0, last = 0, msg = '', shownFoe = 1, beastCache = new Map(), introAt = -1e9, key = '', rival = null;
+  let gfx = 'gbc', b = null, moves = DEFAULT_MOVES, pick = 0, anim = null, foeAnim = null, evo = null, foeHits = 0, lastTenth = 10, faintAt = 0, raf = 0, last = 0, msg = '', shownFoe = 1, beastCache = new Map(), introAt = -1e9, key = '', rival = null;
   const beast = (n, back = false) => { const k = n + (back ? '|back' : ''); if (!beastCache.has(k)) beastCache.set(k, makeBeast(n, { back })); return beastCache.get(k); };
   const fill = (x0, y0, w, h, s) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) put(img, W, x, y, s); };
   // A beast, animated: its idle frames (4 a second), a blink now and then; sinking out of sight when it's knocked out.
-  const drawBeast = (bt, x0, y0, flash, k = 2, sink = 0) => { const t = performance.now() / 1000, blink = bt.blink && (t % 3.7) < 0.14, fr = blink ? bt.blink : bt.frames[Math.floor(t * 4) % 4], N = BEAST_SIZE, cut = N - Math.round(sink * N); for (let y = 0; y < cut; y++) for (let x = 0; x < N; x++) { const s = fr[y][x]; if (s < 0) continue; for (let a = 0; a < k; a++) for (let c = 0; c < k; c++) put(img, W, x0 + x * k + c, y0 + (y + Math.round(sink * N)) * k + a, flash ? 3 - s : s); } };
+  const drawBeast = (bt, x0, y0, flash, k = 2, sink = 0) => { const pal0 = PAL; if (gfx === 'gba') PAL = beastRamp(bt.name); const t = performance.now() / 1000, blink = bt.blink && (t % 3.7) < 0.14, fr = blink ? bt.blink : bt.frames[Math.floor(t * 4) % 4], N = BEAST_SIZE, cut = N - Math.round(sink * N); for (let y = 0; y < cut; y++) for (let x = 0; x < N; x++) { const s = fr[y][x]; if (s < 0) continue; for (let a = 0; a < k; a++) for (let c = 0; c < k; c++) put(img, W, x0 + x * k + c, y0 + (y + Math.round(sink * N)) * k + a, flash ? 3 - s : s); } PAL = pal0; };
   const patch = (cx, cy, rx, ry) => { for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++) { const d = (x / rx) ** 2 + (y / ry) ** 2; if (d <= 1) put(img, W, cx + x, cy + y, d > 0.78 ? 3 : (x + y) % 3 === 0 ? 2 : 1); } };
   const hpBox = (x0, y0, name, f, mineBox) => { fill(x0, y0, 104, 26, 3); fill(x0 + 1, y0 + 1, 102, 24, 0); fill(x0 + 2, y0 + 23, 100, 1, 2); const bx = x0 + 18, by = y0 + 15; fill(bx, by, 80, 5, 3); fill(bx + 1, by + 1, 78, 3, 0); fill(bx + 1, by + 1, Math.max(0, Math.round(78 * f)), 3, f < 0.25 ? 3 : 2); if (mineBox) fill(x0 + 104, y0 + 8, 3, 18, 3); else fill(x0 - 3, y0 + 8, 3, 18, 3); };
-  function words(line) { const S = scale; ctx.fillStyle = `rgb(${GB[3]})`; ctx.fillRect(0, 106 * S, W * S, 54 * S); ctx.fillStyle = `rgb(${GB[0]})`; ctx.fillRect(2 * S, 108 * S, (W - 4) * S, 50 * S); ctx.fillStyle = `rgb(${GB[3]})`; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(line, 10 * S, 126 * S); }
+  function words(line) { const S = scale, U = gfx === 'gba' ? UI_RAMP : GB; ctx.fillStyle = `rgb(${U[3]})`; ctx.fillRect(0, 106 * S, W * S, 54 * S); ctx.fillStyle = `rgb(${U[0]})`; ctx.fillRect(2 * S, 108 * S, (W - 4) * S, 50 * S); ctx.fillStyle = `rgb(${U[3]})`; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(line, 10 * S, 126 * S); }
   function frame(now) {
     raf = requestAnimationFrame(frame); if (now - last < 33) return; last = now; const tm = now / 1000;
-    for (let i = 0; i < img.data.length; i += 4) { img.data[i] = GB[0][0]; img.data[i + 1] = GB[0][1]; img.data[i + 2] = GB[0][2]; img.data[i + 3] = 255; }
-    if (!b) { lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); return; }
+    const gbaB = gfx === 'gba'; PAL = gbaB ? UI_RAMP : GB;
+    // GBA: a sky over a field; GBC: the plain lightest green.
+    for (let i = 0; i < img.data.length; i += 4) { const y = (i / 4 / W) | 0, c = !gbaB ? GB[0] : y < 60 ? [176 + y, 216 + (y >> 1), 248] : [196, 232, 160]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; }
+    if (!b) { PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); return; }
     // Their patch of ground (top right), yours (bottom left).
-    patch(184, 66, 34, 7); patch(60, 104, 46, 8);
+    if (gbaB) PAL = TILE_RAMPS[2]; patch(184, 66, 34, 7); patch(60, 104, 46, 8); if (gbaB) PAL = UI_RAMP;
     const a = anim ? (now - anim.at) / 1300 : -1, hitT = a >= 0.55 && a < 0.85, shake = hitT ? Math.round(Math.sin(now / 18) * 3) : 0, bob = k => Math.round(Math.sin(tm * 3 + k) * 1.5);
     // THE INTRO (2.4 s): the host and Champ on the left, the rival on the right, then the beasts.
     const it = (now - introAt) / 2400;
     if (it >= 0 && it < 1) {
       const out = it > 0.62 ? (it - 0.62) / 0.38 : 0, slide = Math.round(out * out * 120);
-      drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
+      if (gbaB) PAL = PEOPLE_RAMP; drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
       if (b.kind === 'rival' && b.trainer === 'MR FISTER') drawTrainer(img, W, 160 + slide, 6, 'fister');
       else if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;
@@ -647,15 +683,15 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     // Their box top left, yours bottom right; the box along the bottom.
     hpBox(6, 6, b.foe.name, Math.max(0, shownFoe), false); hpBox(130, 76, b.mine.name, b.mine.hp, true);
     fill(0, 106, W, 54, 3); fill(2, 108, W - 4, 50, 0); fill(4, 110, W - 8, 1, 2);
-    lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale);
+    PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale);
     // Words in a crisp pixel font, at the screen's size.
-    const S = scale, tx = (s, x, y, size = 7, c = GB[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
+    const U = gbaB ? UI_RAMP : GB, S = scale, tx = (s, x, y, size = 7, c = U[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
     tx(b.foe.name.slice(0, 11), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5); tx('L' + (b.mine.level || 1), 214, 87, 6);
     tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
-    moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${GB[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? GB[0] : GB[3]); });
+    moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${U[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? U[0] : U[3]); });
   }
   return {
-    set(next, { moves: mv, pick: p } = {}) { const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); } key = k;
+    set(next, { moves: mv, pick: p, gfx: g } = {}) { if (g) gfx = GFX.includes(g) ? g : 'gbc'; const k = next ? next.kind + '|' + next.foe.name : ''; if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); } key = k;
       // The foe hits back: a hit for every tenth of HP your beast loses; at 0 it faints; back up, it's back.
       if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 2400) { const mv = foeMoveFor(next.foe.name, foeHits++); foeAnim = { kind: moveAnim(mv), at: performance.now() }; msg = (next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + mv + '!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } if (next.mine.hp <= 0 && (b.mine?.hp ?? 1) > 0) faintAt = performance.now(); if (next.mine.hp > 0 && (b.mine?.hp ?? 1) <= 0) { msg = next.mine.name + ' IS BACK ON ITS FEET!'; clearTimeout(this.t); this.t = setTimeout(() => { msg = ''; }, 2600); } lastTenth = tenth; }
       b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (!b) { msg = ''; shownFoe = 1; } },

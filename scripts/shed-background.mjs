@@ -203,7 +203,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=10').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=11').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
       let world = null, beastsOn = false, vendOn = false;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
@@ -233,7 +233,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const d = settings0.gameMode === 'beasts' ? (stats?.beasts || { floor: 1, route: 1, pct: 0, phase: 'floor' }) : stats?.dungeon; if (!d) return; // Beasts keeps its own track
         if (beasts && settings0.gameMode === 'beasts') {
           if (!beastsOn) { fp?.stop(); world = beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world.start(); beastsOn = true; mini.hidden = true; }
-          world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '', drops: d.drops || [], timeOfDay: settings0.beastsTimeOfDay || '' });
+          world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '', drops: d.drops || [], timeOfDay: settings0.beastsTimeOfDay || '', gfx: settings0.beastsGfx || 'gbc', follower: settings0.beastsFollow !== false ? (d.form || '') : '' });
           bubble.classList.remove('on'); paintBattle(d); // the dungeon's boss taunt stays out of the route
           return;
         }
@@ -274,7 +274,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset, d.drainMs), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
         if (!battle) battle = beasts.createBattle(bcv, { scale: 3 });
-        battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0 });
+        battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0, gfx: settings0.beastsGfx || 'gbc' });
         if (!battleOn) { battle.start(); battleOn = true; }
       };
       // Its attacks: the one the host taps, and every sale fires the one chat picked.

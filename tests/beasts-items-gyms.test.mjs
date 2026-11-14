@@ -75,3 +75,17 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   assert.throws(() => { const f = String('data:image/png;base64,AAAA'); if (f && (!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(f) || f.length > 40000)) throw new Error('Face: a small JPEG only'); }, /small JPEG/);
   console.log('Mr Fister: passed');
 }
+// Graphics settings (2026-11-14): GBC (four greens) or GBA (full colour); your beast follows you.
+{
+  assert.deepEqual([...B.GFX], ['gbc', 'gba']);
+  for (const t of Object.keys(B.TILE_RAMPS)) assert.equal(B.TILE_RAMPS[t].length, 4, 'tile ' + t);
+  for (let t = 0; t <= 24; t++) assert.ok(B.TILE_RAMPS[t], 'every tile has GBA colours: ' + t);
+  assert.deepEqual(B.beastRamp('SLABBIT'), B.beastRamp('slabbit'), 'a beast keeps its colours');
+  const M = await import('../scripts/live-studio-model.mjs');
+  assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: 'gba' }).beastsGfx, 'gba'); assert.throws(() => M.validateSettings({ beastsGfx: 'n64' }), /beastsGfx/);
+  const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), sb = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
+  assert.ok(src.includes('YOUR BEAST FOLLOWS YOU') && sb.includes("follower: settings0.beastsFollow !== false ? (d.form || '') : ''") && sb.includes("gfx: settings0.beastsGfx || 'gbc'"));
+  const g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8');
+  assert.ok(g3.includes('const fisterMaps = {') && g3.includes('fisterMaps.denim()') && g3.includes('THE FIST PUMP (1.8 s)'), 'Mr Fister: textures and the pump');
+  console.log('Beasts graphics settings: passed');
+}

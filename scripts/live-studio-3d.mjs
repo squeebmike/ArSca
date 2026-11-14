@@ -91,7 +91,25 @@ function fisterTextures() {
 // His face: one shared material for every Mr Fister on screen (the photo the remote sends), and his skin tone taken
 // from the photo's cheeks so the arms and neck match.
 let fisterSkinMat = null, fisterFaceMatI = null, fisterFaceOn = false; const fisterHeads = [];
-function fisterSkin() { return fisterSkinMat || (fisterSkinMat = mat(0xc4865e, { shininess: 18 })); }
+// MR FISTER's textures (store, 2026-11-14: "better model and texture"), painted here on small canvases with a fixed
+// pattern (no dice): skin with soft shading and pores, a cotton tee, denim, hair strands for the beard, brushed steel.
+const fisterTexCache = {};
+function paintTex(key, w, h, draw, rep = [1, 1]) {
+  if (fisterTexCache[key]) return fisterTexCache[key];
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); draw(x, w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); t.anisotropy = 4;
+  return (fisterTexCache[key] = t);
+}
+const fixed = (k, m = 0) => ((Math.sin(k * 12.9898 + m * 78.233) * 43758.5453) % 1 + 1) % 1;
+const fisterMaps = {
+  skin: () => paintTex('skin', 128, 128, (x, w, h) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h); for (let k = 0; k < 900; k++) { const a = fixed(k, 1) * 0.08; x.fillStyle = `rgba(120,70,50,${a})`; x.fillRect(fixed(k, 2) * w, fixed(k, 3) * h, 1 + fixed(k, 4) * 2, 1 + fixed(k, 5) * 2); } }),
+  tee: () => paintTex('tee', 128, 128, (x, w, h) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 2) { x.fillStyle = `rgba(0,0,0,${0.06 + 0.04 * fixed(y, 1)})`; x.fillRect(0, y, w, 1); } for (let k = 0; k < 400; k++) { x.fillStyle = `rgba(0,0,0,${fixed(k, 6) * 0.12})`; x.fillRect(fixed(k, 7) * w, fixed(k, 8) * h, 3, 1); } }, [4, 3]),
+  denim: () => paintTex('denim', 128, 128, (x, w, h) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h); for (let d = -h; d < w; d += 3) { x.strokeStyle = `rgba(0,0,30,${0.12 + 0.08 * fixed(d, 2)})`; x.beginPath(); x.moveTo(d, h); x.lineTo(d + h, 0); x.stroke(); } for (let k = 0; k < 300; k++) { x.fillStyle = `rgba(255,255,255,${fixed(k, 9) * 0.15})`; x.fillRect(fixed(k, 10) * w, fixed(k, 11) * h, 2, 1); } }, [3, 3]),
+  hair: () => paintTex('hair', 128, 128, (x, w, h) => { x.fillStyle = '#ffffff'; x.fillRect(0, 0, w, h); for (let k = 0; k < 700; k++) { const x0 = fixed(k, 12) * w, y0 = fixed(k, 13) * h, l = 4 + fixed(k, 14) * 8, a = Math.PI / 2 + (fixed(k, 15) - 0.5) * 0.7; x.strokeStyle = `rgba(0,0,0,${0.25 + fixed(k, 16) * 0.35})`; x.lineWidth = 1; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x0 + Math.cos(a) * l, y0 + Math.sin(a) * l); x.stroke(); } }, [3, 3]),
+  steel: () => paintTex('steel', 128, 128, (x, w, h) => { const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#c9cdd2'); g.addColorStop(1, '#ffffff'); x.fillStyle = g; x.fillRect(0, 0, w, h); for (let y = 0; y < h; y++) { x.fillStyle = `rgba(0,0,0,${0.03 + 0.05 * fixed(y, 17)})`; x.fillRect(0, y, w, 1); } for (let k = 0; k < 24; k++) { x.strokeStyle = 'rgba(40,40,40,.35)'; const x0 = fixed(k, 18) * w, y0 = fixed(k, 19) * h; x.beginPath(); x.moveTo(x0, y0); x.lineTo(x0 + (fixed(k, 20) - 0.5) * 30, y0 + (fixed(k, 21) - 0.5) * 10); x.stroke(); } }),
+  emblem: () => paintTex('emblem', 128, 128, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#39ff14'; x.beginPath(); x.arc(64, 64, 58, 0, Math.PI * 2); x.fill(); x.fillStyle = '#0b0f0c'; x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2); x.fill(); x.fillStyle = '#39ff14'; x.fillRect(38, 46, 52, 34); for (let k = 0; k < 4; k++) x.fillRect(40 + k * 13, 34, 10, 14); x.fillRect(46, 80, 30, 22); x.fillStyle = '#0b0f0c'; for (let k = 1; k < 4; k++) x.fillRect(38 + k * 13 - 2, 34, 2, 14); }),
+};
+function fisterSkin() { return fisterSkinMat || (fisterSkinMat = mat(0xc4865e, { shininess: 22, specular: 0x332222, map: typeof document === 'undefined' ? null : fisterMaps.skin() })); }
 function fisterFaceMat() {
   if (fisterFaceMatI) return fisterFaceMatI;
   const c = document.createElement('canvas'); c.width = 128; c.height = 146;
@@ -138,8 +156,8 @@ const BUILD = {
     // green trim, glowing veins down his right arm into THE GAUNTLET OF GRAILS (armoured, spiked knuckles, the store's
     // comic covers set in it like stones). Green energy crackles round the fist and embers rise round him; the pump winds
     // up, punches the sky and sends a shockwave across the floor. His photo goes on the face when the remote sends one.
-    const skin = fisterSkin(), tee = mat(0x14161b, { shininess: 14 }), trim = new THREE.MeshBasicMaterial({ color: 0x39ff14 }), jeans = mat(0x252c3a, { shininess: 10 }), beard = mat(0x1a110b, { shininess: 6 });
-    const cap = mat(0x1a2d20, { shininess: 30 }), steel = mat(0x8f99a4, { shininess: 170, specular: 0xffffff }), dark = mat(0x3a4048, { shininess: 120, specular: 0xbbbbbb }), shoe = mat(0x0f0f12, { shininess: 60 });
+    const skin = fisterSkin(), tee = mat(0x1d2027, { shininess: 10, map: fisterMaps.tee() }), trim = new THREE.MeshBasicMaterial({ color: 0x39ff14 }), jeans = mat(0x34405a, { shininess: 8, map: fisterMaps.denim() }), beard = mat(0x2a1a10, { shininess: 4, map: fisterMaps.hair() });
+    const cap = mat(0x1a2d20, { shininess: 30 }), steel = mat(0xa7b0ba, { shininess: 170, specular: 0xffffff, map: fisterMaps.steel() }), dark = mat(0x4a5058, { shininess: 120, specular: 0xbbbbbb, map: fisterMaps.steel() }), shoe = mat(0x0f0f12, { shininess: 60 });
     const glowM = (o = 0.9) => new THREE.MeshBasicMaterial({ color: 0x39ff14, transparent: true, opacity: o, depthWrite: false, blending: THREE.AdditiveBlending });
     const body = new THREE.Group(); root.add(body); // crouches and springs with the pump
     // Legs and hips.
@@ -149,6 +167,7 @@ const BUILD = {
     // A big chest (a lathe), the tee, green trim on the collar and sleeves.
     const prof = [[0.0, -0.58], [0.37, -0.58], [0.4, -0.42], [0.46, -0.15], [0.56, 0.06], [0.58, 0.2], [0.5, 0.32], [0.26, 0.41], [0.0, 0.43]].map(([r, y]) => new THREE.Vector2(r, y));
     const torso = add(body, new THREE.Mesh(new THREE.LatheGeometry(prof, 28), tee), 0, 0, 0); torso.scale.set(1, 1, 0.66);
+    const emblem = add(body, new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), new THREE.MeshBasicMaterial({ map: fisterMaps.emblem(), transparent: true })), 0.2, 0.08, 0.375); emblem.rotation.y = 0.32; // his fist emblem on the chest
     const collar = add(body, new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 6, 20), trim), 0, 0.4, 0.02); collar.rotation.x = Math.PI / 2 - 0.25;
     for (const sx of [-1, 1]) add(body, ball(0.22, tee, 16), sx * 0.52, 0.24, 0).scale.set(1, 0.9, 0.85);
     add(body, cyl(0.13, 0.15, 0.2, skin, 12), 0, 0.48, 0.01);
