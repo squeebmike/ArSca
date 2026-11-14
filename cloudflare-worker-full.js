@@ -15293,7 +15293,7 @@ async function routeRequest(request, env, ctx) {
         } else if (tcgplayerMatch) {
           const tcgplayerId = decodeURIComponent(tcgplayerMatch[1]);
           const duration = url.searchParams.get('priceHistoryDuration') || '90d';
-          const data = await justFetch('/cards', { tcgplayerId, tcgplayerProductId: tcgplayerId, limit: 1, priceHistory: 'true', priceHistoryDuration: duration, includeVariants: 'true' });
+          const data = await justFetch('/cards', { tcgplayerId, tcgplayerProductId: tcgplayerId, limit: 1, priceHistory: 'true', include_price_history: 'true', priceHistoryDuration: duration, includeVariants: 'true' });
           cards = Array.isArray(data) ? data : (data.data || data.cards || data.results || []);
         } else if (skuMatch) {
           const sku = decodeURIComponent(skuMatch[1]);

@@ -141,6 +141,31 @@
     root.dispatchEvent?.(new CustomEvent('arsca-mtg-offline-progress',{detail}));
   }
 
+  // PriceCharting rows (prices + links, ~13 MB) refresh on their own once a week when the cloud has a newer file,
+  // without a full catalog rebuild (store, 2026-11-14: a phone still showed the July 28 PriceCharting snapshot).
+  // Kept under their own version (pc::...), read through pcVersionOf(). A failure never fails the price update.
+  const PC_REFRESH_MS=7*86400000;
+  function pcVersionOf(active){return active?.pcVersion||active?.catalogVersion||'';}
+  async function refreshPriceChartingIfStale(workerBase,manifest,onProgress){
+    const active=await getMeta('active'),pd=manifest.files?.prices,ld=manifest.files?.links;
+    if(!active?.catalogVersion||!pd?.sha256||!ld) return false;
+    if(active.pcSha===pd.sha256) return false;
+    if(active.pcImportedAt&&Date.now()-Date.parse(active.pcImportedAt)<PC_REFRESH_MS) return false;
+    const target=`pc::${String(pd.sha256).slice(0,16)}`;
+    await clearVersion(target);
+    try{
+      for(const [file,store,descriptor] of [['prices','mtg_prices',pd],['links','mtg_price_links',ld]]){
+        emitProgress({stage:`Updating PriceCharting ${file}`,file,version:target},onProgress);
+        const response=await fetch(workerBase+`/catalog/mtg/download?file=${file}`,{cache:'no-store'});
+        await importGzipJsonl(response,descriptor,store,target,detail=>emitProgress({...detail,file,version:target},onProgress));
+      }
+    }catch(error){ await clearVersion(target).catch(()=>{}); return false; }
+    const latest=await getMeta('active'),previous=latest?.pcVersion;
+    await putMeta({...latest,name:'active',pcVersion:target,pcSha:pd.sha256,pcImportedAt:new Date().toISOString()});
+    if(previous&&previous!==target&&previous!==latest.catalogVersion) clearVersion(previous).catch(()=>{});
+    return true;
+  }
+
   async function sync({workerBase='',force=false,full=false,onProgress}={}){
     const manifestResponse=await fetch(workerBase+'/catalog/mtg/manifest',{cache:'no-store'});
     if(!manifestResponse.ok) throw new Error(`MTG manifest unavailable (HTTP ${manifestResponse.status})`);
@@ -150,7 +175,7 @@
     const activeManifestVersion=active?.manifestVersion||active?.catalogVersion||'';
     const marketDescriptor=manifest.files?.marketPrices;
     if(active?.catalogVersion && !force && !full && marketDescriptor){
-      if(active.marketPricesSha===marketDescriptor.sha256 && activeManifestVersion===manifest.version) return {updated:false,fast:true,manifest,status:await status()};
+      if(active.marketPricesSha===marketDescriptor.sha256 && activeManifestVersion===manifest.version){ const pc=await refreshPriceChartingIfStale(workerBase,manifest,onProgress).catch(()=>false); return {updated:pc,fast:true,pricecharting:pc,manifest,status:await status()}; }
       const marketTarget=`market::${String(marketDescriptor.sha256||manifest.version).slice(0,16)}`;
       await clearVersion(marketTarget);
       await putMeta({name:'import',importStatus:'running',targetVersion:marketTarget,mode:'prices-only',startedAt:new Date().toISOString()});
@@ -163,7 +188,8 @@
         await putMeta({name:'import',importStatus:'complete',targetVersion:marketTarget,mode:'prices-only',completedAt:importedAt});
         emitProgress({stage:'Price update complete',version:marketTarget,counts:{marketPrices:count},fast:true},onProgress);
         if(previousMarketVersion&&previousMarketVersion!==active.catalogVersion&&previousMarketVersion!==marketTarget) clearVersion(previousMarketVersion).catch(()=>{});
-        return {updated:true,fast:true,manifest,status:await status()};
+        const pc=await refreshPriceChartingIfStale(workerBase,manifest,onProgress).catch(()=>false);
+        return {updated:true,fast:true,pricecharting:pc,manifest,status:await status()};
       }catch(error){
         await putMeta({name:'import',importStatus:'failed',targetVersion:marketTarget,mode:'prices-only',error:error.message,failedAt:new Date().toISOString()}).catch(()=>{});
         await clearVersion(marketTarget).catch(()=>{});
@@ -185,8 +211,9 @@
         counts[file]=await importGzipJsonl(response,descriptor,store,target,detail=>emitProgress({...detail,file,version:target},onProgress));
       }
       const importedAt=new Date().toISOString();
-      await putMeta({name:'active',catalogVersion:target,manifestVersion:manifest.version,pricesVersion:manifest.version,manifestSha:manifest.files.cards.sha256,marketPricesVersion:target,marketPricesSha:manifest.files?.marketPrices?.sha256||'',lastImportedAt:importedAt,importStatus:'ready',counts,generatedAt:manifest.generatedAt,sourceVersions:manifest.sourceVersions||{},searchIndexVersion:SEARCH_INDEX_VERSION});
+      await putMeta({name:'active',catalogVersion:target,manifestVersion:manifest.version,pricesVersion:manifest.version,manifestSha:manifest.files.cards.sha256,marketPricesVersion:target,marketPricesSha:manifest.files?.marketPrices?.sha256||'',lastImportedAt:importedAt,importStatus:'ready',counts,generatedAt:manifest.generatedAt,sourceVersions:manifest.sourceVersions||{},searchIndexVersion:SEARCH_INDEX_VERSION,pcSha:manifest.files?.prices?.sha256||'',pcImportedAt:importedAt});
       await putMeta({name:'import',importStatus:'complete',targetVersion:target,completedAt:importedAt});
+      if(active?.pcVersion) clearVersion(active.pcVersion).catch(()=>{});
       emitProgress({stage:'Complete',version:target,counts},onProgress);
       if(active?.catalogVersion && active.catalogVersion!==target) clearVersion(active.catalogVersion).catch(()=>{});
       if(active?.marketPricesVersion && active.marketPricesVersion!==active.catalogVersion && active.marketPricesVersion!==target) clearVersion(active.marketPricesVersion).catch(()=>{});
@@ -294,10 +321,11 @@
     const active=await getMeta('active'),marketVersion=active?.marketPricesVersion||version;
     const marketTx=db.transaction('mtg_market_prices','readonly'),marketStore=marketTx.objectStore('mtg_market_prices');
     const markets=await Promise.all(ranked.map(item=>requestPromise(marketStore.get([marketVersion,item.card.scryfallId]))));
+    const pcVersion=pcVersionOf(active)||version;
     const linkTx=db.transaction('mtg_price_links','readonly'),linkStore=linkTx.objectStore('mtg_price_links');
-    const links=await Promise.all(ranked.map(item=>requestPromise(linkStore.get([version,item.card.scryfallId]))));
+    const links=await Promise.all(ranked.map(item=>requestPromise(linkStore.get([pcVersion,item.card.scryfallId]))));
     const priceTx=db.transaction('mtg_prices','readonly'),priceStore=priceTx.objectStore('mtg_prices');
-    const prices=await Promise.all(links.map(link=>link?.pricechartingId?requestPromise(priceStore.get([version,link.pricechartingId])):null));
+    const prices=await Promise.all(links.map(link=>link?.pricechartingId?requestPromise(priceStore.get([pcVersion,link.pricechartingId])):null));
     return ranked.map((item,index)=>({...item.card,prices:markets[index]?.prices||item.card.prices||{},tcgplayerId:markets[index]?.tcgplayerId||item.card.tcgplayerId||'',marketPricesUpdatedAt:markets[index]?.updatedAt||'',offlinePriceLink:links[index]||null,offlinePrice:fixPcPrice(prices[index])||null,offlineMatchWhy:item.why,catalogVersion:version}));
   }
 
@@ -313,7 +341,7 @@
   }
 
   async function searchPrices(query,limit=20){
-    const active=await getMeta('active'),version=active?.catalogVersion;if(!version)return[];
+    const active=await getMeta('active'),version=pcVersionOf(active);if(!version)return[];
     const parts=queryParts(query),db=await openDb(),found=new Map(),add=rows=>(rows||[]).forEach(row=>found.set(String(row.pricechartingId),row));
     const clean=normalize(query);
     if(clean){
@@ -388,9 +416,9 @@
     const activeMarketVersion=active?.marketPricesVersion||version;
     return Promise.all(cards.map(async card=>{
       const market=await getVersioned('mtg_market_prices',activeMarketVersion,card.scryfallId);
-      const link=await getVersioned('mtg_price_links',version,card.scryfallId);
-      const price=link?.pricechartingId ? await getVersioned('mtg_prices',version,link.pricechartingId) : null;
-      return {...card,prices:market?.prices||card.prices||{},tcgplayerId:market?.tcgplayerId||card.tcgplayerId||'',marketPricesUpdatedAt:market?.updatedAt||'',offlinePriceLink:link||null,offlinePrice:price||null,catalogVersion:version};
+      const link=await getVersioned('mtg_price_links',pcVersionOf(active)||version,card.scryfallId);
+      const price=link?.pricechartingId ? await getVersioned('mtg_prices',pcVersionOf(active)||version,link.pricechartingId) : null;
+      return {...card,prices:market?.prices||card.prices||{},tcgplayerId:market?.tcgplayerId||card.tcgplayerId||'',marketPricesUpdatedAt:market?.updatedAt||'',offlinePriceLink:link||null,offlinePrice:fixPcPrice(price)||null,catalogVersion:version};
     }));
   }
 
@@ -403,7 +431,7 @@
     const marketVersion=active?.marketPricesVersion||version;
     const [cards,marketPrices,setsCount,prices,links,images]=await Promise.all([
       countVersion('mtg_cards',version),countVersion('mtg_market_prices',marketVersion),countVersion('mtg_sets',version),
-      countVersion('mtg_prices',version),countVersion('mtg_price_links',version),
+      countVersion('mtg_prices',pcVersionOf(active)||version),countVersion('mtg_price_links',pcVersionOf(active)||version),
       openDb().then(db=>requestPromise(db.transaction('mtg_images','readonly').objectStore('mtg_images').count())).catch(()=>0)
     ]);
     return {catalogVersion:active?.manifestVersion||version,storageVersion:version,pricesVersion:active?.pricesVersion||'',lastImportedAt:active?.lastImportedAt||'',generatedAt:active?.generatedAt||'',sourceVersions:active?.sourceVersions||{},manifestSha:active?.manifestSha||'',marketPricesSha:active?.marketPricesSha||'',importStatus:active?.importStatus||'not-downloaded',searchIndexReady:active?.searchIndexVersion===SEARCH_INDEX_VERSION,cards,marketPrices,sets:setsCount,prices,links,images};

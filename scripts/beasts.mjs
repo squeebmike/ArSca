@@ -162,7 +162,9 @@ export const validFace = s => typeof s === 'string' && /^[0-3]{144}$/.test(s);
 // nothing by chance). A rest stop halfway: a little house and a sign. The path
 // turns in straight runs, so you walk (and face) up, left or right.
 export const MAP_W = 28, MAP_H = 128;
-export const BIOMES = ['meadow', 'woods', 'lake', 'river', 'rocky', 'flowers'];
+// MORE COUNTRY (store, 2026-11-14): a cave (dark, the host's lantern lights the way), a beach on the ocean, a
+// snowfield, a city street, a graveyard and a volcano join the meadow, woods, lake, river, ledges and flowers.
+export const BIOMES = ['meadow', 'woods', 'lake', 'river', 'rocky', 'flowers', 'cave', 'beach', 'snow', 'city', 'graveyard', 'volcano'];
 export function biomesFor(floor) { const f = Math.max(1, floor | 0), h = hashOf('biomes' + f), out = []; for (let k = 0; k < 3; k++) { let b = BIOMES[(h >>> (k * 5)) % BIOMES.length]; if (out.includes(b)) b = BIOMES[(BIOMES.indexOf(b) + 1 + k) % BIOMES.length]; out.push(b); } return out; }
 const mapCache = new Map();
 export function routeFor(floor) {
@@ -185,6 +187,12 @@ export function routeFor(floor) {
     else if (bio === 'woods') g[y][x2] = !close && v < 0.55 ? 3 : v < 0.6 ? 9 : 0;
     else if (bio === 'rocky') g[y][x2] = !close && v < 0.16 ? 13 : !close && v < 0.22 ? 3 : 0;
     else if (bio === 'flowers') g[y][x2] = v < 0.38 ? 9 : !close && v < 0.42 ? 3 : 0;
+    else if (bio === 'cave') g[y][x2] = nearPath(x2, y, 2) ? 18 : 17;
+    else if (bio === 'beach') g[y][x2] = !close && v < 0.03 ? 3 : 14;
+    else if (bio === 'snow') g[y][x2] = !close && v < 0.12 ? 3 : 19;
+    else if (bio === 'city') g[y][x2] = close && v < 0.1 ? 21 : 20;
+    else if (bio === 'graveyard') g[y][x2] = !close && v < 0.16 ? 22 : !close && v < 0.21 ? 3 : 0;
+    else if (bio === 'volcano') g[y][x2] = !close && v < 0.1 ? 23 : !close && v < 0.18 ? 13 : 24;
     else g[y][x2] = !close && v < 0.1 ? 3 : 0;
   }
   biomes.forEach((bio, z) => {
@@ -196,6 +204,13 @@ export function routeFor(floor) {
       for (const y of [mid, mid + 1]) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = pathTiles.has(x2 + ',' + y) ? 15 : 4;
       for (const y of [mid - 1, mid + 2]) for (let x2 = 2; x2 < W - 2; x2++) if (g[y][x2] !== 1 && g[y][x2] !== 15) g[y][x2] = 14;
     }
+    if (bio === 'beach') { // the ocean along one side, a ragged shoreline
+      const left = (corners.find(c => c[1] <= mid)?.[0] ?? 13) > W / 2;
+      for (let y = y0 + 1; y < y1 - 1; y++) { const reach = 6 + (hashOf('shore' + f + y) % 3); for (let k = 0; k < reach; k++) { const x2 = left ? 2 + k : W - 3 - k; if (inMap(x2, y) && !nearPath(x2, y, 2)) g[y][x2] = 4; } }
+    }
+    if (bio === 'volcano') { // a lava river off to the side, rock walls along it
+      for (let y = y0 + 2; y < y1 - 2; y++) for (const x2 of [3, 4, W - 5, W - 4]) if (inMap(x2, y) && !nearPath(x2, y, 2)) g[y][x2] = (y + x2) % 5 ? 23 : 13;
+    }
     if (bio === 'rocky') { // ledges across the hill, the path cut through
       for (let y = y0 + 4; y < y1 - 2; y += 7) for (let x2 = 2; x2 < W - 2; x2++) if (!pathTiles.has(x2 + ',' + y) && g[y][x2] !== 4) g[y][x2] = 16;
     }
@@ -204,7 +219,7 @@ export function routeFor(floor) {
   const walk = [[11, H - 4], [13, H - 4], ...corners];
   const len = walk.reduce((n, p, i) => i ? n + Math.abs(p[0] - walk[i - 1][0]) + Math.abs(p[1] - walk[i - 1][1]) : 0, 0);
   const route0 = { walk, len };
-  ENCOUNTERS.forEach(([a, b]) => { const p = posAt(route0, walkAt((a + b) / 2)), ex = Math.round(p.x), ey = Math.round(p.y); for (let y = ey - 4; y <= ey + 4; y++) for (let x2 = ex - 4; x2 <= ex + 5; x2++) if (inMap(x2, y) && ![4, 15, 16].includes(g[y][x2])) g[y][x2] = 2; });
+  ENCOUNTERS.forEach(([a, b]) => { const p = posAt(route0, walkAt((a + b) / 2)), ex = Math.round(p.x), ey = Math.round(p.y); for (let y = ey - 4; y <= ey + 4; y++) for (let x2 = ex - 4; x2 <= ex + 5; x2++) if (inMap(x2, y) && ![4, 15, 16, 17, 21, 22, 23].includes(g[y][x2])) g[y][x2] = 2; });
   // Your shop's town at the bottom: the shop, two houses, a fence, a sign.
   const house = (hx, hy, sign) => { for (let x2 = hx; x2 < hx + 5; x2++) { g[hy][x2] = 6; g[hy + 1][x2] = 6; g[hy + 2][x2] = 5; g[hy + 3][x2] = 5; } g[hy + 3][hx + 2] = 7; if (sign) g[hy + 1][hx + 2] = sign; };
   for (let y = BOT + 1; y < H - 1; y++) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = 0;
@@ -212,18 +227,44 @@ export function routeFor(floor) {
   lay(11, H - 4, 13, H - 4); lay(13, H - 4, 13, BOT);
   for (let x2 = 2; x2 < W - 2; x2++) if (g[H - 2][x2] === 0) g[H - 2][x2] = 8;
   g[H - 4][16] = 10;
+  // City blocks: shops along the street.
+  biomes.forEach((bio, z) => { if (bio !== 'city') return; const y0 = Math.round(TOP + (2 - z) * (BOT - TOP) / 3); for (let k = 0; k < 3; k++) { const hy = y0 + 4 + k * 12; for (const hx of [3, W - 8]) { let ok = inMap(hx, hy) && inMap(hx + 4, hy + 3); for (let yy = hy; ok && yy < hy + 5; yy++) for (let xx = hx - 1; ok && xx < hx + 6; xx++) if (pathTiles.has(xx + ',' + yy)) ok = false; if (ok) house(hx, hy, 0); } } });
   // A rest stop halfway (route 2 on): a little house by the path, a sign.
   if (f >= 2) { const c = corners[Math.floor(corners.length / 2)], hx = c[0] > W / 2 ? 3 : W - 9, hy = c[1] - 2; if (inMap(hx, hy) && inMap(hx + 5, hy + 4)) { house(hx, hy, 0); g[hy + 4] && (g[hy + 4][hx + 2] = 1); g[hy + 4] && (g[hy + 4][hx + 5] = 10); } }
   // The rival's shop at the top.
   for (let y = 1; y < TOP; y++) for (let x2 = 2; x2 < W - 2; x2++) g[y][x2] = y < 2 ? 3 : 0;
   lay(x, TOP, x, TOP - 1); house(x - 2, 2, 12);
+  // Every 5th route ends at a GYM: a wider hall, pillars at the door.
+  if (isGym(f)) { const gx = Math.max(3, Math.min(W - 10, x - 3)); for (let x2 = gx; x2 < gx + 7; x2++) { g[2][x2] = 6; g[3][x2] = 6; g[4][x2] = 5; g[5][x2] = 5; } g[5][x] = 7; g[3][x] = 12; g[5][gx] = 13; g[5][gx + 6] = 13; }
   walk.push([x, 6]);
-  const out = { floor: f, grid: g, walk, biomes, len: walk.reduce((n, p, i) => i ? n + Math.abs(p[0] - walk[i - 1][0]) + Math.abs(p[1] - walk[i - 1][1]) : 0, 0) };
+  const bands = [0, 1, 2].map(z => [Math.round(TOP + (2 - z) * (BOT - TOP) / 3), Math.round(TOP + (3 - z) * (BOT - TOP) / 3)]);
+  const biomeAt = y => { for (let z = 0; z < 3; z++) if (y >= bands[z][0] && y < bands[z][1]) return biomes[z]; return ''; };
+  const out = { floor: f, grid: g, walk, biomes, biomeAt, items: itemsFor(f), len: walk.reduce((n, p, i) => i ? n + Math.abs(p[0] - walk[i - 1][0]) + Math.abs(p[1] - walk[i - 1][1]) : 0, 0) };
   mapCache.set(f, out); return out;
 }
 // How far along the walk you are for the floor's progress: you stand still in
 // the tall grass while a wild beast is up.
 export function walkAt(pct) { let gone = 0, total = 0; for (const [a, b] of ENCOUNTERS) { total += b - a; gone += Math.max(0, Math.min(pct, b) - a); } return Math.max(0, Math.min(1, (pct - gone) / (1 - total))); }
+// ITEMS ON THE PATH (store, 2026-11-14): four on every route, at fixed spots between the patches of tall grass --
+// the same items in the same places on every screen (from the route's number; nothing by chance). You pick each
+// one up as you walk past it.
+export const ITEM_KINDS = ['BERRY', 'POTION', 'CANDY', 'STONE', 'BERRY', 'ETHER', 'COIN', 'POTION'];
+export const ITEM_SPOTS = [0.12, 0.41, 0.65, 0.88];
+export function itemsFor(route) { const f = Math.max(1, route | 0); return ITEM_SPOTS.map((t, k) => ({ t, kind: k === 3 && isGym(f) ? 'STONE' : ITEM_KINDS[(hashOf('item' + f + ':' + k)) % ITEM_KINDS.length] })); }
+// GYMS (store, 2026-11-14): every 5th route ends at a gym; its leader's beast has twice the HP, its badge is a gym badge.
+export const GYM_EVERY = 5;
+export const isGym = route => (Math.max(1, route | 0)) % GYM_EVERY === 0;
+export const GYM_LEADERS = [['LEADER GRADY', 'SLABTITAN'], ['LEADER FOLIA', 'HOLOPHOENIX'], ['LEADER MINTY', 'GEMMINTAUR'], ['LEADER KEYS', 'KEYSTONEX'], ['LEADER VARIA', 'VARIANTRIX']];
+export const toGym = route => { const r = Math.max(1, route | 0); return (GYM_EVERY - (r % GYM_EVERY)) % GYM_EVERY; };
+// CHAT'S GIFTS (store, 2026-11-14): a follow, share or bookmark the host taps in drops a gift a few steps ahead on
+// the path (for everyone watching -- nothing tied to buying, no names).
+export const DROP_AHEAD = 0.04;
+export function addBeastDrop(bIn, kind, s, now = Date.now()) {
+  const b = { ...(bIn || emptyBeasts()) }; if (b.phase !== 'route') return b;
+  const t = Math.min(0.985, walkAt(Math.min(1, (Number(b.xp) || 0) / beastGoal(s || {}, b.route))) + DROP_AHEAD);
+  b.drops = [...(b.drops || []), { kind: String(kind || 'follow').toLowerCase().slice(0, 12), route: b.route, t: Math.round(t * 1000) / 1000, at: now }].slice(-12);
+  return b;
+}
 export function posAt(route, t) {
   let d = Math.max(0, Math.min(1, t)) * route.len; const w = route.walk;
   for (let i = 1; i < w.length; i++) { const dx = w[i][0] - w[i - 1][0], dy = w[i][1] - w[i - 1][1], L = Math.abs(dx) + Math.abs(dy); if (d <= L || i === w.length - 1) { const f = L ? Math.min(1, d / L) : 0; return { x: w[i - 1][0] + dx * f, y: w[i - 1][1] + dy * f, dx: Math.sign(dx), dy: Math.sign(dy) }; } d -= L; }
@@ -240,7 +281,7 @@ export const RIVALS = [['SCALPER STEVE', 'FLIPWRAITH'], ['BAGGER BEV', 'POLYBAGG
 // The dungeon's rooms, as places on the route (2026-11-13: "Path? On pokemon"): the same vote, the same rewards, route names.
 export const PLACES = { vault: ['🪙', 'GOLDEN GROTTO'], library: ['📚', 'READING MEADOW'], armory: ['🛡️', 'SLAB RIDGE'], forge: ['🔥', 'EMBER TRAIL'], crypt: ['🕯️', 'BARGAIN BOG'], lab: ['🧪', 'VARIANT WOODS'] };
 export function placeFor(room) { const p = PLACES[room?.id || room]; return p ? { icon: p[0], name: p[1] } : { icon: room?.icon || '🌿', name: 'TALL GRASS' }; }
-export function rivalFor(floor) { const [name, beast] = RIVALS[(Math.max(1, Math.floor(Number(floor) || 1)) - 1) % RIVALS.length]; return { name, beast }; }
+export function rivalFor(floor) { const r = Math.max(1, Math.floor(Number(floor) || 1)); if (isGym(r)) { const [name, beast] = GYM_LEADERS[(r / GYM_EVERY - 1) % GYM_LEADERS.length]; return { name, beast, gym: true }; } const [name, beast] = RIVALS[(r - 1) % RIVALS.length]; return { name, beast }; }
 // THE FOE HITS BACK (store, 2026-11-13: "we never get hit by the other monster? What happens if we lose a battle?"):
 // while no sales come in, your beast's HP drains and the other beast attacks (a hit for each tenth lost); at 0 it
 // faints -- nothing is lost, but it can't fight until chat revives it (a follow, share or bookmark) or a sale comes in.
@@ -269,7 +310,7 @@ export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1
 // on its own track. Nothing by chance; nothing won by buying.
 const r2b = n => Math.round(n * 100) / 100;
 export const beastGoal = (s, route) => Math.max(1, Math.round((Number(s.beastsGoal) || 100) * Math.pow(1 + (Number(s.beastsGrowth) || 0) / 100, Math.max(0, route - 1))));
-export const rivalMax = (s, route) => Math.max(1, Math.round(beastGoal(s, route) / 2));
+export const rivalMax = (s, route) => Math.max(1, Math.round(beastGoal(s, route) / 2) * (isGym(route) ? 2 : 1));
 // LEVELS AND EVOLUTION (store, 2026-11-13: "can our monster level up and evolve? We need more to this game ...
 // tie into us selling on Whatnot and keeping the viewers watching"): every dollar sold (and chat's follows, shares,
 // bookmarks) is XP; levels come at 10, 30, 60, 100 ... XP; a new attack to learn every 5 levels (chat names it);
@@ -289,7 +330,7 @@ export function beastMoment(events, starter = '', reward = '') {
   const e = big || (lv?.learn ? lv : null) || events.filter(x => x.kind === 'caught').pop();
   if (!e) return null;
   if (e.kind === 'level') return { kind: 'beast', beastEvent: 'learn', beastName: formName(st, e.level), level: e.level };
-  return { kind: 'beast', beastEvent: e.kind, beastName: e.kind === 'caught' ? e.name : e.beast, trainer: e.trainer || '', route: e.route, badges: e.badges, ...(lv ? { level: lv.level } : {}) };
+  return { kind: 'beast', beastEvent: e.kind, beastName: e.kind === 'caught' ? e.name : e.beast, trainer: e.trainer || '', route: e.route, badges: e.badges, ...(e.gym || isGym(e.route) && e.kind !== 'caught' ? { gym: true } : {}), ...(lv ? { level: lv.level } : {}) };
 }
 // THE BEASTDEX SHELF: the beasts you've beaten this week, in a row (newest last), with the count.
 export function drawShelf(canvas, names = [], { count = 0, scale = 2 } = {}) {
@@ -321,7 +362,7 @@ export function addBeastXp(bIn, amount, s, now = Date.now()) {
     } else {
       if (left < b.rivalHp) { b.rivalHp = r2b(b.rivalHp - left); left = 0; break; }
       left = r2b(left - b.rivalHp); const rv = rivalFor(b.route);
-      b.badges.push({ route: b.route, trainer: rv.name, at: now }); events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length });
+      b.badges.push({ route: b.route, trainer: rv.name, at: now, ...(rv.gym ? { gym: true } : {}) }); events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length, ...(rv.gym ? { gym: true } : {}) });
       b.route += 1; b.phase = 'route'; b.xp = 0; b.rivalHp = 0;
     }
   }
@@ -338,11 +379,16 @@ export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.n
 // What the screens see (floor and pct keep the drawing code's names: floor is the route).
 export function publicBeasts(bIn, s, starter = '') {
   const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
-  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
 }
 
 // ── drawing ──────────────────────────────────────────────────────────────────
-const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = GB[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
+// TIME OF DAY (store, 2026-11-14): the overworld's colors follow the clock where the show runs -- morning and day
+// in the handheld's greens, a warm sunset, a blue night with fireflies. (The battle screen keeps the greens.)
+export const PALETTES = { day: GB, sunset: [[248, 208, 144], [224, 148, 96], [140, 72, 64], [48, 22, 34]], night: [[150, 170, 214], [92, 108, 168], [42, 50, 102], [10, 14, 40]] };
+export const timeOfDay = (hour = new Date().getHours()) => hour >= 17 && hour < 20 ? 'sunset' : hour >= 20 || hour < 6 ? 'night' : 'day';
+let PAL = GB;
+const put = (img, W, x, y, s) => { if (x < 0 || y < 0 || x >= W || y >= img.height || s < 0) return; const i = (y * W + x) * 4, c = PAL[s]; img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255; };
 // One tile's pixel (shade) at (u, v) inside it; tm for the waving grass and water.
 function tileShade(t, u, v, tx, ty, tm) {
   const h = (hashOf(tx * 131 + ty * 7919 + u * 17 + v) % 100);
@@ -361,12 +407,20 @@ function tileShade(t, u, v, tx, ty, tm) {
     case 14: return (hashOf(tx * 31 + ty * 17 + u * 7 + v * 3) % 9) === 0 ? 1 : 0;   // sand, speckled
     case 15: return v === 0 || v === 15 ? 3 : u % 4 === 3 ? 2 : 1;                     // bridge planks
     case 16: return v >= 11 ? (v === 11 ? 3 : 2) : (hashOf(tx * 13 + u + v * 5) % 9 === 0 ? 2 : 1); // a ledge (you hop down it)
+    case 17: return (hashOf(tx * 7 + ty * 11 + u * 3 + v) % 13) === 0 ? 1 : (v % 8 === 7 || (u + (v >> 3) * 4) % 8 === 7) ? 3 : 2; // cave wall, rough blocks
+    case 18: return h < 9 ? 2 : h < 13 ? 3 : 1;                                       // cave floor, gravel
+    case 19: return h < 3 ? 1 : (u * 3 + v * 5 + tx) % 29 === 0 ? 1 : 0;              // snow, a glint here and there
+    case 20: return u === 15 || v === 15 ? 2 : h < 4 ? 2 : 1;                          // pavement, slabs
+    case 21: return (u === 7 || u === 8) && v > 4 ? 3 : v >= 1 && v <= 4 && u >= 5 && u <= 10 ? (v === 1 || u === 5 || u === 10 ? 3 : 0) : 1; // a street lamp
+    case 22: { if (u < 4 || u > 11 || v < 3 || v > 13) return h < 7 ? 2 : 1; const top = v < 6 && ((u - 7.5) ** 2) / 14 + ((v - 6) ** 2) / 9 > 1; if (top) return 1; return u === 4 || u === 11 || v === 13 || (v < 6 && ((u - 7.5) ** 2) / 14 + ((v - 6) ** 2) / 9 > 0.6) ? 3 : (u === 7 || u === 8) && v > 5 && v < 11 || v === 7 && u > 5 && u < 10 ? 2 : 1; } // a gravestone with a cross
+    case 23: { const w = Math.floor(tm * 4 + tx * 2) % 6; return (u + w + (v >> 2) * 3) % 6 < 2 ? 0 : (u * 5 + v * 3 + w) % 11 === 0 ? 2 : 1; } // lava, bubbling
+    case 24: return h < 12 ? 3 : 2;                                                   // dark volcanic ground
     case 11: case 12: return v > 1 && v < 14 ? (v === 2 || v === 13 || u === 0 || u === 15 ? 3 : 0) : 2; // a shop sign (letters drawn on top)
     default: return h < 7 ? 2 : h < 12 ? 0 : 1;                                       // grass: a shade darker than the path, tufts
   }
 }
 // A tiny 3 x 5 font (the shop signs, the "!" over your head).
-const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', P: '110101110100100', R: '110101110110101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', X: '101101010101101', G: '011100101101011', H: '101101111101101', W: '101101111111101', Y: '101101010010010', '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111', '4': '101101111001001', '5': '111100111001111', '6': '111100111101111', '7': '111001001010010', '8': '111101111101111', '9': '111101111001111', '!': '010010010000010', ' ': '000000000000000' };
+const FONT = { F: '111100110100100', J: '001001001101010', Q: '010101101011001', Z: '111001010100111', '+': '000010111010000', '-': '000000111000000', ':': '000010000010000', A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', I: '111010010010111', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '101111111111101', O: '010101101101010', P: '110101110100100', R: '110101110110101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', X: '101101010101101', G: '011100101101011', H: '101101111101101', W: '101101111111101', Y: '101101010010010', '0': '111101101101111', '1': '010110010010111', '2': '111001111100111', '3': '111001111001111', '4': '101101111001001', '5': '111100111001111', '6': '111100111101111', '7': '111001001010010', '8': '111101111101111', '9': '111101111001111', '!': '010010010000010', ' ': '000000000000000' };
 function text3(img, W, x, y, str, s) { [...str].forEach((ch, k) => { const g = FONT[ch] || FONT[' ']; for (let i = 0; i < 15; i++) if (g[i] === '1') put(img, W, x + k * 4 + (i % 3), y + Math.floor(i / 3), s); }); }
 
 // THE HOST AND CHAMP, hand-drawn in four greens (store, 2026-11-13: "put us in
@@ -427,16 +481,29 @@ function drawPerson(img, W, x0, y0, face, dir, step, small = false) {
   for (let y = 0; y < 3; y++) { put(img, W, bx + 1 + (y === 2 ? -a : 0), legY + y, 2); put(img, W, bx + 2 + (y === 2 ? -a : 0), legY + y, y === 2 ? 3 : 2); put(img, W, bx + bw - 3 + (y === 2 ? a : 0), legY + y, 2); put(img, W, bx + bw - 2 + (y === 2 ? a : 0), legY + y, y === 2 ? 3 : 2); }
 }
 
+// The items' little pictures, 8 x 8 ('.' see-through).
+const ICONS = {
+  BERRY: ['...33...', '..3223..', '.322223.', '32200223', '32222223', '32222223', '.322223.', '..3333..'],
+  POTION: ['..3333..', '...33...', '..3003..', '.320023.', '32222223', '32211223', '.322223.', '..3333..'],
+  CANDY: ['3......3', '33.33.33', '.330033.', '.300003.', '.300003.', '.330033.', '33.33.33', '3......3'],
+  STONE: ['...33...', '..3003..', '.300203.', '30022003', '30222203', '.302203.', '..3223..', '...33...'],
+  ETHER: ['..3333..', '..3003..', '..3003..', '.322223.', '32211223', '32122123', '32211223', '.333333.'],
+  COIN: ['..3333..', '.300003.', '30033003', '30300303', '30300303', '30033003', '.300003.', '..3333..'],
+  GIFT: ['33.33.33', '.330033.', '33333333', '30030003', '30030003', '33333333', '30030003', '33333333'],
+};
+function drawIcon(img, W, x0, y0, name) { (ICONS[name] || ICONS.GIFT).forEach((row, y) => { for (let x = 0; x < 8; x++) { const ch = row[x]; if (ch !== '.') put(img, W, x0 + x, y0 + y, +ch); } }); }
+const ITEM_SAYS = { BERRY: 'GOT A BERRY!', POTION: 'GOT A POTION!', CANDY: 'GOT A CANDY!', STONE: 'GOT AN EVO STONE!', ETHER: 'GOT AN ETHER!', COIN: 'GOT A COIN!' };
+
 // THE OVERWORLD on a canvas: the route, you walking it, your buddy a step behind.
 export function createWorld(canvas, { w = 240, h = 189 } = {}) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
-  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9;
+  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null;
   function set(s) {
-    if (first || s.floor !== state.floor) { route = routeFor(s.floor); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); first = false; }
+    if (first || s.floor !== state.floor) { route = routeFor(s.floor); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
     const wasBattle = battleOf(state), isBattle = battleOf(s);
     if (isBattle && !wasBattle) exclaim = performance.now(); // a "!" over your head as the beast jumps out
-    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy;
+    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay) tod = s.timeOfDay;
   }
   const battleOf = s => s.phase === 'boss' || ENCOUNTERS.some(([a, b]) => (s.pct || 0) / 100 >= a && (s.pct || 0) / 100 < b);
   function frame(now) {
@@ -444,19 +511,36 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     const target = state.phase === 'boss' ? 1 : walkAt((state.pct || 0) / 100);
     const walking = shown < target - 0.0005; if (walking) shown = Math.min(target, shown + dt * Math.max(3.2 / route.len, (target - shown) / 10)); else if (shown > target) shown = target;
     const p = posAt(route, shown), q = posAt(route, Math.max(0, shown - 1.3 / route.len));
+    // Picking things up as you pass them: the route's items, then chat's gifts.
+    if (shown > lastShown) { const got = route.items.filter(it => it.t > lastShown && it.t <= shown).pop(), gift = drops.filter(d => d.t > lastShown && d.t <= shown).pop(); if (gift) { said = 'CHAT GIFT: ' + String(gift.kind).toUpperCase().slice(0, 8) + '!'; saidAt = now; } else if (got) { said = ITEM_SAYS[got.kind] || 'FOUND SOMETHING!'; saidAt = now; } }
+    lastShown = shown;
+    PAL = PALETTES[tod || timeOfDay()] || GB;
     // Facing the way you're walking (2026-11-13: "change directions"): across on a turn, up on a straight run.
     if (walking) { step = Math.floor(tm * 6) % 2; dir = p.dx < 0 ? 'left' : p.dx > 0 ? 'right' : p.dy < 0 ? 'up' : p.dy > 0 ? 'down' : dir; } else step = 0;
     // The camera follows you (kept inside the map).
     const camX = Math.max(0, Math.min(MAP_W * T - w, (p.x + 0.5) * T - w / 2)), camY = Math.max(0, Math.min(MAP_H * T - h, (p.y + 0.5) * T - h * 0.58));
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; put(img, w, x, y, tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm)); }
+    // In a cave it's dark: the host's lantern lights a circle around them.
+    const hx = (p.x + 0.5) * T - camX, hy = (p.y + 0.5) * T - camY - 8, cave = route.biomeAt(Math.round(p.y)) === 'cave';
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const wx = x + camX, wy = y + camY, tx = Math.floor(wx / T), ty = Math.floor(wy / T), t = route.grid[ty]?.[tx] ?? 3; let sh = tileShade(t, Math.floor(wx) % T, Math.floor(wy) % T, tx, ty, tm); if (cave || route.biomeAt(ty) === 'cave') { const d2 = (x - hx) ** 2 + (y - hy) ** 2, flick = Math.sin(tm * 9) * 3; if (d2 > (54 + flick) ** 2) sh = 3; else if (d2 > (38 + flick) ** 2) sh = Math.min(3, sh + 1); } put(img, w, x, y, sh); }
+    // The items still on the path, and chat's gifts (they bob).
+    const bobY = Math.round(Math.sin(tm * 4) * 1.5);
+    for (const it of route.items) if (it.t > shown + 0.001) { const ip = posAt(route, it.t); drawIcon(img, w, Math.round((ip.x + 0.5) * T - camX - 4), Math.round((ip.y + 0.5) * T - camY - 6) + bobY, it.kind); }
+    for (const d of drops) if (d.t > shown + 0.001) { const ip = posAt(route, d.t); drawIcon(img, w, Math.round((ip.x + 0.5) * T - camX - 4), Math.round((ip.y + 0.5) * T - camY - 6) - bobY, 'GIFT'); }
     // The shop signs.
-    route.grid.forEach((row, ty) => row.forEach((t, tx) => { if (t === 11 || t === 12) text3(img, w, tx * T - camX + 8 - (t === 11 ? 12 : 10), ty * T - camY + 5, t === 11 ? 'COMICS' : 'RIVAL', 3); }));
+    route.grid.forEach((row, ty) => row.forEach((t, tx) => { if (t === 11 || t === 12) { const gym = t === 12 && isGym(route.floor); text3(img, w, tx * T - camX + 8 - (t === 11 ? 12 : gym ? 6 : 10), ty * T - camY + 5, t === 11 ? 'COMICS' : gym ? 'GYM' : 'RIVAL', 3); } }));
     // Your buddy, then you (you're in front).
     const sx = x => Math.round((x + 0.5) * T - camX - 8), sy = y => Math.round((y + 0.5) * T - camY - 18);
     // Always the chibi walkers (2026-11-13: "why no chibi?" -- a saved face photo used to swap in the old face sprite).
     drawSprite(img, w, sx(q.x), sy(q.y) + 6, 'champ', dir, walking ? 1 - step : 0);
     drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);
     if (performance.now() - exclaim < 1400) text3(img, w, sx(p.x) + 7, sy(p.y) - 14, '!', 3);
+    // Fireflies at night (they drift on the clock, no dice).
+    if ((tod || timeOfDay()) === 'night') for (let k = 0; k < 9; k++) { const fx = Math.round((k * 53 + Math.sin(tm * 0.6 + k) * 22 + tm * 4) % w), fy = Math.round((k * 37 + Math.cos(tm * 0.5 + k * 2) * 16) % h); if ((Math.floor(tm * 2) + k) % 3) { put(img, w, fx, fy, 0); put(img, w, fx + 1, fy, 1); } }
+    // What you picked up, over your head; the bag count in the corner.
+    if (now - saidAt < 2200 && said) { const tw = said.length * 4 + 4, bx = Math.max(1, Math.min(w - tw - 1, sx(p.x) + 8 - tw / 2)), by = Math.max(1, sy(p.y) - 24); for (let yy = by; yy < by + 9; yy++) for (let xx = bx; xx < bx + tw; xx++) put(img, w, xx, yy, yy === by || yy === by + 8 || xx === bx || xx === bx + tw - 1 ? 3 : 0); text3(img, w, bx + 2, by + 2, said, 3); }
+    const bag = (state.floor - 1) * ITEM_SPOTS.length + route.items.filter(it => it.t <= shown).length + drops.filter(d => d.t <= shown).length;
+    for (let yy = 1; yy < 10; yy++) for (let xx = 1; xx < 40; xx++) put(img, w, xx, yy, yy === 1 || yy === 9 || xx === 1 || xx === 39 ? 3 : 0); text3(img, w, 4, 3, 'BAG ' + bag, 3);
+    PAL = GB;
     ctx.putImageData(img, 0, 0);
   }
   return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };

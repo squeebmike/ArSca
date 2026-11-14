@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { movesFrom, STARTERS, ensureBeasts, addBeastXp, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
+import { movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
@@ -65,7 +65,7 @@ export class ManaLiveStudio extends DurableObject {
   // A follow / share / bookmark the host tapped in fills the flask.
   dungeonTap(kind) {
     const s = this.read(), now = Date.now();
-    if (this.beastsOn(s)) return this.beastsIn(s, tapMana(s.settings, kind), now, { kind: 'tap', tapKind: kind, mana: tapMana(s.settings, kind) });
+    if (this.beastsOn(s)) { s.beasts = addBeastDrop(s.beasts, kind, s.settings, now); return this.beastsIn(s, tapMana(s.settings, kind), now, { kind: 'tap', tapKind: kind, mana: tapMana(s.settings, kind) }); } // chat's gift lands a few steps ahead
     if (this.vendingOnly(s)) { s.effect = makeEffect('tap', s.settings, now, { tapKind: kind, mana: 0 }); this.write(s); this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), serverNow:now }); return this.publicState(s); }
     const r = addTap(s.dungeon, kind, s.settings, now);
     // A treasure chest this tap opened (chat's goal reached).

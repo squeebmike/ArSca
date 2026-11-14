@@ -129,7 +129,7 @@ function paintDungeon(d){
     $('mana-flask-meter').textContent=atRival?'RIVAL HP '+usd(rv.hp):usd(d.xp)+' / '+usd(d.goal);
     // Close to evolving: the countdown takes the bar (2026-11-13: "keep the viewers watching").
     const evoSoon=d.toEvo>0&&d.toEvo<=Math.max(60,(d.goal||100)*0.6);
-    $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!';
+    $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':d.gym?'GYM ROUTE! '+usd(Math.max(0,d.goal-d.xp))+' MORE TO CHALLENGE '+rv.name+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!'+(d.toGym?' · GYM IN '+d.toGym+' ROUTE'+(d.toGym>1?'S':''):'');
     $('mana-cbar-sub').classList.toggle('evo-soon',!!evoSoon);
     $('mana-dungeon-floor').textContent='ROUTE '+d.route;$('mana-dungeon-shed').textContent='LONG BOX BEASTS';
     $('mana-dungeon-stars').textContent=(d.form||'')+' LV '+(d.level||1)+(d.badges?' · BADGES '+d.badges:'');
@@ -270,7 +270,7 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=7').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=8').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
@@ -589,7 +589,7 @@ function words(e) {
     // Beasts' own moments.
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];
       if(e.beastEvent==='learn')return [(e.beastName||'YOUR BEAST')+' HIT LV '+(e.level||'')+'!','IT CAN LEARN A NEW ATTACK','CHAT: NAME IT!'];
-      return e.beastEvent==='badge'?['ROUTE '+(e.route||'')+' BADGE!','BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];
+      return e.beastEvent==='badge'?[(e.gym?'GYM BADGE! ROUTE ':'ROUTE ')+(e.route||'')+(e.gym?'':' BADGE!'),'BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];
     case 'ready': {if(settings.gameMode==='vending')return ['WE\'RE LIVE!','THE MANA POCKET','STEP UP TO THE MACHINE!'];if(beastMode()&&stats.beasts){const bs=stats.beasts;return ['ROUTE '+bs.route,'LONG BOX BEASTS',bs.stage==='rival'?'RIVAL: '+bs.rival.name:'WALK THE ROUTE!'];}const d=dg();if(d)return ['FLOOR '+d.floor,d.shed,d.phase==='boss'?'BOSS FIGHT: '+d.boss.name:'FILL THE MANA FLASK!'];}
       if(!settings.showBoss)return ['PLAYER 1 READY','',''];
       return ['BOSS FIGHT!','VS',(settings.bossName||'')+' — "'+bossById(settings.bossCharacter).taunt+'"'];
