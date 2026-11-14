@@ -31,7 +31,7 @@ for (const k of ["if (['panel', 'full', 'front', 'lower'].includes(input.mode)) 
 assert.match(room, /import \{ makeSpots, upIndex \} from '\.\/vending\.mjs';/);
 assert.ok(read('.github/workflows/deploy-worker.yml').includes('- scripts/vending.mjs'), 'the worker deploys when the machine changes');
 // 5. Both screens draw the same machine.
-assert.match(bg, /import\('\.\/vending\.mjs\?v=5'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
+assert.match(bg, /import\('\.\/vending\.mjs\?v=6'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
 assert.ok(ov.includes('if(m.machine||m.settings)paintMachine(m.machine||machine);') && ov.includes('if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);'));
 assert.ok(!read('shed-background.html').includes('#shed-vend'), 'the old machine is gone');
 // 6. The remote: sizes, prev/next, sold-and-next, the spots maker; it works in the preview too.
@@ -72,3 +72,8 @@ console.log('Vending machine, spots, the battle on the green screen, and the gam
   assert.throws(() => M.validateSettings({ chaseLabel: 'RAFFLE' }), /chance/i);
   console.log('Vending showcase: passed');
 }
+
+// FLASH SALE (2026-11-14): "flash the stuff on flash sales ... with crossed out prices". The same price for everyone, ends on time.
+for (const k of ['<span class="vm-was">', "' flash'", '⚡ FLASH SALE', 'ENDS IN ', '.vm-was{']) assert.ok(vsrc.includes(k), k);
+for (const k of ['if (input.flash && typeof input.flash', 'wasPrice: was, price: now, flashUntil: until', 'if (input.flashEnd === true) m.items = m.items.map(unflash);']) assert.ok(room.includes(k), k);
+for (const k of ['id="vm-fl-go"', 'id="vm-fl-end"', "vmb('#vm-fl-go'", 'if(body.flash){']) assert.ok(ctl.includes(k), k);

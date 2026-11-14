@@ -33,7 +33,11 @@ export function seq(seed) { let s = seed >>> 0 || 1; return () => ((s = (Math.im
 const PRE = ['SLAB', 'FOIL', 'MINT', 'BULK', 'PENNY', 'GRAIL', 'VARI', 'TOPLOAD', 'BENT', 'CENTER', 'SLEEVE', 'KEY', 'HOLO', 'NEWS', 'RATIO', 'CREASE'];
 const SUF = ['BIT', 'LING', 'OON', 'AROO', 'OX', 'ISH', 'MOTH', 'TOAD', 'IMP', 'PUP', 'OWL', 'SNAIL'];
 // The wild beast at encounter k on a floor.
-export function wildName(floor, k) { const f = Math.max(1, floor | 0); return PRE[(f * 5 + k * 7) % PRE.length] + SUF[(f * 3 + k * 5) % SUF.length]; }
+// WEATHER (store, 2026-11-14: chat picks it): rain, a heatwave or a blizzard brings out its own wild beasts.
+export const WEATHERS = { clear: ['☀️', 'CLEAR SKIES'], rain: ['🌧️', 'RAIN'], heat: ['🔥', 'HEATWAVE'], snow: ['❄️', 'BLIZZARD'], fog: ['🌫️', 'FOG'] };
+const WEATHER_PRE = { rain: ['SOAK', 'DRIP', 'PUDDLE', 'SPLASH'], heat: ['SCORCH', 'EMBER', 'SUNBURN', 'BLAZE'], snow: ['FROST', 'SLEET', 'ICICLE', 'FLURRY'], fog: ['MIST', 'MURK', 'HAZE', 'GLOOM'] };
+export function wildName(floor, k, weather = '') { const f = Math.max(1, floor | 0), wp = WEATHER_PRE[weather]; return (wp ? wp[(f + k * 3) % wp.length] : PRE[(f * 5 + k * 7) % PRE.length]) + SUF[(f * 3 + k * 5) % SUF.length]; }
+export const weatherOn = (b, route) => (b?.weather && b.weather.route === route ? b.weather.kind : '');
 // A beast's look, made from its name (2026-11-13: "need better and animated
 // sprites for the mons"): 32 x 32, four idle frames (it breathes; its tail,
 // wings and feet move), front or back. Built from a body type the name picks --
@@ -311,9 +315,9 @@ export function beastHpFrom(lastAt, now = Date.now(), drainMs = BEAST_DRAIN_MS) 
 export function battleFrom(d, { battery = 1, bossName = '', starter = '' } = {}) {
   if (!d) return null;
   const lv = Number(d.level) || 1, mine = { name: formName(starter, lv), level: lv, hp: Math.max(0, Math.min(1, battery)) };
-  if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name }; }
+  if (d.phase === 'boss') { const rv = rivalFor(d.floor); return { kind: 'rival', k: 3, mine, foe: { name: rv.beast, hp: Math.max(0, Math.min(1, (d.pct ?? 100) / 100)) }, trainer: rv.name, rematch: Number(d.rematch) || 0 }; }
   const pct = Math.max(0, Math.min(1, (d.pct || 0) / 100));
-  for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k), hp: 1 - (pct - a) / (b - a) } }; }
+  for (let k = 0; k < ENCOUNTERS.length; k++) { const [a, b] = ENCOUNTERS[k]; if (pct >= a && pct < b) return { kind: 'wild', k, mine, foe: { name: wildName(d.floor, k, d.weather || ''), hp: 1 - (pct - a) / (b - a) } }; }
   return null;
 }
 export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1; f <= d.floor; f++) for (let k = 0; k < ENCOUNTERS.length; k++) if (f < d.floor || (d.phase === 'boss' || (d.pct || 0) / 100 >= ENCOUNTERS[k][1])) out.push(wildName(f, k)); return out; }
@@ -328,7 +332,10 @@ export function shelfFrom(d) { if (!d) return []; const out = []; for (let f = 1
 // on its own track. Nothing by chance; nothing won by buying.
 const r2b = n => Math.round(n * 100) / 100;
 export const beastGoal = (s, route) => Math.max(1, Math.round((Number(s.beastsGoal) || 100) * Math.pow(1 + (Number(s.beastsGrowth) || 0) / 100, Math.max(0, route - 1))));
-export const rivalMax = (s, route) => Math.max(1, Math.round(beastGoal(s, route) / 2) * (isGym(route) ? 2 : 1));
+// RIVAL REMATCHES (store, 2026-11-14): a rival you've beaten comes back stronger -- +25% HP for every time before.
+export const REMATCH_STEP = 0.25;
+export const rematchesOf = (b, route) => Number((b?.rematch || {})[rivalFor(route).name]) || 0;
+export const rivalMax = (s, route, times = 0) => Math.max(1, Math.round(beastGoal(s, route) / 2 * (isGym(route) ? 2 : 1) * (1 + REMATCH_STEP * Math.max(0, times | 0))));
 // LEVELS AND EVOLUTION (store, 2026-11-13: "can our monster level up and evolve? We need more to this game ...
 // tie into us selling on Whatnot and keeping the viewers watching"): every dollar sold (and chat's follows, shares,
 // bookmarks) is XP; levels come at 10, 30, 60, 100 ... XP; a new attack to learn every 5 levels (chat names it);
@@ -361,7 +368,9 @@ export function drawShelf(canvas, names = [], { count = 0, scale = 2 } = {}) {
   ctx.putImageData(img, 0, 0); canvas.style.imageRendering = 'pixelated'; canvas.style.width = W * scale + 'px'; canvas.style.height = H * scale + 'px';
 }
 export function emptyBeasts(week = '') { return { week, route: 1, phase: 'route', xp: 0, rivalHp: 0, exp: 0, caught: [], badges: [], lastAt: 0 }; }
-export function ensureBeasts(b, week = '') { if (b && b.week === week) return b; const fresh = emptyBeasts(week); if (b?.week) fresh.lastWeek = { week: b.week, route: b.route, badges: (b.badges || []).length, caught: (b.caught || []).length }; return fresh; }
+// THE SEASON PASS (store, 2026-11-14): on by default -- your beast keeps its level (XP), its beastdex and the rivals'
+// rematch counts from week to week; each Wednesday only the route, the badges and chat's area picks start over.
+export function ensureBeasts(b, week = '', season = true) { if (b && b.week === week) return b; const fresh = emptyBeasts(week); if (b?.week) { fresh.lastWeek = { week: b.week, route: b.route, badges: (b.badges || []).length, caught: (b.caught || []).length }; if (season) { fresh.exp = Number(b.exp) || 0; fresh.caught = (b.caught || []).slice(-400); fresh.rematch = { ...(b.rematch || {}) }; fresh.season = (Number(b.season) || 1) + 1; } } return fresh; }
 // Dollars in: walk the route (passing the wild beasts), then the rival's HP; leftovers carry on.
 // Returns { beasts, events } -- { kind:'caught', name }, { kind:'rival', trainer, beast }, { kind:'badge', route, trainer, beast }.
 export function addBeastXp(bIn, amount, s, now = Date.now()) {
@@ -374,15 +383,15 @@ export function addBeastXp(bIn, amount, s, now = Date.now()) {
       const goal = beastGoal(s, b.route), before = b.xp / goal, need = r2b(goal - b.xp);
       const take = Math.min(left, need); b.xp = r2b(b.xp + take); left = r2b(left - take);
       const after = b.xp / goal;
-      ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const name = wildName(b.route, k); b.caught.push({ name, route: b.route, at: now }); events.push({ kind: 'caught', name, route: b.route }); } });
+      ENCOUNTERS.forEach(([, end], k) => { if (before < end && after >= end) { const name = wildName(b.route, k, weatherOn(b, b.route)); b.caught.push({ name, route: b.route, at: now }); events.push({ kind: 'caught', name, route: b.route }); } });
       // Items and chat's gifts picked up on the way.
       for (const it of itemsFor(b.route)) { const at = pctForWalk(it.t); if (before < at && after >= at) { if (ITEM_XP[it.kind]) bonus = r2b(bonus + goal * ITEM_XP[it.kind]); else b.stamina = (b.stamina || 0) + 1; events.push({ kind: 'item', item: it.kind, route: b.route }); } }
       b.drops = (b.drops || []).map(d => { if (d.route !== b.route || d.got) return d; const at = pctForWalk(d.t); if (before < at && after >= at) { b.stamina = (b.stamina || 0) + 1; events.push({ kind: 'item', item: 'GIFT', route: b.route }); return { ...d, got: true }; } return d; });
-      if (b.xp >= goal) { b.phase = 'rival'; b.rivalHp = rivalMax(s, b.route); const rv = rivalFor(b.route); events.push({ kind: 'rival', route: b.route, trainer: rv.name, beast: rv.beast }); }
+      if (b.xp >= goal) { b.phase = 'rival'; const times = rematchesOf(b, b.route); b.rivalHp = rivalMax(s, b.route, times); const rv = rivalFor(b.route); events.push({ kind: 'rival', route: b.route, trainer: rv.name, ...(times ? { rematch: times } : {}), beast: rv.beast }); }
     } else {
       if (left < b.rivalHp) { b.rivalHp = r2b(b.rivalHp - left); left = 0; break; }
       left = r2b(left - b.rivalHp); const rv = rivalFor(b.route);
-      b.badges.push({ route: b.route, trainer: rv.name, at: now, ...(rv.gym ? { gym: true } : {}) }); events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length, ...(rv.gym ? { gym: true } : {}) });
+      b.badges.push({ route: b.route, trainer: rv.name, at: now, ...(rv.gym ? { gym: true } : {}) }); b.rematch = { ...(b.rematch || {}), [rv.name]: (Number((b.rematch || {})[rv.name]) || 0) + 1 }; events.push({ kind: 'badge', route: b.route, trainer: rv.name, beast: rv.beast, badges: b.badges.length, ...(rv.gym ? { gym: true } : {}) });
       b.route += 1; b.phase = 'route'; b.xp = 0; b.rivalHp = 0; b.stamina = 0;
     }
   }
@@ -400,8 +409,8 @@ export function adjustBeasts(bIn, { route, reset } = {}, week = '', now = Date.n
 }
 // What the screens see (floor and pct keep the drawing code's names: floor is the route).
 export function publicBeasts(bIn, s, starter = '') {
-  const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route), rv = rivalFor(b.route), rival = b.phase === 'rival';
-  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), area: (b.areas || {})[b.route] || '', nextArea: (b.areas || {})[b.route + 1] || '', drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
+  const b = bIn || emptyBeasts(), exp = Number(b.exp) || 0, level = levelFor(exp), nextEvo = EVOLVE_AT.find(a => a > level), goal = beastGoal(s, b.route), max = rivalMax(s, b.route, rematchesOf(b, b.route)), rv = rivalFor(b.route), rival = b.phase === 'rival';
+  return { route: b.route, floor: b.route, phase: rival ? 'boss' : 'floor', stage: rival ? 'rival' : 'route', xp: b.xp, goal, pct: rival ? Math.round(b.rivalHp / max * 1000) / 10 : Math.round(Math.min(1, b.xp / goal) * 1000) / 10, rival: { name: rv.name, beast: rv.beast, hp: rival ? b.rivalHp : max, max }, caught: (b.caught || []).slice(-24).map(c => c.name), caughtCount: (b.caught || []).length, dex: new Set((b.caught || []).map(c => c.name)).size, level, exp, toNext: level >= MAX_LEVEL ? 0 : r2b(xpFor(level + 1) - exp), levelPct: level >= MAX_LEVEL ? 100 : Math.round((exp - xpFor(level)) / (xpFor(level + 1) - xpFor(level)) * 1000) / 10, nextEvo: nextEvo || 0, toEvo: nextEvo ? r2b(xpFor(nextEvo) - exp) : 0, form: formName(starter, level), nextForm: nextEvo ? formName(starter, nextEvo) : '', badges: (b.badges || []).length, gymBadges: (b.badges || []).filter(x => x.gym).length, stamina: Math.min(STAMINA_MAX, b.stamina || 0), area: (b.areas || {})[b.route] || '', nextArea: (b.areas || {})[b.route + 1] || '', weather: weatherOn(b, b.route), rematch: rematchesOf(b, b.route), drainMs: drainFor(b.stamina || 0), gym: isGym(b.route), toGym: toGym(b.route), drops: (b.drops || []).filter(x => x.route === b.route).slice(-8).map(x => ({ kind: x.kind, t: x.t })), lastAt: b.lastAt || 0, week: b.week || '', lastWeek: b.lastWeek || null };
 }
 
 // ── drawing ──────────────────────────────────────────────────────────────────
@@ -589,12 +598,12 @@ function followerBeast(name) { if (!followerCache.has(name)) followerCache.set(n
 export function createWorld(canvas, { w = 240, h = 189 } = {}) {
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d'), img = ctx.createImageData(w, h);
-  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '', flat = null, bioRows = [];
+  let first = true, state = { floor: 1, pct: 0, phase: 'floor' }, route = routeFor(1), shown = 0, raf = 0, last = 0, face = '', buddy = '', step = 0, dir = 'up', exclaim = -1e9, drops = [], said = '', saidAt = -1e9, lastShown = 0, tod = null, gfx = 'gbc', follower = '', flat = null, bioRows = [], weather = '';
   function set(s) {
     if (first || s.floor !== state.floor || (s.area ?? '') !== (route.area || '')) { route = routeFor(s.floor, s.area || ''); bioRows = []; shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); lastShown = shown; first = false; }
     const wasBattle = battleOf(state), isBattle = battleOf(s);
     if (isBattle && !wasBattle) exclaim = performance.now(); // a "!" over your head as the beast jumps out
-    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay !== undefined) tod = s.timeOfDay || null; if (s.gfx) gfx = GFX.includes(s.gfx) ? s.gfx : 'gbc'; if (s.follower !== undefined) follower = String(s.follower || '');
+    state = { ...state, ...s }; face = s.face ?? face; buddy = s.buddy ?? buddy; if (Array.isArray(s.drops)) drops = s.drops; if (s.timeOfDay !== undefined) tod = s.timeOfDay || null; if (s.gfx) gfx = GFX.includes(s.gfx) ? s.gfx : 'gbc'; if (s.follower !== undefined) follower = String(s.follower || ''); if (s.weather !== undefined) weather = String(s.weather || '');
   }
   const battleOf = s => s.phase === 'boss' || ENCOUNTERS.some(([a, b]) => (s.pct || 0) / 100 >= a && (s.pct || 0) / 100 < b);
   function frame(now) {
@@ -634,6 +643,12 @@ export function createWorld(canvas, { w = 240, h = 189 } = {}) {
     drawSprite(img, w, sx(q.x), sy(q.y) + 6, 'champ', dir, walking ? 1 - step : 0);
     drawSprite(img, w, sx(p.x), sy(p.y) + 4, 'host', dir, step);
     if (performance.now() - exclaim < 1400) text3(img, w, sx(p.x) + 7, sy(p.y) - 14, '!', 3);
+    // WEATHER: rain streaks, snow falling, heat shimmer, fog -- on the clock, no dice.
+    const palW = PAL; if (gba) PAL = UI_RAMP;
+    if (weather === 'rain') for (let k = 0; k < 160; k++) { const x0 = (k * 37 + tm * 60) % w, y0 = (k * 53 + tm * 220) % h; for (let d = 0; d < 7; d++) put(img, w, Math.round(x0 - d * 0.5), Math.round(y0 + d), 1); }
+    if (weather === 'snow') for (let k = 0; k < 150; k++) { const x0 = Math.round((k * 41 + Math.sin(tm + k) * 6 + tm * 10) % w), y0 = Math.round((k * 29 + tm * 30) % h); for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) put(img, w, x0 + dx, y0 + dy, 0); }
+    if (weather === 'fog' || weather === 'heat') for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { if (weather === 'fog' ? (x + y + Math.floor(tm * 4)) % 3 === 0 && y < h * 0.7 : Math.sin(y * 0.3 + tm * 6) > 0.92 && (x + y) % 2 === 0) put(img, w, x, y, 0); }
+    PAL = palW;
     // Fireflies at night (they drift on the clock, no dice).
     if ((tod || timeOfDay()) === 'night') for (let k = 0; k < 9; k++) { const fx = Math.round((k * 53 + Math.sin(tm * 0.6 + k) * 22 + tm * 4) % w), fy = Math.round((k * 37 + Math.cos(tm * 0.5 + k * 2) * 16) % h); if ((Math.floor(tm * 2) + k) % 3) { put(img, w, fx, fy, 0); put(img, w, fx + 1, fy, 1); } }
     if (gba) PAL = UI_RAMP;
@@ -690,7 +705,7 @@ export function createBattle(canvas, { scale = 3 } = {}) {
       if (gbaB) PAL = PEOPLE_RAMP; drawTrainer(img, W, 2 - slide, 54, 'host'); drawTrainer(img, W, 40 - slide, 54, 'champ');
       if (b.kind === 'rival' && b.trainer === 'MR FISTER') drawTrainer(img, W, 160 + slide, 6, 'fister');
       else if (b.kind === 'rival' && rival) for (let y = 0; y < 44; y++) for (let x = 0; x < 44; x++) { const v = rival[y * 44 + x]; if (v >= 0) put(img, W, 162 + slide + x, 18 + y, v); }
-      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + ' WANTS TO BATTLE!' : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
+      if (it < 0.62) { if (b.kind !== 'rival' || (!rival && b.trainer !== 'MR FISTER')) drawBeast(beast(b.foe.name), 152 + Math.round(Math.max(0, 0.25 - it) * 300), 4 + bob(1), false); PAL = GB; lx.putImageData(img, 0, 0); ctx.imageSmoothingEnabled = false; ctx.drawImage(low, 0, 0, W * scale, H * scale); words(b.kind === 'rival' ? b.trainer.slice(0, 20) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : 'A WILD ' + b.foe.name + ' JUMPED OUT!'); return; }
     }
     // Yours from behind (bigger, closer), lunging forward on an attack; theirs facing you.
     const lunge = a >= 0 && a < 0.25 ? Math.round(a * 32) : 0;

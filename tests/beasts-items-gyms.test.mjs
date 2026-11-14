@@ -103,7 +103,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=5')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=6')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
 }
@@ -144,3 +144,28 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   assert.ok(b3.includes("MR FISTER'S GYM IN 3D") && b3.includes('const throwComics = () =>') && b3.includes("'COMIC STORM'"));
   console.log('3D gym fight: passed');
 }
+
+// 9. SEASON PASS (2026-11-14): the beast keeps its level, its dex and its rematches all year; only the route resets weekly.
+{ const old = { ...B.emptyBeasts('2026-11-04'), route: 7, exp: 900, caught: [{ name: 'A' }, { name: 'B' }], rematch: { 'MR FISTER': 2 }, badges: [{ route: 5 }] };
+  const nw = B.ensureBeasts(old, '2026-11-11');
+  assert.equal(nw.route, 1, 'the route starts over'); assert.equal(nw.badges.length, 0, 'badges are weekly');
+  assert.equal(nw.exp, 900, 'the level stays'); assert.equal(nw.caught.length, 2, 'the dex stays'); assert.deepEqual(nw.rematch, { 'MR FISTER': 2 }); assert.equal(nw.season, 2);
+  const off = B.ensureBeasts(old, '2026-11-11', false);
+  assert.equal(off.exp, 0, 'season pass off: a clean slate'); assert.equal(off.caught.length, 0); assert.equal(off.lastWeek.route, 7);
+  assert.equal(B.ensureBeasts(nw, '2026-11-11'), nw, 'same week: untouched'); }
+// 11. WEATHER chat picks: it changes which beasts show up on that route, and only that route.
+{ for (const w of ['rain', 'heat', 'snow', 'fog']) { assert.ok(B.WEATHERS[w]); assert.equal(B.wildName(4, 1, w), B.wildName(4, 1, w), 'fixed, not random'); }
+  assert.notEqual(B.wildName(4, 0, 'snow'), B.wildName(4, 0, 'heat'), 'snow and heat bring different beasts');
+  assert.equal(B.wildName(4, 0, 'clear'), B.wildName(4, 0), 'clear skies: the usual beasts');
+  const b = { ...B.emptyBeasts('w'), route: 3, weather: { route: 3, kind: 'rain' } };
+  assert.equal(B.weatherOn(b, 3), 'rain'); assert.equal(B.weatherOn({ ...b, route: 4 }, 4), '', 'the next route is clear again');
+  assert.equal(B.publicBeasts(b, { beastsGoal: 100 }).weather, 'rain'); }
+// 12. RIVAL REMATCHES: each badge from a trainer brings them back stronger next time (25% a rematch).
+{ const s = { beastsGoal: 100 };
+  assert.equal(B.rivalMax(s, 5, 2), B.rivalMax(s, 5) * (1 + 2 * B.REMATCH_STEP));
+  let bs = { ...B.emptyBeasts('w'), route: 5 }; const r = B.addBeastXp(bs, 100 + B.rivalMax(s, 5) + 1, s, 1);
+  assert.ok(r.events.some(e => e.kind === 'badge')); assert.equal(r.beasts.rematch['MR FISTER'], 1, 'Mr Fister remembers');
+  const again = B.ensureBeasts(r.beasts, 'w2'), back = { ...again, route: 5 };
+  assert.equal(B.rematchesOf(back, 5), 1); const r2 = B.addBeastXp(back, 100, s, 2), ev = r2.events.find(e => e.kind === 'rival');
+  assert.equal(ev.rematch, 1, 'WANTS A REMATCH!'); assert.equal(r2.beasts.rivalHp, B.rivalMax(s, 5, 1));
+  const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'); assert.ok(src.includes('WANTS A REMATCH!')); assert.ok(!/Math\.random/.test(src)); }

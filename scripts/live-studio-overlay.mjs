@@ -132,7 +132,7 @@ function paintDungeon(d){
     $('mana-flask-meter').textContent=atRival?'RIVAL HP '+usd(rv.hp):usd(d.xp)+' / '+usd(d.goal);
     // Close to evolving: the countdown takes the bar (2026-11-13: "keep the viewers watching").
     const evoSoon=d.toEvo>0&&d.toEvo<=Math.max(60,(d.goal||100)*0.6);
-    $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':d.gym?'GYM ROUTE! '+usd(Math.max(0,d.goal-d.xp))+' MORE TO CHALLENGE '+rv.name+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!'+(d.toGym?' · GYM IN '+d.toGym+' ROUTE'+(d.toGym>1?'S':''):'');
+    $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?(d.rematch?'REMATCH #'+(d.rematch+1)+'! ':'')+'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':d.gym?'GYM ROUTE! '+usd(Math.max(0,d.goal-d.xp))+' MORE TO CHALLENGE '+rv.name+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!'+(d.toGym?' · GYM IN '+d.toGym+' ROUTE'+(d.toGym>1?'S':''):'');
     $('mana-cbar-sub').classList.toggle('evo-soon',!!evoSoon);
     $('mana-dungeon-floor').textContent='ROUTE '+d.route;$('mana-dungeon-shed').textContent='LONG BOX BEASTS';
     $('mana-dungeon-stars').textContent=(d.form||'')+' LV '+(d.level||1)+(d.badges?' · BADGES '+d.badges:'')+(d.stamina?' · STAMINA '+(100+25*d.stamina)+'%':'');
@@ -275,11 +275,11 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=15').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=16').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=5').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+import('./vending.mjs?v=6').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 let shownLevel=0,shelfKey='';
@@ -295,7 +295,7 @@ function paintBeasts(d){
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   // 3DS: the battle in 3D (scripts/beasts-3d.mjs); the others: the pixel battle in their colours.
   const want3d=settings.beastsGfx==='3ds';if(battle&&battle3d!==want3d){battle.stop();battle=null;beastsOn=false;}
-  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=5').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
+  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=6').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
   battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0,gfx:settings.beastsGfx||'gbc'});
   // The rival trainer: the boss's own art, in four greens.
   cv.style.top=Math.max(0,Number(settings.y)-560)+'px';

@@ -154,7 +154,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     // The DS-style touch panel: the line of text, then the four moves as big rounded buttons.
     ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
     const introT = (performance.now() - introAt) / 2400;
-    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + ' WANTS TO BATTLE!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
+    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 10) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
     moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); f((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? '#202830' : '#ffffff'); });
   }
   function frame(now) {
@@ -357,7 +357,11 @@ export function createWorld3D(canvas, { w = 240, h = 189 } = {}) {
     for (const cl of clouds) cl.position.x = ((cl.position.x + 0.004 + 16) % 32) - 16;
     for (const gm of glows) gm.material.color.setRGB(1, day === 'night' ? 0.95 : 0.85, day === 'night' ? 0.6 : 0.45);
   }
+  // WEATHER (chat's pick): rain or snow falling round you, fog closing in, the heat turning the sky orange.
+  let weather = ''; const wxGeo = new THREE.BufferGeometry(); wxGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(900 * 3), 3));
+  const wxPts = new THREE.Points(wxGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.85, depthWrite: false })); wxPts.visible = false; scene.add(wxPts);
   function set(s) {
+    if (s.weather !== undefined) weather = String(s.weather || '');
     if (first || s.floor !== state.floor || (s.area ?? area) !== area) { area = s.area ?? area; route = routeFor(s.floor, area); build(); shown = s.phase === 'boss' ? 1 : walkAt((s.pct || 0) / 100); first = false; }
     state = { ...state, ...s }; if (Array.isArray(s.drops)) { drops = s.drops; dropG.clear(); for (const d of drops) { const p = posAt(route, d.t), o = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), mat([255, 216, 74])); o.position.copy(tile(p.x, p.y)).setY(0.4); o.userData.t = d.t; dropG.add(o); } }
     if (s.timeOfDay !== undefined) tod = s.timeOfDay || null;
@@ -376,6 +380,12 @@ export function createWorld3D(canvas, { w = 240, h = 189 } = {}) {
     const day = tod || timeOfDay(), sk = SKY[day] || SKY.day; scene.background = new THREE.Color(sk[0]); scene.fog = new THREE.Fog(sk[1], 14, 30);
     hemi.intensity = day === 'night' ? 0.5 : 1.15; sun.intensity = day === 'night' ? 0.25 : 1.2; sun.color.set(day === 'sunset' ? 0xffb070 : 0xffffff);
     sceneTick(t, day);
+    wxPts.visible = weather === 'rain' || weather === 'snow';
+    if (wxPts.visible) { const pa = wxGeo.attributes.position, fast = weather === 'rain'; wxPts.material.size = fast ? 0.05 : 0.12; wxPts.material.color.set(fast ? 0xbfdcff : 0xffffff);
+      for (let k = 0; k < pa.count; k++) { const fx = ((Math.sin(k * 12.9898) * 43758.5453) % 1 + 1) % 1, fz = ((Math.sin(k * 78.233) * 43758.5453) % 1 + 1) % 1, fall = ((t * (fast ? 1.6 : 0.25) + fx * 3) % 1); pa.setXYZ(k, me.x + (fx - 0.5) * 18 + (fast ? 0 : Math.sin(t + k) * 0.4), 8 - fall * 8, me.z + (fz - 0.6) * 18); }
+      pa.needsUpdate = true; }
+    if (weather === 'fog') scene.fog = new THREE.Fog(0xc8ced8, 6, 20); if (weather === 'heat') { scene.background = new THREE.Color(0xf2a060); scene.fog = new THREE.Fog(0xf6c890, 8, 22); }
+    if (weather === 'rain') { scene.background = new THREE.Color(0x7a8a9c); scene.fog = new THREE.Fog(0x8a98a8, 8, 22); } if (weather === 'snow') { scene.background = new THREE.Color(0xc8d4e2); scene.fog = new THREE.Fog(0xe2e8f0, 6, 18); }
     r.render(scene, cam); ctx.drawImage(gl, 0, 0);
   }
   return { set, start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; }, get route() { return route; } };

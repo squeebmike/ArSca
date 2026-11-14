@@ -75,6 +75,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   beastsEvolveReward: '', // Beasts: what everyone watching gets when your beast evolves ("Free giveaway in the Whatnot tool") -- for the whole room, never buyers only   // Beasts: each route needs this % more
   beastsGfx: 'gbc',    // Beasts' graphics: 'gbc' (four greens) or 'gba' (full colour) (store, 2026-11-14)
   beastsFollow: true,  // your beast follows you on the route
+  beastsSeason: true,  // the season pass: your beast keeps its level and beastdex week to week (only the route resets)
   beastsTimeOfDay: '', // Beasts' overworld colors: '' (auto, by the show computer's clock), 'day', 'sunset' or 'night' (store, 2026-11-14)
   beastsBattle: 'overlay', // where the battle shows: 'overlay' (in front of the hosts) or 'green' (the green screen, behind them)
   dungeonComics: true, // the shed's and dungeon's walls and stands show comics only (store, 2026-11-12: "keep it comics")

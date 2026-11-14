@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { areaOptions, AREA_ICONS, movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
+import { WEATHERS, areaOptions, AREA_ICONS, movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
@@ -36,7 +36,7 @@ export class ManaLiveStudio extends DurableObject {
     // The dungeon runs all week (Wednesday to Wednesday), across shows.
     s.dungeon = ensureWeek(s.dungeon);
     // LONG BOX BEASTS keeps its own track (2026-11-13: "they should be totally separate games").
-    s.beasts = ensureBeasts(s.beasts, weekKey());
+    s.beasts = ensureBeasts(s.beasts, weekKey(), s.settings?.beastsSeason !== false);
     return s;
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
@@ -114,7 +114,7 @@ export class ManaLiveStudio extends DurableObject {
     const s = this.read(), now = Date.now();
     if (this.vendingOnly(s) && !['next', 'trivia'].includes(kind)) throw new Error('Vending only: no game is on');
     if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw new Error('That vote is the dungeon\'s -- Long Box Beasts is on');
-    if (!this.beastsOn(s) && ['move', 'starter', 'area'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
+    if (!this.beastsOn(s) && ['move', 'starter', 'area', 'weather'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
     let options;
     if (kind === 'weapon') options = WEAPONS.map(w => ({ id: w.id, label: w.icon + ' ' + w.name }));
     else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
@@ -125,6 +125,8 @@ export class ManaLiveStudio extends DurableObject {
     // BEASTS: chat picks your starter.
     else if (kind === 'starter') options = STARTERS.map(n => ({ id: n, label: '🥚 ' + n }));
     // BEASTS: chat picks the country for the next route.
+    // BEASTS: chat calls the weather on this route (it changes which wild beasts are out).
+    else if (kind === 'weather') options = ['rain', 'heat', 'snow', 'fog', 'clear'].map(id => ({ id, label: WEATHERS[id][0] + ' ' + WEATHERS[id][1] }));
     else if (kind === 'area') options = areaOptions((s.beasts?.route || 1) + 1).map(id => ({ id, label: AREA_ICONS[id] + ' ' + id.toUpperCase() }));
     // THE MERCHANT (2026-11-12): two items, what makes each special; chat picks, it runs.
     else if (kind === 'merchant') { const picks = merchantPicks(s.stage.next || []); if (picks.length < 2) throw new Error('The merchant needs two items in NEXT UP'); options = picks.map(p => ({ id: String(p.i), label: p.tag + ': ' + String(p.item.title || '').slice(0, 60), ...(p.item.image ? { image: p.item.image } : {}) })); }
@@ -159,6 +161,7 @@ export class ManaLiveStudio extends DurableObject {
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
     if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
     if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! GO, ' + opt.id + ' -- LET\'S SELL SOME COMICS!' }); }
+    if (v.kind === 'weather') { const rt = s.beasts?.route || 1; s.beasts = { ...s.beasts, weather: opt.id === 'clear' ? null : { route: rt, kind: opt.id } }; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: opt.id === 'clear' ? 'CHAT CLEARED THE SKIES ON ROUTE ' + rt + '!' : 'CHAT CALLED IN ' + WEATHERS[opt.id][1] + ' ON ROUTE ' + rt + '! NEW WILD BEASTS ARE OUT!' }); }
     if (v.kind === 'area') { const nx = (s.beasts?.route || 1) + 1; s.beasts = { ...s.beasts, areas: { ...(s.beasts?.areas || {}), [nx]: opt.id } }; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT PICKED ' + opt.id.toUpperCase() + ' FOR ROUTE ' + nx + '!' }); }
     if (v.kind === 'move') { s.beastMove = index; fx = makeEffect('move', s.settings, now, { move: opt.label.replace(/^\S+\s/, '') }); }
     if (v.kind === 'trivia') { if (this.vendingOnly(s)) {} else if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana) || 0, s.settings, now).beasts; else { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; } const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
@@ -317,6 +320,22 @@ export class ManaLiveStudio extends DurableObject {
     if (input.step === 1 || input.step === -1) m.up = openFrom(m.items, upIndex(m), input.step);
     if (input.soldUp === true) { const u = upIndex(m); if (u >= 0) { m.items[u] = { ...m.items[u], sold: true }; m.up = openFrom(m.items, u, 1); } }
     if (Number.isInteger(input.toggle) && m.items[input.toggle]) m.items[input.toggle] = { ...m.items[input.toggle], sold: !m.items[input.toggle].sold };
+    // FLASH SALE (2026-11-14): a few slots at a lower price for a few minutes -- the old price shows crossed out.
+    // Same price for everyone watching; it just ends on time (no chance in it).
+    const unflash = it => { if (!it.flashUntil && !it.wasPrice) return it; const { wasPrice, flashUntil, ...rest } = it; return { ...rest, price: Number(wasPrice) > 0 ? wasPrice : it.price }; };
+    m.items = m.items.map(it => it.flashUntil && Date.now() >= it.flashUntil ? unflash(it) : it);
+    if (input.flashEnd === true) m.items = m.items.map(unflash);
+    if (input.flash && typeof input.flash === 'object') {
+      const f = input.flash, pct = Number(f.pct) || 0, to = Number(f.price) || 0, mins = Math.floor(Number(f.minutes) || 0);
+      if (!(pct > 0 && pct < 90) && !(to > 0)) throw new Error('Flash sale: % off (1-89) or a sale price');
+      if (mins < 1 || mins > 60) throw new Error('Flash sale: 1 to 60 minutes');
+      const want = new Set((Array.isArray(f.slots) ? f.slots : []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= m.items.length));
+      if (!want.size) throw new Error('Flash sale: which slot numbers?');
+      const until = Date.now() + mins * 60000; let hit = 0;
+      m.items = m.items.map((it, i) => { if (!want.has(i + 1) || it.sold) return it; const base = unflash(it), was = Number(base.price) || 0; if (!(was > 0)) return it;
+        const now = Math.round((to > 0 ? to : was * (1 - pct / 100)) * 100) / 100; if (!(now > 0 && now < was)) return it; hit++; return { ...base, wasPrice: was, price: now, flashUntil: until }; });
+      if (!hit) throw new Error('Flash sale: those slots need a price above the sale price');
+    }
     if (typeof input.on === 'boolean') m.on = input.on;
     if (typeof input.title === 'string') m.title = input.title.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 30).toUpperCase();
     s.machine = m;
