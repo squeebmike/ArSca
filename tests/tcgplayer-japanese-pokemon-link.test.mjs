@@ -28,3 +28,19 @@ assert.ok(grab('function tcgplayerProductToQplRow(').includes('imageUrl:tcgplaye
 const img = new Function(grab('function tcgplayerProductImageUrl(') + '\nreturn tcgplayerProductImageUrl;')();
 assert.equal(img('575691'), 'https://tcgplayer-cdn.tcgplayer.com/product/575691_in_1000x1000.jpg'); assert.equal(img('x'), '');
 console.log('Japanese Pokemon TCGplayer link: passed');
+
+// ENGLISH / JAPANESE switch (2026-11-15: "I should be able to switch languages in the app to get the prices of the other languages").
+{
+  const html = fs.readFileSync('dashboard.html', 'utf8');
+  assert.ok(html.includes('id="qpl-lang-btn"') && html.includes('onclick="toggleQplLanguage()"'), 'LANG beside the search box');
+  const { qplRowIsJapanese, qplOtherLanguageQuery } = new Function(grab('function qplRowIsJapanese(') + '\n' + grab('function qplOtherLanguageQuery(') + '\nreturn { qplRowIsJapanese, qplOtherLanguageQuery };')();
+  assert.equal(qplRowIsJapanese({ name: 'Japan Mystery Of The Fossils Moltres' }), true);
+  assert.equal(qplRowIsJapanese({ name: 'Moltres', language: 'English' }), false);
+  assert.equal(qplRowIsJapanese({ name: 'Moltres', language: 'Japanese' }), true);
+  assert.equal(qplOtherLanguageQuery({ name: 'Japan Mystery Of The Fossils Moltres', set: 'Japan Mystery of the Fossils' }), 'Moltres', 'just the card, for the other language');
+  assert.equal(qplOtherLanguageQuery({ name: 'Charizard ex', set: 'Obsidian Flames' }), 'Charizard ex');
+  assert.ok(app.includes("const isJapanese = qplLanguageMode === 'japanese' || (qplLanguageMode !== 'english' && /\\bjapanese?\\b|\\bjpn\\b/i.test(q));"), 'the switch decides the Pokemon search language');
+  assert.ok(app.includes('${qplLanguageChip(r, idx)}') && app.includes("'SEE ENGLISH PRICE' : 'SEE JAPANESE PRICE'"));
+  assert.ok(app.includes("localStorage.setItem('qpl_pokemon_language', qplLanguageMode)"), 'kept on the device');
+  console.log('EN / JP switch: passed');
+}

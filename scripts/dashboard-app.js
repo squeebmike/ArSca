@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.7-jp-tcg-links';
+const APP_VERSION = '2026.11.15.8-en-jp-switch';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -33949,7 +33949,8 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
 
   if(plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat)) {
     // Intent signals
-    const isJapanese = /\bjapanese?\b|\bjpn\b/i.test(q);
+    // The EN / JP switch beside the search box wins; on AUTO the search's own words decide.
+    const isJapanese = qplLanguageMode === 'japanese' || (qplLanguageMode !== 'english' && /\bjapanese?\b|\bjpn\b/i.test(q));
     const searchLanguage = isJapanese ? 'japanese' : 'english';
     const isPromoQuery = isPokemonPromoIntent(q);
     const isSealedQuery = pokemonSealedIntent;
@@ -36384,6 +36385,44 @@ function qplVariantSelectOptions(r, key, current){
 
 // UNLIMITED / 1ST EDITION (store ask) -- only for a card printed in
 // editions. Each chip shows that edition's price at the condition picked.
+// ENGLISH / JAPANESE (store, 2026-11-15: "I should be able to switch languages in the app to get the prices of the other
+// languages"). LANG beside the search box: AUTO (the search's own words), JP or EN for every Pokemon search, re-running the
+// one on screen; kept on this device. Each Pokemon result has SEE ENGLISH PRICE / SEE JAPANESE PRICE: the same card's
+// name searched in the other language (TCGplayer lists each language as its own product, so it's a new search).
+let qplLanguageMode = (() => { try { const v = localStorage.getItem('qpl_pokemon_language'); return ['auto','english','japanese'].includes(v) ? v : 'auto'; } catch(e) { return 'auto'; } })();
+function paintQplLanguageButton(){
+  const b = document.getElementById('qpl-lang-btn'); if(!b) return;
+  b.textContent = { auto:'LANG: AUTO', english:'LANG: EN', japanese:'LANG: JP' }[qplLanguageMode] || 'LANG: AUTO';
+  b.style.color = qplLanguageMode === 'japanese' ? '#e63' : qplLanguageMode === 'english' ? 'var(--g)' : '';
+}
+function setQplLanguage(mode, rerun = true){
+  qplLanguageMode = ['auto','english','japanese'].includes(mode) ? mode : 'auto';
+  try { localStorage.setItem('qpl_pokemon_language', qplLanguageMode); } catch(e) {}
+  paintQplLanguageButton();
+  if(rerun && String(document.getElementById('qpl-input')?.value || '').trim()) runPriceLookup();
+}
+function toggleQplLanguage(){ setQplLanguage({ auto:'japanese', japanese:'english', english:'auto' }[qplLanguageMode] || 'auto'); }
+function qplRowIsJapanese(r = {}){ return /^japanese$/i.test(r.selectedLanguage || r.language || '') || /\bjapan(ese)?\b|\bjpn\b/i.test([r.name, r.set].join(' ')); }
+// The card's own name for the other-language search: no "Japan/Japanese", no set name (sets differ between languages).
+function qplOtherLanguageQuery(r = {}){
+  let name = String(r.cardName || r.name || '');
+  const set = String(r.set || r.setName || '').replace(/\bjapan(ese)?\b/ig, '').trim();
+  if(set && set.length > 2) name = name.replace(new RegExp(set.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
+  return name.replace(/\bjapan(ese)?\b|\bjpn\b|\bpokemon\b/ig, ' ').replace(/\s+/g, ' ').trim();
+}
+function qplOtherLanguage(idx){
+  const r = qplResults[idx]; if(!r) return;
+  const toJp = !qplRowIsJapanese(r), q = qplOtherLanguageQuery(r);
+  if(!q) return toast_dash('No card name to search with');
+  const input = document.getElementById('qpl-input'); if(input) input.value = q;
+  setQplLanguage(toJp ? 'japanese' : 'english');
+  toast_dash((toJp ? 'Japanese' : 'English') + ' prices for ' + q + ' -- LANG is now ' + (toJp ? 'JP' : 'EN') + ' (tap it for AUTO)');
+}
+function qplLanguageChip(r = {}, idx = 0){
+  if(r.is_sealed || !/pokemon/i.test([r.category, r.game, r.lineLabel].join(' '))) return '';
+  return `<div style="margin:6px 0"><button class="hbtn" style="font-size:9px;min-height:26px" onclick="qplOtherLanguage(${idx})">${qplRowIsJapanese(r) ? 'SEE ENGLISH PRICE' : 'SEE JAPANESE PRICE'}</button></div>`;
+}
+setTimeout(paintQplLanguageButton, 0);
 function qplEditionChips(r = {}, idx = 0){
   if(r.is_sealed || !r.pokemonPriceTracker) return '';
   const variants = pptVariantsOf(r.pokemonPriceTracker);
@@ -39333,6 +39372,7 @@ function quickLookupResultCard(r, idx){
         }).join('')}</div>`;
       })()}
       ${qplEditionChips(r, idx)}
+      ${qplLanguageChip(r, idx)}
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
       ${qplGradedQuickChips(r, idx)}
