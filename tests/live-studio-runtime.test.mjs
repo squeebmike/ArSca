@@ -11,7 +11,7 @@ export default {async fetch(req,env){
  const u=new URL(req.url), room=env.ROOM.getByName(u.searchParams.get('store')||'one');
  if(u.pathname==='/socket')return room.fetch(req);
  const b=req.method==='POST'?await req.json():{};
- const result=u.pathname==='/link'?await room.rotateOverlay():u.pathname==='/revoke'?await room.revokeOverlay():u.pathname==='/effect'?await room.trigger(b.kind):u.pathname==='/settings'?await room.update(b.settings,b.revision):u.pathname==='/event'?await room.receiveWhatnot(b.id,b.event):u.pathname==='/stage'?await room.setStage(b.stage):u.pathname==='/sync'?await room.syncStats(b.orders):u.pathname==='/reset'?await room.resetStats():u.pathname==='/vote-open'?await room.openVote(b.kind):u.pathname==='/vote-pick'?await room.pickVote(b.index):u.pathname==='/trivia'?await room.askTrivia(b):u.pathname==='/adjust'?await room.dungeonAdjust(b):u.pathname==='/name'?await room.nameFloor(b.name):await room.snapshot();
+ const result=u.pathname==='/screen'?await room.screen(b):u.pathname==='/link'?await room.rotateOverlay():u.pathname==='/revoke'?await room.revokeOverlay():u.pathname==='/effect'?await room.trigger(b.kind):u.pathname==='/settings'?await room.update(b.settings,b.revision):u.pathname==='/event'?await room.receiveWhatnot(b.id,b.event):u.pathname==='/stage'?await room.setStage(b.stage):u.pathname==='/sync'?await room.syncStats(b.orders):u.pathname==='/reset'?await room.resetStats():u.pathname==='/vote-open'?await room.openVote(b.kind):u.pathname==='/vote-pick'?await room.pickVote(b.index):u.pathname==='/trivia'?await room.askTrivia(b):u.pathname==='/adjust'?await room.dungeonAdjust(b):u.pathname==='/name'?await room.nameFloor(b.name):await room.snapshot();
  return Response.json(result);
 }};`,resolveDir:process.cwd(),sourcefile:'runtime-harness.mjs'},bundle:true,format:'esm',platform:'browser',external:['cloudflare:workers'],write:false});
 const options={workers:[{name:'studio-test',modules:true,script:result.outputFiles[0].text,compatibilityDate:'2026-08-20',durableObjects:{ROOM:{className:'ManaLiveStudio',useSQLite:true}}}]};
@@ -51,6 +51,14 @@ try {
  msg=message(ws);await call('/event',{id:'sale-5',event:sale('o4',5,{transaction_type:'auction'})});got=await msg;assert.equal(got.stage.now.title,'X-Men #1');assert.equal(got.stage.next.length,0);
  assert.equal((await call('/sync',{orders:[{id:'a',show_id:'show',status:'completed',amounts:{subtotal:{amount:'5'}},created_at:'2026-11-01T00:00:00Z'}]})).stats.gross,5);
  assert.equal((await call('/reset')).stats.gross,0);
+ // SHARE A SCREEN (2026-11-14): the remote's offer reaches the overlay, the overlay's answer comes back -- only the handshake.
+ msg=message(ws);const shared=await call('/screen',{offer:'v=0 offer',layout:'half',title:'foc orders'});got=await msg;
+ assert.equal(got.type,'screen');assert.equal(got.screen.id,shared.id);assert.equal(got.screen.offer,'v=0 offer');assert.equal(got.screen.layout,'half');assert.equal(got.screen.title,'FOC ORDERS');
+ assert.equal((await call('/screen',{poll:shared.id})).answer,'');
+ ws.send(JSON.stringify({type:'screen-answer',id:'wrong',sdp:'v=0 nope'}));ws.send(JSON.stringify({type:'screen-answer',id:shared.id,sdp:'v=0 answer'}));
+ let ans='';for(let k=0;k<20&&!ans;k++){await new Promise(r=>setTimeout(r,50));ans=(await call('/screen',{poll:shared.id})).answer;}assert.equal(ans,'v=0 answer');
+ msg=message(ws);await call('/screen',{stop:true});got=await msg;assert.equal(got.type,'screen');assert.equal(got.screen,null);
+ assert.equal((await call('/screen',{poll:shared.id})).answer,'');
  closed=close(ws);ws.send(JSON.stringify({kind:'jackpot'}));assert.equal((await closed).code,1008,'overlay cannot send controls');
  const viewer=await socket();msg=message(viewer);viewer.send(JSON.stringify({token:link.token}));await msg;
  closed=close(viewer);await call('/revoke');assert.equal((await closed).code,1008);

@@ -39,7 +39,7 @@ assert.equal(M.makeEffect('move', S, Date.now(), { move: 'lowball' }).move, 'LOW
 const room = read('scripts/live-studio-room.mjs'), ov = read('scripts/live-studio-overlay.mjs'), bg = read('scripts/shed-background.mjs'), ctl = read('scripts/live-studio-controls.js');
 assert.match(room, /else if \(kind === 'move'\) options = movesFrom\(s\.settings\.beastsMoves\)/);
 assert.match(room, /if \(v\.kind === 'move'\) \{ s\.beastMove = index; fx = makeEffect\('move'/);
-assert.match(bg, /world = beasts\.createWorld\(canvas/); assert.match(ov, /battle=beastsLib\.createBattle\(cv,\{scale:3\}\)/);
+assert.match(bg, /beasts\.createWorld\(canvas/); assert.match(ov, /battle=beastsLib\.createBattle\(cv,\{scale:3\}\)/);
 assert.match(ov, /if\(e\.kind==='move'\)\{if\(beastsOn&&battle\)\{battle\.attack\(e\.move\)/, 'chat\'s pick fires');
 assert.match(ov, /if\(beastsOn&&battle&&\['sold','jackpot','boss'\]\.includes\(e\.kind\)\)/, 'every sale fires it');
 assert.ok(ctl.includes('name="gameMode"') && ctl.includes('id="beast-face-file"') && ctl.includes('id="beast-buddy-file"') && ctl.includes('id="beast-add-move"') && ctl.includes('data-vote="move"'));
@@ -57,7 +57,7 @@ assert.deepEqual(B.STARTERS, ['SLABBIT', 'TOPLOADON', 'SLEEVIL']);
 assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'SLEEVIL' }).mine.name, 'SLEEVIL');
 assert.equal(B.battleFrom({ floor: 1, phase: 'floor', pct: 25 }, { starter: 'NOPE' }).mine.name, B.STARTER, 'only a real starter');
 assert.notDeepEqual(B.makeBeast('SLABBIT', { back: true }).px, B.makeBeast('SLABBIT').px, 'yours from behind');
-assert.match(src, /drawBeast\(beast\(evoName \|\| b\.mine\.name, true\), 28 \+ lunge \+ myShake, 42/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name\), 152 \+ shake - foeLunge, 4/, 'theirs top right');
+assert.match(src, /drawBeast\(beast\(evoName \|\| b\.mine\.name, true\), 28 \+ lunge \+ myShake, 42/, 'yours bottom left, from behind'); assert.match(src, /drawBeast\(beast\(b\.foe\.name, cheeksOn\), 152 \+ shake - foeLunge/, 'theirs top right');
 assert.match(room, /else if \(kind === 'starter'\) options = STARTERS\.map/); assert.match(room, /if \(v\.kind === 'starter'\) \{ s\.beastStarter = opt\.id;/);
 assert.match(room, /setMachine\(input = \{\}\) \{/); assert.match(room, /this\.machineSold\(s, event\.data, moved \? wasNow : null\)/, 'a sale marks its item SOLD OUT');
 assert.match(read('scripts/live-studio-api.mjs'), /room\.setMachine\(body\)/);

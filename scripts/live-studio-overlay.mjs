@@ -21,6 +21,7 @@ let hype={level:0,at:Date.now()};
 let lastNowTitle=null, soldLine=0, lastPhase='';
 // Polished-N64 3D (scripts/live-studio-3d.mjs): the boss and the coins. If
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
+let beasts3d=null, battle3d=false;
 let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null, fisterView=null, fisterCovers='', fisterFaceShown='';
 import('./live-studio-3d.mjs').then(m=>{
   gl3d=m;fpBoss='';
@@ -131,7 +132,7 @@ function paintDungeon(d){
     $('mana-flask-meter').textContent=atRival?'RIVAL HP '+usd(rv.hp):usd(d.xp)+' / '+usd(d.goal);
     // Close to evolving: the countdown takes the bar (2026-11-13: "keep the viewers watching").
     const evoSoon=d.toEvo>0&&d.toEvo<=Math.max(60,(d.goal||100)*0.6);
-    $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':d.gym?'GYM ROUTE! '+usd(Math.max(0,d.goal-d.xp))+' MORE TO CHALLENGE '+rv.name+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!'+(d.toGym?' · GYM IN '+d.toGym+' ROUTE'+(d.toGym>1?'S':''):'');
+    $('mana-cbar-sub').textContent=evoSoon?usd(d.toEvo)+' TO EVOLVE INTO '+d.nextForm+' -- STAY FOR IT!':atRival?(d.rematch?'REMATCH #'+(d.rematch+1)+'! ':'')+'EVERY SALE IS AN ATTACK ON '+rv.name+'\'S '+rv.beast+'!':d.gym?'GYM ROUTE! '+usd(Math.max(0,d.goal-d.xp))+' MORE TO CHALLENGE '+rv.name+'!':usd(Math.max(0,d.goal-d.xp))+' MORE TO BATTLE '+rv.name+'!'+(d.toGym?' · GYM IN '+d.toGym+' ROUTE'+(d.toGym>1?'S':''):'');
     $('mana-cbar-sub').classList.toggle('evo-soon',!!evoSoon);
     $('mana-dungeon-floor').textContent='ROUTE '+d.route;$('mana-dungeon-shed').textContent='LONG BOX BEASTS';
     $('mana-dungeon-stars').textContent=(d.form||'')+' LV '+(d.level||1)+(d.badges?' · BADGES '+d.badges:'')+(d.stamina?' · STAMINA '+(100+25*d.stamina)+'%':'');
@@ -274,11 +275,11 @@ setInterval(()=>{if(frontOn&&front?.walking?.()&&!document.hidden)tone(70+(Date.
 // greens: your beast vs the wild one (or the rival's), chat's pick lit up, and
 // every sale fires it.
 let beastsLib=null,battle=null,beastsOn=false,rivalArt='';
-import('./beasts.mjs?v=10').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
+import('./beasts.mjs?v=19').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d);}).catch(e=>console.warn('[studio] beasts off:',e?.message||e));
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=4').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+import('./vending.mjs?v=6').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 let shownLevel=0,shelfKey='';
@@ -292,8 +293,10 @@ function paintBeasts(d){
   const b=beastMode()&&settings.beastsBattle!=='green'&&beastsLib&&d?beastsLib.battleFrom(d,{battery:beastsLib.beastHpFrom?beastsLib.beastHpFrom(Math.max(Number(stats.lastSaleAt)||0,Number(d.lastAt)||0),Date.now()+offset,d.drainMs):batteryNow(d),bossName:d.boss?.name,starter:stats.beastStarter}):null;
   cv.classList.toggle('mana-hidden',!b);
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
-  if(!battle)battle=beastsLib.createBattle(cv,{scale:3});
-  battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0});
+  // 3DS: the battle in 3D (scripts/beasts-3d.mjs); the others: the pixel battle in their colours.
+  const want3d=settings.beastsGfx==='3ds';if(battle&&battle3d!==want3d){battle.stop();battle=null;beastsOn=false;}
+  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=10').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
+  battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0,gfx:settings.beastsGfx||'gbc'});
   // The rival trainer: the boss's own art, in four greens.
   cv.style.top=Math.max(0,Number(settings.y)-560)+'px';
   if(!beastsOn){battle.start();beastsOn=true;}
@@ -379,6 +382,8 @@ function revealItem(e){
   $('mana-reveal-label').textContent=e.kind==='found'?(e.spot==='THE MERCHANT'?'THE MERCHANT SELLS IT! UP NOW!':e.spot==='THE SECRET VAULT'?'TREASURE FROM THE SECRET VAULT!':'FOUND IT'+(e.spot?' IN '+e.spot:'')+'!'):'CHEST OPENED! '+(e.chestText||'LOW START!');
   $('mana-reveal-title').textContent=it.title;$('mana-reveal-price').textContent=e.kind==='chest'?'LOW START!':(it.price?'VALUE '+usd(it.price):'');
   img.hidden=!it.image;if(it.image)img.src=studioImg(it.image);
+  // THE SPOTLIGHT (2026-11-14): NOW PLAYING, tilting slowly in 3D, its facts under it.
+  const spot=e.kind==='spotlight';el.classList.toggle('spot-mode',spot);if(spot){$('mana-reveal-label').textContent='SPOTLIGHT';$('mana-reveal-price').textContent=[e.spot,it.price?'VALUE '+usd(it.price):''].filter(Boolean).join('  ·  ');}
   // ITEM GET (2026-11-11: "the chest opens and the item spins"): the chest
   // shows shut, the lid pops open in a burst of light, the item rises out of
   // it spinning and hangs there -- YOU GOT IT!
@@ -432,6 +437,7 @@ function paintMap(d){
     em.textContent=m.shed;li.append(n,document.createTextNode((m.icon?m.icon+' ':'')+(m.room||(m.floor===1?'THE WAY IN':m.current&&d.doors?'DOOR VOTE…':'UNEXPLORED'))+(m.cleared?' ✓':'')),em);return li;}));
   $('mana-relics').replaceChildren(...d.relics.map(r=>{const i=document.createElement('i');i.textContent=r.icon;i.title=r.name;return i;}));
 }
+const esc=v=>String(v??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function paintStage() {
   const now=stage.now;
   card.classList.toggle('has-art',!!now?.image);card.classList.toggle('has-price',!!now?.price);
@@ -442,6 +448,12 @@ function paintStage() {
   $('mana-card-price').innerHTML='';
   if(now?.price){const s=document.createElement('small');s.textContent='GUIDE';$('mana-card-price').append(s,document.createTextNode(usd(now.price)));}
   card.classList.toggle('mana-hidden',!settings.showCard||(!now&&!settings.attract));
+  // THE CHASE COUNTDOWN: the priciest item lined up (at or over the host's minimum), counted down.
+  { const el=$('mana-chase'),word=String(settings.chaseLabel||'CHASE').toUpperCase(),min=Number(settings.chaseMin)||0,nx=stage.next||[];let best=-1;nx.forEach((n,i)=>{if(Number(n.price)>=min&&(best<0||Number(n.price)>Number(nx[best].price)))best=i;});
+    const upNow=now&&Number(now.price)>=min&&nx.every(n=>!(Number(n.price)>Number(now.price)))&&min>0;
+    if(el){el.classList.toggle('mana-hidden',settings.chaseOn===false||(best<0&&!upNow));el.classList.toggle('now',!!upNow&&best<0);
+      if(upNow&&best<0)el.innerHTML='<b>🔥 THE '+esc(word)+' IS UP NOW!</b><span>'+esc(now.title)+'</span>';
+      else if(best>=0)el.innerHTML='<b>🔥 '+esc(word)+' IN '+(best+1)+'</b><span>'+esc(nx[best].title)+(nx[best].price?' · '+usd(nx[best].price):'')+'</span>';}}
   const list=$('mana-queue-list');list.replaceChildren(...(stage.next||[]).slice(0,3).map(n=>{const li=document.createElement('li');li.textContent=n.title+(n.price?' · '+usd(n.price):'');return li;}));
   queue.classList.toggle('mana-hidden',!settings.showQueue||settings.bigArt||!(stage.next||[]).length);
   // A new item up (NEXT ITEM, or auto-advance after an auction sells): ByteRider calls it.
@@ -557,7 +569,7 @@ function receiveEffect(e,initial=false) {
   if(played.has(e.id)) return;
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
   // MR FISTER: he rises in, pumping the gauntlet (the line under him is the usual burst).
-  if(e.kind==='fister'&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.stop();},7600);}
+  if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.mode('goo',e.kind==='fistergoo');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.mode('goo',false);fisterView.stop();},e.kind==='fistergoo'?9600:7600);}
   // A ByteRider reaction or line from the dashboard: just him, no burst.
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
   // BEASTS: chat picked an attack -- your beast uses it now.
@@ -593,7 +605,9 @@ function words(e) {
     case 'gameover': return ['GAME OVER','','THANKS FOR PLAYING!'];
     // Show start: a boss-fight intro card.
     // Beasts' own moments.
+    case 'spotlight': return ['','',''];
     case 'fister': return ['MR FISTER!','IF I CAN DO IT, YOU CAN!','THE GAUNTLET OF GRAILS'];
+    case 'fistergoo': return ['SYMBIOTE FISTER!','THE GOO HAS TAKEN HOLD','GOO MODE: ACTIVATED'];
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];
       if(e.beastEvent==='learn')return [(e.beastName||'YOUR BEAST')+' HIT LV '+(e.level||'')+'!','IT CAN LEARN A NEW ATTACK','CHAT: NAME IT!'];
       return e.beastEvent==='badge'?[(e.gym?'GYM BADGE! ROUTE ':'ROUTE ')+(e.route||'')+(e.gym?'':' BADGE!'),'BEAT '+(e.trainer||'THE RIVAL'),'ROUTE '+((e.route||0)+1)+' OPENS · '+(e.badges||1)+' BADGE'+((e.badges||1)>1?'S':'')]:e.beastEvent==='rival'?[(e.trainer||'THE RIVAL')+' WANTS TO BATTLE!','SENDS OUT '+(e.beastName||''),'EVERY SALE IS AN ATTACK!']:['WILD '+(e.beastName||'BEAST')+' BEATEN!','ROUTE '+(e.route||''),'ON TO THE NEXT PATCH OF GRASS!'];
@@ -626,6 +640,28 @@ function draw() {
   combo.classList.toggle('on',on);
   requestAnimationFrame(draw);
 }
+// SHARE A SCREEN (store, 2026-11-14: "show my FOC screen while we do orders, so people can watch along"): the remote
+// shares a window or tab; it arrives here straight from that computer (WebRTC, peer to peer) and shows in a framed box
+// -- in the corner, on the right half, or full screen -- with what it is written on top. Only the handshake goes
+// through the studio.
+const SCR_ICE=[{urls:'stun:stun.cloudflare.com:3478'}];
+let scrPc=null,scrBox=null;
+function screenBox(){
+  if(scrBox)return scrBox;
+  const st=document.createElement('style');st.textContent=`#mana-screen{position:fixed;z-index:60;background:#0d0f14;border:6px solid #141018;border-radius:18px;box-shadow:0 0 0 4px #ffd84a,0 18px 50px #000a;overflow:hidden;display:flex;flex-direction:column;transition:all .5s cubic-bezier(.2,.9,.3,1.2)}#mana-screen[hidden]{display:none}#mana-screen.corner{right:2.5%;top:16%;width:44%;aspect-ratio:16/10.6}#mana-screen.half{right:1.2%;top:3%;width:48%;bottom:3%}#mana-screen.full{inset:2%}#mana-screen b{display:flex;align-items:center;gap:.6em;padding:.45em .8em;background:#ffd84a;color:#141018;font:900 clamp(14px,1.6vw,30px)/1 system-ui,sans-serif;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mana-screen b i{font-style:normal;background:#e8213a;color:#fff;border-radius:6px;padding:.15em .45em;font-size:.75em;animation:mana-scr-live 1.4s infinite}#mana-screen video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}@keyframes mana-scr-live{50%{opacity:.45}}`;
+  document.head.appendChild(st);scrBox=document.createElement('div');scrBox.id='mana-screen';scrBox.hidden=true;scrBox.innerHTML='<b><i>● LIVE</i><span></span></b><video autoplay muted playsinline></video>';document.body.appendChild(scrBox);return scrBox;
+}
+function screenLook(layout,title){const b=screenBox();b.className=['corner','half','full'].includes(layout)?layout:'corner';b.querySelector('span').textContent='📺 '+(title||'FOLLOW ALONG');}
+function closeScreen(){if(scrPc){try{scrPc.close();}catch{}scrPc=null;}if(scrBox){scrBox.hidden=true;const v=scrBox.querySelector('video');v.srcObject=null;}}
+function screenOffer(sc){
+  closeScreen();if(!sc||typeof sc.offer!=='string'||typeof RTCPeerConnection!=='function')return;
+  const pc=new RTCPeerConnection({iceServers:SCR_ICE});scrPc=pc;
+  pc.ontrack=ev=>{if(scrPc!==pc)return;const b=screenBox();b.querySelector('video').srcObject=ev.streams[0]||new MediaStream([ev.track]);screenLook(sc.layout,sc.title);b.hidden=false;};
+  pc.onconnectionstatechange=()=>{if(scrPc===pc&&['failed','closed','disconnected'].includes(pc.connectionState))setTimeout(()=>{if(scrPc===pc&&pc.connectionState!=='connected')closeScreen();},pc.connectionState==='disconnected'?5000:0);};
+  (async()=>{await pc.setRemoteDescription({type:'offer',sdp:sc.offer});await pc.setLocalDescription(await pc.createAnswer());
+    await new Promise(res=>{if(pc.iceGatheringState==='complete')return res();const t=setTimeout(res,2500);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);res();}});});
+    if(scrPc===pc&&socket?.readyState===1)socket.send(JSON.stringify({type:'screen-answer',id:sc.id,sdp:pc.localDescription.sdp}));})().catch(()=>{});
+}
 function connect() {
   if(!endpoint || !store || !token) return;
   let url;try {url=new URL(endpoint);if(url.protocol!=='https:' && !(url.protocol==='http:' && ['localhost','127.0.0.1'].includes(url.hostname)))return;}catch{return;}
@@ -634,6 +670,8 @@ function connect() {
   socket.onopen=()=>socket.send(JSON.stringify({token}));
   socket.onmessage=ev=>{try {const m=JSON.parse(ev.data);offset=m.serverNow-Date.now();retry=0;
     if(m.type==='camera'){fp?.setCamera?.(m.cam);front?.setCamera?.(m.cam);return;}
+    if(m.type==='screen'){screenOffer(m.screen);return;}
+    if(m.type==='screen-look'){if(scrBox&&!scrBox.hidden)screenLook(m.layout,m.title);return;}
     if(m.settings)apply(m.settings);
     if(m.stage){stage=m.stage;paintStage();loadFgPics();}
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}

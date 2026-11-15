@@ -30,7 +30,7 @@ export async function handleLiveStudio(request,env,deps,url) {
       return deps.json({ok:!result.conflict,...result},result.conflict?409:200);
     }
     // A ByteRider_97 reaction: { kind:'mascot', state, text }.
-    if (url.pathname==='/live-studio/effect') return deps.json({ok:true,...await room.trigger(body.kind, body.kind==='mascot'?{mascotState:String(body.state||''),say:String(body.text||'').slice(0,200)}:{})});
+    if (url.pathname==='/live-studio/effect') return deps.json({ok:true,...await room.trigger(body.kind, body.kind==='mascot'?{mascotState:String(body.state||''),say:String(body.text||'').slice(0,200)}:body.kind==='spotlight'?{spotlight:true}:{})});
     if (url.pathname==='/live-studio/overlay-link') return deps.json({ok:true,...await room.rotateOverlay()});
     if (url.pathname==='/live-studio/revoke') return deps.json(await room.revokeOverlay());
     if (url.pathname==='/live-studio/stage') return deps.json({ok:true,...await room.setStage(body.stage)});
@@ -39,6 +39,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/beast-move') return deps.json({ok:true,...await room.pickMove(Number(body.index))});
     if (url.pathname==='/live-studio/machine') return deps.json({ok:true,...await room.setMachine(body)});
     // The Shed Dungeon: a follow / share / bookmark tapped in, or a fix.
+    if (url.pathname==='/live-studio/screen') return deps.json({ok:true,...room.screen(body)});
     if (url.pathname==='/live-studio/camera') return deps.json({ok:true,...room.camera(body)});
     if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await withChest(await room.dungeonTap(String(body.kind||'')))});
     if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await withChest(await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),resetWeek:body.resetWeek===true}))});

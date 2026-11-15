@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.5';
+  const STUDIO_V='2026.11.14.17';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -23,8 +23,14 @@
   </div>
   <h3>🥤 Vending machine</h3>
   <small>For breaks and surprise sets: a machine of items (or spots), scrolling, a BID button on each slot, the one UP NOW lit, SOLD stamped on what's gone. A sale marks its item by itself (with spots: the one UP NOW). Tap a slot below to mark it by hand.</small>
+  <details class="vm-showcase" open><summary>🛒 SHOWCASE -- pre-release shows: NEW RELEASES to pre-order + THE BIN, on the lower half</summary>
+  <small>The new releases (your FOC books with covers, their price and FOC date) on top, the in-stock Buy It Now items with their price below, each shelf turning a page every 5 seconds. Shows on the green screen's lower half.</small>
+  <div class="mana-row"><button type="button" id="vm-sc-both">🛒 LOAD BOTH (NEW + BIN)</button><button type="button" id="vm-sc-pre">📚 NEW RELEASES ONLY</button><button type="button" id="vm-sc-bin">🏷 BIN ONLY</button></div>
+  </details>
+  <div class="mana-row"><label>LOOK<select id="vm-theme"><option value="">KIOSK (white)</option><option value="comics">COMIC SHOP (red + yellow)</option><option value="cards">CARD SHOP (red + white)</option><option value="arcane">ARCANE (purple + gold)</option></select></label><label>CHANGE RETURN: A FREE GIVEAWAY EVERY<input id="vm-give" type="number" min="0" max="100" placeholder="0 = off"> SOLD</label><button type="button" id="vm-look-go">SET</button></div>
+  <div class="mana-row"><label>⚡ FLASH SALE SLOTS<input id="vm-fl-slots" placeholder="3, 7, 12"></label><label>% OFF<input id="vm-fl-pct" type="number" min="1" max="89" placeholder="20"></label><label>OR SALE PRICE $<input id="vm-fl-price" type="number" min="0" step="0.01"></label><label>MINUTES<input id="vm-fl-min" type="number" min="1" max="60" value="5"></label><button type="button" id="vm-fl-go">⚡ FLASH SALE</button><button type="button" id="vm-fl-end">END SALE</button></div>
   <div class="mana-row"><button type="button" id="vm-load">LOAD FROM NOW + NEXT UP</button><button type="button" id="vm-show">SHOW THE MACHINE</button><button type="button" id="vm-hide">HIDE IT</button></div>
-  <div class="mana-row vm-modes"><button type="button" data-vm-mode="panel">▣ SMALL · BEHIND US</button><button type="button" data-vm-mode="full">⛶ FULL SCREEN · BEHIND US</button><button type="button" data-vm-mode="front">⛶ FULL SCREEN · IN FRONT</button></div>
+  <div class="mana-row vm-modes"><button type="button" data-vm-mode="panel">▣ SMALL · BEHIND US</button><button type="button" data-vm-mode="full">⛶ FULL SCREEN · BEHIND US</button><button type="button" data-vm-mode="lower">⬇ LOWER HALF · BEHIND US</button><button type="button" data-vm-mode="front">⛶ FULL SCREEN · IN FRONT</button></div>
   <div class="mana-row"><button type="button" id="vm-prev">◀ PREV SLOT</button><button type="button" id="vm-sold-up">✔ UP NOW SOLD → NEXT</button><button type="button" id="vm-next">NEXT SLOT ▶</button></div>
   <p id="vm-up" class="mana-score">Nothing up</p>
   <details class="vm-spots"><summary>🎟 MAKE SPOTS (a break, a surprise set -- not in your inventory)</summary>
@@ -56,7 +62,7 @@
   <div class="mana-row"><button type="button" id="quick-floor">🔢 SET FLOOR…</button><button type="button" data-click="#mana-reset-week">⏮ START THE WEEK OVER</button></div>
   <small>Chat votes: chat types a number in Whatnot's chat; tap the winner at the top. Nothing is random.</small>
   <div class="mana-remote-grid"><button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=merchant]">🧙 MERCHANT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button></div>
-  <div class="mana-row" id="mana-vote-open" hidden><button type="button" data-vote="starter">CHAT VOTE: THE STARTER (BEASTS)</button><button type="button" data-vote="move">CHAT VOTE: THE ATTACK (BEASTS)</button><button type="button" data-vote="merchant">CHAT VOTE: THE MERCHANT (2 SPECIAL ITEMS -- THE PICK RUNS)</button><button type="button" data-vote="dig">CHAT VOTE: WHERE TO DIG (FOUND IT!)</button><button type="button" data-vote="fork">CHAT VOTE: FORK IN THE HALL</button><button type="button" data-vote="weapon">CHAT VOTE: HERO'S WEAPON</button><button type="button" data-vote="next">CHAT VOTE: WHAT'S NEXT</button><button type="button" data-vote="door">CHAT VOTE: DOOR</button></div>
+  <div class="mana-row" id="mana-vote-open" hidden><button type="button" data-vote="starter">CHAT VOTE: THE STARTER (BEASTS)</button><button type="button" data-vote="move">CHAT VOTE: THE ATTACK (BEASTS)</button><button type="button" data-vote="area">CHAT VOTE: THE NEXT AREA (BEASTS)</button><button type="button" data-vote="weather">CHAT VOTE: THE WEATHER (BEASTS)</button><button type="button" data-vote="merchant">CHAT VOTE: THE MERCHANT (2 SPECIAL ITEMS -- THE PICK RUNS)</button><button type="button" data-vote="dig">CHAT VOTE: WHERE TO DIG (FOUND IT!)</button><button type="button" data-vote="fork">CHAT VOTE: FORK IN THE HALL</button><button type="button" data-vote="weapon">CHAT VOTE: HERO'S WEAPON</button><button type="button" data-vote="next">CHAT VOTE: WHAT'S NEXT</button><button type="button" data-vote="door">CHAT VOTE: DOOR</button></div>
   <div class="mana-row"><button type="button" id="mana-trivia">ASK BYTERIDER TRIVIA</button><input id="mana-trivia-q" maxlength="160" placeholder="Your own question (optional)"><input id="mana-trivia-a" maxlength="80" placeholder="Answer"></div>
   <div class="mana-row"><input id="mana-floor-name" maxlength="30" placeholder="Chat's name for this floor"><button type="button" id="mana-floor-name-go">NAME THE FLOOR</button></div>
   <small>Trivia: chat types answers in Whatnot's chat; tap CHAT GOT IT and everyone's mana goes up. Chests along the path open as the crawl reaches them (after chat's goal, if it has one) and bring your most valuable NEXT UP item up as a $1 start.</small>
@@ -99,6 +105,9 @@
   <div class="mana-grid">${num('beastsGoal','Route 1 goal ($)',5,1000000)}${num('beastsGrowth','Each route needs (+%)',0,100)}</div>
   <label>WHEN YOUR BEAST EVOLVES (LV 10 and LV 20), everyone watching gets<input name="beastsEvolveReward" maxlength="120" placeholder="e.g. Free giveaway in the Whatnot tool"></label>
   <small>Levels: every $1 sold is 1 XP (follows, shares and bookmarks count too); a new attack to learn every 5 levels -- chat names it (➕ ADD CHAT'S ATTACK). The level lasts the week. The reward is for the whole room, never buyers only.</small>
+  <label>BEASTS GRAPHICS<select name="beastsGfx"><option value="gbc">GBC -- the four greens</option><option value="gba">GBA -- full colour</option><option value="nds">DS -- colour + touch-screen battle panel</option><option value="3ds">3DS -- tilted 3D route + 3D beasts in battle</option></select></label>
+  ${box('beastsFollow','Your beast follows you on the route')}
+  ${box('beastsSeason','Season pass: your beast keeps its level and beastdex week to week (only the route resets on Wednesday)')}
   <label>TIME OF DAY ON THE ROUTE (BEASTS)<select name="beastsTimeOfDay"><option value="">AUTO (the clock)</option><option value="day">DAY</option><option value="sunset">SUNSET</option><option value="night">NIGHT (fireflies)</option></select></label>
   <label>WHERE THE BATTLE SHOWS (BEASTS)<select name="beastsBattle"><option value="overlay">IN FRONT OF US (the overlay)</option><option value="green">BEHIND US (the green screen)</option></select></label>
   <small>Long Box Beasts is its own game, on its own track (the dungeon stays where it is while Beasts is on): sales and chat's follows, shares and bookmarks walk you up the route; three wild beasts wait in the tall grass; at the top the route's rival sends out their beast; beat it for the route's badge. Chat picks your attack (⚔️ ATTACK below); every sale fires it. You and Champ are drawn in already (cap, beard, MP 24 jersey; bald, glasses, beard) (the chibi walkers are always used now; the face photos below are kept but no longer replace them).</small>
@@ -130,8 +139,11 @@
   <h3>Quick</h3>
   <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button><button type="button" data-toggle="finale" data-key="V">FINALE ON/OFF <kbd>V</kbd></button></div>
   <h3>Effects</h3>
-  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
+  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER'],['fistergoo','🖤 SYMBIOTE FISTER'],['spotlight','🔦 SPOTLIGHT NOW PLAYING']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
+  <h3>📺 Share a screen</h3>
+  <div class="mana-row"><label>WHAT IT IS<input id="scr-title" maxlength="40" placeholder="FOC ORDERS -- FOLLOW ALONG"></label><label>WHERE<select id="scr-layout"><option value="corner">CORNER</option><option value="half">RIGHT HALF</option><option value="full">FULL SCREEN</option></select></label><button type="button" id="scr-go">📺 SHARE A SCREEN</button><button type="button" id="scr-stop">STOP SHARING</button></div>
+  <small>Pick a window or a tab on this computer (your FOC page, the order list) and it shows live in the overlay in OBS, in a frame with the words above on it. Use Chrome or Edge on a computer, and keep this tab open while it's shared. On the computer that runs OBS you can also just add OBS's own Window Capture.</small>
   <h3>ByteRider_97</h3>
   <div class="mana-grid">${box('mascotOn','Show ByteRider_97')}${box('mascotSounds','ByteRider sounds')}${box('showHype','Hype meter')}${box('mascotSaysMarquee','ByteRider says the marquee lines')}${num('mascotSayEvery','…one every (seconds)',10,600)}${box('mascotBorder','His bezel round the screen')}${box('mascotIdleFace','Keep a faint face up between reactions')}${num('mascotScale','Face size (%)',40,150)}${num('mascotFaceY','Face height on screen',250,1650)}</div>
   <small>The phone screen is his monitor: his face pops onto it when he reacts, then clears so the cameras show. He reacts on his own to sales, big hits, the boss K.O., countdowns, giveaways and winners, the show starting and ending, and each new item up. Whatnot doesn't send follows or auction starts, so those are buttons here. He naps after 5 quiet minutes.</small>
@@ -151,7 +163,8 @@
   ${num('speed','Scroll cycle (seconds)',4,60)}${num('hudY','Score board top',0,1700)}${num('cardX','Card left',0,700)}${num('cardY','Card top',0,1560)}
   ${num('countdownSeconds','Countdown (seconds)',3,15)}${num('volume','Volume (%)',0,100)}${num('jackpotAmount','BIG HIT at ($)',1,1000000)}
   <label>Currency<input name="currency" maxlength="3" pattern="[A-Z]{3}" required></label></div>
-  <div class="mana-grid">${box('visible','Show sign')}${box('marqueeOn','Scrolling marquee on the sign')}${box('showHud','Show score board')}${box('showCard','Show now playing')}${box('showQueue','Show next up')}${box('showCombo','Show combos')}${box('attract','INSERT COIN when nothing is playing')}${box('muted','Mute sound')}${box('showBuyerNames','Show buyer usernames ("THANKS @name")')}</div>
+  <div class="mana-grid">${box('visible','Show sign')}${box('marqueeOn','Scrolling marquee on the sign')}${box('showHud','Show score board')}${box('showCard','Show now playing')}${box('showQueue','Show next up')}${box('showCombo','Show combos')}${box('attract','INSERT COIN when nothing is playing')}${box('muted','Mute sound')}${box('showBuyerNames','Show buyer usernames ("THANKS @name")')}${box('chaseOn','🔥 Chase countdown (the priciest item lined up)')}</div>
+  <div class="mana-row"><label>COUNTDOWN WORD<input name="chaseLabel" maxlength="16" placeholder="CHASE (or HEAT, BIG HIT, KEY)"></label><label>ONLY ITEMS AT OR OVER $<input name="chaseMin" type="number" min="0" step="1"></label></div>
   <small>Buyer usernames are off unless you turn them on. Whatnot shows the winner's username in the app already; check Whatnot's seller rules before showing them. Only the username is ever shown, and there's no "top spender" board.</small>
   <button type="submit">Save live settings</button></form></details>
   <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" data-src="arcade-overlay.html#preview=1" src="about:blank"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" data-src="shed-background.html#preview=1" src="about:blank"></iframe></div>
@@ -214,6 +227,17 @@
     const vmb=(id,body,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{await machineDo(typeof body==='function'?body():body);const empty=!(machineCtl.items||[]).length;status.textContent=(empty&&machineCtl.on?'The machine is up but EMPTY -- tap LOAD FROM NOW + NEXT UP (fill NOW PLAYING / NEXT UP first) or 🎟 MAKE SPOTS below.':msg)+(connectedStore?'':' (preview -- connect to use it in the show)');if(empty){const sp=host.querySelector('details.vm-spots');if(sp)sp.open=true;}});};
     vmb('#vm-load',{load:'stage'},'Machine loaded from NOW PLAYING + NEXT UP.');vmb('#vm-show',{on:true},'The machine is on the green screen.');vmb('#vm-hide',{on:false},'Machine hidden.');
     vmb('#vm-title-go',()=>({title:String(host.querySelector('#vm-title').value||'')}),'Machine named.');
+    // THE SHOWCASE (2026-11-14): the FOC books coming up (covers, price, FOC date) and the in-stock BIN items (price).
+    const binItems=()=>inventory().filter(i=>i.status==='in_stock'&&i.sellOnWhatnot===true&&i.whatnotShowOnly!==true&&(https(i.thumbnail)||https(i.imageUrl))).map(i=>({...stageItem(i),price:Number(i.price||i.market||i.marketPrice||0)||0,shelf:'bin'})).filter(it=>it.image&&it.price>0&&!chanceFn(it.title+' '+it.detail)).sort((a,b)=>b.price-a.price).slice(0,60);
+    const newReleases=async()=>{const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null,id=store();if(!sb||!id)return[];const today=new Date().toISOString().slice(0,10);
+      const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents').eq('store_id',id).eq('customer_enabled',true).gte('foc_date',today).not('cover_image_url','is',null).order('foc_date',{ascending:true}).limit(40);
+      if(error)throw Error('New releases: '+error.message);const md=d=>d?d.slice(5).replace('-','/'):'';
+      return (data||[]).filter(r=>https(r.cover_image_url)).map(r=>({title:String((r.title||'')+(r.variant_label?' '+r.variant_label:'')).slice(0,90),detail:'FOC '+md(r.foc_date)+(r.on_sale_date?' · OUT '+md(r.on_sale_date):''),image:r.cover_image_url,price:(Number(r.customer_price_cents)||Number(r.msrp_cents)||0)/100,shelf:'pre',badge:'FOC '+md(r.foc_date)})).filter(it=>!chanceFn(it.title));};
+    const showcase=(want,msg)=>{const b=host.querySelector(want);if(b)b.onclick=()=>run(async()=>{const pre=want!=='#vm-sc-bin'?await newReleases():[],bin=want!=='#vm-sc-pre'?binItems():[],items=[...pre,...bin].slice(0,120);if(!items.length)throw Error(want==='#vm-sc-pre'?'No new releases with covers coming up (FOC books need a cover).':want==='#vm-sc-bin'?'No Buy It Now items with photos and prices in stock.':'Nothing to show: no FOC books with covers and no BIN items with photos.');await machineDo({items,kind:'showcase',mode:'lower',on:true});status.textContent=msg+' '+pre.length+' new releases, '+bin.length+' bin items.'+(connectedStore?'':' (preview -- connect to put it on the show)');});};
+    showcase('#vm-sc-both','Showcase on the lower half:');showcase('#vm-sc-pre','Showcase (new releases):');showcase('#vm-sc-bin','Showcase (the bin):');
+    vmb('#vm-fl-go',()=>({flash:{slots:String(host.querySelector('#vm-fl-slots').value||'').split(/[^0-9]+/).filter(Boolean).map(Number),pct:Number(host.querySelector('#vm-fl-pct').value)||0,price:Number(host.querySelector('#vm-fl-price').value)||0,minutes:Number(host.querySelector('#vm-fl-min').value)||5}}),'⚡ Flash sale is on -- the old prices show crossed out. Change the prices on Whatnot to match.');
+    vmb('#vm-fl-end',{flashEnd:true},'Flash sale ended -- back to the old prices.');
+    vmb('#vm-look-go',()=>({theme:String(host.querySelector('#vm-theme').value||''),giveEvery:Number(host.querySelector('#vm-give').value)||0}),'Machine look set.');
     host.querySelectorAll('[data-vm-mode]').forEach(b=>{const m=b.dataset.vmMode;vmb('[data-vm-mode="'+m+'"]',{mode:m,on:true},m==='front'?'Machine full screen, in front of you.':m==='full'?'Machine full screen, behind you.':'Machine small, behind you.');});
     // SAVED SPOT LISTS: the break's 75 characters, typed once, used every week (kept on this device).
     const SL='mana-spot-lists',lists=()=>{try{return JSON.parse(localStorage.getItem(SL)||'{}')||{};}catch{return {};}},putLists=o=>{try{localStorage.setItem(SL,JSON.stringify(o));}catch{}};
@@ -327,6 +351,29 @@
   host.querySelector('#mana-floor-name-go').onclick=()=>run(async()=>{const n=host.querySelector('#mana-floor-name').value.trim();const x=await api('floor-name',{name:n});took(x);status.textContent=n?'Floor named "'+n.toUpperCase()+'".':'Floor name cleared.';});
   host.querySelector('#mana-vote-open').onclick=e=>{const b=e.target.closest('[data-vote]');if(b)run(async()=>{const x=await api('vote-open',{kind:b.dataset.vote});took(x);status.textContent='Vote is on screen. Tap the winner below.';});};
   host.querySelector('#mana-reset-week').onclick=()=>run(async()=>{const bm=values().gameMode==='beasts';if(!confirm(bm?'Start Long Box Beasts over at route 1 (no badges, no beasts beaten)? The dungeon is not touched.':'Start the week over at floor 1 with no stars? Long Box Beasts is not touched.'))return;const d=await api('dungeon-adjust',{resetWeek:true});took(d);status.textContent=bm?'Beasts reset: route 1.':'Week reset: floor 1.';});
+  // SHARE A SCREEN: this computer's window or tab, straight to the overlay (WebRTC); only the handshake goes through the studio.
+  let scrPc=null,scrStream=null,scrId='';
+  const scrLook=()=>({layout:host.querySelector('#scr-layout').value,title:host.querySelector('#scr-title').value||'FOC ORDERS -- FOLLOW ALONG'});
+  async function stopScreen(tell){scrStream?.getTracks().forEach(t=>t.stop());try{scrPc?.close();}catch{}scrPc=scrStream=null;const was=scrId;scrId='';if(tell&&was)await api('screen',{stop:true});}
+  // currentTab: share this very tab (the FOC wall's SHOW MODE asks for it), the browser offering it first.
+  async function shareScreen(look,currentTab){
+    if(!navigator.mediaDevices?.getDisplayMedia||typeof RTCPeerConnection!=='function')throw Error('This browser can\'t share a screen -- use Chrome or Edge on a computer.');
+    if(!connectedStore)await connect();
+    await stopScreen(false);
+    const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:15,max:30}},audio:false,...(currentTab?{preferCurrentTab:true,selfBrowserSurface:'include'}:{})});
+    const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'}]});scrPc=pc;scrStream=stream;
+    for(const t of stream.getTracks())pc.addTrack(t,stream);
+    stream.getVideoTracks()[0].onended=()=>{if(scrPc===pc)void run(async()=>{await stopScreen(true);status.textContent='Screen share stopped.';});};
+    await pc.setLocalDescription(await pc.createOffer());
+    await new Promise(res=>{if(pc.iceGatheringState==='complete')return res();const t=setTimeout(res,2500);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);res();}});});
+    const d=await api('screen',{offer:pc.localDescription.sdp,...look});scrId=d.id;status.textContent='Waiting for the overlay in OBS...';
+    for(let k=0;k<40;k++){await new Promise(r=>setTimeout(r,750));if(scrId!==d.id)return;const r=await api('screen',{poll:d.id});if(r.answer){await pc.setRemoteDescription({type:'answer',sdp:r.answer});status.textContent='📺 Sharing -- it\'s on the overlay. STOP SHARING (or the browser\'s Stop) ends it.';return;}}
+    await stopScreen(true);throw Error('The overlay didn\'t answer. Is the overlay open in OBS and connected? Try again.');
+  }
+  host.querySelector('#scr-go').onclick=()=>run(()=>shareScreen(scrLook(),false));
+  window.manaStudioShareScreen=(o={})=>shareScreen({layout:['corner','half','full'].includes(o.layout)?o.layout:'full',title:String(o.title||'FOLLOW ALONG').slice(0,40)},!!o.currentTab);
+  host.querySelector('#scr-stop').onclick=()=>run(async()=>{await stopScreen(false);await api('screen',{stop:true});status.textContent='Screen share stopped.';});
+  for(const id of ['#scr-layout','#scr-title'])host.querySelector(id).onchange=()=>{if(scrId)void run(()=>api('screen',scrLook()));};
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
   // ByteRider_97: a reaction or a line, on stream (and in the preview).
   // Store, 2026-11-02 (on a phone): "I didn't see it animate in the preview."
@@ -422,6 +469,10 @@
     if(body.spots){const V=await import('./vending.mjs?v='+STUDIO_V);m.items=V.makeSpots(body.spots);if(!m.items.length)throw Error('How many spots? (or one name a line)');for(const it of m.items){const w=chanceFn?.(it.title);if(w)throw Error('"'+w+'" reads as a game of chance -- Whatnot doesn\'t allow those.');}m.kind='spots';m.up=0;}
     if(body.buyer&&items[body.buyer.i]){const nm=String(body.buyer.name||'').replace(/^@/,'').replace(/[^\w.\-]/g,'').slice(0,30);const {buyer,...rest}=items[body.buyer.i];items[body.buyer.i]=nm?{...rest,buyer:nm,sold:true}:rest;}
     if(Number.isInteger(body.toggle)&&items[body.toggle])items[body.toggle]={...items[body.toggle],sold:!items[body.toggle].sold};
+    if(Array.isArray(body.items)){m.items=body.items.map(x=>({...x,sold:false}));m.kind=body.kind==='showcase'?'showcase':'items';m.up=0;}if(body.theme!==undefined)m.theme=body.theme;if(body.giveEvery!==undefined)m.giveEvery=body.giveEvery;
+    {const un=it=>{if(!it.flashUntil&&!it.wasPrice)return it;const {wasPrice,flashUntil,...r}=it;return {...r,price:Number(wasPrice)>0?wasPrice:it.price};};m.items=m.items.map(it=>it.flashUntil&&Date.now()>=it.flashUntil?un(it):it);if(body.flashEnd)m.items=m.items.map(un);
+    if(body.flash){const f=body.flash,pct=Number(f.pct)||0,to=Number(f.price)||0,mins=Math.floor(Number(f.minutes)||0),want=new Set((f.slots||[]).filter(n=>n>=1&&n<=m.items.length));if(!(pct>0&&pct<90)&&!(to>0))throw Error('Flash sale: % off (1-89) or a sale price');if(mins<1||mins>60)throw Error('Flash sale: 1 to 60 minutes');if(!want.size)throw Error('Flash sale: which slot numbers?');const until=Date.now()+mins*60000;let hit=0;
+      m.items=m.items.map((it,i)=>{if(!want.has(i+1)||it.sold)return it;const b=un(it),was=Number(b.price)||0,now=Math.round((to>0?to:was*(1-pct/100))*100)/100;if(!(was>0&&now>0&&now<was))return it;hit++;return {...b,wasPrice:was,price:now,flashUntil:until};});if(!hit)throw Error('Flash sale: those slots need a price above the sale price');}}
     if(body.mode)m.mode=body.mode;if(typeof body.on==='boolean')m.on=body.on;if(typeof body.title==='string')m.title=body.title.trim().slice(0,30).toUpperCase();
     if(body.step)m.up=open(vmUp(m),body.step);if(body.soldUp){const u=vmUp(m);if(u>=0){m.items[u]={...m.items[u],sold:true};m.up=open(u,1);}}
     machineCtl=m;paintMachine();preview();}

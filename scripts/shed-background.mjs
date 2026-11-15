@@ -203,9 +203,9 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
     // The crawl fills the TOP camera's area (down to the sign: settings.y,
     // 850 by default), 360 wide drawn 3x, so its horizon sits in the middle of
     // the top camera -- you look down the hall, not at the ceiling.
-    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=10').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
+    Promise.all([import('./shed-crawl-fp.mjs?v=20'), import('./live-studio-bosses.mjs?v=2'), import('./prop-models.mjs?v=3').catch(() => null), import('./live-studio-3d.mjs?v=2').catch(() => null), import('./beasts.mjs?v=19').catch(() => null)]).then(([fpm, bosses, pm, gl3d, beasts]) => {
       // BEASTS mode (2026-11-13): the top-down route in four greens, you (and your buddy) walking it.
-      let world = null, beastsOn = false, vendOn = false;
+      let world = null, beastsOn = false, vendOn = false, world3d = false, b3d = null;
       // The 3D props (Duke Nukem style), photographed once from 8 angles.
       let baked = null; try { baked = pm?.bakeProps({ size: 64 }) || null; } catch (e) { console.warn('[shed] 3D props off:', e?.message || e); }
       let fp = null, topH = 0, sharp = false;
@@ -232,8 +232,10 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (vendOn) { vendOn = false; topH = 0; if (settings0.gameMode !== 'beasts') build(850); bossId = ''; picKey = ''; }
         const d = settings0.gameMode === 'beasts' ? (stats?.beasts || { floor: 1, route: 1, pct: 0, phase: 'floor' }) : stats?.dungeon; if (!d) return; // Beasts keeps its own track
         if (beasts && settings0.gameMode === 'beasts') {
-          if (!beastsOn) { fp?.stop(); world = beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world.start(); beastsOn = true; mini.hidden = true; }
-          world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '', drops: d.drops || [], timeOfDay: settings0.beastsTimeOfDay || '' });
+          // 3DS: the route in real 3D (scripts/beasts-3d.mjs); the others: the pixel route.
+          const want3d = settings0.beastsGfx === '3ds'; if (beastsOn && world3d !== want3d) { world?.stop(); world = null; beastsOn = false; }
+          if (!beastsOn) { if (want3d && !b3d) { import('./beasts-3d.mjs?v=10').then(m => { b3d = m; paint(); }).catch(() => {}); return; } fp?.stop(); world = want3d ? b3d.createWorld3D(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }) : beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world3d = want3d; world.start(); beastsOn = true; mini.hidden = true; }
+          world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '', drops: d.drops || [], timeOfDay: settings0.beastsTimeOfDay || '', area: d.area || '', weather: d.weather || '', gfx: settings0.beastsGfx || 'gbc', follower: settings0.beastsFollow !== false ? (d.form || '') : '' });
           bubble.classList.remove('on'); paintBattle(d); // the dungeon's boss taunt stays out of the route
           return;
         }
@@ -264,17 +266,18 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       // screen behind the hosts while it's on (the remote's VENDING MACHINE).
       // Now drawn by scripts/vending.mjs (2026-11-13 polish): small or full screen behind the hosts, a BID button on every slot.
       let drawMachine = () => {}, lastMachine = null; const vmLook = () => ({ theme: settings0.gameMode === 'beasts' ? 'gb' : '' });
-      import('./vending.mjs?v=4').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
+      import('./vending.mjs?v=6').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
       // THE BATTLE ON THE GREEN SCREEN (2026-11-13: "I may also want the pokemon game thing to also be the green screen ... I want the option"):
       // with WHERE THE BATTLE SHOWS on BEHIND US, the battle is drawn here, behind the hosts, instead of on the overlay.
       const bcv = Object.assign(document.createElement('canvas'), { id: 'shed-battle', hidden: true }); document.body.append(bcv);
-      let battle = null, battleOn = false, rivalArt = '';
+      let battle = null, battleOn = false, rivalArt = '', battle3d = false;
       const batteryOf = d => { const last = Math.max(Number(stats?.lastSaleAt) || 0, Number(d?.lastAt) || 0); return last ? Math.max(0.15, Math.min(1, 1 - (Date.now() + offset - last) / 360000)) : 1; };
       const paintBattle = d => {
         const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset, d.drainMs), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
-        if (!battle) battle = beasts.createBattle(bcv, { scale: 3 });
-        battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0 });
+        const want3d = settings0.beastsGfx === '3ds'; if (battle && battle3d !== want3d) { battle.stop(); battle = null; battleOn = false; }
+        if (!battle) { if (want3d) { if (!b3d) { import('./beasts-3d.mjs?v=10').then(m => { b3d = m; paintBattle(d); }).catch(() => {}); return; } battle = b3d.createBattle3D(bcv, { scale: 3 }); } else battle = beasts.createBattle(bcv, { scale: 3 }); battle3d = want3d; }
+        battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0, gfx: settings0.beastsGfx || 'gbc' });
         if (!battleOn) { battle.start(); battleOn = true; }
       };
       // Its attacks: the one the host taps, and every sale fires the one chat picked.

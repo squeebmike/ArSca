@@ -27,11 +27,11 @@ assert.equal(V.upIndex(mc), 2); assert.equal(V.upIndex({ ...mc, up: 0 }), 1); as
 // 3. The machine: a BID pill on every slot, SOLD stamped, a big BID in the tray, UP NOW lit; small, full, or in front.
 for (const k of ["'BID ' + money(it.price)", '<em class="vm-stamp">SOLD</em>', "(i === up ? ' up' : '')", '.vm.full{', "where === 'overlay' ? mode === 'front' : mode !== 'front'"]) assert.ok(vsrc.includes(k), k);
 // 4. The room: modes, step, sold-and-next, spots; a sale takes the spot UP NOW.
-for (const k of ["if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;", 'm.items = clean(makeSpots(input.spots));', "m.kind = 'spots'", 'if (input.soldUp === true)', 'm.up = openFrom(m.items, upIndex(m), input.step);', ".slice(0, 120)", "if (!s.machine.on) return false; const u = upIndex(s.machine);"]) assert.ok(room.includes(k), k);
+for (const k of ["if (['panel', 'full', 'front', 'lower'].includes(input.mode)) m.mode = input.mode;", 'm.items = clean(makeSpots(input.spots));', "m.kind = 'spots'", 'if (input.soldUp === true)', 'm.up = openFrom(m.items, upIndex(m), input.step);', ".slice(0, 120)", "if (!s.machine.on) return false; const u = upIndex(s.machine);"]) assert.ok(room.includes(k), k);
 assert.match(room, /import \{ makeSpots, upIndex \} from '\.\/vending\.mjs';/);
 assert.ok(read('.github/workflows/deploy-worker.yml').includes('- scripts/vending.mjs'), 'the worker deploys when the machine changes');
 // 5. Both screens draw the same machine.
-assert.match(bg, /import\('\.\/vending\.mjs\?v=4'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
+assert.match(bg, /import\('\.\/vending\.mjs\?v=6'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
 assert.ok(ov.includes('if(m.machine||m.settings)paintMachine(m.machine||machine);') && ov.includes('if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);'));
 assert.ok(!read('shed-background.html').includes('#shed-vend'), 'the old machine is gone');
 // 6. The remote: sizes, prev/next, sold-and-next, the spots maker; it works in the preview too.
@@ -60,3 +60,28 @@ assert.ok(ov.includes("options:d.doors.map(r=>({label:pl(r).icon+' '+pl(r).name}
 // 11. The kiosk look (2026-11-13: "like that"): white screen, black SOLD OUT bands, name and price under each, an app-style card and BID NOW; an empty machine still shows.
 for (const k of ["(theme === 'gb' ? ' gb' : ' kiosk')", '.vm.kiosk .vm-stamp{', '<span class="vm-bigbid">BID NOW ››</span>', '<div class=\"vm-name\">', "vm.hidden = !(mc && mc.on && mine);", "'STOCKING UP -- BACK IN A SEC!'"]) assert.ok(vsrc.includes(k), k);
 console.log('Vending machine, spots, the battle on the green screen, and the games kept apart: passed');
+// THE SHOWCASE, polish, themes, change return (2026-11-14).
+{
+  const { readFileSync } = await import('node:fs');
+  const v = readFileSync(new URL('../scripts/vending.mjs', import.meta.url), 'utf8'), room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8'), ctl = readFileSync(new URL('../scripts/live-studio-controls.js', import.meta.url), 'utf8');
+  for (const k of ['.vm.showcase .vm-shelves', 'data-shelf="pre"', 'data-shelf="bin"', '.vm-change', '.vm-out', '.vm-num', 'vm-shine', '.vm.kiosk.t-comics', 'vendSound']) assert.ok(v.includes(k), k);
+  assert.ok(room.includes("m.kind = input.kind === 'showcase' ? 'showcase' : 'items'") && room.includes("['pre', 'bin'].includes(x.shelf)") && room.includes("Change return: every 0 to 100 sold"));
+  assert.ok(ctl.includes("from('comic_skus')") && ctl.includes("shelf:'bin'") && ctl.includes("id=\"vm-sc-both\""));
+  const M = await import('../scripts/live-studio-model.mjs');
+  assert.ok(M.EFFECTS.includes('spotlight') && M.DEFAULT_STUDIO.chaseLabel === 'CHASE');
+  assert.throws(() => M.validateSettings({ chaseLabel: 'RAFFLE' }), /chance/i);
+  console.log('Vending showcase: passed');
+}
+
+// FLASH SALE (2026-11-14): "flash the stuff on flash sales ... with crossed out prices". The same price for everyone, ends on time.
+for (const k of ['<span class="vm-was">', "' flash'", '⚡ FLASH SALE', 'ENDS IN ', '.vm-was{']) assert.ok(vsrc.includes(k), k);
+for (const k of ['if (input.flash && typeof input.flash', 'wasPrice: was, price: now, flashUntil: until', 'if (input.flashEnd === true) m.items = m.items.map(unflash);']) assert.ok(room.includes(k), k);
+for (const k of ['id="vm-fl-go"', 'id="vm-fl-end"', "vmb('#vm-fl-go'", 'if(body.flash){']) assert.ok(ctl.includes(k), k);
+
+// SHARE A SCREEN (2026-11-14: "display something from my screen to OBS ... my FOC screen while we do orders"): WebRTC from
+// the remote to the overlay; the studio only passes the handshake on, and the overlay may only send its answer.
+{ const api = read('scripts/live-studio-api.mjs');
+  for (const k of ["getDisplayMedia(", "api('screen',{offer:pc.localDescription.sdp", "api('screen',{poll:d.id})", 'id="scr-go"', 'id="scr-stop"', 'id="scr-layout"']) assert.ok(ctl.includes(k), k);
+  for (const k of ["if(m.type==='screen'){screenOffer(m.screen);return;}", "type:'screen-answer',id:sc.id", "#mana-screen.corner{", "#mana-screen.full{"]) assert.ok(ov.includes(k), k);
+  for (const k of ['  screen(input = {}) {', "m.type === 'screen-answer' && this.scr && m.id === this.scr.id && !this.scr.answer", "ws.close(1008,'Read-only overlay')"]) assert.ok(room.includes(k), k);
+  assert.ok(api.includes("url.pathname==='/live-studio/screen'")); }

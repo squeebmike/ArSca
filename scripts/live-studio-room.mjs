@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
-import { movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
+import { WEATHERS, areaOptions, AREA_ICONS, movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
@@ -36,7 +36,7 @@ export class ManaLiveStudio extends DurableObject {
     // The dungeon runs all week (Wednesday to Wednesday), across shows.
     s.dungeon = ensureWeek(s.dungeon);
     // LONG BOX BEASTS keeps its own track (2026-11-13: "they should be totally separate games").
-    s.beasts = ensureBeasts(s.beasts, weekKey());
+    s.beasts = ensureBeasts(s.beasts, weekKey(), s.settings?.beastsSeason !== false);
     return s;
   }
   write(state) { this.sql.exec('INSERT OR REPLACE INTO studio VALUES (1, ?)', JSON.stringify(state)); }
@@ -114,7 +114,7 @@ export class ManaLiveStudio extends DurableObject {
     const s = this.read(), now = Date.now();
     if (this.vendingOnly(s) && !['next', 'trivia'].includes(kind)) throw new Error('Vending only: no game is on');
     if (this.beastsOn(s) && ['weapon', 'door', 'fork', 'dig', 'merchant'].includes(kind)) throw new Error('That vote is the dungeon\'s -- Long Box Beasts is on');
-    if (!this.beastsOn(s) && ['move', 'starter'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
+    if (!this.beastsOn(s) && ['move', 'starter', 'area', 'weather'].includes(kind)) throw new Error('That vote is Long Box Beasts\' -- the dungeon is on');
     let options;
     if (kind === 'weapon') options = WEAPONS.map(w => ({ id: w.id, label: w.icon + ' ' + w.name }));
     else if (kind === 'next') { options = (s.stage.next || []).slice(0, 3).map((n, i) => ({ id: String(i), label: String(n.title || '').slice(0, 60) })); if (options.length < 2) throw new Error('Vote needs two items in NEXT UP'); }
@@ -124,6 +124,10 @@ export class ManaLiveStudio extends DurableObject {
     else if (kind === 'move') options = movesFrom(s.settings.beastsMoves).map((m, i) => ({ id: String(i), label: '⚔️ ' + m }));
     // BEASTS: chat picks your starter.
     else if (kind === 'starter') options = STARTERS.map(n => ({ id: n, label: '🥚 ' + n }));
+    // BEASTS: chat picks the country for the next route.
+    // BEASTS: chat calls the weather on this route (it changes which wild beasts are out).
+    else if (kind === 'weather') options = ['rain', 'heat', 'snow', 'fog', 'clear'].map(id => ({ id, label: WEATHERS[id][0] + ' ' + WEATHERS[id][1] }));
+    else if (kind === 'area') options = areaOptions((s.beasts?.route || 1) + 1).map(id => ({ id, label: AREA_ICONS[id] + ' ' + id.toUpperCase() }));
     // THE MERCHANT (2026-11-12): two items, what makes each special; chat picks, it runs.
     else if (kind === 'merchant') { const picks = merchantPicks(s.stage.next || []); if (picks.length < 2) throw new Error('The merchant needs two items in NEXT UP'); options = picks.map(p => ({ id: String(p.i), label: p.tag + ': ' + String(p.item.title || '').slice(0, 60), ...(p.item.image ? { image: p.item.image } : {}) })); }
     // FOUND IT!: each spot holds one of the next lineup items.
@@ -157,6 +161,8 @@ export class ManaLiveStudio extends DurableObject {
     if (v.kind === 'dig') { const next = [...(s.stage.next || [])]; const [item] = next.splice(index, 1); if (item) { s.stage = { ...s.stage, next: [item, ...next] }; fx = makeEffect('found', s.settings, now, { item, spot: opt.label.replace(/^\S+\s/, '') }); } }
     if (v.kind === 'merchant') { const next = [...(s.stage.next || [])], k = next.findIndex((n, i) => String(i) === opt.id); const [item] = k >= 0 ? next.splice(k, 1) : []; if (item) { s.stage = { now: item, next: s.stage.now ? [s.stage.now, ...next] : next }; this.chestItem = item; fx = makeEffect('found', s.settings, now, { item, spot: 'THE MERCHANT' }); } }
     if (v.kind === 'starter') { s.beastStarter = opt.id; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT CHOSE ' + opt.id + '! GO, ' + opt.id + ' -- LET\'S SELL SOME COMICS!' }); }
+    if (v.kind === 'weather') { const rt = s.beasts?.route || 1; s.beasts = { ...s.beasts, weather: opt.id === 'clear' ? null : { route: rt, kind: opt.id } }; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: opt.id === 'clear' ? 'CHAT CLEARED THE SKIES ON ROUTE ' + rt + '!' : 'CHAT CALLED IN ' + WEATHERS[opt.id][1] + ' ON ROUTE ' + rt + '! NEW WILD BEASTS ARE OUT!' }); }
+    if (v.kind === 'area') { const nx = (s.beasts?.route || 1) + 1; s.beasts = { ...s.beasts, areas: { ...(s.beasts?.areas || {}), [nx]: opt.id } }; fx = makeEffect('mascot', s.settings, now, { mascotState: 'excited', say: 'CHAT PICKED ' + opt.id.toUpperCase() + ' FOR ROUTE ' + nx + '!' }); }
     if (v.kind === 'move') { s.beastMove = index; fx = makeEffect('move', s.settings, now, { move: opt.label.replace(/^\S+\s/, '') }); }
     if (v.kind === 'trivia') { if (this.vendingOnly(s)) {} else if (this.beastsOn(s)) s.beasts = addBeastXp(s.beasts, Number(s.settings.triviaMana) || 0, s.settings, now).beasts; else { const r = addMana(s.dungeon, Number(s.settings.triviaMana) || 0, s.settings, now); s.dungeon = r.dungeon; } const name = String(who || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); fx = makeEffect('trivia', s.settings, now, { answer: v.answer, who: name, mana: Number(s.settings.triviaMana) || 0 }); }
     s.vote = null;
@@ -256,6 +262,8 @@ export class ManaLiveStudio extends DurableObject {
   }
   trigger(kind, extra = {}) {
     const s = this.read();
+    // THE SPOTLIGHT (2026-11-14): NOW PLAYING, big on screen with its facts.
+    if (extra.spotlight) { const now = s.stage?.now; if (!now?.title) throw new Error('Put an item in NOW PLAYING first'); extra = { item: { title: now.title, image: now.image, price: now.price }, spot: String(now.detail || '').slice(0, 90) }; }
     s.effect = makeEffect(kind,s.settings,Date.now(),extra);
     this.write(s);
     this.broadcast({type:'effect', effect:s.effect, serverNow:Date.now()});
@@ -266,6 +274,23 @@ export class ManaLiveStudio extends DurableObject {
   // The host's camera (2026-11-12: "can I move the camera from the dashboard?
   // joystick?"): look around, scout ahead, look back. Not saved -- only passed
   // on to the screens; how far along the floor you are still comes from mana.
+  // SHARE A SCREEN (store, 2026-11-14: "a way to display something from my screen to OBS ... show my FOC screen while we
+  // do orders, so people can watch along"): the picture goes straight from the remote's computer to the overlay in OBS
+  // (WebRTC, peer to peer). Only the handshake -- two short text blobs -- passes through here; nothing is stored.
+  screen(input = {}) {
+    const now = Date.now(), lay = v => (['corner', 'half', 'full'].includes(v) ? v : 'corner'), title = v => String(v || '').replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 40).toUpperCase();
+    if (input.stop === true) { this.scr = null; this.broadcast({ type: 'screen', screen: null, serverNow: now }); return { stopped: true }; }
+    if (typeof input.offer === 'string') {
+      if (input.offer.length > 20000 || !input.offer.startsWith('v=0')) throw new Error('That screen share did not start right -- try again');
+      this.scrN = (this.scrN || 0) + 1; const id = now.toString(36) + '-' + this.scrN;
+      this.scr = { id, answer: '', layout: lay(input.layout), title: title(input.title) };
+      this.broadcast({ type: 'screen', screen: { id, offer: input.offer, layout: this.scr.layout, title: this.scr.title }, serverNow: now });
+      return { id };
+    }
+    if (typeof input.poll === 'string') return { answer: this.scr && this.scr.id === input.poll ? this.scr.answer : '' };
+    if (this.scr && (input.layout !== undefined || input.title !== undefined)) { if (input.layout !== undefined) this.scr.layout = lay(input.layout); if (input.title !== undefined) this.scr.title = title(input.title); this.broadcast({ type: 'screen-look', layout: this.scr.layout, title: this.scr.title, serverNow: now }); return { layout: this.scr.layout }; }
+    throw new Error('No screen is being shared');
+  }
   camera(input = {}) {
     const clamp = v => Math.max(-1, Math.min(1, Number(v) || 0)), now = Date.now();
     const cam = { yaw: clamp(input.yaw), pitch: clamp(input.pitch), action: ['scout', 'back'].includes(input.action) ? input.action : '', at: now };
@@ -294,9 +319,9 @@ export class ManaLiveStudio extends DurableObject {
   // (loaded from NOW PLAYING + NEXT UP, or sent in), each sold out or not; on or off.
   setMachine(input = {}) {
     const s = this.read(), m = { on: false, items: [], ...(s.machine || {}) };
-    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 120)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold }); } return out; };
+    const clean = list => { const out = []; for (const x of (Array.isArray(list) ? list : []).slice(0, 120)) { const v = validateStage({ now: null, next: [x] }).next[0]; if (v) out.push({ ...v, sold: !!x.sold, ...(['pre', 'bin'].includes(x.shelf) ? { shelf: x.shelf } : {}), ...(typeof x.badge === 'string' && x.badge.trim() ? { badge: x.badge.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 20).toUpperCase() } : {}) }); } return out; };
     if (input.load === 'stage') { m.items = clean([s.stage?.now, ...(s.stage?.next || [])].filter(Boolean)); m.kind = 'items'; m.up = 0; }
-    if (Array.isArray(input.items)) { m.items = clean(input.items); m.kind = 'items'; m.up = 0; }
+    if (Array.isArray(input.items)) { m.items = clean(input.items); m.kind = input.kind === 'showcase' ? 'showcase' : 'items'; m.up = 0; if (m.kind === 'showcase' && !input.mode) m.mode = 'lower'; }
     // SPOTS for a break or a surprise set: "75 at $5" or one name a line -- in the machine only, never in inventory.
     if (input.spots && typeof input.spots === 'object') { m.items = clean(makeSpots(input.spots)); if (!m.items.length) throw new Error('How many spots? (or one name a line)'); m.kind = 'spots'; m.up = 0;
       // Each spot's own Whatnot id ("spot-<batch>-<n>"), so its listing's sale marks exactly that spot.
@@ -304,12 +329,30 @@ export class ManaLiveStudio extends DurableObject {
     // Spots listed on Whatnot (the remote lists them, then says which went in).
     if (input.buyer && Number.isInteger(input.buyer.i) && m.items[input.buyer.i]) { const nm = String(input.buyer.name || '').replace(/^@/, '').replace(/[^\w.\-]/g, '').slice(0, 30); const { buyer, ...rest } = m.items[input.buyer.i]; m.items[input.buyer.i] = nm ? { ...rest, buyer: nm, sold: true } : rest; }
     if (Array.isArray(input.listed)) { const on = new Set(input.listed.map(String)); m.items = m.items.map(it => it.ext && on.has(it.ext) ? { ...it, listed: true } : it); }
-    if (['panel', 'full', 'front'].includes(input.mode)) m.mode = input.mode;
+    if (['panel', 'full', 'front', 'lower'].includes(input.mode)) m.mode = input.mode;
+    if (['', 'comics', 'cards', 'arcane'].includes(input.theme)) m.theme = input.theme;
+    if (input.giveEvery !== undefined) { const g = Math.floor(Number(input.giveEvery)); if (!Number.isFinite(g) || g < 0 || g > 100) throw new Error('Change return: every 0 to 100 sold'); m.giveEvery = g; }
     // The slot UP NOW: set it, step to the next/previous open one, or mark it sold and move on.
     if (Number.isInteger(input.up) && m.items[input.up]) m.up = input.up;
     if (input.step === 1 || input.step === -1) m.up = openFrom(m.items, upIndex(m), input.step);
     if (input.soldUp === true) { const u = upIndex(m); if (u >= 0) { m.items[u] = { ...m.items[u], sold: true }; m.up = openFrom(m.items, u, 1); } }
     if (Number.isInteger(input.toggle) && m.items[input.toggle]) m.items[input.toggle] = { ...m.items[input.toggle], sold: !m.items[input.toggle].sold };
+    // FLASH SALE (2026-11-14): a few slots at a lower price for a few minutes -- the old price shows crossed out.
+    // Same price for everyone watching; it just ends on time (no chance in it).
+    const unflash = it => { if (!it.flashUntil && !it.wasPrice) return it; const { wasPrice, flashUntil, ...rest } = it; return { ...rest, price: Number(wasPrice) > 0 ? wasPrice : it.price }; };
+    m.items = m.items.map(it => it.flashUntil && Date.now() >= it.flashUntil ? unflash(it) : it);
+    if (input.flashEnd === true) m.items = m.items.map(unflash);
+    if (input.flash && typeof input.flash === 'object') {
+      const f = input.flash, pct = Number(f.pct) || 0, to = Number(f.price) || 0, mins = Math.floor(Number(f.minutes) || 0);
+      if (!(pct > 0 && pct < 90) && !(to > 0)) throw new Error('Flash sale: % off (1-89) or a sale price');
+      if (mins < 1 || mins > 60) throw new Error('Flash sale: 1 to 60 minutes');
+      const want = new Set((Array.isArray(f.slots) ? f.slots : []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= m.items.length));
+      if (!want.size) throw new Error('Flash sale: which slot numbers?');
+      const until = Date.now() + mins * 60000; let hit = 0;
+      m.items = m.items.map((it, i) => { if (!want.has(i + 1) || it.sold) return it; const base = unflash(it), was = Number(base.price) || 0; if (!(was > 0)) return it;
+        const now = Math.round((to > 0 ? to : was * (1 - pct / 100)) * 100) / 100; if (!(now > 0 && now < was)) return it; hit++; return { ...base, wasPrice: was, price: now, flashUntil: until }; });
+      if (!hit) throw new Error('Flash sale: those slots need a price above the sale price');
+    }
     if (typeof input.on === 'boolean') m.on = input.on;
     if (typeof input.title === 'string') m.title = input.title.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 30).toUpperCase();
     s.machine = m;
@@ -450,7 +493,12 @@ export class ManaLiveStudio extends DurableObject {
   }
   async webSocketMessage(ws,message) {
     const a=ws.deserializeAttachment();
-    if (a?.authenticated) { ws.close(1008,'Read-only overlay'); return; }
+    if (a?.authenticated) {
+      // The one thing an overlay may send: its half of a screen-share handshake.
+      let m = null; if (typeof message === 'string' && message.length <= 20000) { try { m = JSON.parse(message); } catch {} }
+      if (m && m.type === 'screen-answer' && this.scr && m.id === this.scr.id && !this.scr.answer && typeof m.sdp === 'string' && m.sdp.startsWith('v=0') && m.sdp.length <= 20000) { this.scr.answer = m.sdp; return; }
+      if (m && m.type === 'screen-answer') return;
+      ws.close(1008,'Read-only overlay'); return; }
     if (typeof message !== 'string' || message.length > 200 || a.expires < Date.now()) {ws.close(1008,'Invalid authentication');return;}
     let token; try { token=JSON.parse(message).token; } catch { ws.close(1008,'Invalid authentication');return; }
     if (typeof token !== 'string' || token.length !== 72) {ws.close(1008,'Invalid authentication');return;}
