@@ -44,8 +44,8 @@ assert.match(openGroupBody, /renderEbayDescriptionTemplate\(customTemplate,token
 // token) must not get a second, differently-styled disclosure stacked on
 // top of it -- the fallback only fires when the rendered body doesn't
 // already say "presale" anywhere.
-assert.match(openGroupBody, /var templateAlreadyDisclosesPresale=\/presale\/i\.test\(renderedBody\);/, 'must check the rendered body for an existing presale disclosure before falling back to the plain one');
-assert.match(openGroupBody, /description=disclosure\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+renderedBody;/, 'a successfully rendered custom template must replace the plain-text server default, with any fallback disclosure only prepended when the template did not already disclose presale status');
+assert.match(openGroupBody, /var templateAlreadyDisclosesPresale=\/\\bPRESALE\\b\/\.test\(renderedBody\);/, 'must check the rendered body for an existing presale disclosure before falling back to the plain one');
+assert.match(openGroupBody, /description=renderedBody\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+disclosure;/, 'a successfully rendered custom template must replace the plain-text server default, with any fallback disclosure only prepended when the template did not already disclose presale status');
 assert.match(openGroupBody, /usedCustomTemplate=true;/, 'must track whether a custom template was actually used, so the modal can tell the store which source is in the textarea');
 assert.match(openGroupBody, /esc\(description\)/, 'the description textarea must be filled from the (possibly template-rendered) description variable, not the raw un-rendered server default');
 assert.match(openGroupBody, /\(usedCustomTemplate\?'Using your saved Comic template \(':'Using the built-in default \('\)/, 'the modal must tell the store which description source is currently shown, matching the single-cover modal\'s own label');

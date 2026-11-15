@@ -31,7 +31,7 @@ for (const k of ["if (['panel', 'full', 'front', 'lower'].includes(input.mode)) 
 assert.match(room, /import \{ makeSpots, upIndex \} from '\.\/vending\.mjs';/);
 assert.ok(read('.github/workflows/deploy-worker.yml').includes('- scripts/vending.mjs'), 'the worker deploys when the machine changes');
 // 5. Both screens draw the same machine.
-assert.match(bg, /import\('\.\/vending\.mjs\?v=6'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
+assert.match(bg, /import\('\.\/vending\.mjs\?v=7'\)/); assert.match(ov, /createVending\(document,\{img:studioImg,where:'overlay'\}\)/);
 assert.ok(ov.includes('if(m.machine||m.settings)paintMachine(m.machine||machine);') && ov.includes('if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);'));
 assert.ok(!read('shed-background.html').includes('#shed-vend'), 'the old machine is gone');
 // 6. The remote: sizes, prev/next, sold-and-next, the spots maker; it works in the preview too.
@@ -85,3 +85,6 @@ for (const k of ['id="vm-fl-go"', 'id="vm-fl-end"', "vmb('#vm-fl-go'", 'if(body.
   for (const k of ["if(m.type==='screen'){screenOffer(m.screen);return;}", "type:'screen-answer',id:sc.id", "#mana-screen.corner{", "#mana-screen.full{"]) assert.ok(ov.includes(k), k);
   for (const k of ['  screen(input = {}) {', "m.type === 'screen-answer' && this.scr && m.id === this.scr.id && !this.scr.answer", "ws.close(1008,'Read-only overlay')"]) assert.ok(room.includes(k), k);
   assert.ok(api.includes("url.pathname==='/live-studio/screen'")); }
+
+// THE RESTOCK REEL (2026-11-15): a new batch drops in one slot at a time, the RESTOCKING banner counting them in.
+for (const k of ['<div class="vm-restock">RESTOCKING!<small></small></div>', "style=\"--i:' + Math.min(i, 40) + '\"", 'animation-delay:calc(var(--i,0) * 110ms)', "'LOADING ' + Math.min(k, total) + ' / ' + total", "total + ' NEW IN THE MACHINE'", '@keyframes vm-drop']) assert.ok(vsrc.includes(k), k);

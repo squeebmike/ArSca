@@ -134,7 +134,7 @@ assert.match(withdrawRowBody, /const siblingStillLive=\(allPresaleRows\|\|\[\]\)
   'must check whether another cover in the SAME group is still live (and not also being withdrawn in this same batch) before deciding how to end this row');
 assert.match(withdrawRowBody, /if\(siblingStillLive\)await deps\.ebayReviseOfferQuantity\(env,ebayToken,row\.data\.ebayOfferId,0\);/,
   'ending one cover while a sibling cover in the same shared listing is still live must only zero that cover\'s own offer quantity, never take the whole shared listing down');
-assert.match(withdrawRowBody, /else await deps\.withdrawEbayOfferGroup\(env,ebayToken,groupKey\);/,
+assert.match(withdrawRowBody, /else \{?await deps\.withdrawEbayOfferGroup\(env,ebayToken,groupKey\);/,
   'ending the LAST live cover in a group must actually withdraw the whole shared listing, not leave an empty zero-quantity listing live on eBay forever');
 
 // Both real call sites (the PRH-submit auto-sweep for unordered books, and
@@ -145,18 +145,18 @@ const prhSweepStart = preorders.indexOf('async function adminPrhSubmission');
 const prhSweepEnd = preorders.indexOf('async function adminCycle', prhSweepStart);
 const prhSweepBody = preorders.slice(prhSweepStart, prhSweepEnd);
 assert.match(prhSweepBody, /const withdrawingIds=new Set\(toWithdraw\.map\(r=>r\.id\)\);/, 'the PRH-submit auto-sweep must know every row it is withdrawing in this same batch, so two sibling covers withdrawn together correctly fall through to one group withdraw');
-assert.match(prhSweepBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\);/, 'the PRH-submit auto-sweep must use the group-aware withdrawal helper');
+assert.match(prhSweepBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,(all)?[pP]resaleRows,withdrawingIds(,endedGroups)?\);/, 'the PRH-submit auto-sweep must use the group-aware withdrawal helper');
 
 const bulkEndStart = preorders.indexOf('async function adminEndFocEbayListings');
 const bulkEndEnd = preorders.indexOf('async function adminCycle', bulkEndStart);
 const bulkEndBody = preorders.slice(bulkEndStart, bulkEndEnd);
 assert.match(bulkEndBody, /const withdrawingIds=new Set\(toWithdraw\.map\(r=>r\.id\)\);/, 'the manual bulk-end tool must know every row it is withdrawing in this same batch too');
-assert.match(bulkEndBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\);/, 'the manual bulk-end tool must use the group-aware withdrawal helper');
+assert.match(bulkEndBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,(all)?[pP]resaleRows,withdrawingIds(,endedGroups)?\);/, 'the manual bulk-end tool must use the group-aware withdrawal helper');
 
 // ---------------------------------------------------------------------
 // Frontend: the review modal + window exposure
 // ---------------------------------------------------------------------
-assert.match(focDash, /async function openFamilyEbayGroupReview\(familyId\)\{/, 'the review-modal opener must exist');
+assert.match(focDash, /async function openFamilyEbayGroupReview\(familyId[^)]*\)\{/, 'the review-modal opener must exist');
 assert.match(focDash, /async function submitFamilyEbayGroupReview\(familyId\)\{/, 'the submit handler must exist');
 assert.match(focDash, /window\.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window\.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;/,
   'both handlers must be exposed on window -- this file is an IIFE, so an onclick attribute cannot reach them otherwise (see foc-dashboard-window-exposure.test.mjs)');

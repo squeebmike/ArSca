@@ -76,7 +76,12 @@ console.log('Group-listing series name threading contract checks passed');
   const src = worker.slice(fnStart, fnEnd).replace(/^\s*function/, 'function');
   // truncateAtWordBoundary is referenced but irrelevant to the aspects this
   // test checks -- stub it so the function can run standalone.
-  const buildFocPresaleDefaults = new Function('truncateAtWordBoundary', src + '\nreturn buildFocPresaleDefaults;')(s => s);
+  const buildFocPresaleDefaults = (() => {
+    // Every Worker helper it reaches for (truncating, the ratio word, the listing notices, package weights ...) is beside
+    // the point here: anything not a real global answers as a pass-through stand-in (text in, text out; 1 for numbers).
+    const stand = new Proxy({}, { has: (_, k) => typeof k === 'string' && !(k in globalThis), get: (_, k) => (k === Symbol.unscopables ? undefined : /^[A-Z0-9_]+$/.test(String(k)) ? 1 : (x => x)) });
+    return new Function('stand', 'with (stand) { ' + src + '\nreturn buildFocPresaleDefaults; }')(stand);
+  })(); // withRatioWord ("1:25" -> "1:25 Ratio") is irrelevant to the aspects too
   const sku = { title: 'Amazing Spider-Man #3', publisher: 'Marvel', writer: 'Zeb Wells', interior_artist: 'John Romita Jr.', cover_artist: 'John Romita Jr.' };
   const onSaleDate = new Date('2026-09-23T00:00:00Z');
   const result = buildFocPresaleDefaults(sku, 499, onSaleDate, '3', 'Amazing Spider-Man');

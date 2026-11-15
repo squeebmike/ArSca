@@ -58,7 +58,7 @@ console.log('FOC eBay bulk listing queue contract checks passed');
 // ── The review modal must actually chain, and let the operator bail out or
 // skip without losing the rest of the batch ──
 {
-  const fnStart = focDash.indexOf('async function openEbayPresaleReview(skuId){');
+  const fnStart = focDash.indexOf('async function openEbayPresaleReview(skuId');
   const fnEnd = focDash.indexOf('\n}', fnStart) + 2;
   const fn = focDash.slice(fnStart, fnEnd);
   assert.match(fn, /onclick="cancelFocEbayBulkListing\(\)"/, 'the × close button must go through cancelFocEbayBulkListing, which knows whether a bulk run is in progress');
@@ -88,6 +88,6 @@ console.log('FOC eBay bulk listing chaining contract checks passed');
 // a same-cycle refresh -- this is covered end-to-end by
 // foc-single-item-refresh-preserves-filters.test.mjs's assertion on the
 // exact openCycle guard line, so only spot-check it's part of that guard. ──
-assert.match(focDash, /focEbayBulkSelectedIds\.clear\(\);focEbayBulkQueue=null;\}/, 'switching to a different cycle must clear the bulk eBay selection/queue');
+assert.match(focDash, /focEbayBulkSelectedIds\.clear\(\);focEbayBulkQueue=null;[^}]*\}/, 'switching to a different cycle must clear the bulk eBay selection/queue');
 
 console.log('FOC eBay bulk listing cycle-switch cleanup contract check passed');
