@@ -19,6 +19,9 @@ import { DUNGEON_DEFAULTS, DUNGEON_LIMITS, DUNGEON_STRINGS, TAP_KINDS, roomById 
 // the overlay keeps the show's money total, items sold and biggest sale.
 export const DEFAULT_STUDIO = Object.freeze({
   message: 'THE MANA POCKET • INSERT COIN', x: 190, y: 850, width: 700, height: 120,
+  // The store's own saved marquee messages (store, 2026-11-15: "a couple templates and being able to save them for the
+  // marquee sign"): JSON [{ n: name, t: text }], up to 12, kept with the studio so every device has them.
+  marqueeTemplates: '',
   speed: 16, volume: 35, muted: true, visible: true, countdownSeconds: 5,
   automatic: false, sellerId: '', showId: '', jackpotAmount: 100, currency: 'USD',
   // Score board (top) and boss bar.
@@ -63,7 +66,7 @@ export const SOUND_WORDS = ['POW!', 'BAM!', 'KRAK!', 'ZAP!', 'BLAM!', 'WHAM!', '
 // Words for games of chance / raffles: not allowed on the sign or the boss reward.
 const CHANCE_WORDS = /\b(raffles?|lotter(?:y|ies)|lotto|sweepstakes?|spin(?:s|ning)?\s+the\s+wheel|wheel\s+spin|slots?\s+machine|slot\s+pull|gambl(?:e|ing)|bets?|betting|wager|roulette|casino|scratch(?:er|\s+off)|lucky\s+draw|chance\s+to\s+win|buy\s+(?:to|for\s+a\s+chance\s+to)\s+win|purchase\s+to\s+(?:enter|win))\b/i;
 export const COMBO_WINDOW_MS = 90 * 1000;
-const STRINGS = { message: 300, bossReward: 120, bossName: 40, chaseLabel: 16, ...DUNGEON_STRINGS };
+const STRINGS = { message: 300, marqueeTemplates: 4200, bossReward: 120, bossName: 40, chaseLabel: 16, ...DUNGEON_STRINGS };
 
 // The marquee's lines, as ByteRider says them.
 export function marqueeLines(message) {
@@ -111,6 +114,11 @@ export function validateSettings(input) {
   if (!['', 'day', 'sunset', 'night'].includes(full.beastsTimeOfDay ?? '')) throw new Error('Invalid beastsTimeOfDay');
   if (!['gbc', 'gba', 'nds', '3ds'].includes(full.beastsGfx ?? 'gbc')) throw new Error('Invalid beastsGfx');
   for (const k of ['beastsFace', 'beastsBuddy']) if (full[k] && !/^[0-3]{144}$/.test(full[k])) throw new Error('Invalid ' + k);
+  if (full.marqueeTemplates) {
+    let list; try { list = JSON.parse(full.marqueeTemplates); } catch { throw new Error('Invalid marqueeTemplates'); }
+    if (!Array.isArray(list) || list.length > 12 || !list.every(t => t && typeof t.n === 'string' && typeof t.t === 'string' && t.n.trim() && t.n.length <= 30 && t.t.trim() && t.t.length <= 300)) throw new Error('Invalid marqueeTemplates');
+    for (const t of list) { const word = chanceWordIn(t.t) || chanceWordIn(t.n); if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those. Reword the template "${t.n}".`); }
+  }
   if (full.automatic && !full.showId.trim()) throw new Error('A Whatnot show is required for automatic effects (IDs from USE LIVE / NEXT SHOW)');
   const WHERE = { beastsMoves: 'attacks', beastsEvolveReward: 'evolution reward', message: 'sign', bossReward: 'boss reward', bossName: 'boss name', floorRewards: 'floor rewards', showUnlocks: 'show unlocks', roomRewards: 'room rewards', chestGoals: 'treasure chests' , chaseLabel: 'chase word'};
   for (const key of Object.keys(WHERE)) {

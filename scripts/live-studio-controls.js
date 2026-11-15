@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.15.3';
+  const STUDIO_V='2026.11.15.4';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -163,6 +163,8 @@
   <div class="mana-row"><button type="button" id="mana-pin">📌 PIN PREVIEW</button><small id="mana-br-status" role="status">Tap a reaction: he plays it in the preview (and on stream once connected).</small></div>
   <h3>Sign &amp; layout</h3>
   <label>Marquee message (separate lines with • or | -- ByteRider says them one at a time)<textarea name="message" maxlength="300"></textarea></label>
+  <div class="mana-row" id="mq-tpl-row"><label>MARQUEE TEMPLATES<select id="mq-tpl"></select></label><button type="button" id="mq-use">PUT ON THE SIGN</button><button type="button" id="mq-save">SAVE THIS MESSAGE AS A TEMPLATE</button><button type="button" id="mq-del">DELETE TEMPLATE</button></div>
+  <input type="hidden" name="marqueeTemplates">
   <div class="mana-grid">
   ${num('x','Sign left',0,1080)}${num('y','Sign top',0,1920)}${num('width','Sign width',240,1080)}${num('height','Sign height',70,300)}
   ${num('speed','Scroll cycle (seconds)',4,60)}${num('hudY','Score board top',0,1700)}${num('cardX','Card left',0,700)}${num('cardY','Card top',0,1560)}
@@ -301,7 +303,30 @@
     if(store()!==id)throw Error('Store changed. Connect again.');return d;
   }
   const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
-  function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}preview();}
+  function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}paintMarqueeTemplates();preview();}
+  // MARQUEE TEMPLATES (store, 2026-11-15: "a couple templates and being able to save them for the marquee sign"): a few
+  // ready-made messages (★), plus the store's own, saved with the studio settings so every device sees the same list.
+  const MQ_BUILTIN=[
+    {n:'Welcome',t:'WELCOME TO THE MANA POCKET • FOLLOW FOR FREE GIVEAWAYS • TAP THE BOOKMARK SO YOU NEVER MISS A SHOW'},
+    {n:'Buy it now',t:'BUY IT NOW IN THE SHOP • COMBINED SHIPPING ALL SHOW • ASK US ABOUT ANY CARD OR COMIC'},
+    {n:'New comics / FOC',t:'NEW COMICS EVERY WEEK • PREORDER BEFORE FOC SUNDAY • RATIO COVERS -- ASK IN CHAT'},
+    {n:'Giveaway goal',t:'FREE GIVEAWAY FOR EVERYONE WATCHING AT THE NEXT FOLLOWER GOAL • SHARE THE SHOW TO GET US THERE'},
+    {n:'Last call',t:'LAST CALL • THANK YOU FOR HANGING OUT • SEE YOU NEXT SHOW'},
+  ];
+  function savedMarqueeTemplates(){try{const v=JSON.parse(form.elements.namedItem('marqueeTemplates')?.value||'[]');return Array.isArray(v)?v.filter(t=>t&&t.n&&t.t):[];}catch{return [];}}
+  function paintMarqueeTemplates(){const sel=host.querySelector('#mq-tpl');if(!sel)return;const keep=sel.value,mine=savedMarqueeTemplates();
+    sel.replaceChildren(...MQ_BUILTIN.map((t,i)=>new Option('★ '+t.n,'b'+i)),...mine.map((t,i)=>new Option(t.n,'m'+i)));if([...sel.options].some(o=>o.value===keep))sel.value=keep;}
+  const pickedMarquee=()=>{const v=host.querySelector('#mq-tpl')?.value||'',i=Number(v.slice(1));return v[0]==='b'?{t:MQ_BUILTIN[i],mine:false}:v[0]==='m'?{t:savedMarqueeTemplates()[i],i,mine:true}:null;};
+  const saveSettings=async msg=>{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;};
+  {const b=host.querySelector('#mq-use');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.t)throw Error('Pick a template first.');const ta=form.elements.namedItem('message');ta.value=p.t.t;preview();await saveSettings('Marquee: '+p.t.n+' is on the sign.');});}
+  {const b=host.querySelector('#mq-save');if(b)b.onclick=()=>run(async()=>{const text=String(form.elements.namedItem('message').value||'').trim();if(!text)throw Error('Type a marquee message first, then save it.');
+    const name=String(prompt('Name this template',text.split(/\s*[•|]\s*/)[0].slice(0,30))||'').trim().slice(0,30);if(!name)return;
+    const mine=savedMarqueeTemplates().filter(t=>t.n.toLowerCase()!==name.toLowerCase());if(mine.length>=12)throw Error('12 saved templates is the most -- delete one first.');
+    mine.push({n:name,t:text.slice(0,300)});const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=JSON.stringify(mine);
+    try{await saveSettings('Template saved: '+name);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();host.querySelector('#mq-tpl').value='m'+(mine.length-1);});}
+  {const b=host.querySelector('#mq-del');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.mine)throw Error('The ★ templates are built in -- pick one of your saved ones to delete.');if(!confirm('Delete the template "'+p.t.n+'"?'))return;
+    const mine=savedMarqueeTemplates();mine.splice(p.i,1);const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=mine.length?JSON.stringify(mine):'';
+    try{await saveSettings('Template deleted: '+p.t.n);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();});}
   function took(d){if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}if(d.machine){machineCtl=d.machine;paintMachine();}preview();readyList();paintGame();paintMoves();drawFace('#beast-face-view','beastsFace');drawFace('#beast-buddy-view','beastsBuddy');}
   // The dungeon's status line: floor, mana, stars, the week's reset.
   function paintDungeon(){
