@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.3-mtg-set-search';
+const APP_VERSION = '2026.11.15.4-mtg-all-sets';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38720,9 +38720,33 @@ function scryfallTreatmentLabel(c){
 }
 
 let _scryfallSearchAbortController = null;
+// EVERY MAGIC SET IN THE SEARCH (store, 2026-11-15): Scryfall's set list, fetched once a week per device and kept on
+// it, handed to the search router so any set's name narrows a Magic search ("lightning bolt modern horizons 3"). Paper
+// sets only (no digital-only, token or memorabilia sets). If it can't load, the built-in older sets still work.
+let _mtgSetsLoading = null;
+async function ensureMtgSetsForSearch(){
+  const adapter = universalSearchAdapter(); if(!adapter?.setMtgSets) return false;
+  if(!_mtgSetsLoading) _mtgSetsLoading = (async () => {
+    try { const c = JSON.parse(localStorage.getItem('mtg_search_sets_v1') || 'null'); if(c && Array.isArray(c.sets) && c.sets.length && Date.now() - Number(c.at || 0) < 7 * 864e5) { adapter.setMtgSets(c.sets); return true; } } catch(e) {}
+    try {
+      const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 4000);
+      const res = await fetch('https://api.scryfall.com/sets', { headers:{ Accept:'application/json' }, signal:ctl.signal }); clearTimeout(timer);
+      if(!res.ok) return false;
+      const sets = ((await res.json()).data || []).filter(x => x && !x.digital && !['token','memorabilia','alchemy','minigame'].includes(x.set_type)).map(x => [x.name, x.code]);
+      if(!sets.length) return false;
+      adapter.setMtgSets(sets); try { localStorage.setItem('mtg_search_sets_v1', JSON.stringify({ at:Date.now(), sets })); } catch(e) {}
+      return true;
+    } catch(e) { return false; }
+  })();
+  const ok = await _mtgSetsLoading; if(!ok) _mtgSetsLoading = null; return ok;
+}
+setTimeout(() => { if(!document.hidden) void ensureMtgSetsForSearch(); }, 15000);
 async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   const finishIntent = parseMtgFinishIntent(q);
-  const plannedQueries = universalSearchQueries(searchPlan, 'mtg', 'Scryfall');
+  // Plan the Magic searches again once the full set list is in, so a set named anywhere in the list narrows it.
+  let replanned = null;
+  if(await ensureMtgSetsForSearch() && searchPlan?.rawQuery) { try { const a = universalSearchAdapter(); replanned = a.queriesFor(a.buildSearchPlan(searchPlan.rawQuery, searchPlan.intent?.selectedCategory || ''), 'mtg', 'Scryfall'); } catch(e) { replanned = null; } }
+  const plannedQueries = replanned?.length ? replanned : universalSearchQueries(searchPlan, 'mtg', 'Scryfall');
   const searchQ = plannedQueries[0] || finishIntent.clean || q;
   // Build Scryfall query — if treatment specified, filter on the Scryfall side
   let sfQ = plannedQueries.length ? searchQ : expandSmartQuery(searchQ);

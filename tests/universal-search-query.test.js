@@ -157,7 +157,24 @@ console.log('Universal search adapter checks passed');
   assert.equal(q('control magic set leb')[0], 'control magic set:leb');
   assert.deepEqual(q('control magic'), ['control magic'], 'no set: unchanged');
   assert.deepEqual(q('sol ring'), ['sol ring']);
-  const fetchSf = dashboard.slice(dashboard.indexOf('async function fetchScryfallCatalog('), dashboard.indexOf('async function fetchScryfallCatalog(') + 2600);
+  const fetchSf = dashboard.slice(dashboard.indexOf('async function fetchScryfallCatalog('), dashboard.indexOf('async function fetchScryfallCatalog(') + 4500);
   assert.ok(fetchSf.includes('for(const tryQ of tries.slice(0, 3)){') && fetchSf.includes('if(allScryfallCards.length) break;'), 'the plain words are tried when the set search finds nothing');
+}
+// Every set, from Scryfall's list (2026-11-15: "do 3"): the longest name wins, punctuation ignored, and a set beats rules-text words.
+{
+  const q = s => adapter.queriesFor(adapter.buildSearchPlan(s, 'Magic: The Gathering'), 'mtg', 'Scryfall');
+  assert.ok(adapter.setMtgSets([['Modern Horizons 3', 'mh3'], ['Modern Horizons', 'mh1'], ['Commander Masters', 'cmm'], ["Urza's Saga", 'usg'], ['Kaladesh', 'kld'], ['Throne of Eldraine', 'eld'], ['Bad Code', 'not a code']]) > 40, 'the built-in sets stay');
+  assert.equal(q('lightning bolt modern horizons 3')[0], 'lightning bolt set:mh3');
+  assert.equal(q('ragavan modern horizons')[0], 'ragavan set:mh1');
+  assert.equal(q('sol ring commander masters')[0], 'sol ring set:cmm', 'the set, not a rules-text search for "commander"');
+  assert.equal(q("gaea's cradle urza's saga")[0], "gaea's cradle set:usg", 'punctuation kept on the card, ignored on the set');
+  assert.equal(q('throne of eldraine bonecrusher giant')[0], 'bonecrusher giant set:eld', 'the set first');
+  assert.equal(q('bolt set m11')[0], 'bolt set:m11', 'any code with "set" before it');
+  assert.deepEqual(q('kaladesh'), ['kaladesh'], 'a set name alone is just a search');
+  assert.equal(q('deathtouch landfall')[0], 'o:deathtouch o:landfall', 'rules-text searches still work');
+  const fetchSf = dashboard.slice(dashboard.indexOf('async function ensureMtgSetsForSearch('), dashboard.indexOf('async function fetchScryfallCatalog('));
+  for (const k of ["fetch('https://api.scryfall.com/sets'", "localStorage.getItem('mtg_search_sets_v1')", '7 * 864e5', "!x.digital && !['token','memorabilia','alchemy','minigame'].includes(x.set_type)", 'adapter.setMtgSets(sets)']) assert.ok(fetchSf.includes(k), k);
+  assert.ok(dashboard.includes("if(await ensureMtgSetsForSearch() && searchPlan?.rawQuery)"), 'the search plans again with the full list');
+  adapter.setMtgSets([]);
 }
 console.log('MTG set in search: passed');
