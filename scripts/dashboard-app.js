@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.8-en-jp-switch';
+const APP_VERSION = '2026.11.15.9-jp-holo-price';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -32763,12 +32763,37 @@ function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
   };
 }
 
+// (store, 2026-11-15: a Japanese Moltres link showed $11.68 "Lightly Played / Normal" while the LP chip said $25.20.)
+// A link without ?Printing= read as Normal, but that card only comes in Holofoil, so no price matched the pick and a
+// leftover price showed. Pick the printing the card really has at that condition -- the one TCGplayer has a market
+// for first -- and the language its prices are listed under.
+function exactLinkVariantDefaults(variants = [], product = {}, markets = null){
+  const list = Array.isArray(variants) ? variants : [], same = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+  if(!list.length) return {};
+  const cond = product.condition || 'NM', wantLang = product.language || 'English';
+  const inLang = list.filter(v => same(v.language || 'English', wantLang));
+  const pool = inLang.length ? inLang : list, language = inLang.length ? wantLang : (pool[0].language || 'English');
+  let finish = product.finish || 'normal';
+  if(!product.printing || !pool.some(v => same(v.finish, finish))) {
+    const finishes = [...new Set(pool.map(v => v.finish).filter(Boolean))];
+    const priced = f => pool.some(v => same(v.finish, f) && same(v.condition, cond) && qplPriceValue(v) > 0);
+    const hasMarket = f => !markets || (/^(normal|unlimited|first_edition|shadowless)$/.test(normalizeQplFinish(f)) ? markets.normal : markets.foil) > 0;
+    finish = finishes.find(f => same(f, finish) && priced(f) && hasMarket(f)) || finishes.find(f => priced(f) && hasMarket(f))
+      || finishes.find(priced) || finishes.find(f => same(f, finish)) || finishes[0] || finish;
+  }
+  return { finish, language };
+}
+// A set given as a web-address slug ("mystery-of-the-fossils-pokemon-japan") reads as words.
+function qplReadableSet(set = ''){
+  const s = String(set || '');
+  return /^[a-z0-9]+(-[a-z0-9]+)+$/.test(s) ? s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s;
+}
 function justTcgExactMatchToQplRow(match={}, product={}){
   const selected=match.selectedVariant||match.availableVariants?.find(v=>v.condition==='NM')||match.availableVariants?.[0]||null;
   return applyQplSelectedVariant({
     source:'justtcg', productId:match.productId||match.id||'', justtcgCardId:match.productId||match.id||'',
     tcgPlayerId:product.productId||match.tcgplayerId||'', tcgplayerId:product.productId||match.tcgplayerId||'',
-    name:match.name||product.name, category:match.category||product.category||'TCG', game:match.game||'', set:match.setName||'',
+    name:match.name||product.name, category:match.category||product.category||'TCG', game:match.game||'', set:qplReadableSet(match.setName||''),
     year:match.releaseDate?String(match.releaseDate).slice(0,4):'', variant:match.rarity||'', card_number:match.cardNumber||'',
     condition:product.condition||selected?.condition||'NM', selectedCondition:product.condition||selected?.condition||'NM',
     finish:product.finish||selected?.finish||'normal', selectedFinish:product.finish||selected?.finish||'normal', language:product.language||selected?.language||'English',
@@ -32865,9 +32890,9 @@ async function resolveExactTcgplayerProduct(product={}){
     // JustTCG's variant price ran ~half of TCGplayer's Market Price for MTG
     // NM cards (see fetchMtgTcgplayerPricepointPrice); the NM rows take the
     // exact product's own TCGplayer market instead. LP/MP/HP/DMG keep JustTCG.
-    const row=justTcgExactMatchToQplRow(match,product);
-    if(!row.imageUrl)row.imageUrl=tcgplayerProductImageUrl(product.productId);
     const markets=await fetchTcgplayerNmMarkets(product.productId);
+    const row=justTcgExactMatchToQplRow(match,{...product,...exactLinkVariantDefaults(match.availableVariants,product,markets)});
+    if(!row.imageUrl)row.imageUrl=tcgplayerProductImageUrl(product.productId);
     if(!markets)return row;
     row.availableVariants=(row.availableVariants||[]).map(v=>{
       if(pokemonPptConditionCode(v.condition||'NM')!=='NM')return v;
@@ -33950,7 +33975,7 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
   if(plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat)) {
     // Intent signals
     // The EN / JP switch beside the search box wins; on AUTO the search's own words decide.
-    const isJapanese = qplLanguageMode === 'japanese' || (qplLanguageMode !== 'english' && /\bjapanese?\b|\bjpn\b/i.test(q));
+    const isJapanese = qplSearchIsJapanese(q);
     const searchLanguage = isJapanese ? 'japanese' : 'english';
     const isPromoQuery = isPokemonPromoIntent(q);
     const isSealedQuery = pokemonSealedIntent;
@@ -36387,36 +36412,62 @@ function qplVariantSelectOptions(r, key, current){
 // editions. Each chip shows that edition's price at the condition picked.
 // ENGLISH / JAPANESE (store, 2026-11-15: "I should be able to switch languages in the app to get the prices of the other
 // languages"). LANG beside the search box: AUTO (the search's own words), JP or EN for every Pokemon search, re-running the
-// one on screen; kept on this device. Each Pokemon result has SEE ENGLISH PRICE / SEE JAPANESE PRICE: the same card's
-// name searched in the other language (TCGplayer lists each language as its own product, so it's a new search).
-let qplLanguageMode = (() => { try { const v = localStorage.getItem('qpl_pokemon_language'); return ['auto','english','japanese'].includes(v) ? v : 'auto'; } catch(e) { return 'auto'; } })();
+// one on screen. Each Pokemon result has SEE ENGLISH PRICE / SEE JAPANESE PRICE: the same card's name searched in the
+// other language (TCGplayer lists each language as its own product, so it's a new search).
+// (store, 2026-11-15: "the language switch does weird stuff") LANG used to be saved on the phone and SEE ENGLISH PRICE
+// flipped it, so later searches stayed stuck in one language. Now LANG lasts until the page reloads, SEE ... PRICE is a
+// one-time search that leaves LANG alone, and a pasted link (always its own product) isn't re-run.
+let qplLanguageMode = 'auto', qplLanguageOnce = null;
 function paintQplLanguageButton(){
   const b = document.getElementById('qpl-lang-btn'); if(!b) return;
   b.textContent = { auto:'LANG: AUTO', english:'LANG: EN', japanese:'LANG: JP' }[qplLanguageMode] || 'LANG: AUTO';
   b.style.color = qplLanguageMode === 'japanese' ? '#e63' : qplLanguageMode === 'english' ? 'var(--g)' : '';
 }
+function qplInputIsLink(v){ return /tcgplayer\.com|^\s*https?:\/\//i.test(String(v || '')); }
 function setQplLanguage(mode, rerun = true){
   qplLanguageMode = ['auto','english','japanese'].includes(mode) ? mode : 'auto';
-  try { localStorage.setItem('qpl_pokemon_language', qplLanguageMode); } catch(e) {}
   paintQplLanguageButton();
-  if(rerun && String(document.getElementById('qpl-input')?.value || '').trim()) runPriceLookup();
+  const v = String(document.getElementById('qpl-input')?.value || '').trim();
+  if(!rerun || !v) return;
+  if(qplInputIsLink(v)) return toast_dash('A link is priced as that exact card -- LANG works on name searches');
+  runPriceLookup();
 }
 function toggleQplLanguage(){ setQplLanguage({ auto:'japanese', japanese:'english', english:'auto' }[qplLanguageMode] || 'auto'); }
+// The language this search runs in: a one-time SEE ... PRICE pick, else LANG, else the search's own words.
+function qplSearchIsJapanese(q = ''){
+  const once = qplLanguageOnce; qplLanguageOnce = null;
+  const norm = v => String(v || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if(once && norm(once.q) === norm(q)) return once.lang === 'japanese';
+  return qplLanguageMode === 'japanese' || (qplLanguageMode !== 'english' && /\bjapanese?\b|\bjpn\b/i.test(q));
+}
 function qplRowIsJapanese(r = {}){ return /^japanese$/i.test(r.selectedLanguage || r.language || '') || /\bjapan(ese)?\b|\bjpn\b/i.test([r.name, r.set].join(' ')); }
-// The card's own name for the other-language search: no "Japan/Japanese", no set name (sets differ between languages).
-function qplOtherLanguageQuery(r = {}){
+// The old sets go by different names in each language; the newer ones don't line up one to one, so those search by name.
+const QPL_SET_PAIRS = [['expansion pack','base set'],['pokemon jungle','jungle'],['mystery of the fossils','fossil'],['rocket gang','team rocket'],
+  ['leaders stadium','gym heroes'],['challenge from the darkness','gym challenge'],['gold silver new world','neo genesis'],
+  ['crossing the ruins','neo discovery'],['awakening legends','neo revelation'],['darkness and to light','neo destiny']];
+function qplOtherLanguageSet(set = '', toJp = false){
+  const s = String(set || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\b(japan(ese)?|pokemon|jpn)\b/g, ' ').replace(/\s+/g, ' ').trim();
+  if(!s) return '';
+  const pair = QPL_SET_PAIRS.find(([jp, en]) => (toJp ? en : jp) === s);
+  return pair ? (toJp ? pair[0] : pair[1]) : '';
+}
+// The card's own name for the other-language search: no "Japan/Japanese", no set name unless the set has a known match.
+function qplOtherLanguageQuery(r = {}, toJp = !qplRowIsJapanese(r)){
   let name = String(r.cardName || r.name || '');
   const set = String(r.set || r.setName || '').replace(/\bjapan(ese)?\b/ig, '').trim();
   if(set && set.length > 2) name = name.replace(new RegExp(set.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
-  return name.replace(/\bjapan(ese)?\b|\bjpn\b|\bpokemon\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  name = name.replace(/\bjapan(ese)?\b|\bjpn\b|\bpokemon\b/ig, ' ').replace(/\s+/g, ' ').trim();
+  const other = name ? qplOtherLanguageSet(qplReadableSet(set), toJp) : '';
+  return other ? name + ' ' + other : name;
 }
 function qplOtherLanguage(idx){
   const r = qplResults[idx]; if(!r) return;
-  const toJp = !qplRowIsJapanese(r), q = qplOtherLanguageQuery(r);
+  const toJp = !qplRowIsJapanese(r), q = qplOtherLanguageQuery(r, toJp);
   if(!q) return toast_dash('No card name to search with');
   const input = document.getElementById('qpl-input'); if(input) input.value = q;
-  setQplLanguage(toJp ? 'japanese' : 'english');
-  toast_dash((toJp ? 'Japanese' : 'English') + ' prices for ' + q + ' -- LANG is now ' + (toJp ? 'JP' : 'EN') + ' (tap it for AUTO)');
+  qplLanguageOnce = { lang:toJp ? 'japanese' : 'english', q };
+  toast_dash((toJp ? 'Japanese' : 'English') + ' prices for ' + q);
+  runPriceLookup();
 }
 function qplLanguageChip(r = {}, idx = 0){
   if(r.is_sealed || !/pokemon/i.test([r.category, r.game, r.lineLabel].join(' '))) return '';
