@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.1-flipbook';
+const APP_VERSION = '2026.11.15.2-tcg-links';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -12139,7 +12139,7 @@ function serverHandlesPokemonPrice(item = {}){
   if(d.dropship === true || d.ownershipType === 'supplier') return false;
   let refs = d.externalRefs; if(typeof refs === 'string'){ try { refs = JSON.parse(refs); } catch(e) { refs = null; } }
   const id = String(d.tcgPlayerId || d.tcgplayerId || d.tcgplayerProductId || refs?.tcgPlayerId || '').trim();
-  if(!/^\d+$/.test(id) && !/tcgplayer\.com\/product\/\d+/i.test(String(d.tcgPlayerUrl || refs?.tcgPlayerUrl || ''))) return false;
+  if(!/^\d+$/.test(id) && !/tcgplayer\.com(\/|%2F)product(\/|%2F)\d+/i.test(String(d.tcgPlayerUrl || refs?.tcgPlayerUrl || ''))) return false; // (%2F: a partner link's product page)
   if((String(d.grader || '').trim() && String(d.grade || '').trim()) || SERVER_SYNC_SLAB_RE.test(String(d.selectedGrade || '')) || SERVER_SYNC_SLAB_RE.test(String(d.name || ''))) return false;
   const language = String(d.language || d.selectedLanguage || '');
   if(SERVER_SYNC_UNPRICED_LANGUAGE_RE.test([d.language, d.selectedLanguage].filter(Boolean).join(' ')) && !/japanese|english/i.test(language)) return false;
@@ -26054,7 +26054,7 @@ function inventoryTcgReferenceChanged(){
 
 function populateInventoryTcgReference(item = {}, trustedResearch = false){
   const id = inventoryTcgPlayerId(item);
-  const url = item.tcgPlayerUrl || item.tcgUrl || (id ? 'https://www.tcgplayer.com/product/' + id : '');
+  const url = plainTcgplayerUrl(item.tcgPlayerUrl || item.tcgUrl || '', id);
   const input = document.getElementById('edit-tcgplayer-ref');
   if(input) input.value = url || id || '';
   inventoryTcgReferenceState = {
@@ -32717,7 +32717,7 @@ function qplFinishFromTcgPrinting(value = ''){
 }
 
 function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
-  const text = String(raw || '').trim();
+  const text = unwrapTcgplayerLink(raw); // a partner/affiliate link reads as the product page inside it
   if(!text) return null;
   const selected = qplCategoryKey(selectedCategory);
   let productId = '', slug = '', canonicalUrl = '', condition = '', printing = '', language = '';
@@ -36659,9 +36659,28 @@ function tcgConditionSearchLabel(condition = ''){
   return ({ NM:'Near Mint', LP:'Lightly Played', MP:'Moderately Played', HP:'Heavily Played', DMG:'Damaged' })[String(condition || '').toUpperCase()] || condition || '';
 }
 
+// PARTNER LINKS (store, 2026-11-15: Dave's Edit Item VERIFY said a TCGplayer link "was a partner link and not valid"):
+// Scryfall's "buy on TCGplayer" link -- and any affiliate link -- is a redirect, partner.tcgplayer.com/c/...?u=<the real
+// product page, encoded>. Read the real page out of it, so the product number is found either way.
+function unwrapTcgplayerLink(value = ''){
+  let text = String(value || '').trim();
+  for(let k = 0; k < 3 && /^https?:\/\//i.test(text); k++){
+    let u = '';
+    try { const parsed = new URL(text); if(/(^|\.)tcgplayer\.com$|(^|\.)pxf\.io$/i.test(parsed.hostname) && !/^(www\.)?tcgplayer\.com$/i.test(parsed.hostname)) u = parsed.searchParams.get('u') || ''; } catch(e) {}
+    if(!u) break;
+    text = u.trim();
+  }
+  return text;
+}
 function tcgPlayerProductIdFromUrl(value = ''){
-  const m = String(value || '').match(/tcgplayer\.com\/product\/(\d+)/i);
+  const m = unwrapTcgplayerLink(value).match(/tcgplayer\.com\/product\/(\d+)/i);
   return m ? m[1] : '';
+}
+// The plain product page for a saved card: its product number, else the link with any partner wrapper taken off.
+function plainTcgplayerUrl(link = '', id = ''){
+  const n = String(id || '').trim() || tcgPlayerProductIdFromUrl(link);
+  if(/^\d+$/.test(n)) return 'https://www.tcgplayer.com/product/' + n;
+  return unwrapTcgplayerLink(link);
 }
 
 
@@ -38760,8 +38779,8 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
       market:Number(c.prices?.usd || c.prices?.usd_foil || c.prices?.usd_etched || 0),
       imageUrl:c.image_uris?.normal || c.image_uris?.small || c.card_faces?.[0]?.image_uris?.normal || c.card_faces?.[0]?.image_uris?.small || '',
       priceSource:'Scryfall market',
-      tcgUrl:c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '',
-      tcgPlayerUrl:c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '',
+      tcgUrl:(c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || (c.purchase_uris?.tcgplayer ? plainTcgplayerUrl(c.purchase_uris.tcgplayer) : '') || c.scryfall_uri || '',
+      tcgPlayerUrl:(c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || (c.purchase_uris?.tcgplayer ? plainTcgplayerUrl(c.purchase_uris.tcgplayer) : '') || c.scryfall_uri || '',
       tcgPlayerId:c.tcgplayer_id || '',
       tcgplayerId:c.tcgplayer_id || '',
       note:hit.why.length ? 'Matched: ' + hit.why.join(', ') : (c.type_line || ''),
@@ -48776,7 +48795,7 @@ function scryfallCardToQplRow(c){
   const treatment=scryfallTreatmentLabel(c);
   if(treatment && treatment!=='etched_foil' && mtgFinishPriceFamily(treatment)==='foil' && Number(c.prices?.usd_foil||0)>0) priceMap[treatment]={market:Number(c.prices.usd_foil),low:Number(c.prices.usd_foil)};
   const autoFinish = Number(c.prices?.usd || 0) > 0 ? 'normal' : treatment && priceMap[treatment] ? treatment : Number(c.prices?.usd || 0) > 0 ? 'normal' : Number(c.prices?.usd_foil || 0) > 0 ? 'foil' : Number(c.prices?.usd_etched || 0) > 0 ? 'etched_foil' : 'normal';
-  const exactTcgUrl = c.purchase_uris?.tcgplayer || (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || c.scryfall_uri || '';
+  const exactTcgUrl = (c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || (c.purchase_uris?.tcgplayer ? plainTcgplayerUrl(c.purchase_uris.tcgplayer) : '') || c.scryfall_uri || '';
   return applyQplSelectedVariant({
     source: 'scryfall',
     name: c.name || '',
