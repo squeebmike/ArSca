@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.17';
+  const STUDIO_V='2026.11.15.1';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -26,6 +26,11 @@
   <details class="vm-showcase" open><summary>🛒 SHOWCASE -- pre-release shows: NEW RELEASES to pre-order + THE BIN, on the lower half</summary>
   <small>The new releases (your FOC books with covers, their price and FOC date) on top, the in-stock Buy It Now items with their price below, each shelf turning a page every 5 seconds. Shows on the green screen's lower half.</small>
   <div class="mana-row"><button type="button" id="vm-sc-both">🛒 LOAD BOTH (NEW + BIN)</button><button type="button" id="vm-sc-pre">📚 NEW RELEASES ONLY</button><button type="button" id="vm-sc-bin">🏷 BIN ONLY</button></div>
+  </details>
+  <details class="fb-ctl"><summary>📖 FOC FLIPBOOK -- this week's books flip by themselves on the overlay</summary>
+  <small>Loads the new books (shown to customers, with covers) and flips through them on the overlay: each cover in turn, the price, the credits, the order-by and in-store dates, and the synopsis rolling up. No screen share.</small>
+  <div class="mana-row"><label>SECONDS A BOOK<input id="fb-secs" type="number" min="5" max="60" value="14"></label><label>WHERE<select id="fb-mode"><option value="full">FULL SCREEN</option><option value="lower">LOWER HALF</option></select></label><label>HEADING<input id="fb-title" maxlength="40" placeholder="FOC THIS SUNDAY"></label></div>
+  <div class="mana-row"><button type="button" id="fb-go">📖 LOAD + SHOW</button><button type="button" id="fb-back">◀ BACK</button><button type="button" id="fb-next">NEXT ▶</button><button type="button" id="fb-off">HIDE</button></div>
   </details>
   <div class="mana-row"><label>LOOK<select id="vm-theme"><option value="">KIOSK (white)</option><option value="comics">COMIC SHOP (red + yellow)</option><option value="cards">CARD SHOP (red + white)</option><option value="arcane">ARCANE (purple + gold)</option></select></label><label>CHANGE RETURN: A FREE GIVEAWAY EVERY<input id="vm-give" type="number" min="0" max="100" placeholder="0 = off"> SOLD</label><button type="button" id="vm-look-go">SET</button></div>
   <div class="mana-row"><label>⚡ FLASH SALE SLOTS<input id="vm-fl-slots" placeholder="3, 7, 12"></label><label>% OFF<input id="vm-fl-pct" type="number" min="1" max="89" placeholder="20"></label><label>OR SALE PRICE $<input id="vm-fl-price" type="number" min="0" step="0.01"></label><label>MINUTES<input id="vm-fl-min" type="number" min="1" max="60" value="5"></label><button type="button" id="vm-fl-go">⚡ FLASH SALE</button><button type="button" id="vm-fl-end">END SALE</button></div>
@@ -175,7 +180,7 @@
   const studioOnScreen=()=>!document.hidden&&host.getClientRects().length>0;
   // A demo sale holds the preview where the demo left it for 2 minutes (the 8-second refresh used to snap it back).
   let demoFake=null,demoUntil=0;
-  let machineCtl={on:false,items:[]};
+  let machineCtl={on:false,items:[]},flipCtl=null;
   let revision=0,connectedStore='',settings=null,stats=null,stage={now:null,next:[]},shedPicsCtl=[];
   function store(){return typeof getActiveStoreId==='function'?getActiveStoreId():'';}
   // The camera joystick (2026-11-12): drag to look; sent a few times a second
@@ -233,6 +238,16 @@
       const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents').eq('store_id',id).eq('customer_enabled',true).gte('foc_date',today).not('cover_image_url','is',null).order('foc_date',{ascending:true}).limit(40);
       if(error)throw Error('New releases: '+error.message);const md=d=>d?d.slice(5).replace('-','/'):'';
       return (data||[]).filter(r=>https(r.cover_image_url)).map(r=>({title:String((r.title||'')+(r.variant_label?' '+r.variant_label:'')).slice(0,90),detail:'FOC '+md(r.foc_date)+(r.on_sale_date?' · OUT '+md(r.on_sale_date):''),image:r.cover_image_url,price:(Number(r.customer_price_cents)||Number(r.msrp_cents)||0)/100,shelf:'pre',badge:'FOC '+md(r.foc_date)})).filter(it=>!chanceFn(it.title));};
+    // THE FOC FLIPBOOK: this week's books (one per title, its covers inside) with their synopses, to the overlay.
+    const flipBooks=async()=>{const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null,id=store();if(!sb||!id)throw Error('Sign in to the dashboard first.');const today=new Date().toISOString().slice(0,10);
+      const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).eq('customer_enabled',true).gte('foc_date',today).not('cover_image_url','is',null).order('foc_date',{ascending:true}).limit(90);
+      if(error)throw Error('Flipbook: '+error.message);const F=await import('./flipbook.mjs?v='+STUDIO_V);return F.cleanFlipItems(F.booksFromSkus(data||[]).filter(b=>!chanceFn(b.title)));};
+    const flipDo=async body=>{if(connectedStore){const d=await api('flip',body);flipCtl=d.flip;preview();return;}
+      const f={on:false,items:[],secs:12,mode:'full',title:'',at:Date.now(),...(flipCtl||{})};if(body.items){f.items=body.items;f.at=Date.now();}if(body.secs!==undefined){f.secs=body.secs;f.at=Date.now();}if(body.mode)f.mode=body.mode;if(typeof body.title==='string')f.title=body.title.toUpperCase();if(body.step)f.at-=body.step*f.secs*1000;if(typeof body.on==='boolean'){if(body.on&&!f.on)f.at=Date.now();f.on=body.on&&f.items.length>0;}flipCtl=f;preview();};
+    const fbLook=()=>({secs:Math.max(5,Math.min(60,Number(host.querySelector('#fb-secs').value)||14)),mode:host.querySelector('#fb-mode').value,title:String(host.querySelector('#fb-title').value||'NEW BOOKS THIS WEEK')});
+    {const b=host.querySelector('#fb-go');if(b)b.onclick=()=>run(async()=>{const items=await flipBooks();if(!items.length)throw Error('No new books with covers coming up (FOC books need a cover and SHOW TO CUSTOMERS).');await flipDo({items,...fbLook(),on:true});status.textContent='📖 Flipbook on: '+items.length+' books, '+fbLook().secs+' seconds each.'+(connectedStore?'':' (preview -- connect to put it on the show)');});}
+    for(const [id,body,msg] of [['#fb-back',{step:-1},'Back a book.'],['#fb-next',{step:1},'Next book.'],['#fb-off',{on:false},'Flipbook hidden.']]){const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{if(!flipCtl?.items?.length)throw Error('Load the flipbook first.');await flipDo(body);status.textContent=msg;});}
+    for(const id of ['#fb-secs','#fb-mode','#fb-title']){const el=host.querySelector(id);if(el)el.onchange=()=>{if(flipCtl?.on)void run(()=>flipDo(fbLook()));};}
     const showcase=(want,msg)=>{const b=host.querySelector(want);if(b)b.onclick=()=>run(async()=>{const pre=want!=='#vm-sc-bin'?await newReleases():[],bin=want!=='#vm-sc-pre'?binItems():[],items=[...pre,...bin].slice(0,120);if(!items.length)throw Error(want==='#vm-sc-pre'?'No new releases with covers coming up (FOC books need a cover).':want==='#vm-sc-bin'?'No Buy It Now items with photos and prices in stock.':'Nothing to show: no FOC books with covers and no BIN items with photos.');await machineDo({items,kind:'showcase',mode:'lower',on:true});status.textContent=msg+' '+pre.length+' new releases, '+bin.length+' bin items.'+(connectedStore?'':' (preview -- connect to put it on the show)');});};
     showcase('#vm-sc-both','Showcase on the lower half:');showcase('#vm-sc-pre','Showcase (new releases):');showcase('#vm-sc-bin','Showcase (the bin):');
     vmb('#vm-fl-go',()=>({flash:{slots:String(host.querySelector('#vm-fl-slots').value||'').split(/[^0-9]+/).filter(Boolean).map(Number),pct:Number(host.querySelector('#vm-fl-pct').value)||0,price:Number(host.querySelector('#vm-fl-price').value)||0,minutes:Number(host.querySelector('#vm-fl-min').value)||5}}),'⚡ Flash sale is on -- the old prices show crossed out. Change the prices on Whatnot to match.');
@@ -309,7 +324,7 @@
   }
   function values(){const out={};for(const el of form.elements){if(!el.name)continue;out[el.name]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;}return out;}
   // The green-screen shed sits behind the top camera in the preview too (2026-11-11).
-  function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:withMove(demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined),machine:values().showBuyerNames?machineCtl:{...machineCtl,items:(machineCtl.items||[]).map(({buyer,...it})=>it)},effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
+  function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:withMove(demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined),machine:values().showBuyerNames?machineCtl:{...machineCtl,items:(machineCtl.items||[]).map(({buyer,...it})=>it)},flip:flipCtl,effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
   async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
   host.querySelector('#mana-load').onclick=()=>run(connect);

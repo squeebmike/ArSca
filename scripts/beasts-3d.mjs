@@ -152,7 +152,7 @@ export function buildBeast3D(name) {
 
 // THE HOST AND CHAMP IN 3D (store, 2026-11-14: "add 3D me and Champ to the 3DS battle"), the same two as the pixel
 // sprites: the host in a backwards cap, a dark beard and the black MP jersey (24 on the back); Champ bald and shiny, in
-// glasses, a full beard and a big grey hoodie. You stand left of their beast and Champ right, turned to the fight, and react: the host points when
+// glasses, a full beard and a big grey hoodie. You both stand on our side, near the camera beside your beast with your backs to us, and react: the host points when
 // your beast attacks, Champ pumps a fist, both cheer on a level-up or an evolution. Toon-shaded, built from shapes here.
 export function trainer3D(who) {
   const champ = who === 'champ', g = new THREE.Group(), skin = toon([236, 184, 148]), arms = {};
@@ -207,8 +207,9 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   for (let k = 0; k < 7; k++) { const tr = new THREE.Group(); tr.position.set(-6 + k * 2.3, 0, -8 - (k % 3)); trees.add(tr); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6b4a2a })); tk.position.y = 0.6; tr.add(tk); const lf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), new THREE.MeshLambertMaterial({ color: 0x3f8f3a })); lf.position.y = 1.7; tr.add(lf); }
   let b = null, mineM = null, foeM = null, mineName = '', foeName = '', moves = DEFAULT_MOVES, pick = 0, msg = '', anim = null, foeAnim = null, evo = null, raf = 0, last = 0, key = '', introAt = -1e9, lastTenth = 10, foeHits = 0, shownFoe = 1;
   const shot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), new THREE.MeshBasicMaterial({ color: 0xffe14a })); shot.visible = false; scene.add(shot);
-  // You on the left of their beast, Champ on the right, both turned to the fight; they walk in from the sides with the intro.
-  let crew = null; const ensureCrew = () => { if (crew) return; crew = [trainer3D('host'), trainer3D('champ')]; crew.forEach((c, i) => { c.home = i ? new THREE.Vector3(3.95, 0, -0.8) : new THREE.Vector3(0.75, 0, -2.5); c.g.position.copy(c.home); c.g.rotation.y = i ? -0.55 : 0.75; c.g.scale.setScalar(0.85); c.from = i ? 1 : -1; scene.add(c.g); }); };
+  // You and Champ on OUR side, close to the camera like a trainer in the handheld battles: just right of your beast,
+  // backs to us, facing their beast; they walk in from the left with the intro.
+  let crew = null; const ensureCrew = () => { if (crew) return; crew = [trainer3D('host'), trainer3D('champ')]; crew.forEach((c, i) => { c.home = i ? new THREE.Vector3(0.8, 0, 0.4) : new THREE.Vector3(0.12, 0, 1.5); c.g.position.copy(c.home); c.g.rotation.y = i ? 2.35 : 2.55; c.g.scale.setScalar(0.7); c.from = -1; scene.add(c.g); }); };
   // MR FISTER'S GYM IN 3D (store, 2026-11-14): on a gym fight against him, the field turns into his arena -- a dark floor,
   // a green ring under each platform, green spotlights -- and he stands behind SPIDER-CHEEKS pumping the gauntlet, throwing the
   // store's comics (the gauntlet's covers) at your beast every time his beast attacks.
@@ -219,26 +220,41 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   let fister = null, fisterTick = null, thrown = [];
   // THE OTHER FOUR LEADERS (scripts/beasts-gyms-3d.mjs): each in their own arena, built the first time they're fought.
   const leaders = {}, arenas = {}; let fx = [], gymId = '';
-  const ensureLeader = id => { if (leaders[id] || !buildLeader3D) return; const l = buildLeader3D(id); if (!l) return; l.g.position.set(4.9, 0, -5.0); l.g.rotation.y = -0.5; l.g.scale.setScalar(1.3); scene.add(l.g); leaders[id] = l; const key = new THREE.SpotLight(0xffffff, 1.8, 14, 0.5, 0.6); key.position.set(2, 6, 1); key.target = l.g; scene.add(key); l.key = key; const ar = buildArena3D(id); scene.add(ar); arenas[id] = ar; };
+  // THE LEADER'S ENTRANCE (store, 2026-11-14: "leader intro cutscene"): before a gym fight the camera sweeps round the
+  // leader in their arena, letterboxed, their name and their line on screen; then it swings back behind your beast and
+  // the fight starts. Three seconds, the same every time.
+  const CUT_MS = 3200, CAM_POS = new THREE.Vector3(-0.4, 1.5, 5.6), CAM_AT = new THREE.Vector3(0.9, 0.6, -1.4); let cutStart = 0, camHome = true;
+  const cutFocus = () => { if (gymId === 'fister' && fister) return fister.position.clone().add(new THREE.Vector3(0, 0.25, 0)); const l = leaders[gymId]; return l ? l.g.position.clone().add(new THREE.Vector3(0, 1.9, 0)) : null; };
+  const cutPose = (focus, k) => { const base = Math.atan2(CAM_POS.x - focus.x, CAM_POS.z - focus.z), ang = base - 0.95 + k * 1.1, R = 2.3 + k * 1.6; return new THREE.Vector3(focus.x + Math.sin(ang) * R, focus.y + 0.1 + k * 0.5, focus.z + Math.cos(ang) * R); };
+  function camFrame(now) {
+    const focus = cutStart && introAt > cutStart ? cutFocus() : null;
+    if (focus && now < introAt) { const k = (now - cutStart) / (introAt - cutStart), e = k * k * (3 - 2 * k); cam.position.copy(cutPose(focus, e)); cam.lookAt(focus); camHome = false; return true; }
+    if (focus && now < introAt + 900) { const e0 = (now - introAt) / 900, e = e0 * e0 * (3 - 2 * e0); cam.position.lerpVectors(cutPose(focus, 1), CAM_POS, e); cam.lookAt(new THREE.Vector3().lerpVectors(focus, CAM_AT, e)); camHome = false; return false; }
+    if (!camHome) { cam.position.copy(CAM_POS); cam.lookAt(CAM_AT); camHome = true; } return false;
+  }
+  const ensureLeader = id => { if (leaders[id] || !buildLeader3D) return; const l = buildLeader3D(id); if (!l) return; l.g.position.set(5.6, 0, -4.6); l.g.rotation.y = -0.6; l.g.scale.setScalar(1.3); scene.add(l.g); leaders[id] = l; const key = new THREE.SpotLight(0xffffff, 1.8, 14, 0.5, 0.6); key.position.set(2, 6, 1); key.target = l.g; scene.add(key); l.key = key; const ar = buildArena3D(id); scene.add(ar); arenas[id] = ar; };
   const signature = () => { const l = leaders[gymId]; if (!l || !mineM) return; const from = new THREE.Vector3(); (l.hand || l.g).getWorldPosition(from); fx.push(signatureFx(gymId, scene, from, mineM.position.clone())); };
   const ensureFister = () => { if (fister) return; fister = new THREE.Group(); const root = new THREE.Group(); fister.add(root); fisterTick = buildBoss3D('fister', root).tick; fister.position.set(4.75, 1.62, -3.9); fister.rotation.y = -0.6; fister.scale.setScalar(1.05); scene.add(fister); const lamp = new THREE.PointLight(0x7dff5a, 2.5, 6); lamp.position.set(3.2, 2.5, -2.5); fister.add(lamp); const key = new THREE.SpotLight(0xffffff, 2.2, 14, 0.5, 0.5); key.position.set(1.5, 6, 2); key.target = fister; scene.add(key); };
   const throwComics = () => { if (!fister || !mineM) return; const tex = fisterCoverTextures(); for (let k = 0; k < 4; k++) { const card = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.62), new THREE.MeshBasicMaterial({ map: tex[k % Math.max(1, tex.length)] || null, color: tex.length ? 0xffffff : 0x39ff14, side: THREE.DoubleSide })); card.position.set(4.0, 4.0, -3.1); card.userData = { at: performance.now() + k * 160, from: card.position.clone(), k }; scene.add(card); thrown.push(card); } };
   const place = (name, mine) => { const m = buildBeast3D(name); if (mine) { m.position.set(-1.5, 0.12, 1.7); m.rotation.y = 2.5; m.scale.setScalar(0.95); } else { m.position.set(2.3, 0.12, -2.2); m.rotation.y = -0.55; m.scale.setScalar(1.15); } scene.add(m); return m; };
   const say = (t, ms = 2600) => { msg = t; clearTimeout(say.t); say.t = setTimeout(() => { msg = ''; }, ms); };
-  function ui() {
+  function ui(cutting = false) {
     const S = scale, f = (s, x, y, size = 6, c = '#202830') => { ctx.fillStyle = c; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
     const box = (x, y, w, hh, name, hp, lv) => { ctx.fillStyle = '#f8f8f8ee'; ctx.strokeStyle = '#202830'; ctx.lineWidth = 2 * S; ctx.beginPath(); ctx.roundRect(x * S, y * S, w * S, hh * S, 6 * S); ctx.fill(); ctx.stroke(); f(name.slice(0, lv ? 11 : 13), x + 6, y + 11, 6); if (lv) f('L' + lv, x + w - 26, y + 11, 6); ctx.fillStyle = '#3a4250'; ctx.fillRect((x + 20) * S, (y + 16) * S, (w - 28) * S, 5 * S); ctx.fillStyle = hp < 0.25 ? '#e84a3a' : hp < 0.5 ? '#f2c230' : '#3ccf5a'; ctx.fillRect((x + 21) * S, (y + 17) * S, Math.max(0, (w - 30) * hp) * S, 3 * S); f('HP', x + 6, y + 21, 5); };
-    if (b) { box(6, 6, 104, 26, b.foe.name, Math.max(0, shownFoe)); box(130, 72, 104, 28, b.mine.name, b.mine.hp, b.mine.level || 1); }
+    if (cutting && b) { // the entrance: letterbox bars, the leader's name and the arena
+      ctx.fillStyle = '#05060a'; ctx.fillRect(0, 0, W * S, 14 * S); ctx.fillRect(0, 88 * S, W * S, 18 * S);
+      const g = gymOf(b.trainer); f((g?.arena || 'THE GYM') + (b.rematch ? ' · REMATCH #' + b.rematch : ''), 8, 10, 5, '#aab0bf'); f('GYM LEADER', 8, 96, 5, '#ffd84a'); f(b.trainer.slice(0, 18), 8, 104, 8, '#ffffff');
+    } else if (b) { box(6, 6, 104, 26, b.foe.name, Math.max(0, shownFoe)); box(130, 72, 104, 28, b.mine.name, b.mine.hp, b.mine.level || 1); }
     // The DS-style touch panel: the line of text, then the four moves as big rounded buttons.
     ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
     const introT = (performance.now() - introAt) / 2400;
-    f(msg || (b && b.foe.name === 'SPIDER-CHEEKS' && b.foe.hp > 0.002 && introT >= 1 && cheeksShow(performance.now() / 1000 + 1.3) ? 'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!' : '') || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
+    f((cutting && b && gymOf(b.trainer) ? '"' + gymOf(b.trainer).line + '"' : '') || msg || (b && b.foe.name === 'SPIDER-CHEEKS' && b.foe.hp > 0.002 && introT >= 1 && cheeksShow(performance.now() / 1000 + 1.3) ? 'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!' : '') || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
     moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); f((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? '#202830' : '#ffffff'); });
   }
   function frame(now) {
     raf = requestAnimationFrame(frame); if (now - last < 33) return; last = now; const t = now / 1000;
     if (mineM) mineM.userData.tick(t); if (foeM) foeM.userData.tick(t + 1.3);
-    if (crew) { const walk = Math.max(0, 1 - (now - introAt) / 1400); crew.forEach((c, i) => { c.g.visible = !!b; c.tick(t, now); c.g.position.x = c.home.x + c.from * walk * walk * 4; }); }
+    if (crew) { const walk = Math.min(1, Math.max(0, 1 - (now - introAt) / 1400)); crew.forEach((c, i) => { c.g.visible = !!b; c.tick(t, now); c.g.position.x = c.home.x + c.from * walk * walk * 4; }); }
     // Intro: the foe drops in, yours slides in.
     const it = Math.min(1, (now - introAt) / 1600), landing = now - introAt < 3200; if (foeM && landing) { foeM.position.y = 0.12 + Math.max(0, 1 - it * 1.6) * 3; } if (mineM && landing) mineM.position.x = -1.5 - Math.max(0, 1 - it * 1.3) * 3; // (keeps setting the landing spot a while, so a slow frame never leaves one in the air)
     // Attacks: a glowing shot from one to the other, the one hit flashing and shaking.
@@ -258,12 +274,12 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     shownFoe += ((b?.foe.hp ?? 1) - shownFoe) * 0.12; if (foeM && shownFoe <= 0.003) foeM.position.y = Math.max(-1.6, foeM.position.y - 0.04);
     // Evolving: the old and new flicker faster and faster, a white flash, then the new one.
     if (evo) { const et = (now - evo.at) / 3200; if (et >= 1.2) evo = null; else if (mineM) { const flick = Math.floor((now - evo.at) / Math.max(40, 220 * (1 - et))) % 2; mineM.visible = et < 1 ? true : true; mineM.traverse(o => { if (o.material?.emissive) o.material.emissive.setRGB(flick && et < 1 ? 1 : 0, flick && et < 1 ? 1 : 0, flick && et < 1 ? 1 : 0); }); } }
-    r.render(scene, cam); ctx.drawImage(gl, 0, 0); ui();
+    const cutting = camFrame(now); r.render(scene, cam); ctx.drawImage(gl, 0, 0); ui(cutting);
   }
   return {
     set(next, { moves: mv, pick: p } = {}) {
       const k = next ? next.kind + '|' + next.foe.name : '';
-      if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (next.trainer === 'MR FISTER') setTimeout(() => throwComics(), 2200); else if (next.gym) setTimeout(() => { if (b === next || (b && b.trainer === next.trainer)) signature(); }, 2300); } // they open with their signature move
+      if (k && k !== key) { const cut = next.kind === 'rival' && (next.gym || next.trainer === 'MR FISTER') ? CUT_MS : 0; cutStart = performance.now(); introAt = cutStart + cut; camHome = false; shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (next.trainer === 'MR FISTER') setTimeout(() => throwComics(), cut + 2200); else if (next.gym) setTimeout(() => { if (b === next || (b && b.trainer === next.trainer)) signature(); }, cut + 2300); } // they open with their signature move
       if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 1600) { const gm = gymMoveFor(next.trainer, foeHits), m = gm || foeMoveFor(next.foe.name, foeHits); foeHits++; const sig = !!next.gym && next.trainer !== 'MR FISTER' && gm === gymOf(next.trainer).moves[0]; foeAnim = { kind: moveAnim(m), at: performance.now(), sig }; if (next.trainer === 'MR FISTER') throwComics(); else if (sig) signature(); say((next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + m + '!'); } lastTenth = tenth; }
       key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (b) ensureCrew();
       gymId = b && b.kind === 'rival' ? (b.gym || (b.trainer === 'MR FISTER' ? 'fister' : '')) : '';

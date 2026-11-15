@@ -2,6 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
 import { WEATHERS, areaOptions, AREA_ICONS, movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
+import { cleanFlipItems } from './flipbook.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
 import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
@@ -44,7 +45,7 @@ export class ManaLiveStudio extends DurableObject {
     return { ...publicStats(state.stats, state.settings), dungeon: publicDungeon(state.dungeon, state.settings, state.stats?.showId === state.settings.showId ? state.stats.gross : 0), beasts: publicBeasts(state.beasts, state.settings, state.beastStarter || ''), vote: state.vote ? { kind: state.vote.kind, question: state.vote.question || '', options: state.vote.options } : null, beastMove: state.beastMove || 0, beastStarter: state.beastStarter || '' };
   }
   publicState(state = this.read()) {
-    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], fisterFace:state.fisterFace || '', machine:this.pubMachine(state), serverNow:Date.now() };
+    return { settings:state.settings, revision:state.revision, effect:state.effect, stats:this.publicStats(state), stage:state.stage, pics:state.pics || [], fisterFace:state.fisterFace || '', machine:this.pubMachine(state), flip:state.flip || null, serverNow:Date.now() };
   }
   // Which game is on.
   beastsOn(s) { return s.settings.gameMode === 'beasts'; }
@@ -359,6 +360,21 @@ export class ManaLiveStudio extends DurableObject {
     this.write(s);
     this.broadcast({ type:'state', ...this.publicState(s) });
     return this.publicState(s);
+  }
+  // THE FOC FLIPBOOK (store, 2026-11-14): this week's books flipping on the overlay -- each cover, the price, the
+  // synopsis. The remote sends the books; the page on screen comes from the studio clock (flip.at), so every overlay
+  // shows the same one. NEXT / BACK move the clock a book; nothing is random.
+  setFlip(input = {}) {
+    const s = this.read(), f = { on: false, items: [], secs: 12, mode: 'full', title: '', at: Date.now(), ...(s.flip || {}) }, now = Date.now();
+    if (Array.isArray(input.items)) { f.items = cleanFlipItems(input.items); if (!f.items.length) throw new Error('No books with covers to flip through'); f.at = now; }
+    if (input.secs !== undefined) { const n = Math.round(Number(input.secs)); if (!(n >= 5 && n <= 60)) throw new Error('Flipbook: 5 to 60 seconds a book'); f.secs = n; f.at = now; }
+    if (['full', 'lower'].includes(input.mode)) f.mode = input.mode;
+    if (typeof input.title === 'string') f.title = input.title.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 40).toUpperCase();
+    if (input.step === 1 || input.step === -1) f.at -= input.step * f.secs * 1000;
+    if (typeof input.on === 'boolean') { if (input.on && !f.on) f.at = now; f.on = input.on && f.items.length > 0; }
+    s.flip = f; this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
+    return { flip: f };
   }
   // A sale marks its item sold out in the machine (by our item id, or the item that was NOW PLAYING).
   // THE BREAK BOARD (2026-11-13): who has which spot -- only with SHOW BUYER NAMES on (off by default); otherwise no names leave the room.

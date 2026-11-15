@@ -281,6 +281,10 @@ const beastMode=()=>settings.gameMode==='beasts';
 let vendDraw=null,machine=null;
 import('./vending.mjs?v=6').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
+// THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
+let flipDraw=null,flipState=null;
+import('./flipbook.mjs?v=1').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
+function paintFlip(f){flipState=f||null;flipDraw?.(flipState,{now:()=>Date.now()+offset});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 let shownLevel=0,shelfKey='';
 function paintBeasts(d){
@@ -295,7 +299,7 @@ function paintBeasts(d){
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   // 3DS: the battle in 3D (scripts/beasts-3d.mjs); the others: the pixel battle in their colours.
   const want3d=settings.beastsGfx==='3ds';if(battle&&battle3d!==want3d){battle.stop();battle=null;beastsOn=false;}
-  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=10').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
+  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=11').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
   battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0,gfx:settings.beastsGfx||'gbc'});
   // The rival trainer: the boss's own art, in four greens.
   cv.style.top=Math.max(0,Number(settings.y)-560)+'px';
@@ -677,6 +681,7 @@ function connect() {
     if(Array.isArray(m.pics)){shedPics=m.pics;loadPictures();loadFgPics();}
     if(typeof m.fisterFace==='string'&&m.fisterFace!==fisterFaceShown){fisterFaceShown=m.fisterFace;gl3d?.setFisterFace?.(m.fisterFace);}
     if(m.machine||m.settings)paintMachine(m.machine||machine);
+    if('flip' in m)paintFlip(m.flip);
     if(m.stats)paintStats(m.stats,m.type==='effect'||m.type==='stats');
     if(m.type==='effect'||m.type==='snapshot')receiveEffect(m.effect,m.type==='snapshot');}catch{}};
   socket.onclose=ev=>{if(ev.code===1008)return;setTimeout(connect,Math.min(30000,1000*2**Math.min(retry++,5)));};
@@ -707,4 +712,4 @@ if(preview) window.addEventListener('message',ev=>{if(ev.source!==parent || ev.o
   if(ev.data?.type==='mana-camera'){fp?.setCamera?.(ev.data.cam);front?.setCamera?.(ev.data.cam);return;}
   // The remote's TEST A BOSS ATTACK (preview only).
   if(ev.data?.type==='mana-attack'){const d=stats.dungeon,b=d?.boss?{name:d.boss.name,character:d.boss.character}:stats.boss;if(b)bossMove(b,2);return;}
-  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});
+  if(ev.data?.type==='mana-preview'){apply(ev.data.settings);if(Array.isArray(ev.data.pics)){shedPics=ev.data.pics;loadPictures();loadFgPics();}if(ev.data.stage){stage=ev.data.stage;paintStage();}if(ev.data.machine||ev.data.settings)paintMachine(ev.data.machine||machine);if('flip' in ev.data)paintFlip(ev.data.flip);if(ev.data.stats)paintStats(ev.data.stats,!!ev.data.effect);if(ev.data.effect)receiveEffect(ev.data.effect);}});

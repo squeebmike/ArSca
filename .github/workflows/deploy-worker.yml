@@ -185,6 +185,7 @@ on:
       - scripts/live-studio-room.mjs
       - scripts/beasts.mjs
       - scripts/vending.mjs
+      - scripts/flipbook.mjs
       - scripts/live-studio-model.mjs
       - scripts/pricecharting-daily-sync.mjs
       - scripts/sitemap-cache.mjs
