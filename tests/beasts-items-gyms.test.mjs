@@ -103,7 +103,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8'), ov = readFileSync(new URL('../scripts/live-studio-overlay.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("if (gfx === '3ds') {") && src.includes('DS: the bottom screen'));
   assert.ok(b3.includes('export function buildBeast3D(name)') && b3.includes('export function createBattle3D(canvas') && !/Math\.random/.test(b3));
-  assert.ok(ov.includes("import('./beasts-3d.mjs?v=9')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
+  assert.ok(ov.includes("import('./beasts-3d.mjs?v=10')") && ov.includes("const want3d=settings.beastsGfx==='3ds'"));
   const M = await import('../scripts/live-studio-model.mjs'); assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, beastsGfx: '3ds' }).beastsGfx, '3ds');
   console.log('DS / 3DS: passed');
 }
@@ -198,3 +198,6 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const light = f => f.slice(20, 29).flat().filter(v => v === 0).length; assert.ok(light(back) > light(front) + 20, 'the red behind, from the back');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes("drawBeast(beast(b.foe.name, cheeksOn)") && src.includes("'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!'") && b3.includes("if (plan === 'baboon') { const k = ((t % 9) + 9) % 9") && b3.includes("'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!'")); }
+// The host and Champ in the 3DS battle (store, 2026-11-14): the same two as the pixel sprites, reacting to the fight.
+{ const b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8');
+  for (const k of ["export function trainer3D(who) {", "x.fillText('MP', 128, 78)", "x.fillText('24', 0, 92)", "// The cap on backwards", "// Bald and shiny, glasses.", "crew = [trainer3D('host'), trainer3D('champ')]", "crew?.forEach(c => c.point())", "levelUp(name, level) { crew?.forEach(c => c.cheer());", "evolve(from, to) { evo = { at: performance.now() }; crew?.forEach(c => c.cheer());"]) assert.ok(b3.includes(k), k); }

@@ -150,6 +150,49 @@ export function buildBeast3D(name) {
   return outer;
 }
 
+// THE HOST AND CHAMP IN 3D (store, 2026-11-14: "add 3D me and Champ to the 3DS battle"), the same two as the pixel
+// sprites: the host in a backwards cap, a dark beard and the black MP jersey (24 on the back); Champ bald and shiny, in
+// glasses, a full beard and a big grey hoodie. You stand left of their beast and Champ right, turned to the fight, and react: the host points when
+// your beast attacks, Champ pumps a fist, both cheer on a level-up or an evolution. Toon-shaded, built from shapes here.
+export function trainer3D(who) {
+  const champ = who === 'champ', g = new THREE.Group(), skin = toon([236, 184, 148]), arms = {};
+  const jersey = (() => { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#1b1b22'; x.fillRect(0, 0, 256, 128); x.fillStyle = '#3a5ab0'; x.fillRect(0, 0, 256, 10); x.fillStyle = '#f4efe2'; x.font = 'bold 44px sans-serif'; x.textAlign = 'center'; x.fillText('MP', 128, 78); x.font = 'bold 64px sans-serif'; x.fillText('24', 0, 92); x.fillText('24', 256, 92); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const top = champ ? toon([196, 198, 208]) : toon([255, 255, 255], { map: jersey }), jeans = toon([52, 62, 92]), shoe = toon([240, 240, 244]);
+  for (const sx of [-1, 1]) { at(g, cyl(0.11, 0.1, 0.86, jeans, 10), sx * 0.14, 0.45, 0); at(g, new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.32), shoe), sx * 0.14, 0.06, 0.06); }
+  const torso = at(g, cyl(champ ? 0.42 : 0.33, champ ? 0.44 : 0.29, 0.82, top, 18), 0, 1.28, 0); torso.rotation.y = Math.PI; torso.scale.z = 0.78;
+  if (champ) { const hood = at(g, new THREE.Mesh(new THREE.SphereGeometry(0.3, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), top), 0, 1.66, -0.2); hood.rotation.x = -1.2; at(g, new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 0.05), toon([176, 178, 190])), 0, 1.06, 0.33); for (const sx of [-1, 1]) at(g, cyl(0.012, 0.012, 0.26, toon([245, 245, 250]), 6), sx * 0.07, 1.48, 0.33); }
+  for (const sx of [-1, 1]) { const piv = at(g, new THREE.Group(), sx * (champ ? 0.46 : 0.38), 1.6, 0); at(piv, ball(0.13, top, 10), 0, 0, 0); at(piv, cyl(champ ? 0.1 : 0.075, champ ? 0.09 : 0.065, 0.62, champ ? top : skin, 10), 0, -0.33, 0); at(piv, ball(0.08, skin, 10), 0, -0.68, 0); arms[sx] = piv; piv.rotation.z = sx * 0.12; }
+  at(g, cyl(0.09, 0.1, 0.16, skin), 0, 1.72, 0);
+  const head = at(g, new THREE.Group(), 0, 2.0, 0); const skull = at(head, ball(0.27, champ ? toon([236, 184, 148], { emissive: 0x2a1a10 }) : skin, 22), 0, 0, 0); skull.scale.set(0.95, 1.04, 0.97);
+  const dark = new THREE.MeshBasicMaterial({ color: 0x14121c });
+  const beardM = toon(champ ? [120, 78, 48] : [44, 32, 26]);
+  const beard = at(head, new THREE.Mesh(new THREE.SphereGeometry(0.285, 20, 12, Math.PI * 0.1, Math.PI * 0.8, Math.PI * 0.58, Math.PI * 0.36), beardM), 0, champ ? -0.02 : 0.0, 0.02); beard.scale.set(1, champ ? 1.25 : 1.05, 1.05);
+  for (const sx of [-1, 1]) at(head, new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.03, 0.03), beardM), sx * 0.08, -0.06, 0.25).rotation.z = sx * -0.25; // moustache
+  at(head, new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.022, 0.02), new THREE.MeshBasicMaterial({ color: 0xf4efe2 })), 0, -0.13, 0.262); // a grin in the beard
+  for (const sx of [-1, 1]) { at(head, ball(0.03, dark, 8), sx * 0.09, 0.04, 0.245).scale.set(1, 1.3, 0.6); at(head, new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.022, 0.02), beardM), sx * 0.09, 0.12, 0.25).rotation.z = sx * 0.12; }
+  at(head, cone(0.03, 0.08, skin, 6), 0, -0.01, 0.28).rotation.x = Math.PI / 2;
+  if (champ) {
+    // Bald and shiny, glasses.
+    at(head, ball(0.06, new THREE.MeshBasicMaterial({ color: 0xffffff }), 8), -0.08, 0.2, 0.12).scale.set(1, 0.6, 0.6);
+    for (const sx of [-1, 1]) { at(head, new THREE.Mesh(new THREE.TorusGeometry(0.065, 0.014, 6, 18), dark), sx * 0.095, 0.04, 0.26); at(head, new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.35 })), sx * 0.095, 0.04, 0.262); }
+    at(head, new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 0.014), dark), 0, 0.05, 0.27);
+  } else {
+    // The cap on backwards: the crown over the top, the brim out the back.
+    const capM = toon([30, 40, 70]); at(head, new THREE.Mesh(new THREE.SphereGeometry(0.285, 18, 9, 0, Math.PI * 2, 0, Math.PI * 0.42), capM), 0, 0.03, 0);
+    const brim = at(head, new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.025, 0.22), capM), 0, 0.12, -0.33); brim.rotation.x = 0.15; at(head, ball(0.03, toon([58, 90, 176]), 8), 0, 0.29, 0);
+  }
+  for (const sx of [-1, 1]) at(head, ball(0.05, skin, 8), sx * 0.26, 0.0, 0).scale.set(0.5, 1, 0.8); // ears
+  outline(g);
+  let cheerAt = -1e9, pointAt = -1e9;
+  return { g, head, arms, cheer() { cheerAt = performance.now(); }, point() { pointAt = performance.now(); }, tick(t, now) {
+    g.position.y = Math.abs(Math.sin(t * 2 + (champ ? 1 : 0))) * 0.015; head.rotation.y = Math.sin(t * 0.7 + (champ ? 2 : 0)) * 0.15;
+    const c = (now - cheerAt) / 1600, pt = (now - pointAt) / 1300;
+    if (c >= 0 && c < 1) { const up = Math.abs(Math.sin(c * Math.PI * 3)); for (const sx of [-1, 1]) { arms[sx].rotation.z = sx * (2.6 - up * 0.4); arms[sx].rotation.x = 0; } }
+    else if (pt >= 0 && pt < 1) { const e = Math.min(1, pt * 4, (1 - pt) * 4); if (champ) { arms[1].rotation.z = 0.2 + e * 2.2 + Math.sin(pt * 30) * 0.15 * e; arms[-1].rotation.z = -0.12; arms[1].rotation.x = 0; } else { arms[-1].rotation.x = -e * 1.5; arms[-1].rotation.z = -0.12 - e * 0.3; arms[1].rotation.z = 0.12; } }
+    else for (const sx of [-1, 1]) { arms[sx].rotation.z = sx * (0.12 + Math.sin(t * 1.6 + sx) * 0.03); arms[sx].rotation.x = 0; }
+  } };
+}
+
 export function createBattle3D(canvas, { scale = 3 } = {}) {
   const W = 240, H = 160; canvas.width = W * scale; canvas.height = H * scale;
   const ctx = canvas.getContext('2d'), gl = document.createElement('canvas');
@@ -164,6 +207,8 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   for (let k = 0; k < 7; k++) { const tr = new THREE.Group(); tr.position.set(-6 + k * 2.3, 0, -8 - (k % 3)); trees.add(tr); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6b4a2a })); tk.position.y = 0.6; tr.add(tk); const lf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), new THREE.MeshLambertMaterial({ color: 0x3f8f3a })); lf.position.y = 1.7; tr.add(lf); }
   let b = null, mineM = null, foeM = null, mineName = '', foeName = '', moves = DEFAULT_MOVES, pick = 0, msg = '', anim = null, foeAnim = null, evo = null, raf = 0, last = 0, key = '', introAt = -1e9, lastTenth = 10, foeHits = 0, shownFoe = 1;
   const shot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), new THREE.MeshBasicMaterial({ color: 0xffe14a })); shot.visible = false; scene.add(shot);
+  // You on the left of their beast, Champ on the right, both turned to the fight; they walk in from the sides with the intro.
+  let crew = null; const ensureCrew = () => { if (crew) return; crew = [trainer3D('host'), trainer3D('champ')]; crew.forEach((c, i) => { c.home = i ? new THREE.Vector3(3.95, 0, -0.8) : new THREE.Vector3(0.75, 0, -2.5); c.g.position.copy(c.home); c.g.rotation.y = i ? -0.55 : 0.75; c.g.scale.setScalar(0.85); c.from = i ? 1 : -1; scene.add(c.g); }); };
   // MR FISTER'S GYM IN 3D (store, 2026-11-14): on a gym fight against him, the field turns into his arena -- a dark floor,
   // a green ring under each platform, green spotlights -- and he stands behind SPIDER-CHEEKS pumping the gauntlet, throwing the
   // store's comics (the gauntlet's covers) at your beast every time his beast attacks.
@@ -193,6 +238,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   function frame(now) {
     raf = requestAnimationFrame(frame); if (now - last < 33) return; last = now; const t = now / 1000;
     if (mineM) mineM.userData.tick(t); if (foeM) foeM.userData.tick(t + 1.3);
+    if (crew) { const walk = Math.max(0, 1 - (now - introAt) / 1400); crew.forEach((c, i) => { c.g.visible = !!b; c.tick(t, now); c.g.position.x = c.home.x + c.from * walk * walk * 4; }); }
     // Intro: the foe drops in, yours slides in.
     const it = Math.min(1, (now - introAt) / 1600), landing = now - introAt < 3200; if (foeM && landing) { foeM.position.y = 0.12 + Math.max(0, 1 - it * 1.6) * 3; } if (mineM && landing) mineM.position.x = -1.5 - Math.max(0, 1 - it * 1.3) * 3; // (keeps setting the landing spot a while, so a slow frame never leaves one in the air)
     // Attacks: a glowing shot from one to the other, the one hit flashing and shaking.
@@ -219,7 +265,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
       const k = next ? next.kind + '|' + next.foe.name : '';
       if (k && k !== key) { introAt = performance.now(); shownFoe = next.foe.hp; lastTenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (next.trainer === 'MR FISTER') setTimeout(() => throwComics(), 2200); else if (next.gym) setTimeout(() => { if (b === next || (b && b.trainer === next.trainer)) signature(); }, 2300); } // they open with their signature move
       if (next && b && k === key) { const tenth = Math.ceil((next.mine?.hp ?? 1) * 10); if (tenth < lastTenth && performance.now() - introAt > 1600) { const gm = gymMoveFor(next.trainer, foeHits), m = gm || foeMoveFor(next.foe.name, foeHits); foeHits++; const sig = !!next.gym && next.trainer !== 'MR FISTER' && gm === gymOf(next.trainer).moves[0]; foeAnim = { kind: moveAnim(m), at: performance.now(), sig }; if (next.trainer === 'MR FISTER') throwComics(); else if (sig) signature(); say((next.kind === 'wild' ? 'WILD ' : 'FOE ') + next.foe.name.slice(0, 10) + ' USED ' + m + '!'); } lastTenth = tenth; }
-      key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p;
+      key = k; b = next; if (mv) moves = mv; if (Number.isInteger(p)) pick = p; if (b) ensureCrew();
       gymId = b && b.kind === 'rival' ? (b.gym || (b.trainer === 'MR FISTER' ? 'fister' : '')) : '';
       const gym = gymId === 'fister'; if (gym) ensureFister(); if (fister) fister.visible = gym; arena.visible = gym;
       if (gymId && !gym) ensureLeader(gymId); for (const id in leaders) { const on = id === gymId; leaders[id].g.visible = on; leaders[id].key.visible = on; arenas[id].visible = on; }
@@ -230,9 +276,9 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
       if (b && b.foe.name !== foeName) { if (foeM) scene.remove(foeM); foeName = b.foe.name; foeM = place(foeName, false); }
       if (!b) { if (mineM) scene.remove(mineM); if (foeM) scene.remove(foeM); mineM = foeM = null; mineName = foeName = ''; }
     },
-    attack(name) { const i = moves.indexOf(String(name).toUpperCase()); if (i >= 0) pick = i; anim = { kind: moveAnim(name), at: performance.now() }; say((b?.mine?.name || STARTER) + ' USED ' + String(name).toUpperCase() + '!'); },
-    evolve(from, to) { evo = { at: performance.now() }; say('WHAT? ' + String(from).toUpperCase().slice(0, 11) + ' IS EVOLVING!', 3300); setTimeout(() => say(String(from).toUpperCase().slice(0, 10) + ' EVOLVED INTO ' + String(to).toUpperCase().slice(0, 11) + '!', 3500), 3300); },
-    levelUp(name, level) { say(String(name).slice(0, 11) + ' GREW TO LV ' + level + '!'); },
+    attack(name) { const i = moves.indexOf(String(name).toUpperCase()); if (i >= 0) pick = i; anim = { kind: moveAnim(name), at: performance.now() }; crew?.forEach(c => c.point()); say((b?.mine?.name || STARTER) + ' USED ' + String(name).toUpperCase() + '!'); },
+    evolve(from, to) { evo = { at: performance.now() }; crew?.forEach(c => c.cheer()); say('WHAT? ' + String(from).toUpperCase().slice(0, 11) + ' IS EVOLVING!', 3300); setTimeout(() => say(String(from).toUpperCase().slice(0, 10) + ' EVOLVED INTO ' + String(to).toUpperCase().slice(0, 11) + '!', 3500), 3300); },
+    levelUp(name, level) { crew?.forEach(c => c.cheer()); say(String(name).slice(0, 11) + ' GREW TO LV ' + level + '!'); },
     setRival() {},
     start() { if (!raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; },
   };
