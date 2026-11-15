@@ -234,7 +234,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         if (beasts && settings0.gameMode === 'beasts') {
           // 3DS: the route in real 3D (scripts/beasts-3d.mjs); the others: the pixel route.
           const want3d = settings0.beastsGfx === '3ds'; if (beastsOn && world3d !== want3d) { world?.stop(); world = null; beastsOn = false; }
-          if (!beastsOn) { if (want3d && !b3d) { import('./beasts-3d.mjs?v=11').then(m => { b3d = m; paint(); }).catch(() => {}); return; } fp?.stop(); world = want3d ? b3d.createWorld3D(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }) : beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world3d = want3d; world.start(); beastsOn = true; mini.hidden = true; }
+          if (!beastsOn) { if (want3d && !b3d) { import('./beasts-3d.mjs?v=12').then(m => { b3d = m; paint(); }).catch(() => {}); return; } fp?.stop(); world = want3d ? b3d.createWorld3D(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }) : beasts.createWorld(canvas, { w: 240, h: Math.round(240 * 850 / 1080) }); world3d = want3d; world.start(); beastsOn = true; mini.hidden = true; }
           world.set({ floor: d.floor, pct: d.pct, phase: d.phase, face: settings0.beastsFace || '', buddy: settings0.beastsBuddy || '', drops: d.drops || [], timeOfDay: settings0.beastsTimeOfDay || '', area: d.area || '', weather: d.weather || '', gfx: settings0.beastsGfx || 'gbc', follower: settings0.beastsFollow !== false ? (d.form || '') : '' });
           bubble.classList.remove('on'); paintBattle(d); // the dungeon's boss taunt stays out of the route
           return;
@@ -266,7 +266,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       // screen behind the hosts while it's on (the remote's VENDING MACHINE).
       // Now drawn by scripts/vending.mjs (2026-11-13 polish): small or full screen behind the hosts, a BID button on every slot.
       let drawMachine = () => {}, lastMachine = null; const vmLook = () => ({ theme: settings0.gameMode === 'beasts' ? 'gb' : '' });
-      import('./vending.mjs?v=6').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
+      import('./vending.mjs?v=7').then(v => { drawMachine = v.createVending(document, { img, where: 'green' }); if (lastMachine) drawMachine(lastMachine, vmLook()); }).catch(e => console.warn('[shed] machine off:', e?.message || e));
       // THE BATTLE ON THE GREEN SCREEN (2026-11-13: "I may also want the pokemon game thing to also be the green screen ... I want the option"):
       // with WHERE THE BATTLE SHOWS on BEHIND US, the battle is drawn here, behind the hosts, instead of on the overlay.
       const bcv = Object.assign(document.createElement('canvas'), { id: 'shed-battle', hidden: true }); document.body.append(bcv);
@@ -276,7 +276,7 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
         const b = beasts && d && settings0.gameMode === 'beasts' && settings0.beastsBattle === 'green' ? beasts.battleFrom(d, { battery: beasts.beastHpFrom(Math.max(Number(stats?.lastSaleAt) || 0, Number(d.lastAt) || 0), Date.now() + offset, d.drainMs), bossName: d.boss?.name, starter: stats?.beastStarter }) : null;
         bcv.hidden = !b; if (!b) { if (battleOn) { battle?.stop(); battleOn = false; } return; }
         const want3d = settings0.beastsGfx === '3ds'; if (battle && battle3d !== want3d) { battle.stop(); battle = null; battleOn = false; }
-        if (!battle) { if (want3d) { if (!b3d) { import('./beasts-3d.mjs?v=11').then(m => { b3d = m; paintBattle(d); }).catch(() => {}); return; } battle = b3d.createBattle3D(bcv, { scale: 3 }); } else battle = beasts.createBattle(bcv, { scale: 3 }); battle3d = want3d; }
+        if (!battle) { if (want3d) { if (!b3d) { import('./beasts-3d.mjs?v=12').then(m => { b3d = m; paintBattle(d); }).catch(() => {}); return; } battle = b3d.createBattle3D(bcv, { scale: 3 }); } else battle = beasts.createBattle(bcv, { scale: 3 }); battle3d = want3d; }
         battle.set(b, { moves: beasts.movesFrom(settings0.beastsMoves), pick: Number(stats?.beastMove) || 0, gfx: settings0.beastsGfx || 'gbc' });
         if (!battleOn) { battle.start(); battleOn = true; }
       };

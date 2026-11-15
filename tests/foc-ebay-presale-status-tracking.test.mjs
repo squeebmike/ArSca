@@ -26,19 +26,20 @@ const buildCatalogEnd = preorders.indexOf('async function adminCycle', buildCata
   ? preorders.indexOf('\nasync function ', buildCatalogStart + 40)
   : preorders.length;
 const buildCatalogBody = preorders.slice(buildCatalogStart, buildCatalogEnd);
-assert.match(buildCatalogBody, /status=in\.\(presale,sold,in_stock\)&select=id,status,data`\)/,
+// The query moved into the shared focPresaleRows helper (paged), whose default covers all three statuses.
+assert.match(buildCatalogBody, /focPresaleRows\(db,storeId\)/); assert.match(preorders, /async function focPresaleRows\(db,storeId,status='presale,sold,in_stock'\)\{/,
   'buildCycleCatalog must query presale, sold, AND in_stock rows -- a partially-sold or since-arrived presale listing lives at status:in_stock');
 
 const ebayPresoldStart = preorders.indexOf('async function ebayPresoldBySku');
 const ebayPresoldEnd = preorders.indexOf('\n}', ebayPresoldStart) + 2;
 const ebayPresoldBody = preorders.slice(ebayPresoldStart, ebayPresoldEnd);
-assert.match(ebayPresoldBody, /status=in\.\(presale,sold,in_stock\)&select=id,status,data`\)/,
+assert.match(ebayPresoldBody, /focPresaleRows\(db,storeId\)/, // the shared helper, presale + sold + in_stock (checked above)
   'ebayPresoldBySku (feeds the real PRH distributor order via exportPrh/adminPrhSubmission) must include in_stock rows, or an already-sold eBay unit silently drops out of the distributor order');
 
 const receiveShipmentStart = preorders.indexOf('async function receiveShipment');
 const receiveShipmentPresaleQueryEnd = preorders.indexOf('const presaleByskuId=new Map();', receiveShipmentStart);
 const receiveShipmentPresaleQuery = preorders.slice(receiveShipmentStart, receiveShipmentPresaleQueryEnd);
-assert.match(receiveShipmentPresaleQuery, /status=in\.\(presale,sold,in_stock\)&select=id,status,data`\)/,
+assert.match(receiveShipmentPresaleQuery, /focPresaleRows\(db,storeId\)/,
   'receiveShipment\'s fulfillment-obligation query must include in_stock rows too, or an already-sold eBay unit is not reserved when the shipment is allocated');
 
 console.log('FOC eBay presale in_stock status-tracking contract checks passed');
@@ -82,9 +83,12 @@ console.log('FOC eBay presale partial-sale functional checks passed');
 // receive/convert workflow sets ebayPresaleConverted=true.
 // The route calls syncEbayOrdersForStore, a top-level function (so the cron can reach it too).
 const ebaySync = worker.slice(worker.indexOf('async function syncEbayOrdersForStore('), worker.indexOf('async function runScheduledEbayOrderSync('));
-assert.match(ebaySync, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true;/,
+// The sale itself is applied by the shared applyEbaySaleToRow, which holds the presale-balance rule.
+const applySale = worker.slice(worker.indexOf('async function applyEbaySaleToRow('), worker.indexOf('async function syncEbayOrdersForStore('));
+assert.match(ebaySync, /applyEbaySaleToRow\(/);
+assert.match(applySale, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true;/,
   'automatic eBay order sync must preserve the remaining FOC presale balance');
-assert.match(ebaySync, /const nextStatus = depleted \? 'sold' : preservePresale \? 'presale' : 'in_stock';/,
+assert.match(applySale, /const nextStatus = depleted \? 'sold' : preservePresale \? 'presale' : 'in_stock';/,
   'automatic eBay order sync must not expose a partial presale as in-stock');
 
 const externalSale = worker.slice(worker.indexOf("url.pathname === '/inventory/record-external-sale'"), worker.indexOf("url.pathname === '/ebay/orders/ship'"));

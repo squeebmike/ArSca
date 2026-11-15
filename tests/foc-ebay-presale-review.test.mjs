@@ -34,7 +34,7 @@ assert.doesNotMatch(beforePreview, /getEbayUserAccessToken/, 'preview must not n
 // what actually gets listed.
 assert.match(createBlock, /const title = \(typeof body\.title === 'string'.*\? body\.title\.trim\(\)\.substring\(0, 80\) : defaults\.title/,
   'client-edited title must win over the computed default');
-assert.match(createBlock, /const description = \(typeof body\.description === 'string'.*\? body\.description\.trim\(\)\.substring\(0, 4000\) : defaults\.description/,
+assert.match(createBlock, /const description = (withComicListingNotices\()?\(typeof body\.description === 'string'.*\? body\.description\.trim\(\)\.substring\(0, \d+\) : defaults\.description/,
   'client-edited description must win over the computed default');
 assert.match(createBlock, /const bestOfferEnabled = body\.bestOfferEnabled !== false/,
   'Best Offer must default to enabled per store request, but stay overridable from the review screen');
@@ -56,8 +56,8 @@ assert.match(worker, /!baseTitle\.toLowerCase\(\)\.includes\(String\(sku\.varian
 // Package weight: no page-count/format field exists on comic_skus, so this
 // buckets by cover price instead of a single flat guess that undercharges
 // shipping on hardcovers/compendiums.
-assert.match(worker, /priceCents >= 2000 \? \{ weightValue: 1\.5, weightUnit: 'POUND' \}/, 'expensive books (hardcover/compendium) must get a heavier default weight');
-assert.match(worker, /priceCents >= 1000 \? \{ weightValue: 0\.625, weightUnit: 'POUND' \}/, 'mid-price books (trade) must get a mid-tier default weight');
+assert.match(worker, /priceCents >= 2000 \? 1\.5 : /, 'expensive books (hardcover/compendium) must get a heavier default weight');
+assert.match(worker, /priceCents >= 1000\s*\n\s*\? \{ weightValue: \(priceCents >= 2000 \? 1\.5 : 0\.625\) \+ COMIC_GEMINI_MAILER\.emptyWeightLb, weightUnit: 'POUND' \}/, 'mid-price books (trade) must get a mid-tier default weight');
 
 // The eBay merchant location used to be hardcoded to a different business
 // entirely ("Walk-Off Sports Cards" in Kingston, WA) -- every FOC presale
@@ -92,7 +92,7 @@ assert.match(worker, /Store name\/address not set -- fill in the business name a
 assert.doesNotMatch(ensureLocationBody, /name: shipFrom\.name \|\| 'The Mana Pocket'/, 'must not fall back to a hardcoded business name when shipFrom.name is blank');
 assert.match(ensureLocationBody, /if \(from\.name && from\.street1 && from\.city && from\.state && from\.zip\) shipFrom = from;/, 'shipFrom must only be considered configured once a business name is present, not just an address');
 assert.match(ensureLocationBody, /name: shipFrom\.name,/, 'the eBay location name must come from this store\'s own configured shipFrom.name, not a literal or a guessed fallback');
-assert.match(worker, /import \{ handleFocRequest, syncFocStripeEvent, shippingSettings \} from '\.\/scripts\/foc-preorders\.mjs'/,
+assert.match(worker, /import \{ handleFocRequest, syncFocStripeEvent, shippingSettings,[^}]*\} from '\.\/scripts\/foc-preorders\.mjs'/,
   'shippingSettings must be imported from foc-preorders.mjs, not duplicated');
 
 // Store report: eBay's own listing edit page showed "Item condition" blank
@@ -118,7 +118,7 @@ assert.match(createAndPublishBody, /warnings\.push\(`eBay stored a different con
 // category actually persists on, instead of only ever sending the one
 // that was being silently dropped.
 assert.match(worker, /condition = '', conditionDescription = '', conditionDescriptors = \[\]/, 'buildEbayInventoryItemBody must accept a condition ConditionEnum, not just the numeric conditionId');
-assert.match(worker, /condition: condition \|\| undefined,/, 'the condition ConditionEnum must actually be sent in the inventory item body');
+assert.match(worker, /condition: condition \|\|[^,\n]*undefined,/, 'the condition ConditionEnum must actually be sent in the inventory item body');
 assert.match(worker, /quantity, categoryId: '259104', conditionId, condition: 'NEW',/, 'the FOC create route must send both conditionId and the "NEW" ConditionEnum');
 assert.match(worker, /categoryId: '259104', conditionId, condition: 'NEW',/, 'convert-to-instock must also send both conditionId and the "NEW" ConditionEnum');
 
@@ -384,13 +384,13 @@ assert.match(worker, /if \(!aspects\['Condition'\] && CONDITION_ASPECT_LABEL\[St
 assert.match(focDash, /var templates=vp\.ebayDescriptionTemplates\|\|\{\};/, 'must read the same per-category template settings the regular eBay listing tool uses');
 assert.match(focDash, /var customTemplate=templates\.Comic\|\|templates\.default\|\|'';/, 'must prefer a Comic-specific template, falling back to the default template');
 assert.match(focDash, /renderEbayDescriptionTemplate\(customTemplate,tokens\)/, 'must render the custom template through the shared {token} renderer');
-assert.match(focDash, /var templateAlreadyDisclosesPresale=\/presale\/i\.test\(renderedBody\);/, 'must check the RENDERED body (after token substitution) for an existing presale disclosure, not just the raw template text');
+assert.match(focDash, /var templateAlreadyDisclosesPresale=\/\\bPRESALE\\b\/\.test\(renderedBody\);/, 'must check the RENDERED body (after token substitution) for an existing presale disclosure, not just the raw template text');
 assert.match(focDash, /var disclosure=templateAlreadyDisclosesPresale\?'':\(isHtmlTemplate/, 'the fallback disclosure must be skipped entirely when the template already discloses presale status');
 assert.match(focDash, /'<p>PRESALE -- This comic has not been released yet and is not currently in stock\.<\/p>/,
   'the fallback presale disclosure must still exist as real HTML paragraphs for templates that do not mention presale');
 assert.match(focDash, /'PRESALE -- This comic has not been released yet and is not currently in stock\.\\n\\nExpected/,
   'the fallback presale disclosure must still exist in plain-text form for templates that do not mention presale');
-assert.match(focDash, /description=disclosure\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+renderedBody;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body must be appended after any fallback disclosure, with no stray separator when there is none');
+assert.match(focDash, /description=renderedBody\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+disclosure;\s*\n\s*usedCustomTemplate=true;/, 'the rendered custom template body comes first and any fallback disclosure goes at the bottom (store ask), with no stray separator when there is none');
 assert.match(focDash, /openSettingsSection\(\\'profile\\',\\'vendor-profile-panel\\'\)/, 'the modal must link to where the template is actually edited');
 
 // Store owner asked: what happens to an eBay presale listing for a book we
@@ -425,7 +425,7 @@ assert.match(syncHelperBody, /const hasLiveEbayListing=d\.ebayOfferId\|\|\(d\.eb
   'must recognize a live Trading-API-built listing (no ebayOfferId, but a real ebayListingId+ebaySku) same as a live REST one');
 assert.match(syncHelperBody, /const orderedTotal=finalQtyBySku\.get\(d\.focSkuId\);\s*\n\s*return d\.source==='foc_presale'&&d\.focCycleId===cycleId&&hasLiveEbayListing&&!\(orderedTotal>0\)&&Number\(d\.qty\?\?d\.quantity\?\?0\)>0/,
   'must only withdraw presale listings for SKUs not present (or present at zero) in the given ordered-quantity map, now including Trading-built ones');
-assert.match(syncHelperBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,presaleRows,withdrawingIds\)/, 'must actually withdraw the eBay offer (via the group-aware helper, not just flag it locally)');
+assert.match(syncHelperBody, /await withdrawFocPresaleRow\(env,deps,ebayToken,row,(all)?[pP]resaleRows,withdrawingIds(,endedGroups)?\)/, 'must actually withdraw the eBay offer (via the group-aware helper, not just flag it locally)');
 assert.match(syncHelperBody, /ebayWithdrawnReason:'not_included_in_prh_order'/, 'the withdrawn row must record why, for later auditing');
 // Store report: submitting the PRH order withdrew unordered eBay listings
 // as designed, but the very next PRH export showed those SAME never-sold
@@ -442,7 +442,7 @@ assert.match(syncHelperBody, /const alreadySoldBeforeWithdraw=Math\.max\(0,Numbe
 assert.match(syncHelperBody, /focPresaleOriginalQty:alreadySoldBeforeWithdraw,ebayWithdrawnAt:/,
   'withdrawing an unordered listing must pin focPresaleOriginalQty down to the real sold-so-far count, not leave it at the full original listing quantity');
 assert.match(worker, /async function withdrawEbayOffer\(env, ebayToken, offerId\)/, 'must have a reusable withdraw helper, not just the /ebay/end route inline');
-assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*ebayReviseVariationQuantityTrading, endEbayListingTrading,\s*\n[^}]*\}\);/, 'the withdraw helper, group-withdraw helper, quantity-revise helper, token getter, and the Trading-API-native quantity-revise/end helpers must all be injected into the FOC module\'s deps');
+assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOfferGroup, endEbayVolumeDiscount, ebayReviseOfferQuantity,\s*\n\s*ebayReviseVariationQuantityTrading, endEbayListingTrading,/, 'the withdraw helper, group-withdraw helper, quantity-revise helper, token getter, and the Trading-API-native quantity-revise/end helpers must all be injected into the FOC module\'s deps');
 
 // Store request: once the PRH order locks in, a live FOC presale
 // listing's buyable quantity should immediately reflect the real ordered
@@ -454,9 +454,9 @@ assert.match(worker, /getEbayUserAccessToken, withdrawEbayOffer, withdrawEbayOff
 // receiving the shipment is a separate, later step.
 assert.match(syncHelperBody, /const alreadySold=Math\.max\(0,Number\(d\.focPresaleOriginalQty\|\|currentAvailable\)-currentAvailable\);/,
   'must subtract copies already sold via this presale listing so it never shows more available than what is actually left to sell');
-assert.match(syncHelperBody, /const newAvailable=Math\.max\(0,orderedTotal-alreadySold\);/, 'the new available quantity must be the ordered total minus what already sold');
+assert.match(syncHelperBody, /const newAvailable=Math\.max\(0,orderedTotal-alreadySold-Number\(websiteQty\.get\(d\.focSkuId\)\|\|0\)\);/, 'the new available quantity must be the ordered total minus what already sold on eBay and minus the website preorders for that cover (so the same copies are never sold twice)');
 assert.match(syncHelperBody, /await deps\.ebayReviseOfferQuantity\(env,ebayToken,d\.ebayOfferId,newAvailable\)/, 'must actually push the new quantity to the live eBay offer, not just update the local row');
-assert.match(syncHelperBody, /qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:orderedTotal/, 'the local row and its sold-so-far baseline must both be updated to match');
+assert.match(syncHelperBody, /qty:newAvailable,quantity:newAvailable,focPresaleOriginalQty:alreadySold\+newAvailable/, 'the local row and its sold-so-far baseline (sold so far + now available, so the next sold count stays right) must both be updated to match');
 assert.match(focDash, /if\(d\.ebayWithdrawnCount>0\)toast_dash/, 'the dashboard must surface when a listing was auto-withdrawn, not just silently succeed');
 
 // Store category: eBay's Seller Hub "Store category" (distinct from the
@@ -566,7 +566,9 @@ assert.match(focDash, /if\(result\.warnings&&result\.warnings\.length\)toast_das
   'the dashboard must actually surface a returned warning, not just receive it silently');
 
 // Store asked for a higher default presale quantity than one copy.
-assert.match(focDash, /id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="10"/, 'default presale quantity must be 10, not 1');
+// (Later: ratio covers default by their ratio -- still 10 for a regular cover.)
+assert.match(focDash, /id="foc-eb-qty" class="tsi" type="number" min="1" max="200" value="'\+focDefaultEbayQty\(skuId\)\+'"/, 'the presale quantity field must start at the default, not 1');
+assert.match(focDash, /function focRatioQty\(v\)\{\s*\n\s*if\(!v\)return 10;[\s\S]{0,80}if\(!v\.isIncentive&&!r\)return 10;/, 'default presale quantity must be 10 for a regular cover, not 1');
 
 // Store report: a presale item listed through the REGULAR "list on eBay"
 // dashboard tool (not the FOC review screen) came back showing the store's
@@ -576,9 +578,9 @@ assert.match(focDash, /id="foc-eb-qty" class="tsi" type="number" min="1" max="20
 // all -- only the FOC-specific route ever computed the right condition/
 // policy. Fixed at the shared source so it applies regardless of which UI
 // button was used to list the item.
-assert.match(dashboard, /const isPresaleItem = item\.status === 'presale' \|\| item\.source === 'foc_presale';\s*\n\s*const conditionId = isPresaleItem \? '1000' : isGraded \? '2750' : \(isEbayTradingCardCategory\(catId\) \? '4000' : '3000'\);/,
+assert.match(dashboard, /const isPresaleItem = item\.status === 'presale' \|\| item\.source === 'foc_presale';[\s\S]{0,400}?const conditionId = \(isPresaleItem \|\| isFactorySealed\) \? '1000' : isGraded \? '2750' : \(isEbayTradingCardCategory\(catId\) \? '4000' : '3000'\);/, // (factory-sealed product is New too now)
   'a presale item must default to New (1000) condition regardless of category, since it is always genuinely brand-new stock');
-assert.match(dashboard, /isPresale:item\.status === 'presale' \|\| item\.source === 'foc_presale',\s*\n\s*onSaleDate:item\.onSaleDate \|\| '',/,
+assert.match(dashboard, /isPresale:item\.status === 'presale' \|\| item\.source === 'foc_presale',[\s\S]{0,700}?onSaleDate:item\.onSaleDate \|\| '',/,
   'the regular eBay listing payload must tell the Worker whether this item is presale, since it has no other way to know');
 assert.match(worker, /let fulfillmentPolicyId = b\.fulfillmentPolicyId \|\| '';\s*\n\s*if \(!fulfillmentPolicyId && b\.isPresale && b\.onSaleDate\) \{/,
   'createAndPublishEbayListing must compute the presale shipping policy itself when the caller flagged the item as presale but did not already supply one');
@@ -620,7 +622,7 @@ const convertToInstockBody = worker.slice(convertToInstockStart, convertToInstoc
 assert.ok(convertToInstockStart !== -1, '/foc/ebay/convert-to-instock route must exist');
 assert.match(convertToInstockBody, /const normalFulfillmentPolicyId = String\(settingsRows\?\.\[0\]\?\.receipt_settings\?\.ebayNormalFulfillmentPolicyId \|\| ''\)\.trim\(\);/,
   'must read the store\'s configured normal-handling policy from receipt_settings');
-assert.match(convertToInstockBody, /fulfillmentPolicyId: normalFulfillmentPolicyId \|\| undefined,/,
+assert.match(convertToInstockBody, /fulfillmentPolicyId: normalFulfillmentPolicyId( \|\| undefined)?,/,
   'the configured normal-handling policy must actually be applied on every conversion');
 assert.match(convertToInstockBody, /shippingPolicyWarning: normalFulfillmentPolicyId \? '' : 'No normal-handling shipping policy is configured/,
   'must warn when no normal-handling policy is configured, instead of silently leaving the presale handling time in place');
@@ -684,8 +686,8 @@ assert.match(worker, /if \(\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(raw\)\) retur
 // text vs. a store's rich-HTML template), or the combined string is a
 // mismatched blob the server-side formatter can't get right for both halves.
 assert.match(focDash, /var isHtmlTemplate=\/<\\\/\?\[a-z\]\[\\s\\S\]\*>\/i\.test\(customTemplate\);/, 'must detect whether the store\'s saved template is plain text or real HTML');
-assert.match(focDash, /\? '<p>PRESALE/, 'the fallback disclosure must be built as real HTML paragraphs when sitting next to an HTML template');
-assert.match(focDash, /description=disclosure\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+renderedBody;/, 'the disclosure and template body must be joined without a stray plain-text separator when both are already HTML (or there is no disclosure at all)');
+assert.match(focDash, /\? \(typeof comicPresaleBannerHtml==='function'\?comicPresaleBannerHtml\([^)]*\):'<p>PRESALE/, 'the fallback disclosure must be built as real HTML paragraphs when sitting next to an HTML template');
+assert.match(focDash, /description=renderedBody\+\(disclosure&&!isHtmlTemplate\?'\\n\\n':''\)\+disclosure;/, 'the disclosure and template body must be joined without a stray plain-text separator when both are already HTML (or there is no disclosure at all)');
 
 // Store built a real rich-HTML Comic template using [[...]] to wrap whole
 // multi-line blocks (an entire optional <tr> row, a multi-line <div>

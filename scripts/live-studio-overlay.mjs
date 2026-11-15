@@ -279,7 +279,7 @@ import('./beasts.mjs?v=19').then(m=>{beastsLib=m;const d=gd();if(d)paintBeasts(d
 const beastMode=()=>settings.gameMode==='beasts';
 // THE VENDING MACHINE, FULL SCREEN IN FRONT (2026-11-13): the remote's FULL SCREEN (IN FRONT) draws it here, over the hosts.
 let vendDraw=null,machine=null;
-import('./vending.mjs?v=6').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
+import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
 let flipDraw=null,flipState=null;
@@ -299,7 +299,7 @@ function paintBeasts(d){
   if(!b){if(beastsOn){battle?.stop();beastsOn=false;}return;}
   // 3DS: the battle in 3D (scripts/beasts-3d.mjs); the others: the pixel battle in their colours.
   const want3d=settings.beastsGfx==='3ds';if(battle&&battle3d!==want3d){battle.stop();battle=null;beastsOn=false;}
-  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=11').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
+  if(!battle){if(want3d){if(!beasts3d){import('./beasts-3d.mjs?v=12').then(m=>{beasts3d=m;paintBeasts(d);}).catch(e=>console.warn('[studio] 3D beasts off:',e?.message||e));return;}battle=beasts3d.createBattle3D(cv,{scale:3});}else battle=beastsLib.createBattle(cv,{scale:3});battle3d=want3d;}
   battle.set(b,{moves:beastMoves(),pick:Number(stats.beastMove)||0,gfx:settings.beastsGfx||'gbc'});
   // The rival trainer: the boss's own art, in four greens.
   cv.style.top=Math.max(0,Number(settings.y)-560)+'px';

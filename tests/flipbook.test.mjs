@@ -25,3 +25,8 @@ for (const k of ['id="fb-go"', 'id="fb-next"', 'id="fb-back"', 'id="fb-off"', "s
 const b3 = read('scripts/beasts-3d.mjs');
 for (const k of ['const CUT_MS = 3200', 'function camFrame(now) {', "f('GYM LEADER', 8, 96, 5, '#ffd84a')", "gymOf(b.trainer).line", 'introAt = cutStart + cut', 'setTimeout(() => throwComics(), cut + 2200)']) assert.ok(b3.includes(k), k);
 console.log('FOC flipbook + leader entrance: passed');
+// "We should be behind our beast" (2026-11-15): the camera over your shoulder, the host and Champ behind your beast.
+{ const b3 = readFileSync(new URL('../scripts/beasts-3d.mjs', import.meta.url), 'utf8');
+  assert.ok(b3.includes('cam.position.set(-1.9, 1.7, 6.4); cam.lookAt(0.6, 0.7, -1.4);') && b3.includes('CAM_POS = new THREE.Vector3(-1.9, 1.7, 6.4)'));
+  const m = /c\.home = i \? new THREE\.Vector3\(([-\d.]+), 0, ([-\d.]+)\) : new THREE\.Vector3\(([-\d.]+), 0, ([-\d.]+)\)/.exec(b3); assert.ok(m);
+  assert.ok(+m[2] > 1.7 && +m[4] > 1.7 && +m[1] < -1.5 && +m[3] < -1.5, 'both stand behind your beast (at -1.5, 1.7), between it and the camera'); }

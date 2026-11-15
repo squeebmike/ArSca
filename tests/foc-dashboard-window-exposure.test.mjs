@@ -27,16 +27,18 @@ referenced.delete('openSettingsSection'); // a dashboard.html-level function, no
 
 assert.ok(referenced.size > 20, 'sanity check: this file must reference a substantial number of onclick/onchange handlers, or this test isn\'t actually exercising the real surface');
 
-const exposureBlockStart = src.indexOf('window.ensureFocPanel');
-assert.ok(exposureBlockStart !== -1, 'the window-exposure block must exist');
-const exposureBlock = src.slice(exposureBlockStart);
-
-const missing = [...referenced].filter(name => !exposureBlock.includes('window.' + name + '='));
+assert.ok(src.indexOf('window.ensureFocPanel') !== -1, 'the window-exposure block must exist');
+// The exposures now sit beside each feature (window.openFocListWeek=..., window.openFocShow=...) as well as in the
+// block at the end, so look through the whole file. Inline JS in an attribute (onclick="if(...)") isn't a function name,
+// and a function this file doesn't declare at all is the dashboard's own global (like openSettingsSection).
+referenced.delete('if');
+const declared = name => new RegExp('(^|\\n)\\s*(async\\s+)?function\\s+' + name + '\\(').test(src);
+const missing = [...referenced].filter(name => declared(name) && !new RegExp('window\\.' + name + '\\s*=').test(src));
 assert.deepEqual(missing, [], 'every function referenced by an onclick/onchange attribute in this file must be exposed onto window, or clicking/changing it throws a ReferenceError exactly like the store report');
 
 // The specific functions named in the store report and found alongside it must be present by name.
 for (const fn of ['quickAddFocSkuToInventory', 'focEbayBulkCheckboxChanged', 'toggleFocEbayBulkSelectAll', 'startFocEbayBulkListing', 'cancelFocEbayBulkListing', 'skipFocEbayBulkItem']) {
-  assert.match(exposureBlock, new RegExp('window\\.' + fn + '='), fn + ' must be exposed onto window');
+  assert.match(src, new RegExp('window\\.' + fn + '='), fn + ' must be exposed onto window');
 }
 
 console.log('FOC dashboard window-exposure contract checks passed');

@@ -128,8 +128,15 @@ export const VENDING_CSS = `
 .vm.out .vm-out{display:block}
 .vm-bigbid.press{animation:vm-press .5s 2 !important}
 @keyframes vm-press{40%{transform:translateY(6px) scale(.96);box-shadow:0 0 0 #0000}}
-.vm.restock .vm-slot{animation:vm-in .5s backwards}
+.vm.restock .vm-slot{animation:vm-drop .55s cubic-bezier(.3,1.5,.5,1) backwards;animation-delay:calc(var(--i,0) * 110ms)}
 @keyframes vm-in{from{opacity:0;transform:translateY(-30px) rotate(-6deg)}}
+/* THE RESTOCK REEL (store, 2026-11-15): a new batch loads in one slot at a time -- each drops onto its coil with a bounce,
+   in order, while the RESTOCKING banner counts them in; a little clunk for each (same sounds, sound on). */
+@keyframes vm-drop{0%{opacity:0;transform:translateY(-140px) rotate(-8deg) scale(.8)}60%{opacity:1;transform:translateY(8px) rotate(2deg)}100%{transform:none}}
+.vm-restock{display:none;position:absolute;left:50%;top:44%;z-index:6;transform:translateX(-50%) rotate(-3deg);background:#111;color:#9dff6a;border:5px solid #9dff6a;border-radius:16px;padding:12px 28px;font:900 40px/1 system-ui;letter-spacing:3px;text-align:center;box-shadow:0 0 30px #9dff6a88;white-space:nowrap}
+.vm-restock small{display:block;margin-top:6px;font:800 20px system-ui;color:#fff;letter-spacing:1px}
+.vm.restock .vm-restock{display:block;animation:vm-pop .45s cubic-bezier(.2,1.6,.4,1)}
+.vm.panel .vm-restock{font-size:28px}
 .vm.restock .vm-coil{animation:vm-coil .4s 3 linear}
 @keyframes vm-coil{to{background-position:24px 0}}
 .vm-change{display:none;position:absolute;left:50%;bottom:120px;transform:translateX(-50%) rotate(-2deg);z-index:5;background:#ffd84a;color:#1b1300;border:5px solid #111;border-radius:16px;padding:10px 26px;font:900 34px/1.05 system-ui;text-align:center;box-shadow:0 0 40px #ffd84a;white-space:nowrap}
@@ -184,7 +191,7 @@ export function upIndex(mc) { if (!mc?.items?.length) return -1; if (Number.isIn
 export function createVending(doc, { img = u => u, where = 'green' } = {}) {
   if (!doc.getElementById('vm-css')) { const st = doc.createElement('style'); st.id = 'vm-css'; st.textContent = VENDING_CSS; doc.head.append(st); }
   const vm = doc.createElement('div'); vm.className = 'vm panel'; vm.hidden = true; doc.body.append(vm);
-  vm.innerHTML = '<b class="vm-last"></b><b class="vm-out">SOLD OUT</b><div class="vm-change">CHANGE RETURN!<small>A FREE GIVEAWAY FOR EVERYONE WATCHING</small></div><i class="vm-tab vm-tab-l">MANA POCKET</i><i class="vm-tab vm-tab-r">MANA POCKET</i><div class="vm-head"><span class="vm-live">LIVE</span><div class="vm-head-t"><b class="vm-title"></b><small class="vm-sub">STOCK UPDATES LIVE · ONE PER WIN · BID IN THE APP</small></div><span class="vm-count"></span></div><div class="vm-flashbar"></div><div class="vm-bar"><i></i></div><div class="vm-up"><img alt=""><div class="vm-up-t"><small>UP NOW</small><b></b><em class="vm-up-d"></em></div><b class="vm-up-p"></b><span class="vm-bid vm-up-bid"></span></div><div class="vm-glass"><div class="vm-rows"></div></div><div class="vm-shelves"><div class="vm-shelf" data-shelf="pre"><h4>NEW RELEASES <i>PRE-ORDER NOW</i></h4><b class="vm-dots"></b><div class="vm-track"></div></div><div class="vm-shelf" data-shelf="bin"><h4>IN THE BIN <i>BUY IT NOW</i></h4><b class="vm-dots"></b><div class="vm-track"></div></div></div><div class="vm-tray"><span class="vm-left"></span><span class="vm-hint"></span><span class="vm-bigbid">BID NOW ››</span></div>';
+  vm.innerHTML = '<b class="vm-last"></b><b class="vm-out">SOLD OUT</b><div class="vm-restock">RESTOCKING!<small></small></div><div class="vm-change">CHANGE RETURN!<small>A FREE GIVEAWAY FOR EVERYONE WATCHING</small></div><i class="vm-tab vm-tab-l">MANA POCKET</i><i class="vm-tab vm-tab-r">MANA POCKET</i><div class="vm-head"><span class="vm-live">LIVE</span><div class="vm-head-t"><b class="vm-title"></b><small class="vm-sub">STOCK UPDATES LIVE · ONE PER WIN · BID IN THE APP</small></div><span class="vm-count"></span></div><div class="vm-flashbar"></div><div class="vm-bar"><i></i></div><div class="vm-up"><img alt=""><div class="vm-up-t"><small>UP NOW</small><b></b><em class="vm-up-d"></em></div><b class="vm-up-p"></b><span class="vm-bid vm-up-bid"></span></div><div class="vm-glass"><div class="vm-rows"></div></div><div class="vm-shelves"><div class="vm-shelf" data-shelf="pre"><h4>NEW RELEASES <i>PRE-ORDER NOW</i></h4><b class="vm-dots"></b><div class="vm-track"></div></div><div class="vm-shelf" data-shelf="bin"><h4>IN THE BIN <i>BUY IT NOW</i></h4><b class="vm-dots"></b><div class="vm-track"></div></div></div><div class="vm-tray"><span class="vm-left"></span><span class="vm-hint"></span><span class="vm-bigbid">BID NOW ››</span></div>';
   let key = '', y = 0, last = 0, wasSold = null, listKey = '';
   (function scroll(now) { requestAnimationFrame(scroll); if (vm.hidden) return; const rows = vm.querySelector('.vm-rows'), glass = vm.querySelector('.vm-glass'), half = rows.scrollHeight / 2; if (!rows.dataset.loop) { rows.style.transform = ''; return; } y += (now - (last || now)) / 1000 * (vm.classList.contains('full') ? 34 : 26); last = now; if (y >= half) y -= half; rows.style.transform = 'translateY(' + (-y) + 'px)'; if (glass.clientHeight > half) { rows.style.transform = ''; } })(0);
   // The showcase's shelves turn a page every 5 seconds (5 to a page), each on its own clock.
@@ -192,6 +199,7 @@ export function createVending(doc, { img = u => u, where = 'green' } = {}) {
   setInterval(() => { if (vm.hidden || !vm.classList.contains('showcase')) return; for (const sh of vm.querySelectorAll('.vm-shelf')) { const k = sh.dataset.shelf, n = sh.querySelectorAll('.vm-card').length, pn = Math.max(1, Math.ceil(n / 5)); pages[k] = (pages[k] + 1) % pn; const tr = sh.querySelector('.vm-track'); tr.style.transform = 'translateX(calc(' + (-pages[k] * 100) + '% - ' + (pages[k] * 14) + 'px))'; sh.querySelector('.vm-dots').textContent = pn > 1 ? (pages[k] + 1) + ' / ' + pn : ''; } }, 5000);
   // The vend's sounds: a coin in, the coil's whirr, the thud in the tray (where the browser lets a page play sound).
   let ac = null; const beep = (f, d, type = 'square', at = 0, vol = 0.05) => { try { ac ||= new (doc.defaultView.AudioContext || doc.defaultView.webkitAudioContext)(); const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + at; o.type = type; o.frequency.setValueAtTime(f, t0); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d); o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + d); } catch {} };
+  let reel = 0; const clunk = () => beep(110, 0.06, 'square', 0, 0.025);
   const vendSound = () => { beep(1568, 0.08, 'square', 0); beep(2093, 0.12, 'square', 0.08); for (let k = 0; k < 6; k++) beep(180 + k * 12, 0.07, 'sawtooth', 0.25 + k * 0.07, 0.03); beep(70, 0.25, 'sine', 1.35, 0.12); };
   let changeAt = 0, soldBefore = -1, flashEnd = 0, lastMc = null;
   // The flash sale's countdown ticks every second; when it runs out the machine redraws at the old prices.
@@ -229,7 +237,7 @@ export function createVending(doc, { img = u => u, where = 'green' } = {}) {
     if (up >= 0) { const it = mc.items[up], im = vm.querySelector('.vm-up img'); im.hidden = !it.image; if (it.image) im.src = img(it.image); vm.querySelector('.vm-up-t b').textContent = code(up) + '  ' + it.title; vm.querySelector('.vm-up-bid').textContent = 'BID ' + (money(it.price) || ''); vm.querySelector('.vm-up-d').textContent = it.detail || (mc.kind === 'spots' ? 'SPOT ' + (up + 1) + ' OF ' + n : ''); vm.querySelector('.vm-up-p').innerHTML = priceHtml(it); }
     vm.querySelector('.vm-left').textContent = n ? (n - sold) + ' LEFT' : 'STOCKING';
     vm.querySelector('.vm-hint').textContent = !n ? 'STOCKING UP -- BACK IN A SEC!' : up >= 0 ? 'SLOT ' + code(up) + ' IS UP -- TAP BID IN THE APP' : 'SOLD OUT -- THANK YOU!';
-    const slot = (it, i) => '<div data-i="' + i + '" class="vm-slot' + (it.sold ? ' sold' : '') + (onFlash(it) && !it.sold ? ' flash' : '') + (i === up ? ' up' : '') + '"><i class="vm-num">' + (i + 1) + '</i><div class="vm-pic">' + (it.image ? '<img alt="" src="' + esc(img(it.image)) + '">' : '<div class="vm-spot"><em>' + (i + 1) + '</em><span>' + esc(it.title) + '</span></div>') + '</div><div class="vm-name">' + esc(it.title) + '</div><b class="vm-price">' + (priceHtml(it) || '&nbsp;') + '</b>' + (onFlash(it) && !it.sold ? '<i class="vm-ftag">⚡ FLASH SALE</i>' : '') + '<div class="vm-coil"></div><div class="vm-buy"><b>' + code(i) + '</b><span class="vm-bid">' + (it.sold ? 'SOLD' : 'BID ' + money(it.price)) + '</span></div><em class="vm-stamp">SOLD</em>' + (it.buyer ? '<em class="vm-who">@' + esc(it.buyer) + '</em>' : '') + '</div>';
+    const slot = (it, i) => '<div data-i="' + i + '" style="--i:' + Math.min(i, 40) + '" class="vm-slot' + (it.sold ? ' sold' : '') + (onFlash(it) && !it.sold ? ' flash' : '') + (i === up ? ' up' : '') + '"><i class="vm-num">' + (i + 1) + '</i><div class="vm-pic">' + (it.image ? '<img alt="" src="' + esc(img(it.image)) + '">' : '<div class="vm-spot"><em>' + (i + 1) + '</em><span>' + esc(it.title) + '</span></div>') + '</div><div class="vm-name">' + esc(it.title) + '</div><b class="vm-price">' + (priceHtml(it) || '&nbsp;') + '</b>' + (onFlash(it) && !it.sold ? '<i class="vm-ftag">⚡ FLASH SALE</i>' : '') + '<div class="vm-coil"></div><div class="vm-buy"><b>' + code(i) + '</b><span class="vm-bid">' + (it.sold ? 'SOLD' : 'BID ' + money(it.price)) + '</span></div><em class="vm-stamp">SOLD</em>' + (it.buyer ? '<em class="vm-who">@' + esc(it.buyer) + '</em>' : '') + '</div>';
     // Which slots just sold (the same list, one more SOLD): drop them after the slots repaint.
     const lk = mc.items.map(i => i.title).join('\u0001'), fresh = wasSold && lk === listKey ? mc.items.map((it, i) => it.sold && !wasSold[i] ? i : -1).filter(i => i >= 0).slice(0, 2) : [];
     wasSold = mc.items.map(i => !!i.sold); const keepY = lk === listKey; listKey = lk;
@@ -238,7 +246,12 @@ export function createVending(doc, { img = u => u, where = 'green' } = {}) {
     rows.innerHTML = html + (loop ? html : ''); if (loop) rows.dataset.loop = '1'; else delete rows.dataset.loop; if (!keepY) y = 0;
     for (const i of fresh) drop(mc.items[i], i);
     if (fresh.length) { vendSound(); const bb = vm.querySelector('.vm-bigbid'); bb.classList.remove('press'); void bb.offsetWidth; bb.classList.add('press'); }
-    if (restock) setTimeout(() => vm.classList.remove('restock'), 2600);
+    if (restock) { // the reel: the banner counts the slots in as they drop, a clunk each, then it clears
+      const total = n, step = 110, endAt = Math.min(total, 40) * step + 900, sm = vm.querySelector('.vm-restock small'); clearInterval(reel); let k = 0;
+      sm.textContent = 'LOADING 0 / ' + total;
+      reel = setInterval(() => { k++; sm.textContent = 'LOADING ' + Math.min(k, total) + ' / ' + total; if (k <= 40) clunk(); if (k >= Math.min(total, 40)) { clearInterval(reel); sm.textContent = total + ' NEW IN THE MACHINE'; } }, step);
+      setTimeout(() => vm.classList.remove('restock'), endAt);
+    }
   };
   return drawFn;
 }

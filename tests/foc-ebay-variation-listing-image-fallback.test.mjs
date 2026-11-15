@@ -22,8 +22,10 @@ const routeBody = worker.slice(routeStart, routeEnd);
 assert.match(routeBody, /const anyCoverImage = built\.find\(v => v\.imageUrl\)\?\.imageUrl \|\| '';/, 'must find a usable fallback image among the selected covers');
 assert.match(routeBody, /if \(!anyCoverImage\) return json\(\{ ok: false, error: 'None of the selected covers have a cover image on file/,
   'must fail with a clear, specific error BEFORE calling eBay if literally no selected cover has any image at all, instead of letting eBay\'s cryptic 400 be the only signal');
-assert.match(routeBody, /built\.forEach\(v => \{ if \(!v\.imageUrl\) v\.imageUrl = anyCoverImage; \}\);/,
-  'every variant missing its own cover art must be backfilled with a borrowed real cover photo, not published blank');
+// Store ask (later): a cover with no art yet shows "cover art coming soon" -- not another cover's art -- and is marked so
+// the real art replaces it when it arrives (runScheduledFocCoverSwap). Still never published blank.
+assert.match(routeBody, /built\.forEach\(v => \{ if \(!v\.imageUrl\) \{ v\.imageUrl = FOC_COVER_COMING_SOON_URL; v\.coverPending = true; \} \}\);/,
+  'every variant missing its own cover art must show the coming-soon cover (marked pending), not be published blank');
 
 // The bundle variant's image, absent a store-uploaded main photo, must be a
 // gallery of every real cover's own photo, not just one at random -- "what

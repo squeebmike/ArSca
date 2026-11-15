@@ -20,7 +20,7 @@ const fnBody = dashboard.slice(fnStart, fnEnd);
 assert.ok(fnStart !== -1, 'computeEbayListingFields must exist');
 assert.match(fnBody, /const bundleMemberNames = Array\.isArray\(item\.bundleMemberNames\) \? item\.bundleMemberNames\.filter\(Boolean\) : \[\];/,
   'must read the bundle container\'s own bundleMemberNames (set by createInventoryBundle), not try to re-derive it');
-assert.match(fnBody, /const bodyText = \(item\.isBundle && bundleMemberNames\.length\)\s*\n\s*\? \['This lot includes ' \+ bundleMemberNames\.length \+ ' items:', bundleMemberNames\.map\(n => '• ' \+ n\)\.join\('\\n'\), 'All items in this lot ship together\.'\]\.join\('\\n\\n'\)\s*\n\s*: renderEbayDescriptionTemplate\(template, tokens\);/,
+assert.match(fnBody, /const renderedBodyText = \(item\.isBundle && bundleMemberNames\.length\)\s*\n\s*\? \['This lot includes ' \+ bundleMemberNames\.length \+ ' items:', bundleMemberNames\.map\(n => '• ' \+ n\)\.join\('\\n'\), 'All items in this lot ship together\.'\]\.join\('\\n\\n'\)\s*\n\s*: renderEbayDescriptionTemplate\(template, tokens\);/,
   'a bundle with known members must list them by name instead of running the single-item template');
 
 console.log('Bundle eBay description contract checks passed');

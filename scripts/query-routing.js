@@ -216,9 +216,35 @@
     ], 4);
   }
 
+  // A SET IN THE SEARCH (store, 2026-11-15: "I tried to search control magic beta and it did not spot that card, but just
+  // control magic showed everything so I can't refine the search"): Scryfall read "beta" as part of the card's name.
+  // A set's name or nickname at the start or end of the search becomes Scryfall's set filter ("control magic set:leb");
+  // the plain words are still tried next if that finds nothing. A set code works too ("control magic leb").
+  const MTG_SET_WORDS = [
+    ['limited edition alpha','lea'],['limited edition beta','leb'],['alpha','lea'],['beta','leb'],['unlimited','2ed'],['revised','3ed'],
+    ['collectors edition','ced'],['international collectors edition','cei'],['summer magic','sum'],['arabian nights','arn'],['antiquities','atq'],
+    ['legends','leg'],['the dark','drk'],['fallen empires','fem'],['4th edition','4ed'],['fourth edition','4ed'],['5th edition','5ed'],['fifth edition','5ed'],
+    ['ice age','ice'],['homelands','hml'],['alliances','all'],['mirage','mir'],['visions','vis'],['weatherlight','wth'],['tempest','tmp'],
+    ['stronghold','sth'],['exodus','exo'],['urzas saga','usg'],['urza s saga','usg'],['urzas legacy','ulg'],['urzas destiny','uds'],
+    ['mercadian masques','mmq'],['nemesis','nem'],['prophecy','pcy'],['invasion','inv'],['portal','por'],['chronicles','chr'],
+    ['6th edition','6ed'],['7th edition','7ed'],['8th edition','8ed'],['9th edition','9ed'],['10th edition','10e'],
+  ];
+  function mtgSetSplit(text){
+    const words = text.split(' ');
+    for(const [name, code] of [...MTG_SET_WORDS].sort((a, b) => b[0].length - a[0].length)){
+      if(text.endsWith(' ' + name)) return { rest:text.slice(0, -name.length - 1).trim(), code };
+      if(text.startsWith(name + ' ')) return { rest:text.slice(name.length + 1).trim(), code };
+    }
+    // A set code typed on the end ("control magic leb") -- only one of the old/known codes, or with "set" before it.
+    const m = /^(.*\S)\s+(?:set\s+|set:|e:)?([a-z0-9]{3,4})$/.exec(text);
+    if(m && (/(^|\s)(set\s+|set:|e:)[a-z0-9]{3,4}$/.test(text) || /^(lea|leb|2ed|3ed|4ed|5ed|arn|atq|leg|drk|fem|ced|cei)$/.test(m[2]))) return { rest:m[1].replace(/\s+set$/, '').trim(), code:m[2] };
+    return null;
+  }
   function mtgQueries(query, entities){
     const text = query.normalized.replace(/\bmtg\b|\bmagic the gathering\b/g,' ').replace(/\s+/g,' ').trim();
     if(MTG_CARD_NAMES.includes(text)) return unique([text], 3);
+    const set = !entities.mechanics.length && !/(^|\s)(set|e|s):/.test(text) ? mtgSetSplit(text) : null;
+    if(set && set.rest) return unique([set.rest + ' set:' + set.code, text, set.rest], 3);
     if(entities.mechanics.length) return unique([entities.mechanics.map(term => term.includes(' ') ? 'o:"'+term+'"' : 'o:'+term).join(' '), text], 3);
     if(text === 'rhystic') return ['Rhystic Study', 'rhystic'];
     return unique([text], 3);
