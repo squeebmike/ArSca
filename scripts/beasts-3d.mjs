@@ -152,7 +152,7 @@ export function buildBeast3D(name) {
 
 // THE HOST AND CHAMP IN 3D (store, 2026-11-14: "add 3D me and Champ to the 3DS battle"), the same two as the pixel
 // sprites: the host in a backwards cap, a dark beard and the black MP jersey (24 on the back); Champ bald and shiny, in
-// glasses, a full beard and a big grey hoodie. You both stand on our side, near the camera beside your beast with your backs to us, and react: the host points when
+// glasses, a full beard and a big grey hoodie. You both stand behind your beast, near the camera with your backs to us, and react: the host points when
 // your beast attacks, Champ pumps a fist, both cheer on a level-up or an evolution. Toon-shaded, built from shapes here.
 export function trainer3D(who) {
   const champ = who === 'champ', g = new THREE.Group(), skin = toon([236, 184, 148]), arms = {};
@@ -199,7 +199,9 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   const r = new THREE.WebGLRenderer({ canvas: gl, antialias: true, alpha: false, preserveDrawingBuffer: true }); r.setPixelRatio(1); r.setSize(W * scale, 106 * scale, false);
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9fd6ff); scene.fog = new THREE.Fog(0x9fd6ff, 9, 20);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x6fae4a, 1.2)); const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(-3, 6, 4); scene.add(sun);
-  const cam = new THREE.PerspectiveCamera(36, W / 106, 0.1, 60); cam.position.set(-0.4, 1.5, 5.6); cam.lookAt(0.9, 0.6, -1.4);
+  // The camera over your shoulder (store, 2026-11-15: "we should be behind our beast"): back and to the left, so the host
+  // and Champ stand behind your beast, backs to us, your beast in front of them and theirs across the field.
+  const cam = new THREE.PerspectiveCamera(38, W / 106, 0.1, 60); cam.position.set(-1.9, 1.7, 6.4); cam.lookAt(0.6, 0.7, -1.4);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: 0x8ccf6a })); ground.rotation.x = -Math.PI / 2; scene.add(ground);
   const pads = [], pad = (x, z, rad) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 1.05, 0.12, 40), new THREE.MeshLambertMaterial({ color: 0x5fa845 })); p.position.set(x, 0.06, z); scene.add(p); const rim = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.04, 6, 40), new THREE.MeshLambertMaterial({ color: 0x3c7a2a })); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.12, z); scene.add(rim); pads.push([p, rim]); return p; };
   const trees = new THREE.Group(); scene.add(trees);
@@ -207,9 +209,9 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   for (let k = 0; k < 7; k++) { const tr = new THREE.Group(); tr.position.set(-6 + k * 2.3, 0, -8 - (k % 3)); trees.add(tr); const tk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6b4a2a })); tk.position.y = 0.6; tr.add(tk); const lf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 9), new THREE.MeshLambertMaterial({ color: 0x3f8f3a })); lf.position.y = 1.7; tr.add(lf); }
   let b = null, mineM = null, foeM = null, mineName = '', foeName = '', moves = DEFAULT_MOVES, pick = 0, msg = '', anim = null, foeAnim = null, evo = null, raf = 0, last = 0, key = '', introAt = -1e9, lastTenth = 10, foeHits = 0, shownFoe = 1;
   const shot = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 9), new THREE.MeshBasicMaterial({ color: 0xffe14a })); shot.visible = false; scene.add(shot);
-  // You and Champ on OUR side, close to the camera like a trainer in the handheld battles: just right of your beast,
-  // backs to us, facing their beast; they walk in from the left with the intro.
-  let crew = null; const ensureCrew = () => { if (crew) return; crew = [trainer3D('host'), trainer3D('champ')]; crew.forEach((c, i) => { c.home = i ? new THREE.Vector3(0.8, 0, 0.4) : new THREE.Vector3(0.12, 0, 1.5); c.g.position.copy(c.home); c.g.rotation.y = i ? 2.35 : 2.55; c.g.scale.setScalar(0.7); c.from = -1; scene.add(c.g); }); };
+  // You and Champ BEHIND your beast, close to the camera like a trainer in the handheld battles, backs to us, facing
+  // their beast; they walk in from the left with the intro.
+  let crew = null; const ensureCrew = () => { if (crew) return; crew = [trainer3D('host'), trainer3D('champ')]; crew.forEach((c, i) => { c.home = i ? new THREE.Vector3(-2.5, 0, 1.75) : new THREE.Vector3(-2.95, 0, 2.6); c.g.position.copy(c.home); c.g.rotation.y = 2.35; c.g.scale.setScalar(0.62); c.from = -1; scene.add(c.g); }); };
   // MR FISTER'S GYM IN 3D (store, 2026-11-14): on a gym fight against him, the field turns into his arena -- a dark floor,
   // a green ring under each platform, green spotlights -- and he stands behind SPIDER-CHEEKS pumping the gauntlet, throwing the
   // store's comics (the gauntlet's covers) at your beast every time his beast attacks.
@@ -223,7 +225,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
   // THE LEADER'S ENTRANCE (store, 2026-11-14: "leader intro cutscene"): before a gym fight the camera sweeps round the
   // leader in their arena, letterboxed, their name and their line on screen; then it swings back behind your beast and
   // the fight starts. Three seconds, the same every time.
-  const CUT_MS = 3200, CAM_POS = new THREE.Vector3(-0.4, 1.5, 5.6), CAM_AT = new THREE.Vector3(0.9, 0.6, -1.4); let cutStart = 0, camHome = true;
+  const CUT_MS = 3200, CAM_POS = new THREE.Vector3(-1.9, 1.7, 6.4), CAM_AT = new THREE.Vector3(0.6, 0.7, -1.4); let cutStart = 0, camHome = true;
   const cutFocus = () => { if (gymId === 'fister' && fister) return fister.position.clone().add(new THREE.Vector3(0, 0.25, 0)); const l = leaders[gymId]; return l ? l.g.position.clone().add(new THREE.Vector3(0, 1.9, 0)) : null; };
   const cutPose = (focus, k) => { const base = Math.atan2(CAM_POS.x - focus.x, CAM_POS.z - focus.z), ang = base - 0.95 + k * 1.1, R = 2.3 + k * 1.6; return new THREE.Vector3(focus.x + Math.sin(ang) * R, focus.y + 0.1 + k * 0.5, focus.z + Math.cos(ang) * R); };
   function camFrame(now) {
