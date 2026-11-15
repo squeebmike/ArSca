@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.6-trades-per-show';
+const APP_VERSION = '2026.11.15.7-jp-tcg-links';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -32755,7 +32755,9 @@ function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
     condition:tcgConditionCodeFromLabel(condition),
     printing,
     finish:qplFinishFromTcgPrinting(printing || (sealed ? 'sealed' : 'normal')),
-    language:language || 'English',
+    // (store, 2026-11-15: a Japanese Mystery of the Fossils Moltres link, ?Language=all, came back with no image or
+    // price): "all" isn't a language -- a Japanese product says so in its own name ("pokemon-japan-...").
+    language:/^(english|japanese)$/i.test(language) ? language : (/\bjapan(ese)?\b|-japan-|^japan-/i.test(slug + ' ' + text) ? 'Japanese' : 'English'),
     isSealed:sealed || selected === 'sealed',
     source:'tcgplayer-url'
   };
@@ -32816,6 +32818,8 @@ function tcgplayerSealedProductToQplRow(data={}, product={}){
   };
 }
 
+// TCGplayer's own picture of a product, by its number -- for a pasted link no pricing source had a picture for.
+function tcgplayerProductImageUrl(productId){ return /^\d{3,9}$/.test(String(productId || '')) ? 'https://tcgplayer-cdn.tcgplayer.com/product/' + productId + '_in_1000x1000.jpg' : ''; }
 async function resolveExactTcgplayerProduct(product={}){
   if(!product.productId||!navigator.onLine)return null;
   const pokemonProduct = /pokemon/i.test([product.game,product.category,product.lineLabel].join(' '));
@@ -32826,7 +32830,9 @@ async function resolveExactTcgplayerProduct(product={}){
         const sealed = await fetchPokemonSealedProductExact(product.productId);
         if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
       } else {
-        const card = await fetchPokemonPriceTrackerExactDetail(product.productId, product.language || 'english');
+        const lang = String(product.language || 'english').toLowerCase() === 'japanese' ? 'japanese' : 'english';
+        const card = await fetchPokemonPriceTrackerExactDetail(product.productId, lang)
+          || await fetchPokemonPriceTrackerExactDetail(product.productId, lang === 'japanese' ? 'english' : 'japanese');
         if(card) return pokemonPriceTrackerCardToQplRow(card, product.name || '', null);
       }
       if(product.isSealed) {
@@ -32837,7 +32843,8 @@ async function resolveExactTcgplayerProduct(product={}){
         if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
       }
     } catch(e) {}
-    if(pokemonProduct) return null;
+    // A Pokemon card the Pokemon tracker doesn't have (many Japanese cards): JustTCG prices it by its TCGplayer number below.
+    if(pokemonProduct && product.isSealed) return null;
   }
   if(product.isSealed) {
     try {
@@ -32859,6 +32866,7 @@ async function resolveExactTcgplayerProduct(product={}){
     // NM cards (see fetchMtgTcgplayerPricepointPrice); the NM rows take the
     // exact product's own TCGplayer market instead. LP/MP/HP/DMG keep JustTCG.
     const row=justTcgExactMatchToQplRow(match,product);
+    if(!row.imageUrl)row.imageUrl=tcgplayerProductImageUrl(product.productId);
     const markets=await fetchTcgplayerNmMarkets(product.productId);
     if(!markets)return row;
     row.availableVariants=(row.availableVariants||[]).map(v=>{
@@ -33075,7 +33083,7 @@ function tcgplayerProductToQplRow(product = {}, query = ''){
     language:product.language || (/\bJapanese\b/i.test(query) ? 'Japanese' : 'English'),
     market:0,
     low:0,
-    imageUrl:'',
+    imageUrl:tcgplayerProductImageUrl(product.productId), // TCGplayer's own picture, until a price source has one
     priceSource: exact ? 'TCGplayer product link · no price match found' : 'TCGplayer search · confirm exact product',
     tcgUrl: product.canonicalUrl || '',
     tcgPlayerUrl: product.canonicalUrl || '',
