@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.6-trades-per-show';
+const APP_VERSION = '2026.11.15.8-en-jp-switch';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -32755,7 +32755,9 @@ function parseTcgplayerProductInput(raw = '', selectedCategory = ''){
     condition:tcgConditionCodeFromLabel(condition),
     printing,
     finish:qplFinishFromTcgPrinting(printing || (sealed ? 'sealed' : 'normal')),
-    language:language || 'English',
+    // (store, 2026-11-15: a Japanese Mystery of the Fossils Moltres link, ?Language=all, came back with no image or
+    // price): "all" isn't a language -- a Japanese product says so in its own name ("pokemon-japan-...").
+    language:/^(english|japanese)$/i.test(language) ? language : (/\bjapan(ese)?\b|-japan-|^japan-/i.test(slug + ' ' + text) ? 'Japanese' : 'English'),
     isSealed:sealed || selected === 'sealed',
     source:'tcgplayer-url'
   };
@@ -32816,6 +32818,8 @@ function tcgplayerSealedProductToQplRow(data={}, product={}){
   };
 }
 
+// TCGplayer's own picture of a product, by its number -- for a pasted link no pricing source had a picture for.
+function tcgplayerProductImageUrl(productId){ return /^\d{3,9}$/.test(String(productId || '')) ? 'https://tcgplayer-cdn.tcgplayer.com/product/' + productId + '_in_1000x1000.jpg' : ''; }
 async function resolveExactTcgplayerProduct(product={}){
   if(!product.productId||!navigator.onLine)return null;
   const pokemonProduct = /pokemon/i.test([product.game,product.category,product.lineLabel].join(' '));
@@ -32826,7 +32830,9 @@ async function resolveExactTcgplayerProduct(product={}){
         const sealed = await fetchPokemonSealedProductExact(product.productId);
         if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
       } else {
-        const card = await fetchPokemonPriceTrackerExactDetail(product.productId, product.language || 'english');
+        const lang = String(product.language || 'english').toLowerCase() === 'japanese' ? 'japanese' : 'english';
+        const card = await fetchPokemonPriceTrackerExactDetail(product.productId, lang)
+          || await fetchPokemonPriceTrackerExactDetail(product.productId, lang === 'japanese' ? 'english' : 'japanese');
         if(card) return pokemonPriceTrackerCardToQplRow(card, product.name || '', null);
       }
       if(product.isSealed) {
@@ -32837,7 +32843,8 @@ async function resolveExactTcgplayerProduct(product={}){
         if(sealed) return pokemonSealedProductToQplRow(sealed, product.name || '');
       }
     } catch(e) {}
-    if(pokemonProduct) return null;
+    // A Pokemon card the Pokemon tracker doesn't have (many Japanese cards): JustTCG prices it by its TCGplayer number below.
+    if(pokemonProduct && product.isSealed) return null;
   }
   if(product.isSealed) {
     try {
@@ -32859,6 +32866,7 @@ async function resolveExactTcgplayerProduct(product={}){
     // NM cards (see fetchMtgTcgplayerPricepointPrice); the NM rows take the
     // exact product's own TCGplayer market instead. LP/MP/HP/DMG keep JustTCG.
     const row=justTcgExactMatchToQplRow(match,product);
+    if(!row.imageUrl)row.imageUrl=tcgplayerProductImageUrl(product.productId);
     const markets=await fetchTcgplayerNmMarkets(product.productId);
     if(!markets)return row;
     row.availableVariants=(row.availableVariants||[]).map(v=>{
@@ -33075,7 +33083,7 @@ function tcgplayerProductToQplRow(product = {}, query = ''){
     language:product.language || (/\bJapanese\b/i.test(query) ? 'Japanese' : 'English'),
     market:0,
     low:0,
-    imageUrl:'',
+    imageUrl:tcgplayerProductImageUrl(product.productId), // TCGplayer's own picture, until a price source has one
     priceSource: exact ? 'TCGplayer product link · no price match found' : 'TCGplayer search · confirm exact product',
     tcgUrl: product.canonicalUrl || '',
     tcgPlayerUrl: product.canonicalUrl || '',
@@ -33941,7 +33949,8 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
 
   if(plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat)) {
     // Intent signals
-    const isJapanese = /\bjapanese?\b|\bjpn\b/i.test(q);
+    // The EN / JP switch beside the search box wins; on AUTO the search's own words decide.
+    const isJapanese = qplLanguageMode === 'japanese' || (qplLanguageMode !== 'english' && /\bjapanese?\b|\bjpn\b/i.test(q));
     const searchLanguage = isJapanese ? 'japanese' : 'english';
     const isPromoQuery = isPokemonPromoIntent(q);
     const isSealedQuery = pokemonSealedIntent;
@@ -36376,6 +36385,44 @@ function qplVariantSelectOptions(r, key, current){
 
 // UNLIMITED / 1ST EDITION (store ask) -- only for a card printed in
 // editions. Each chip shows that edition's price at the condition picked.
+// ENGLISH / JAPANESE (store, 2026-11-15: "I should be able to switch languages in the app to get the prices of the other
+// languages"). LANG beside the search box: AUTO (the search's own words), JP or EN for every Pokemon search, re-running the
+// one on screen; kept on this device. Each Pokemon result has SEE ENGLISH PRICE / SEE JAPANESE PRICE: the same card's
+// name searched in the other language (TCGplayer lists each language as its own product, so it's a new search).
+let qplLanguageMode = (() => { try { const v = localStorage.getItem('qpl_pokemon_language'); return ['auto','english','japanese'].includes(v) ? v : 'auto'; } catch(e) { return 'auto'; } })();
+function paintQplLanguageButton(){
+  const b = document.getElementById('qpl-lang-btn'); if(!b) return;
+  b.textContent = { auto:'LANG: AUTO', english:'LANG: EN', japanese:'LANG: JP' }[qplLanguageMode] || 'LANG: AUTO';
+  b.style.color = qplLanguageMode === 'japanese' ? '#e63' : qplLanguageMode === 'english' ? 'var(--g)' : '';
+}
+function setQplLanguage(mode, rerun = true){
+  qplLanguageMode = ['auto','english','japanese'].includes(mode) ? mode : 'auto';
+  try { localStorage.setItem('qpl_pokemon_language', qplLanguageMode); } catch(e) {}
+  paintQplLanguageButton();
+  if(rerun && String(document.getElementById('qpl-input')?.value || '').trim()) runPriceLookup();
+}
+function toggleQplLanguage(){ setQplLanguage({ auto:'japanese', japanese:'english', english:'auto' }[qplLanguageMode] || 'auto'); }
+function qplRowIsJapanese(r = {}){ return /^japanese$/i.test(r.selectedLanguage || r.language || '') || /\bjapan(ese)?\b|\bjpn\b/i.test([r.name, r.set].join(' ')); }
+// The card's own name for the other-language search: no "Japan/Japanese", no set name (sets differ between languages).
+function qplOtherLanguageQuery(r = {}){
+  let name = String(r.cardName || r.name || '');
+  const set = String(r.set || r.setName || '').replace(/\bjapan(ese)?\b/ig, '').trim();
+  if(set && set.length > 2) name = name.replace(new RegExp(set.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig'), ' ');
+  return name.replace(/\bjapan(ese)?\b|\bjpn\b|\bpokemon\b/ig, ' ').replace(/\s+/g, ' ').trim();
+}
+function qplOtherLanguage(idx){
+  const r = qplResults[idx]; if(!r) return;
+  const toJp = !qplRowIsJapanese(r), q = qplOtherLanguageQuery(r);
+  if(!q) return toast_dash('No card name to search with');
+  const input = document.getElementById('qpl-input'); if(input) input.value = q;
+  setQplLanguage(toJp ? 'japanese' : 'english');
+  toast_dash((toJp ? 'Japanese' : 'English') + ' prices for ' + q + ' -- LANG is now ' + (toJp ? 'JP' : 'EN') + ' (tap it for AUTO)');
+}
+function qplLanguageChip(r = {}, idx = 0){
+  if(r.is_sealed || !/pokemon/i.test([r.category, r.game, r.lineLabel].join(' '))) return '';
+  return `<div style="margin:6px 0"><button class="hbtn" style="font-size:9px;min-height:26px" onclick="qplOtherLanguage(${idx})">${qplRowIsJapanese(r) ? 'SEE ENGLISH PRICE' : 'SEE JAPANESE PRICE'}</button></div>`;
+}
+setTimeout(paintQplLanguageButton, 0);
 function qplEditionChips(r = {}, idx = 0){
   if(r.is_sealed || !r.pokemonPriceTracker) return '';
   const variants = pptVariantsOf(r.pokemonPriceTracker);
@@ -39325,6 +39372,7 @@ function quickLookupResultCard(r, idx){
         }).join('')}</div>`;
       })()}
       ${qplEditionChips(r, idx)}
+      ${qplLanguageChip(r, idx)}
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
       ${qplGradedQuickChips(r, idx)}
