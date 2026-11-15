@@ -229,21 +229,37 @@
     ['mercadian masques','mmq'],['nemesis','nem'],['prophecy','pcy'],['invasion','inv'],['portal','por'],['chronicles','chr'],
     ['6th edition','6ed'],['7th edition','7ed'],['8th edition','8ed'],['9th edition','9ed'],['10th edition','10e'],
   ];
+  // EVERY SET (store, 2026-11-15: "do 3"): the dashboard hands over Scryfall's whole set list (setMtgSets), so any set's
+  // name works -- "lightning bolt modern horizons 3", "sol ring commander masters". Matched ignoring punctuation and
+  // case, the longest name first (Modern Horizons 3 before Modern Horizons), at the start or end of the search.
+  const setKey = v => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  let MTG_SET_LIST = [];
+  function buildSetList(extra = []){
+    const seen = new Set(), out = [];
+    for(const [name, code] of [...MTG_SET_WORDS, ...extra]){ const k = setKey(name), c = String(code || '').toLowerCase(); if(!k || !/^[a-z0-9]{2,6}$/.test(c) || seen.has(k)) continue; seen.add(k); out.push([k, c]); }
+    return out.sort((a, b) => b[0].length - a[0].length);
+  }
+  MTG_SET_LIST = buildSetList();
+  function setMtgSets(list){ MTG_SET_LIST = buildSetList((Array.isArray(list) ? list : []).map(x => Array.isArray(x) ? x : [x?.name, x?.code])); return MTG_SET_LIST.length; }
   function mtgSetSplit(text){
-    const words = text.split(' ');
-    for(const [name, code] of [...MTG_SET_WORDS].sort((a, b) => b[0].length - a[0].length)){
-      if(text.endsWith(' ' + name)) return { rest:text.slice(0, -name.length - 1).trim(), code };
-      if(text.startsWith(name + ' ')) return { rest:text.slice(name.length + 1).trim(), code };
+    const toks = text.split(' ');
+    for(const [k, code] of MTG_SET_LIST){
+      // The set at the end ("control magic beta"), then at the start ("beta control magic"); the card's own words keep
+      // their punctuation.
+      for(let n = 1; n < toks.length; n++){ const tail = setKey(toks.slice(-n).join(' ')); if(tail === k) return { rest:toks.slice(0, -n).join(' '), code }; if(tail.length > k.length) break; }
+      for(let n = 1; n < toks.length; n++){ const head = setKey(toks.slice(0, n).join(' ')); if(head === k) return { rest:toks.slice(n).join(' '), code }; if(head.length > k.length) break; }
     }
-    // A set code typed on the end ("control magic leb") -- only one of the old/known codes, or with "set" before it.
-    const m = /^(.*\S)\s+(?:set\s+|set:|e:)?([a-z0-9]{3,4})$/.exec(text);
-    if(m && (/(^|\s)(set\s+|set:|e:)[a-z0-9]{3,4}$/.test(text) || /^(lea|leb|2ed|3ed|4ed|5ed|arn|atq|leg|drk|fem|ced|cei)$/.test(m[2]))) return { rest:m[1].replace(/\s+set$/, '').trim(), code:m[2] };
+    // A set code typed on the end: with "set" before it for any set ("bolt set m11"), or one of the old codes alone
+    // ("control magic leb") -- newer codes like "war" or "one" are everyday words, so those need "set".
+    const m = /^(.*\S)\s+(?:set\s+|set:|e:)?([a-z0-9]{3,5})$/.exec(text);
+    if(m && (/(^|\s)(set\s+|set:|e:)[a-z0-9]{3,5}$/.test(text) || /^(lea|leb|2ed|3ed|4ed|5ed|arn|atq|leg|drk|fem|ced|cei)$/.test(m[2]))) return { rest:m[1].replace(/\s+set$/, '').trim(), code:m[2] };
     return null;
   }
   function mtgQueries(query, entities){
     const text = query.normalized.replace(/\bmtg\b|\bmagic the gathering\b/g,' ').replace(/\s+/g,' ').trim();
     if(MTG_CARD_NAMES.includes(text)) return unique([text], 3);
-    const set = !entities.mechanics.length && !/(^|\s)(set|e|s):/.test(text) ? mtgSetSplit(text) : null;
+    // A set named in the search wins over keyword (rules text) words -- "commander" in "sol ring commander masters" is the set.
+    const set = !/(^|\s)(set|e|s):/.test(text) ? mtgSetSplit(text) : null;
     if(set && set.rest) return unique([set.rest + ' set:' + set.code, text, set.rest], 3);
     if(entities.mechanics.length) return unique([entities.mechanics.map(term => term.includes(' ') ? 'o:"'+term+'"' : 'o:'+term).join(' '), text], 3);
     if(text === 'rhystic') return ['Rhystic Study', 'rhystic'];
@@ -387,5 +403,5 @@
     return [...merged.values()].sort((a,b)=>Number(b.rankScore||0)-Number(a.rankScore||0));
   }
 
-  return { normalizeUserQuery, detectSearchIntent, buildSearchPlan, queriesFor, filtersFor, mergeAndRankResults, scoreResult, categoryKey, unique };
+  return { normalizeUserQuery, detectSearchIntent, buildSearchPlan, queriesFor, filtersFor, mergeAndRankResults, scoreResult, categoryKey, unique, setMtgSets };
 });
