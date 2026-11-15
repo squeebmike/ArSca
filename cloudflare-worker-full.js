@@ -9745,14 +9745,22 @@ async function routeRequest(request, env, ctx) {
       const what = names.length ? names.slice(0, 4).join(', ') + (names.length > 4 ? ` +${names.length - 4} more` : '') : '';
       const head = isAdd ? 'Added to inventory' : `Customer buy${who ? ': ' + who : ''}`;
       const note = `${head}${what ? ' · ' + what : ''}${how ? ' · ' + how : ''} · ${key}`.slice(0, 600);
+      // Trades & buys per show (2026-11-15): the show it happened at, cards in, their market value, trade credit or cash.
+      const showId = /^[A-Za-z0-9_.:-]{1,80}$/.test(String(body.showSessionId || '')) ? String(body.showSessionId) : null;
+      const num = (v, max) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= max ? Math.round(n * 100) / 100 : 0; };
+      const details = isAdd ? null : { cards: Math.round(num(body.cards, 100000)), market: num(body.market, 10000000), paid: body.paid === 'trade' ? 'trade' : 'cash', method: how };
+      const extra = { ...(showId ? { show_session_id: showId } : {}), ...(details ? { details } : {}) };
+      // A database without the details column yet still records the money (the details are dropped, not the entry).
       try {
         const found = await supabaseAdminFetch(env, `store_expenses?store_id=eq.${encodeURIComponent(storeId)}&kind=eq.inventory&note=like.*${encodeURIComponent(key)}&select=id,amount&limit=1`);
         const prev = (found.data || [])[0];
         if (prev) {
-          await supabaseAdminFetch(env, `store_expenses?id=eq.${encodeURIComponent(prev.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', body: JSON.stringify({ amount, note }) });
+          await supabaseAdminFetch(env, `store_expenses?id=eq.${encodeURIComponent(prev.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', body: JSON.stringify({ amount, note, ...extra }) }).catch(() => supabaseAdminFetch(env, `store_expenses?id=eq.${encodeURIComponent(prev.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', body: JSON.stringify({ amount, note }) }));
           return json({ ok: true, updated: true, amount });
         }
-        await supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ store_id: storeId, spent_on: date, kind: 'inventory', category: isAdd ? 'Inventory added' : 'Customer buys', amount, note, created_by: auth.user?.id || null }) });
+        const row = { store_id: storeId, spent_on: date, kind: 'inventory', category: isAdd ? 'Inventory added' : 'Customer buys', amount, note, created_by: auth.user?.id || null };
+        await supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ ...row, ...extra }) })
+          .catch(() => supabaseAdminFetch(env, 'store_expenses', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify(row) }));
         return json({ ok: true, amount });
       } catch (e) {
         return json({ ok: false, error: e.message || String(e) }, 500);

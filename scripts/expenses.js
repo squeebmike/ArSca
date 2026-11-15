@@ -106,7 +106,7 @@ async function load(){
   var range = monthRange(state.month);
   state.loading = true; state.error = ''; render();
   try {
-    var ex = await client.from('store_expenses').select('id,spent_on,kind,category,amount,note,show_session_id,created_at')
+    var ex = await client.from('store_expenses').select('id,spent_on,kind,category,amount,note,show_session_id,created_at,details')
       .eq('store_id', store).gte('spent_on', range.firstDay).lt('spent_on', range.nextFirstDay).order('spent_on', { ascending:false });
     if(ex.error){ if(isMissingTable(ex.error)){ state.missingTable = true; state.entries = []; } else throw ex.error; }
     else { state.missingTable = false; state.entries = ex.data || []; }
@@ -114,7 +114,7 @@ async function load(){
     state.shows = await loadShows(client, store);
     state.recurring = await loadRecurring();
     if(!state.missingTable && await fillRecurring(client, store)) {
-      var again = await client.from('store_expenses').select('id,spent_on,kind,category,amount,note,show_session_id,created_at')
+      var again = await client.from('store_expenses').select('id,spent_on,kind,category,amount,note,show_session_id,created_at,details')
         .eq('store_id', store).gte('spent_on', range.firstDay).lt('spent_on', range.nextFirstDay).order('spent_on', { ascending:false });
       if(!again.error) state.entries = again.data || [];
     }
@@ -182,7 +182,7 @@ function shortDay(day){ var p = String(day || '').split('-'); return p.length ==
 // the days it sold on.
 function showResults(sales, entries, shows){
   var byId = {};
-  var get = function(id){ return byId[id] || (byId[id] = { id:id, sales:0, profit:0, costs:0, hasSummary:false, days:{} }); };
+  var get = function(id){ return byId[id] || (byId[id] = { id:id, sales:0, profit:0, costs:0, hasSummary:false, days:{}, trades:{ count:0, cards:0, market:0, paidTrade:0, paidCash:0, unknownMarket:0 } }); };
   (sales || []).forEach(function(sale){
     if(!sale.show_session_id) return;
     var r = get(sale.show_session_id), day = pacificDay(sale.completed_at);
@@ -192,6 +192,16 @@ function showResults(sales, entries, shows){
     r.sales += total; r.profit += profit; d.sales += total; d.profit += profit;
   });
   (entries || []).forEach(function(e){ if(e.show_session_id && e.kind !== 'inventory') get(e.show_session_id).costs += Number(e.amount || 0); });
+  // TRADES & BUYS PER SHOW (store, 2026-11-15): the customer buys and trade-ins taken at each show -- cards in, their
+  // market value then, what was given (trade credit or cash) and the gain. Not added to profit: that gain sits in
+  // inventory until the cards sell, and each sale's profit already counts it.
+  (entries || []).forEach(function(e){
+    if(!e.show_session_id || e.kind !== 'inventory' || !/^Customer buy/i.test(e.note || '') && e.category !== 'Customer buys') return;
+    var t = get(e.show_session_id).trades, d = e.details || {}, amt = Number(e.amount || 0);
+    t.count += 1; t.cards += Number(d.cards || 0);
+    if(Number(d.market) > 0) t.market += Number(d.market); else t.unknownMarket += 1;
+    if(d.paid === 'trade' || /trade/i.test(d.method || e.note || '')) t.paidTrade += amt; else t.paidCash += amt;
+  });
   var list = Object.keys(byId).map(function(id){
     var r = byId[id], sh = (shows || []).find(function(x){ return x.id === id; }) || { id:id, name:'Show', kind:'in-person' };
     if(!r.sales && sh.summary && sh.kind === 'whatnot'){ r.sales = Number(sh.summary.gross || 0); r.profit = Number(sh.summary.net || 0); r.hasSummary = true; }
@@ -202,6 +212,7 @@ function showResults(sales, entries, shows){
     var base = sh.kind === 'whatnot' ? showLabel(sh) : (sh.name || 'Show');
     r.name = days.length && sh.kind !== 'whatnot' ? base + ' · ' + shortDay(days[0]) + (days.length > 1 ? '–' + shortDay(days[days.length - 1]) : '') : base;
     r.net = round2(r.profit - r.costs); r.sales = round2(r.sales); r.profit = round2(r.profit); r.costs = round2(r.costs);
+    var t = r.trades; t.market = round2(t.market); t.paidTrade = round2(t.paidTrade); t.paidCash = round2(t.paidCash); t.gain = round2(t.market - t.paidTrade - t.paidCash);
     delete r.days;
     return r;
   });
@@ -344,6 +355,15 @@ function render(){
     '</div></div>';
 }
 
+// One show's trades and buys: cards in, what they're worth, what was given, the gain (kept apart from profit).
+function tradesLine(t){
+  if(!t || !t.count) return '';
+  var gave = [t.paidTrade ? usd(t.paidTrade) + ' in trade' : '', t.paidCash ? usd(t.paidCash) + ' cash' : ''].filter(Boolean).join(' + ') || usd(0);
+  var worth = t.market > 0 ? ' · worth ' + usd(t.market) : '';
+  var gain = t.market > 0 ? ' · <b style="color:' + (t.gain >= 0 ? 'var(--g)' : 'var(--red)') + '">gain ' + usd(t.gain) + '</b>' : '';
+  return '<div style="padding:2px 0 2px 12px;color:var(--dim)">TRADES &amp; BUYS: ' + t.count + ' deal' + (t.count === 1 ? '' : 's') + (t.cards ? ' · ' + t.cards + ' card' + (t.cards === 1 ? '' : 's') + ' in' : '') + worth + ' · gave ' + gave + gain +
+    '<div style="font-size:9px">The gain is in inventory, not profit yet -- it counts as profit when those cards sell.' + (t.unknownMarket ? ' ' + t.unknownMarket + ' older deal' + (t.unknownMarket === 1 ? '' : 's') + ' had no market value saved.' : '') + '</div></div>';
+}
 function showsHtml(){
   var list = showResults(state.sales, state.entries, state.shows);
   if(!list.length) return '';
@@ -356,7 +376,7 @@ function showsHtml(){
       ((r.dayList || []).length > 1 ? r.dayList.map(function(d){ return btn('SPLIT OFF ' + esc(d.label).toUpperCase(), "EXP.splitShowDay('" + esc(r.id) + "','" + esc(d.day) + "')"); }).join('') : '') +
       btn('MERGE INTO…', "EXP.mergeShow('" + esc(r.id) + "')") + '</div>';
     return '<div style="padding:4px 0;border-bottom:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px"><span style="min-width:0">' + esc(r.name) + '<br><span style="color:var(--dim)">sales ' + usd(r.sales) + ' · ' + (r.hasSummary ? 'Whatnot profit ' : 'profit ') + usd(r.profit) + (r.costs ? ' · show costs -' + usd(r.costs) : '') + '</span></span>' +
-      '<b style="color:' + (r.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(r.net) + '</b></div>' + perDay + tools + '</div>';
+      '<b style="color:' + (r.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(r.net) + '</b></div>' + tradesLine(r.trades) + perDay + tools + '</div>';
   }).join('') + '<div style="color:var(--dim);margin-top:4px">Each show\'s profit after the costs tagged to it (table fee, gas…). Tag a cost with "For a show" when adding it.</div></div>';
 }
 function recurringHtml(){

@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.5-marquee-templates';
+const APP_VERSION = '2026.11.15.6-trades-per-show';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -42177,12 +42177,22 @@ function recordInventoryAddCost(item, qty, unitCost, refId){
   const payload = { kind:'add', buySessionId:id, amount, items:[(n > 1 ? n + 'x ' : '') + (item?.name || 'Item')], date:new Date().toLocaleDateString('en-CA') };
   postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', id, 'Record inventory added as a purchase', payload, e.message || 'Inventory cost sync failed'));
 }
+// TRADES & BUYS PER SHOW (store, 2026-11-15): each buy or trade-in is tagged with the show running when it happened (the
+// in-person show this device joined), with how many cards came in, their market value then, and whether it was paid as
+// trade credit or cash -- so each show lists what it brought in. It isn't profit: the gain sits in inventory until the
+// cards sell, and each sale's profit already counts it (price minus what was paid).
+function buyShowDetails(session = {}, method = ''){
+  const items = session.items || [];
+  const cards = items.reduce((a, i) => a + Math.max(1, parseInt(i.qty ?? i.quantity ?? 1, 10) || 1), 0);
+  const show = getShowMode();
+  return { showSessionId:show ? String(getShowSessionId(show) || '') : '', cards, market:Math.round(Number(session.marketTotal || 0) * 100) / 100, paid:/trade/i.test(method || '') ? 'trade' : 'cash' };
+}
 function recordBuyInventoryCost(session, method){
   const amount = Math.round(Number(session?.cashOfferTotal || 0) * 100) / 100;
   if(!session?.buySessionId || !(amount > 0) || getAccountContext().isDemo) return;
   // Keyed per acceptance, not per tray: a tray accepted twice (more cards
   // added later) is two real payouts, and each one is recorded.
-  const payload = { buySessionId:session.buySessionId + '-' + Date.now().toString(36), amount, method:method || '', customerName:session.customerName || '', items:(session.items || []).map(i => i.name || i.title || '').filter(Boolean).slice(0, 50), date:new Date().toLocaleDateString('en-CA') };
+  const payload = { buySessionId:session.buySessionId + '-' + Date.now().toString(36), amount, method:method || '', customerName:session.customerName || '', ...buyShowDetails(session, method), items:(session.items || []).map(i => i.name || i.title || '').filter(Boolean).slice(0, 50), date:new Date().toLocaleDateString('en-CA') };
   postBuyInventoryCost(payload).catch(e => enqueueOrReplaceSync('buy-inventory-cost', session.buySessionId, 'Record buy as inventory purchase', payload, e.message || 'Buy cost sync failed'));
 }
 
