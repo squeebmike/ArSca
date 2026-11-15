@@ -100,11 +100,12 @@ function drawFrame(nm, type, sh, f, back, shut = false) {
     // SPIDER-CHEEKS: sitting up, hunched, the long spindly arms down to the ground, a shaggy mane, a long muzzle.
     line(cx + 9, 27, cx + 14, 22 + sway, 2, 2); line(cx + 14, 22 + sway, cx + 13, 17 + sway, 2, 1); // the tail, up and over
     blob(cx - 7, 27, 4, 3, 2); blob(cx + 7, 27, 4, 3, 2); // haunches
-    if (back) { blob(cx - 3, 27, 3, 2.4, 0); blob(cx + 3, 27, 3, 2.4, 0); } // the red behind (seen from the back)
+
     blob(cx, 21 - breath * 0.4, 8.5, 6.5); // the body
     for (const s of [-1, 1]) { line(cx + s * 8, 15, cx + s * 11, 29 + (s * sway > 0 ? -1 : 0), 3, 2); blob(cx + s * 11, 29, 1.8, 1.3, 3); } // long spindly arms, knuckles down
     blob(cx, 15 - breath * 0.4, 11, 5.5, 2); for (let x = cx - 10; x <= cx + 10; x += 2) px(x, 20 + (x % 4 ? 1 : 0) - Math.round(breath * 0.4), 2); // the mane, shaggy at the hem
     blob(cx, 9 - breath * 0.5, 6, 5.2); for (const s of [-1, 1]) blob(cx + s * 6.5, 8, 1.4, 1.6, 2); // the head, little ears
+    if (back) { for (const s of [-1, 1]) { blob(cx + s * 3.6, 24.5, 4, 3.4, 0); px(cx + s * 3.6 - 1, 23, 1); } line(cx, 21.5, cx, 27.5, 3); } // THE RED BEHIND, front and centre (seen from the back)
     eyeY = Math.round(8 - breath * 0.5); eyeDX = 2; mouthY = eyeY + 9;
   } else if (type === 'bug') {
     for (let k = 0; k < 3; k++) for (const s of [-1, 1]) line(cx + s * 6, 18 + k * 3, cx + s * (12 + ((k + f) % 2)), 21 + k * 3, 3); // six legs
@@ -307,6 +308,8 @@ export const GYMS = {
   'THE ARCHIVIST': { id: 'archivist', arena: 'THE STACKS', moves: ['BOX AVALANCHE', 'BAG AND BOARD', 'DUST CLOUD'], line: 'EVERY ISSUE HAS ITS PLACE.' },
   'THE INKER': { id: 'inker', arena: 'THE SPLASH PAGE', moves: ['SPLASH PAGE', 'CROSSHATCH', 'BLEED LINE'], line: 'HOLD STILL. I DON\'T ERASE.' },
 };
+// SPIDER-CHEEKS turns round to show off its red behind for 2.4 s of every 9 (on the clock, the same everywhere).
+export const cheeksShow = t => ((t % 9) + 9) % 9 < 2.4;
 export const gymOf = trainer => GYMS[String(trainer || '')] || null;
 export const gymMoveFor = (trainer, n = 0) => { const g = gymOf(trainer); return g ? g.moves[Math.max(0, n | 0) % g.moves.length] : ''; };
 export const toGym = route => { const r = Math.max(1, route | 0); return (GYM_EVERY - (r % GYM_EVERY)) % GYM_EVERY; };
@@ -888,7 +891,9 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     drawBeast(beast(evoName || b.mine.name, true), 28 + lunge + myShake, 42 + bob(0) - lunge, gotHit && Math.floor(now / 60) % 2 === 0, 2, mySink);
     if (et >= 0.86 && et < 1.05) for (let yy = 0; yy < 106; yy++) for (let xx = 0; xx < W; xx++) put(img, W, xx, yy, 0); // the flash
     const faint = b.foe.hp <= 0.002 ? Math.min(1, Math.max(0, 1 - shownFoe * 50)) : 0;
-    drawBeast(beast(b.foe.name), 152 + shake - foeLunge, 4 + bob(1) + foeLunge, hitT && Math.floor(now / 60) % 2 === 0, 2, faint);
+    // SPIDER-CHEEKS shows off: every so often it turns round and wiggles its red behind at you.
+    const cheeksOn = b.foe.name === 'SPIDER-CHEEKS' && b.foe.hp > 0.002 && cheeksShow(tm);
+    drawBeast(beast(b.foe.name, cheeksOn), 152 + shake - foeLunge + (cheeksOn ? Math.round(Math.sin(tm * 16) * 2) : 0), 4 + bob(1) + foeLunge, hitT && Math.floor(now / 60) % 2 === 0, 2, faint);
     // The foe's attack: from theirs (top right) down to yours (bottom left).
     if (fa >= 0 && fa < 0.6) { const f = fa / 0.6, x = 182 - f * 112, y = 30 + f * 40 - Math.sin(f * Math.PI) * 14; fill(Math.round(x) - 2, Math.round(y) - 2, 5, 5, 3); fill(Math.round(x) - 1, Math.round(y) - 1, 3, 3, 0); }
     if (fa > 0.45 && fa < 0.52) for (let yy = 40; yy < 106; yy++) for (let xx = 0; xx < 120; xx += 2) put(img, W, xx, yy, 0); // the hit's flash
@@ -914,11 +919,11 @@ export function createBattle(canvas, { scale = 3 } = {}) {
     // Words in a crisp pixel font, at the screen's size.
     const U = gbaB ? UI_RAMP : GB, S = scale, tx = (s, x, y, size = 7, c = U[3]) => { ctx.fillStyle = `rgb(${c})`; ctx.font = `${size * S}px "Press Start 2P", monospace`; ctx.fillText(s, x * S, y * S); };
     tx(b.foe.name.slice(0, 13), 10, 17, 6); tx('HP', 9, 25, 5); tx(b.mine.name.slice(0, 11), 134, 87, 6); tx('HP', 133, 95, 5); tx('L' + (b.mine.level || 1), 214, 87, 6);
-    tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
+    tx(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (cheeksOn ? 'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!' : '') || (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 10, 122, 6);
     if (nds) {
       // DS: the bottom screen -- dark, the line of text, the four moves as big rounded touch buttons.
       ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
-      ctx.fillStyle = '#f8f8f8'; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 8 * S, 117 * S);
+      ctx.fillStyle = '#f8f8f8'; ctx.font = `${6 * S}px "Press Start 2P", monospace`; ctx.fillText(it >= 0.62 && it < 1 ? b.mine.name + ', GO!' : msg || (cheeksOn ? 'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!' : '') || (b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?'), 8 * S, 117 * S);
       moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); tx((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? [32, 40, 48] : [255, 255, 255]); });
     } else moves.forEach((m, i) => { const x = 14 + (i % 2) * 112, y = 138 + Math.floor(i / 2) * 13; if (i === pick) { ctx.fillStyle = `rgb(${U[2]})`; ctx.fillRect((x - 6) * S, (y - 9) * S, 108 * S, 11 * S); } tx((i + 1) + ' ' + m, x, y, 6, i === pick ? U[0] : U[3]); });
   }

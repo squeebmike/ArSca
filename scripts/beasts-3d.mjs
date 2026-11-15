@@ -5,7 +5,7 @@
 // Original models built from simple shapes here; nothing from any game. Nothing by chance.
 import * as THREE from '../assets/vendor/three-0.160.0.module.min.js';
 import { buildBoss3D, fisterCoverTextures } from './live-studio-3d.mjs';
-import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, gymMoveFor, gymOf, DEFAULT_MOVES, STARTER } from './beasts.mjs?v=18';
+import { beastType, beastRamp, hashOf, moveAnim, foeMoveFor, gymMoveFor, gymOf, cheeksShow, DEFAULT_MOVES, STARTER } from './beasts.mjs?v=19';
 import { buildLeader3D, buildArena3D, signatureFx } from './beasts-gyms-3d.mjs?v=1';
 
 const col = c => new THREE.Color(c[0] / 255, c[1] / 255, c[2] / 255);
@@ -124,7 +124,7 @@ export function buildBeast3D(name) {
     // The mane: a shaggy cape over the shoulders, longer at the back.
     for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, back = Math.max(0, -Math.sin(a)), sp = at(g, cone(0.15, 0.48 + back * 0.3, mane, 6), Math.cos(a) * 0.4, 1.2 - back * 0.1, Math.sin(a) * 0.34 - 0.02); sp.rotation.set(Math.PI + Math.sin(a) * (0.9 + back * 0.4), 0, -Math.cos(a) * 1.05); }
     at(g, ball(0.4, mane, 18), 0, 1.24, -0.04).scale.set(1.15, 0.55, 1.05);
-    for (const sx of [-1, 1]) { at(g, ball(0.25, fur, 14), sx * 0.3, 0.3, -0.12).scale.set(1, 0.8, 1.35); at(g, ball(0.16, red, 14), sx * 0.12, 0.4, -0.5).scale.set(1, 1.1, 0.8); } // haunches, the red behind
+    for (const sx of [-1, 1]) { at(g, ball(0.25, fur, 14), sx * 0.3, 0.3, -0.12).scale.set(1, 0.8, 1.35); at(g, ball(0.2, red, 16), sx * 0.13, 0.42, -0.5).scale.set(1, 1.1, 0.85); at(g, ball(0.045, new THREE.MeshBasicMaterial({ color: 0xffb0b4 }), 8), sx * 0.15 - 0.04, 0.52, -0.66).userData.noOutline = true; } // haunches, the red behind (and its shine)
     // Long spindly arms: the upper arm out from the shoulder, an elbow, the forearm down to the knuckles.
     for (const sx of [-1, 1]) { const arm = at(g, new THREE.Group(), sx * 0.42, 1.12, 0.16); const up = at(arm, cyl(0.065, 0.055, 0.55, fur, 8), sx * 0.12, -0.25, 0.04); up.rotation.z = sx * 0.45; at(arm, ball(0.07, fur, 8), sx * 0.24, -0.5, 0.08); const fore = at(arm, cyl(0.05, 0.045, 0.6, fur, 8), sx * 0.22, -0.8, 0.14); fore.rotation.set(-0.15, 0, -sx * 0.08); at(arm, ball(0.085, dk, 10), sx * 0.2, -1.1, 0.2).scale.set(1.25, 0.6, 1.5); parts.legs.push(arm); }
     // The head, pushed forward: a heavy brow, small amber eyes set close, the long muzzle sloping down to the nose.
@@ -144,7 +144,9 @@ export function buildBeast3D(name) {
   if (/FOIL|HOLO/.test(nm)) g.traverse(o => { if (o.material?.isMeshToonMaterial) o.material.emissive = new THREE.Color(0x222244); });
   outline(g);
   const outer = new THREE.Group(); outer.add(g); // the bob is the inner group's, so placing and fainting move the outer one
-  outer.userData = { parts, plan, tick(t) { const p = parts; g.position.y = (p.float ? 0.25 + Math.sin(t * 1.8) * 0.12 : Math.abs(Math.sin(t * 2.2)) * 0.04); if (p.head) p.head.rotation.y = Math.sin(t * 1.3) * 0.15; p.legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 4 + i) * 0.1; }); p.wings.forEach((w, i) => { w.rotation.z = (i % 2 ? -1 : 1) * Math.sin(t * 7) * 0.35; }); if (p.tail) p.tail.rotation.y = Math.sin(t * 3) * 0.4; } };
+  outer.userData = { parts, plan, tick(t) { const p = parts; g.position.y = (p.float ? 0.25 + Math.sin(t * 1.8) * 0.12 : Math.abs(Math.sin(t * 2.2)) * 0.04); if (p.head) p.head.rotation.y = Math.sin(t * 1.3) * 0.15; p.legs.forEach((l, i) => { l.rotation.x = Math.sin(t * 4 + i) * 0.1; }); p.wings.forEach((w, i) => { w.rotation.z = (i % 2 ? -1 : 1) * Math.sin(t * 7) * 0.35; }); if (p.tail) p.tail.rotation.y = Math.sin(t * 3) * 0.4;
+    // SPIDER-CHEEKS shows off: turns round, wiggles the red behind, turns back (2.4 s of every 9, on the clock).
+    if (plan === 'baboon') { const k = ((t % 9) + 9) % 9, on = k < 2.4, e = !on ? 0 : k < 0.4 ? k / 0.4 : k > 2.0 ? (2.4 - k) / 0.4 : 1; g.rotation.y = Math.PI * e * e * (3 - 2 * e); g.rotation.z = on && e === 1 ? Math.sin(t * 16) * 0.12 : 0; if (p.tail && on) p.tail.rotation.y = Math.sin(t * 18) * 0.6; } } };
   return outer;
 }
 
@@ -185,7 +187,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
     // The DS-style touch panel: the line of text, then the four moves as big rounded buttons.
     ctx.fillStyle = '#2a3240'; ctx.fillRect(0, 106 * S, W * S, 54 * S);
     const introT = (performance.now() - introAt) / 2400;
-    f(msg || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
+    f(msg || (b && b.foe.name === 'SPIDER-CHEEKS' && b.foe.hp > 0.002 && introT >= 1 && cheeksShow(performance.now() / 1000 + 1.3) ? 'SPIDER-CHEEKS SHOWS OFF ITS CHEEKS!' : '') || (b && b.kind === 'rival' && introT < 1 ? b.trainer.slice(0, 22) + (b.rematch ? ' WANTS A REMATCH!' : ' WANTS TO BATTLE!') : b && b.kind === 'wild' && b.night && introT < 1 ? '🌙 A NIGHT-ONLY ' + b.foe.name.slice(0, 12) + '!' : '') || (b ? (b.mine.hp <= 0 ? b.mine.name.slice(0, 10) + ' FAINTED! CHAT: FOLLOW/SHARE TO REVIVE' : b.kind === 'rival' ? b.trainer.slice(0, 22) + ' SENT OUT ' + b.foe.name.slice(0, 13) + '!' : 'WHAT WILL ' + b.mine.name + ' DO?') : ''), 8, 117, 6, '#f8f8f8');
     moves.forEach((m, i) => { const x = 6 + (i % 2) * 116, y = 122 + Math.floor(i / 2) * 18, on = i === pick; ctx.fillStyle = on ? '#ffd84a' : '#4d6fbf'; ctx.beginPath(); ctx.roundRect(x * S, y * S, 112 * S, 15 * S, 5 * S); ctx.fill(); f((i + 1) + ' ' + m, x + 6, y + 10, 6, on ? '#202830' : '#ffffff'); });
   }
   function frame(now) {
@@ -241,7 +243,7 @@ export function createBattle3D(canvas, { scale = 3 } = {}) {
 // trees, houses with roofs, water, boulders, snow, lava, lamps and gravestones; the host and Champ as little 3D people,
 // your beast following in 3D, the route's items and chat's gifts bobbing on the path; the camera over your shoulder,
 // tilted like the handhelds. Drawn into the same 2D canvas the flat route uses (so the screens don't change).
-import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs?v=18';
+import { routeFor, posAt, walkAt, ENCOUNTERS, TILE_RAMPS, timeOfDay, MAP_W, MAP_H } from './beasts.mjs?v=19';
 const SKY = { day: [0x8fd0ff, 0xd8f0ff], sunset: [0xf2a46a, 0xffd9b0], night: [0x1a2350, 0x3a4a80] };
 function person(shirt, cap) {
   const g = new THREE.Group(), skin = mat([242, 184, 146]);

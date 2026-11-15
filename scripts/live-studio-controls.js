@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.14.15';
+  const STUDIO_V='2026.11.14.16';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -355,20 +355,23 @@
   let scrPc=null,scrStream=null,scrId='';
   const scrLook=()=>({layout:host.querySelector('#scr-layout').value,title:host.querySelector('#scr-title').value||'FOC ORDERS -- FOLLOW ALONG'});
   async function stopScreen(tell){scrStream?.getTracks().forEach(t=>t.stop());try{scrPc?.close();}catch{}scrPc=scrStream=null;const was=scrId;scrId='';if(tell&&was)await api('screen',{stop:true});}
-  host.querySelector('#scr-go').onclick=()=>run(async()=>{
+  // currentTab: share this very tab (the FOC wall's SHOW MODE asks for it), the browser offering it first.
+  async function shareScreen(look,currentTab){
     if(!navigator.mediaDevices?.getDisplayMedia||typeof RTCPeerConnection!=='function')throw Error('This browser can\'t share a screen -- use Chrome or Edge on a computer.');
     if(!connectedStore)await connect();
     await stopScreen(false);
-    const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:15,max:30}},audio:false});
+    const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:15,max:30}},audio:false,...(currentTab?{preferCurrentTab:true,selfBrowserSurface:'include'}:{})});
     const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.cloudflare.com:3478'}]});scrPc=pc;scrStream=stream;
     for(const t of stream.getTracks())pc.addTrack(t,stream);
     stream.getVideoTracks()[0].onended=()=>{if(scrPc===pc)void run(async()=>{await stopScreen(true);status.textContent='Screen share stopped.';});};
     await pc.setLocalDescription(await pc.createOffer());
     await new Promise(res=>{if(pc.iceGatheringState==='complete')return res();const t=setTimeout(res,2500);pc.addEventListener('icegatheringstatechange',()=>{if(pc.iceGatheringState==='complete'){clearTimeout(t);res();}});});
-    const d=await api('screen',{offer:pc.localDescription.sdp,...scrLook()});scrId=d.id;status.textContent='Waiting for the overlay in OBS...';
+    const d=await api('screen',{offer:pc.localDescription.sdp,...look});scrId=d.id;status.textContent='Waiting for the overlay in OBS...';
     for(let k=0;k<40;k++){await new Promise(r=>setTimeout(r,750));if(scrId!==d.id)return;const r=await api('screen',{poll:d.id});if(r.answer){await pc.setRemoteDescription({type:'answer',sdp:r.answer});status.textContent='📺 Sharing -- it\'s on the overlay. STOP SHARING (or the browser\'s Stop) ends it.';return;}}
     await stopScreen(true);throw Error('The overlay didn\'t answer. Is the overlay open in OBS and connected? Try again.');
-  });
+  }
+  host.querySelector('#scr-go').onclick=()=>run(()=>shareScreen(scrLook(),false));
+  window.manaStudioShareScreen=(o={})=>shareScreen({layout:['corner','half','full'].includes(o.layout)?o.layout:'full',title:String(o.title||'FOLLOW ALONG').slice(0,40)},!!o.currentTab);
   host.querySelector('#scr-stop').onclick=()=>run(async()=>{await stopScreen(false);await api('screen',{stop:true});status.textContent='Screen share stopped.';});
   for(const id of ['#scr-layout','#scr-title'])host.querySelector(id).onchange=()=>{if(scrId)void run(()=>api('screen',scrLook()));};
   host.querySelector('#mana-effects').onclick=e=>{const kind=e.target.dataset.effect;if(kind)void run(async()=>{const d=await api('effect',{kind});preview(d.effect);status.textContent='Sent '+e.target.textContent;});};
