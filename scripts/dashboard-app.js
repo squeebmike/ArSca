@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.2-tcg-links';
+const APP_VERSION = '2026.11.15.3-mtg-set-search';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -38729,17 +38729,25 @@ async function fetchScryfallCatalog(q, searchPlan = qplLastSearchPlan){
   if(finishIntent.treatment === 'borderless') sfQ += ' is:borderless';
   else if(finishIntent.treatment === 'showcase') sfQ += ' is:showcase';
   else if(finishIntent.treatment === 'extended_art') sfQ += ' is:extendedart';
-  const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(sfQ) + '&unique=prints&order=released&dir=desc';
   _scryfallSearchAbortController?.abort();
   _scryfallSearchAbortController = new AbortController();
-  const res = await fetch(url, { headers:{ 'Accept':'application/json' }, signal:_scryfallSearchAbortController.signal }).catch(error => {
-    if(error?.name === 'AbortError') throw error;
-    return null;
-  });
-  if(!res?.ok) return [];
-  const data = await res.json().catch(() => ({}));
-  let allScryfallCards = data.data || [];
-  recordSearchPlanRoute(searchPlan, 'https://api.scryfall.com/cards/search', sfQ, allScryfallCards.length);
+  // The planned searches in order -- a set-filtered one first ("control magic set:leb"), then the plain words -- until one
+  // finds cards (Scryfall answers "no cards" with a 404).
+  const treatmentSuffix = sfQ.slice(String(plannedQueries.length ? searchQ : expandSmartQuery(searchQ)).length);
+  const tries = plannedQueries.length ? plannedQueries.map(pq => pq + treatmentSuffix) : [sfQ];
+  let allScryfallCards = [];
+  for(const tryQ of tries.slice(0, 3)){
+    const url = 'https://api.scryfall.com/cards/search?q=' + encodeURIComponent(tryQ) + '&unique=prints&order=released&dir=desc';
+    const res = await fetch(url, { headers:{ 'Accept':'application/json' }, signal:_scryfallSearchAbortController.signal }).catch(error => {
+      if(error?.name === 'AbortError') throw error;
+      return null;
+    });
+    const data = res?.ok ? await res.json().catch(() => ({})) : {};
+    allScryfallCards = data.data || [];
+    recordSearchPlanRoute(searchPlan, 'https://api.scryfall.com/cards/search', tryQ, allScryfallCards.length);
+    if(allScryfallCards.length) break;
+  }
+  if(!allScryfallCards.length) return [];
   // One Scryfall page is sufficient for the first 20 visible results. Additional
   // printings load only when the dealer opens the variants control.
   return allScryfallCards.slice(0, 20).map(c => {

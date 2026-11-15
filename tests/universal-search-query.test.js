@@ -145,3 +145,19 @@ assert.match(dashboard, /userPhotoBlobKey/, 'comic user photos must persist by I
 assert.doesNotMatch(dashboard, /PRICECHARTING_TOKEN\s*=|POKEMONPRICE_API_KEY\s*=\s*['"][^'"]+/, 'dashboard must not contain provider secrets');
 
 console.log('Universal search adapter checks passed');
+
+// A set in a Magic search (store, 2026-11-15: "control magic beta" found nothing; "control magic" showed every printing).
+{
+  const q = s => adapter.queriesFor(adapter.buildSearchPlan(s, 'Magic: The Gathering'), 'mtg', 'Scryfall');
+  assert.deepEqual(q('control magic beta'), ['control magic set:leb', 'control magic beta', 'control magic']);
+  assert.equal(q('beta control magic')[0], 'control magic set:leb', 'the set first works too');
+  assert.equal(q('black lotus alpha')[0], 'black lotus set:lea');
+  assert.equal(q('lightning bolt revised')[0], 'lightning bolt set:3ed');
+  assert.equal(q('control magic leb')[0], 'control magic set:leb', 'a set code on the end');
+  assert.equal(q('control magic set leb')[0], 'control magic set:leb');
+  assert.deepEqual(q('control magic'), ['control magic'], 'no set: unchanged');
+  assert.deepEqual(q('sol ring'), ['sol ring']);
+  const fetchSf = dashboard.slice(dashboard.indexOf('async function fetchScryfallCatalog('), dashboard.indexOf('async function fetchScryfallCatalog(') + 2600);
+  assert.ok(fetchSf.includes('for(const tryQ of tries.slice(0, 3)){') && fetchSf.includes('if(allScryfallCards.length) break;'), 'the plain words are tried when the set search finds nothing');
+}
+console.log('MTG set in search: passed');
