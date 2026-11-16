@@ -28,3 +28,7 @@ t = lib.focAddBundleTotals(); assert.equal(lib.focAddBundleDefaultName(t.picked)
 assert.ok(foc.includes('onclick="openFocAddBundle(') && foc.includes('+ ADD BUNDLE TO EBAY LISTING'), 'button on the title');
 assert.ok(foc.includes('window.openFocAddBundle=openFocAddBundle;') && foc.includes('window.submitFocAddBundle=submitFocAddBundle;') && foc.includes('window.focAddBundlePick=focAddBundlePick;'), 'reachable from onclick');
 console.log('Add bundle to a live eBay listing: passed');
+// (2026-11-16: "I'm in Lunar. Why's it say submit PRH order?") The lock button and its messages name the week's distributor.
+assert.ok(foc.includes("(c.distributor==='Lunar'?'LOCK LUNAR ORDER':'SUBMIT PRH ORDER')"), 'Lunar week: LOCK LUNAR ORDER');
+assert.ok(foc.includes("function focDistributorName(){return state.cycle&&state.cycle.distributor==='Lunar'?'Lunar':'PRH';}") && foc.includes("toast_dash(focDistributorName()+' order locked: '"));
+console.log('Lunar lock button name: passed');
