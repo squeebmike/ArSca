@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.16.3-games-no-console';
+const APP_VERSION = '2026.11.16.4-game-conditions';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36009,10 +36009,12 @@ function enrichScpImagesAsync(){
   });
 }
 
+const QPL_PC_IMAGE_LIMIT = 8;
 async function enrichPcImagesAsync(){
-  // Image hydration is optional. Limit it to the first three visible products
+  // Image hydration is optional. Limit it to the first few visible products
   // and serialize requests so a result list cannot burst the upstream API.
-  const candidates=qplResults.map((r,idx)=>({r,idx})).filter(({r})=>r&&r.source==='PriceCharting'&&!r.imageUrl&&r.pricecharting?.productId&&qplResultCategoryKey(r)!=='mtg').slice(0,3);
+  // (store, 2026-11-16: "some images don't show") -- only the first 3 got a picture; now the first 8.
+  const candidates=qplResults.map((r,idx)=>({r,idx})).filter(({r})=>r&&r.source==='PriceCharting'&&!r.imageUrl&&r.pricecharting?.productId&&qplResultCategoryKey(r)!=='mtg').slice(0,QPL_PC_IMAGE_LIMIT);
   for(const {r,idx} of candidates){
     try{
       const res=await storeWorkerFetch(WORKER+'/pricing/pricecharting/product/'+encodeURIComponent(r.pricecharting.productId),{cache:'force-cache',signal:AbortSignal.timeout(3500)});
@@ -36231,6 +36233,12 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
       productUrl:m.url || '',
       raw:m,
     };
+  });
+  // A game keeps its console as the set and goes in under "Video Games" (not "Nintendo DS"), priced Loose to start.
+  mapped.forEach(row => {
+    if(effectiveCategory === 'comic' || qplResultCategoryKey(row) !== 'video_games') return;
+    row.category = 'Video Games';
+    applyQplVideoGameCondition(row, 'Loose');
   });
   if(effectiveCategory === 'comic') mapped.forEach(row => {
     const meta = comicProductMeta(row);
@@ -36579,6 +36587,7 @@ async function updateQplVariant(idx, patch = {}, rerender = true){
   const r = qplResults[idx];
   if(!r) return;
   Object.assign(r, patch);
+  if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') { applyQplVideoGameCondition(r, r.selectedCondition); if(rerender) updateQplResultCard(idx); return; }
   applyQplSelectedVariant(r);
   if(rerender) updateQplResultCard(idx);
   if(isPokemonChartCandidate(r) && !r.pokemonPriceTracker) hydratePokemonPriceTrackerPricing(idx, rerender);
@@ -36770,8 +36779,32 @@ function qplVariantPriceTable(r, idx){
   </div>`;
 }
 
+// VIDEO GAMES (store, 2026-11-16: "NM LP aren't a thing. Don't they do stuff like loose, complete in box CIB, new in box
+// NIB?") A game is priced Loose / CIB / New (and Graded, Box Only, Manual Only) -- PriceCharting's own price for each.
+const QPL_GAME_CONDITIONS = [['Loose','ungraded'],['CIB','grade7'],['New','grade8'],['Graded','grade9'],['Box Only','grade9_5'],['Manual Only','psa10']];
+function qplVideoGamePrice(r, label){
+  const key = (QPL_GAME_CONDITIONS.find(c => c[0] === label) || [])[1];
+  return key ? Number(r?.pricecharting?.prices?.[key] || 0) || 0 : 0;
+}
+function applyQplVideoGameCondition(r, label){
+  if(!QPL_GAME_CONDITIONS.some(c => c[0] === label)) label = 'Loose';
+  const price = qplVideoGamePrice(r, label);
+  r.selectedCondition = label; r.condition = label;
+  r.market = price; r.resolvedPrice = price; r.resolvedPricePath = 'pricecharting.' + (QPL_GAME_CONDITIONS.find(c => c[0] === label) || [])[1];
+  r.priceSource = price ? 'PriceCharting Guide Value · ' + label : 'No ' + label + ' price on PriceCharting';
+  return r;
+}
+function qplVideoGameChipsHtml(r, idx){
+  const active = r.selectedCondition || 'Loose';
+  return QPL_GAME_CONDITIONS.map(([label]) => [label, qplVideoGamePrice(r, label)])
+    .filter(([label, p]) => p > 0 || ['Loose','CIB','New'].includes(label))
+    .map(([label, p]) => `<button class="qpl-cond-chip${label === active ? ' active' : ''}" onclick="updateQplVariant(${idx},{selectedCondition:'${label}'})">
+        <span class="cchip-label">${label.toUpperCase()}</span>
+        <span class="${p ? 'cchip-price' : 'cchip-na'}">${p ? '$' + p.toFixed(2) : '—'}</span>
+      </button>`).join('');
+}
 function qplConditionOptionsFor(r){
-  if(qplResultCategoryKey(r) === 'video_games') return ['Loose','CIB','New/Sealed','Box Only','Manual Only','Graded'];
+  if(qplResultCategoryKey(r) === 'video_games') return QPL_GAME_CONDITIONS.map(c => c[0]);
   return ['NM','LP','MP','HP','DMG'];
 }
 
@@ -39376,6 +39409,7 @@ function quickLookupResultCard(r, idx){
   // Condition chips — derive from availableVariants or fallback conditions
   const condChips = (() => {
     if(r.is_sealed) return '<span style="font-size:11px;color:var(--g);font-weight:600;letter-spacing:.04em">FACTORY SEALED</span>';
+    if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') return qplVideoGameChipsHtml(r, idx);
     const activeCond = r.selectedCondition || r.condition || 'NM';
     const activeFinish = r.selectedFinish || r.finish || '';
     // Use PPT matrix rows (iterates all finish keys correctly — no finish-key guessing).

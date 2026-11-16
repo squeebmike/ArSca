@@ -26,3 +26,20 @@ console.log('Pokemon video game search: passed');
   assert.ok(pc.includes("csvCategory:pcCat || ''"), 'results still sorted as games');
   console.log('PriceCharting game search without a console filter: passed');
 }
+// (2026-11-16: "NM LP aren't a thing. Don't they do loose, complete in box CIB, new in box NIB?" / "some images don't show")
+{
+  const s = app.indexOf('const QPL_GAME_CONDITIONS'), e = app.indexOf('function qplConditionOptionsFor(');
+  const lib = new Function(app.slice(s, e) + '\nreturn { qplVideoGamePrice, applyQplVideoGameCondition, qplVideoGameChipsHtml, QPL_GAME_CONDITIONS };')();
+  const game = { source: 'PriceCharting', pricecharting: { prices: { ungraded: 85, grade7: 160, grade8: 400, grade9: 0, grade9_5: 12, psa10: 0 } } };
+  assert.deepEqual(lib.QPL_GAME_CONDITIONS.map(c => c[0]), ['Loose', 'CIB', 'New', 'Graded', 'Box Only', 'Manual Only']);
+  lib.applyQplVideoGameCondition(game, 'Loose'); assert.equal(game.market, 85); assert.equal(game.condition, 'Loose');
+  lib.applyQplVideoGameCondition(game, 'CIB'); assert.equal(game.market, 160); assert.match(game.priceSource, /CIB/);
+  lib.applyQplVideoGameCondition(game, 'NM'); assert.equal(game.condition, 'Loose', 'no NM for a game');
+  const chips = lib.qplVideoGameChipsHtml(game, 0);
+  assert.ok(chips.includes('LOOSE') && chips.includes('CIB') && chips.includes('NEW') && chips.includes('BOX ONLY') && !chips.includes('MANUAL ONLY') && !chips.includes('>NM<'), 'Loose/CIB/New always, others only with a price');
+  assert.ok(app.includes("if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') return qplVideoGameChipsHtml(r, idx);"), 'chips');
+  assert.ok(app.includes("if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') { applyQplVideoGameCondition(r, r.selectedCondition);"), 'picking a condition reprices');
+  assert.ok(app.includes("row.category = 'Video Games';\n    applyQplVideoGameCondition(row, 'Loose');"), 'saved under Video Games, Loose to start');
+  assert.ok(app.includes('const QPL_PC_IMAGE_LIMIT = 8;') && app.includes('.slice(0,QPL_PC_IMAGE_LIMIT);'), 'more pictures filled in');
+  console.log('Video game conditions: passed');
+}
