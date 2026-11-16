@@ -13,5 +13,9 @@ assert.throws(() => M.validateSettings({ marqueeTemplates: JSON.stringify([{ n: 
 // The ready-made ones pass the same check; the remote has the picker, PUT ON THE SIGN, SAVE and DELETE.
 const builtin = [...ctl.matchAll(/\{n:'([^']+)',t:'([^']+)'\}/g)].map(m => ({ n: m[1], t: m[2] }));
 assert.ok(builtin.length >= 4); for (const t of builtin) { assert.equal(M.chanceWordIn(t.t), '', t.n); assert.ok(t.t.length <= 300); }
-for (const k of ['id="mq-tpl"', 'id="mq-use"', 'id="mq-save"', 'id="mq-del"', '<input type="hidden" name="marqueeTemplates">', 'paintMarqueeTemplates();preview();', "if(mine.length>=12)throw Error('12 saved templates is the most"]) assert.ok(ctl.includes(k), k);
+for (const k of ['id="mq-tpl"', 'id="mq-use"', 'id="mq-save"', 'id="mq-del"', '<input type="hidden" name="marqueeTemplates">', 'paintMarqueeTemplates();preview();', "if(at<0&&mine.length>=12)throw Error('12 saved templates is the most"]) assert.ok(ctl.includes(k), k);
+// (2026-11-16) Saving with one of your templates picked fills in its name, and the same name updates it in its place.
+assert.ok(ctl.includes("suggest=picked?.mine&&picked.t?picked.t.n:"), 'its name filled in');
+assert.ok(ctl.includes("if(at>=0)mine[at]={n:name,t:text.slice(0,300)};else mine.push("), 'updated where it is, not moved to the end');
+assert.ok(ctl.includes("'Template updated: '"));
 console.log('Marquee templates: passed');
