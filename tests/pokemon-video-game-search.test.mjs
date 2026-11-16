@@ -17,3 +17,12 @@ assert.ok(fn.includes("if(!nonCardWanted && (plannedCategories.has('pokemon') ||
 assert.ok(fn.includes("const pokemonOnly = !nonCardWanted && ("), '...and still asks PriceCharting');
 assert.ok(fn.includes("if(!nonCardWanted && (wants === 'mtg' ||") && fn.includes("if(!nonCardWanted && (wants === 'comic' ||"));
 console.log('Pokemon video game search: passed');
+// (2026-11-16, after the first fix: "Still doesn't show it".) The category went to PriceCharting as a console name;
+// "Video Games" isn't one, so games search without it, and any other category that comes back empty is asked again without it.
+{
+  const pc = app.slice(app.indexOf('async function fetchPriceChartingLiveCatalog('), app.indexOf('function buildQplVariantsFromPrices('));
+  assert.ok(pc.includes("const sendCategory = pcCat && effectiveCategory !== 'video_games' ? pcCat : '';"), 'games: no console filter');
+  assert.ok(pc.includes("if(!rows.length && sendCategory && queries[0]) await pcSearch(queries[0], '');"), 'empty: once more without it');
+  assert.ok(pc.includes("csvCategory:pcCat || ''"), 'results still sorted as games');
+  console.log('PriceCharting game search without a console filter: passed');
+}

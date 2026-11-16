@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.16.2-pokemon-games';
+const APP_VERSION = '2026.11.16.3-games-no-console';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36159,15 +36159,26 @@ async function fetchPriceChartingLiveCatalog(q, cat, searchPlan = qplLastSearchP
     // Non-sports: search query variants up to limit
     const queryLimit = 2;
     const rowLimit = 8;
-    for(const query of qplQueryVariants(q, cat, searchPlan).slice(0, queryLimit)) {
+    // (store, 2026-11-16: "Pokemon heartgold" on GAMES still showed nothing.) The category goes to PriceCharting as
+    // a console name; "Video Games" isn't one (its consoles are "Nintendo DS", "Nintendo 64"...), so games search
+    // without it -- the results are sorted into games here. Any other category that comes back empty is asked once
+    // more without it.
+    const sendCategory = pcCat && effectiveCategory !== 'video_games' ? pcCat : '';
+    const pcSearch = async (query, category) => {
       const params = new URLSearchParams({ q:query, live:'true' });
-      if(pcCat) params.set('category', pcCat);
+      if(category) params.set('category', category);
       const res = await storeWorkerFetch(WORKER + '/pricing/pricecharting/search?' + params.toString(), { cache:'no-store' });
       const data = await res.json().catch(() => ({}));
-      if(res.ok && data.ok) rows.push(...(data.matches || data.products || []).map(m => ({ ...m, _generatedQuery:query })));
-      recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', query, (data.matches || data.products || []).length);
+      const found = res.ok && data.ok ? (data.matches || data.products || []) : [];
+      rows.push(...found.map(m => ({ ...m, _generatedQuery:query })));
+      recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', query, found.length);
+    };
+    const queries = qplQueryVariants(q, cat, searchPlan).slice(0, queryLimit);
+    for(const query of queries) {
+      await pcSearch(query, sendCategory);
       if(rows.length >= rowLimit) break;
     }
+    if(!rows.length && sendCategory && queries[0]) await pcSearch(queries[0], '');
   }
   const mapped = rows.map(m => {
     // card_number was always blank here regardless of source data -- but
