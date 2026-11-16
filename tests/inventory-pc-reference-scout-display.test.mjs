@@ -20,7 +20,9 @@ assert.match(dashboard, /function populateInventoryPcReference\(item = \{\}\)\{/
   const fnStart = dashboard.indexOf('function populateInventoryPcReference(item = {}){');
   const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /const url = !id \? String\(item\.providerUrl \|\| item\.raw\?\.providerUrl \|\| ''\)\.trim\(\) : '';/,
+  // Only a PriceCharting/SportsCardsPro page link counts (an MTG card's providerUrl is often its TCGplayer link).
+  assert.match(fn, /const savedUrl = String\(item\.providerUrl \|\| item\.raw\?\.providerUrl \|\| ''\)\.trim\(\);/, 'reads the saved providerUrl');
+  assert.match(fn, /const url = !id && \/\(\?:pricecharting\|sportscardspro\)\\\.com\\\/game\\\/\/i\.test\(savedUrl\) \? savedUrl : '';/,
     'must fall back to the saved providerUrl when there is no numeric pricechartingProductId, or every Scout/buy-tray item shows this field as empty');
   assert.match(fn, /const displayValue = id \|\| url;/, 'must actually display the fallback URL in the input');
   assert.match(fn, /if\(input\) input\.value = displayValue;/, 'must write the fallback value into the input field');

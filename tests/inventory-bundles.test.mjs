@@ -13,14 +13,16 @@ assert.match(dashboard, /\['soldAt',''\], \['saleId',''\],/, 'soldAt/saleId must
 // ── Sellability: a bundled-into-something item must not be independently sellable ──
 assert.match(dashboard, /return !\['sold','archived','returned','deleted','bundled'\]\.includes\(status\) && !item\.soldAt && inventoryAvailableQuantity\(item\) > 0;/, 'inventoryItemIsSellable must exclude status "bundled" so a bundled item cannot also be sold on its own');
 
-// ── Bundle eligibility: only single-qty, sellable, non-bundle items ──
-assert.match(dashboard, /function inventoryItemBundleEligible\(item\)\{\s*\n\s*return !!item && inventoryItemIsSellable\(item\) && inventoryAvailableQuantity\(item\) === 1 && !item\.isBundle;/, 'inventoryItemBundleEligible must require sellable + qty exactly 1 + not already a bundle');
+// ── Bundle eligibility: sellable, non-bundle items. (2026-11-16) a row with several copies can go in too -- the copies
+// that go in are split off into their own one-copy rows first (splitInventoryCopies), so members are still single copies.
+assert.match(dashboard, /function inventoryItemBundleEligible\(item\)\{\s*\n\s*return !!item && inventoryItemIsSellable\(item\) && inventoryAvailableQuantity\(item\) >= 1 && !item\.isBundle;/, 'inventoryItemBundleEligible must require sellable + in stock + not already a bundle');
+assert.match(dashboard, /if\(inventoryAvailableQuantity\(it\) === 1\) items\.push\(it\);\s*\n\s*else items\.push\(\.\.\.await splitInventoryCopies\(it, want\)\);/, 'a multi-copy row is split before it goes in');
 
 // ── Draft selection state + UI ──
 assert.match(dashboard, /function toggleBundleDraft\(id\)\{/, 'missing toggleBundleDraft');
-assert.match(dashboard, /if\(!inventoryItemBundleEligible\(item\)\)\{ toast_dash\('Only single-quantity, in-stock items can be bundled'\); return; \}/, 'toggleBundleDraft must refuse ineligible items');
+assert.match(dashboard, /if\(!inventoryItemBundleEligible\(item\)\)\{ toast_dash\('Only in-stock items can be bundled'\); return; \}/, 'toggleBundleDraft must refuse ineligible items');
 assert.match(dashboard, /function renderBundleDraftBar\(\)\{/, 'missing renderBundleDraftBar');
-assert.match(dashboard, /\$\{bundleDraftIds\.size<2\?'disabled':''\}/, 'BUILD BUNDLE button must be disabled below 2 selected items');
+assert.match(dashboard, /\$\{draftCopies<2\?'disabled':''\}/, 'BUILD BUNDLE button must be disabled below 2 copies in the draft');
 
 // ── Bundle name suggestion (comic run detection) ──
 assert.match(dashboard, /function suggestBundleName\(items\)\{/, 'missing suggestBundleName');

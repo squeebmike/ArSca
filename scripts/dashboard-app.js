@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.16.6-game-card-paste-any';
+const APP_VERSION = '2026.11.16.7-bundles-foc-buys-tests';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -27586,9 +27586,39 @@ function inventoryItemIsSellable(item){
 // after the bundle itself sells (see cascadeMarkBundleMembersSold).
 // ══════════════════════════════════════════════════
 let bundleDraftIds = new Set();
+// (store, 2026-11-16: bundles only took items with a quantity of 1.) A row with several copies can go in too: how many
+// of its copies is picked in BUILD BUNDLE; those copies are split off into their own rows (one each) and the row keeps
+// the rest, so selling or dissolving the bundle works exactly as it does for single items.
+let bundleDraftCopies = new Map();
+function bundleDraftCopiesOf(item){ const n = inventoryAvailableQuantity(item); return Math.max(1, Math.min(n, Number(bundleDraftCopies.get(item.id)) || 1)); }
+function bundleDraftTotalCopies(items){ return items.reduce((t, i) => t + bundleDraftCopiesOf(i), 0); }
+function setBundleDraftCopies(id, value){
+  const item = all.find(i => i.id === id); if(!item) return;
+  bundleDraftCopies.set(id, Math.max(1, Math.min(inventoryAvailableQuantity(item), Math.floor(Number(value) || 1))));
+  openBundleBuilderModal();
+}
 
 function inventoryItemBundleEligible(item){
-  return !!item && inventoryItemIsSellable(item) && inventoryAvailableQuantity(item) === 1 && !item.isBundle;
+  return !!item && inventoryItemIsSellable(item) && inventoryAvailableQuantity(item) >= 1 && !item.isBundle;
+}
+// Split `count` copies off a row that has more: each becomes its own one-copy row (same card, same cost each), the row
+// keeps the rest. Returns the new rows.
+async function splitInventoryCopies(item, count){
+  const have = inventoryAvailableQuantity(item), take = Math.max(1, Math.min(have, Math.floor(Number(count) || 1)));
+  const base = { ...(item.raw || {}) };
+  ['id','ebayListingId','ebayOfferId','ebaySku','ebayListedAt','whatnotListedAt','saleId','soldAt','bundledIntoId','bundledIntoName'].forEach(k => delete base[k]);
+  const copy = { ...base, name:item.name, category:item.category, set:item.set, cost:Number(item.cost || base.cost || 0), qty:1, quantity:1, 'inventory-count':1, splitFromId:item.id, splitFromName:item.name || '' };
+  const made = [];
+  for(let n = 0; n < take; n++){
+    const id = await createBuiltInInventoryItem({}, copy, 'built_in');
+    const row = mapBuiltInItem({ id, status:'in_stock', created_at:new Date().toISOString(), data:{ ...copy, id, status:'in_stock', addedAt:new Date().toISOString() } });
+    all.unshift(row); made.push(row);
+  }
+  const left = have - made.length;
+  try { await updateBuiltInInventoryItem(item, { qty:left, quantity:left, 'inventory-count':left }); } catch(e) { /* queued for offline retry */ }
+  item.qty = left; item.quantity = left;
+  logOpsEvent('inventory_copies_split', 'Split ' + made.length + ' cop' + (made.length === 1 ? 'y' : 'ies') + ' off: ' + (item.name || item.id), { fromId:item.id, newIds:made.map(r => r.id), left });
+  return made;
 }
 
 function ensureBundleDraftBar(){
@@ -27604,8 +27634,9 @@ function renderBundleDraftBar(){
   if(!host) return;
   if(bundleDraftIds.size === 0){ host.style.display='none'; host.innerHTML=''; return; }
   host.style.display='flex';
+  const draftCopies = bundleDraftTotalCopies([...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean));
   host.innerHTML = `<span style="font-family:var(--font-mono);font-size:10px;color:var(--gold)">🎁 BUNDLE DRAFT · ${bundleDraftIds.size} item${bundleDraftIds.size===1?'':'s'}</span>
-    <button class="hbtn" style="min-height:28px;padding:2px 10px;font-size:9px" ${bundleDraftIds.size<2?'disabled':''} onclick="openBundleBuilderModal()">BUILD BUNDLE</button>
+    <button class="hbtn" style="min-height:28px;padding:2px 10px;font-size:9px" ${draftCopies<2?'disabled':''} onclick="openBundleBuilderModal()">BUILD BUNDLE</button>
     <button class="hbtn" style="min-height:28px;padding:2px 10px;font-size:9px" onclick="clearBundleDraft()">CLEAR</button>`;
 }
 
@@ -27614,17 +27645,17 @@ function toggleBundleDraft(id){
   const item = all.find(i => i.id === id);
   if(!item) return;
   if(bundleDraftIds.has(id)){
-    bundleDraftIds.delete(id);
+    bundleDraftIds.delete(id); bundleDraftCopies.delete(id);
     toast_dash('Removed from bundle draft');
   } else {
-    if(!inventoryItemBundleEligible(item)){ toast_dash('Only single-quantity, in-stock items can be bundled'); return; }
+    if(!inventoryItemBundleEligible(item)){ toast_dash('Only in-stock items can be bundled'); return; }
     bundleDraftIds.add(id);
     toast_dash('Added to bundle draft: ' + item.name);
   }
   renderBundleDraftBar();
 }
 
-function clearBundleDraft(){ bundleDraftIds.clear(); renderBundleDraftBar(); }
+function clearBundleDraft(){ bundleDraftIds.clear(); bundleDraftCopies.clear(); renderBundleDraftBar(); }
 
 // If all selected items are comics from the same series with distinct
 // issue numbers, name the bundle after the run (e.g. "Series #1–#5
@@ -27845,13 +27876,18 @@ function ensureBundleBuilderModal(){
 }
 
 function openBundleBuilderModal(){
-  if(bundleDraftIds.size < 2) return toast_dash('Select at least 2 items to bundle');
   const items = [...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean);
-  const sumPrice = items.reduce((a,i) => a + Number(inventoryListPrice(i) || i.price || i.market || 0), 0);
+  if(bundleDraftTotalCopies(items) < 2) return toast_dash('Select at least 2 items (or 2 copies) to bundle');
+  const sumPrice = items.reduce((a,i) => a + Number(inventoryListPrice(i) || i.price || i.market || 0) * bundleDraftCopiesOf(i), 0);
   ensureBundleBuilderModal();
-  document.getElementById('bb-items').innerHTML = items.map(i => `<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:10px"><span>${escHtml(i.name)}</span><span style="color:var(--dim)">${fd$(inventoryListPrice(i) || i.price || 0)}</span></div>`).join('');
+  const wasOpen = document.getElementById('bundle-builder-modal').style.display === 'flex';
+  document.getElementById('bb-items').innerHTML = items.map(i => {
+    const have = inventoryAvailableQuantity(i);
+    const copies = have > 1 ? `<label style="white-space:nowrap">COPIES <input type="number" min="1" max="${have}" step="1" value="${bundleDraftCopiesOf(i)}" style="width:52px" onchange="setBundleDraftCopies('${escHtml(i.id)}',this.value)"> of ${have}</label>` : '';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:10px"><span>${escHtml(i.name)}</span>${copies}<span style="color:var(--dim)">${fd$(inventoryListPrice(i) || i.price || 0)}${bundleDraftCopiesOf(i) > 1 ? ' ×' + bundleDraftCopiesOf(i) : ''}</span></div>`;
+  }).join('');
   document.getElementById('bb-sum').textContent = fd$(sumPrice);
-  document.getElementById('bb-name').value = suggestBundleName(items);
+  if(!wasOpen || !document.getElementById('bb-name').value) document.getElementById('bb-name').value = suggestBundleName(items);
   document.getElementById('bb-price').value = sumPrice.toFixed(2);
   document.getElementById('bundle-builder-modal').style.display = 'flex';
 }
@@ -27866,9 +27902,16 @@ async function confirmCreateBundle(){
   const price = parseFloat(document.getElementById('bb-price')?.value || '0') || 0;
   if(!name) return toast_dash('Bundle needs a name');
   if(price <= 0) return toast_dash('Bundle needs a price');
-  const items = [...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean);
-  if(items.length < 2) return toast_dash('Select at least 2 items to bundle');
+  const picked = [...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean);
+  if(bundleDraftTotalCopies(picked) < 2) return toast_dash('Select at least 2 items (or 2 copies) to bundle');
   try {
+    // A row with more copies than go in: split those copies off first, so the bundle holds one-copy rows only.
+    const items = [];
+    for(const it of picked){
+      const want = bundleDraftCopiesOf(it);
+      if(inventoryAvailableQuantity(it) === 1) items.push(it);
+      else items.push(...await splitInventoryCopies(it, want));
+    }
     const containerId = await createInventoryBundle(items, name, price);
     closeBundleBuilderModal();
     clearBundleDraft();
@@ -43051,6 +43094,7 @@ async function addInventoryPasteToInventory(){
   if(ok) loadInventory();
   if(!left.length){ invPaste = null; document.getElementById('inv-paste-modal')?.remove(); } else renderInventoryPaste();
 }
+Object.assign(window, { setBundleDraftCopies });
 Object.assign(window, { openInventoryPaste, closeInventoryPaste, runInventoryPaste, setInventoryPastePct, setInventoryPasteLine, removeInventoryPasteLine, addInventoryPasteToInventory });
 // The buy-offer rows from an import (an export or a pasted list): one row per copy, priced or marked for review.
 function addImportedRowsToBuyList(items, format, skipped = 0){

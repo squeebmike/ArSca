@@ -21,7 +21,7 @@ assert.match(dashboard, /function categoryHealthReasons\(c\)\{/, 'missing catego
   const fnStart = dashboard.indexOf('function computeCategoryHealth(categoryList){');
   const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /\.filter\(inventoryItemIsSellable\)/, 'must scope to sellable live stock, matching every other in-stock check in this app');
+  assert.match(fn, /\.filter\(i=>!inventoryIsDropship\(i\) && inventoryItemIsSellable\(i\)\)/, 'must scope to sellable live stock the store owns (no dropship), matching every other in-stock check in this app');
   assert.match(fn, /if\(inventoryIsAgedStock\(item\)\)\{ c\.agedQty \+= qty; c\.agedCost \+= cost; \}/, 'must reuse the existing 90-day aging threshold, not invent a new one');
   assert.match(fn, /if\(!byCategory\.has\(key\)\) byCategory\.set\(key, \{ key, revenue:0, cogs:0, profit:0/, 'a category with zero sales but live stock must still get an entry, not be silently dropped');
 }
@@ -48,8 +48,8 @@ const fd$ = n => '$' + Number(n || 0).toFixed(2);
 // inventory list.
 function runWith(items, categoryList){
   const src = `${chSrc}\n${reasonsSrc}\nreturn { computeCategoryHealth, categoryHealthReasons };`;
-  const fn = new Function('all', 'inventoryAvailableQuantity', 'inventoryIsAgedStock', 'inventoryItemIsSellable', 'fd$', src);
-  return fn(items, inventoryAvailableQuantity, inventoryIsAgedStock, inventoryItemIsSellable, fd$);
+  const fn = new Function('all', 'inventoryAvailableQuantity', 'inventoryIsAgedStock', 'inventoryItemIsSellable', 'fd$', 'inventoryIsDropship', src);
+  return fn(items, inventoryAvailableQuantity, inventoryIsAgedStock, inventoryItemIsSellable, fd$, i => !!i?.dropship);
 }
 
 {

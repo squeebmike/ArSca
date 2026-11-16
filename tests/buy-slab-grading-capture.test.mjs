@@ -20,7 +20,10 @@ const buItuEnd = dashboard.indexOf('\n\nlet buyInventoryFinalizing', buItuStart)
 const buItuBody = dashboard.slice(buItuStart, buItuEnd);
 assert.ok(buItuStart !== -1, 'buyItemToInventoryUpdates must exist');
 assert.doesNotMatch(buItuBody, /grading_company:/, 'the dead grading_company field must be gone as an actual object key -- nothing else in the app ever wrote it');
-assert.match(buItuBody, /grader:item\.grader \|\| '',/, 'must read item.grader -- the same field name the Edit Item modal itself saves grading data as');
+// Now read through inventoryGradingInfo, which reads item.grader first (then a slab grade picked in Research).
+assert.match(buItuBody, /const slab = inventoryGradingInfo\(/, 'grading goes through inventoryGradingInfo');
+assert.match(buItuBody, /grader:slab\.grader,/, 'grader saved from inventoryGradingInfo');
+assert.match(dashboard, /const grader = String\(item\.grader \|\| item\.grading_company/, 'inventoryGradingInfo must read item.grader -- the same field name the Edit Item modal itself saves grading data as');
 
 // ── Buy Tray row: graded toggle + fields ──
 assert.match(dashboard, /let buyItemGradedRowsOpen = new Set\(\);/, 'missing buyItemGradedRowsOpen UI-state set');

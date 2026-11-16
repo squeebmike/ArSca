@@ -65,7 +65,7 @@ console.log('nameWithPrintRun functional checks passed');
   const fnStart = dashboard.indexOf('function scanToBuyItem(scan){');
   const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /providerUrl: scan\.providerUrl \|\| '',/, 'scanToBuyItem must carry providerUrl through from the scan');
+  assert.match(fn, /providerUrl: scan\.providerUrl \|\| scan\.sourceUrl \|\| '',/, 'scanToBuyItem must carry providerUrl through from the scan (or the page it came from)');
 }
 
 console.log('Buy Tray hand-off providerUrl/serial_number contract checks passed');
