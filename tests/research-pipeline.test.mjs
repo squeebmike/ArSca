@@ -15,7 +15,7 @@ assert.match(dashboard,/return \{mtg:true,topps:false,video_games:false,yugioh:f
 assert.match(dashboard,/if\(id==='catalogs'\)\{refreshOfflineCatalogManagerPanel\(\);/,'opening Catalogs should always refresh the offline manager');
 assert.match(dashboard,/setTimeout\(\(\) => refreshOfflineCatalogManagerPanel\(\), 0\)/,'initial catalog rendering must wait until catalog constants are initialized');
 assert.match(dashboard,/function priceChartingOfflineCategoryFor\(category\)/,'research must route eligible categories into their offline catalogs');
-assert.match(dashboard,/const mtgOnly = \(wants === 'mtg' \|\| plannedCategories\.has\('mtg'\)\) && !sealedIntent/,'MTG card searches should have a dedicated fast provider path while sealed searches keep PriceCharting fallback');
+assert.match(dashboard,/const mtgOnly = !nonCardWanted && \(wants === 'mtg' \|\| plannedCategories\.has\('mtg'\)\) && !sealedIntent/,'MTG card searches should have a dedicated fast provider path while sealed searches keep PriceCharting fallback');
 assert.match(dashboard,/queueProvider\(!pokemonOnly && \(\(!wants&&hasPlannedCategory\('mtg'\)\) \|\| \['tcg','yugioh','mtg'\]\.includes\(wants\)\), \(\)=>fetchWorkerTcgCatalog\(q,cat\)\)/,'MTG must use JustTCG for real per-condition prices and exact TCGPlayer links, not just Scryfall single-price data');
 assert.match(dashboard,/deadlineMs=6000/,'optional search providers must have a short whole-task deadline');
 assert.match(dashboard,/slice\(0,3\)/,'automatic PriceCharting image hydration must be bounded');
@@ -28,7 +28,7 @@ assert.match(dashboard,/tcgplayerSealedProductToQplRow/,'sealed TCGplayer respon
 assert.match(worker,/mpapi\.tcgplayer\.com\/v2\/product/,'Worker must proxy exact-ID marketplace pricepoints with CORS');
 assert.match(lookup,/\.\.\.cachedResults, \.\.\.liveResults/, 'live results must merge with already-rendered cached results');
 assert.match(dashboard,/await Promise\.allSettled\(providerTasks\)/, 'independent catalog providers must run concurrently');
-assert.match(dashboard,/const pokemonOnly = wants === 'pokemon' \|\| plannedCategories\.has\('pokemon'\)/, 'a selected Pokemon category must be authoritative');
+assert.match(dashboard,/const pokemonOnly = !nonCardWanted && \(wants === 'pokemon' \|\| plannedCategories\.has\('pokemon'\)/, 'a selected Pokemon category must be authoritative');
 assert.doesNotMatch(dashboard,/searchPokemonOfflineCache|pokemonOfflineSearchMode|setPokemonOfflineBanner/, 'Pokemon has no offline catalog -- there must be no offline-cache code path left for it');
 assert.match(dashboard,/Pokemon pricing requires the live PokemonPriceTracker API\. Reconnect and search again\./, 'an offline Pokemon search must tell the dealer to reconnect, since there is no local fallback');
 assert.match(dashboard,/const plannedFromIntent = \(intent\?\.intents \|\| \[\]\)\.filter\(Boolean\)/, 'broad card intent must prevent unrelated provider fan-out');
