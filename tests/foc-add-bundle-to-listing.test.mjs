@@ -32,3 +32,17 @@ console.log('Add bundle to a live eBay listing: passed');
 assert.ok(foc.includes("(c.distributor==='Lunar'?'LOCK LUNAR ORDER':'SUBMIT PRH ORDER')"), 'Lunar week: LOCK LUNAR ORDER');
 assert.ok(foc.includes("function focDistributorName(){return state.cycle&&state.cycle.distributor==='Lunar'?'Lunar':'PRH';}") && foc.includes("toast_dash(focDistributorName()+' order locked: '"));
 console.log('Lunar lock button name: passed');
+// (2026-11-16: "I want to be able to adjust the prices of each book for the bundle ... I don't want it changing prices of
+// the other books for the other listings.") Each book's IN BUNDLE price adds up to the bundle price; saved with the bundle only.
+{
+  lib.set({ covers, picked: { a: true, b: true, c: true }, coverPrice: { a: 4.99, b: 2.5, c: 15 } });
+  const t2 = lib.focAddBundleTotals();
+  assert.equal(t2.bundleSum, 22.49, 'the books\' bundle prices add up'); assert.equal(t2.sum.toFixed(2), '34.97', 'their own prices are untouched');
+  assert.ok(route.includes('focBundleCoverPrices: coverPrices'), 'saved on the bundle');
+  assert.ok(!/salePrice:\s*coverPrices|comic_skus[^\n]*PATCH/.test(route), 'nothing writes a cover\'s own price');
+  // EDIT a bundle already on the listing: only its own eBay choice and its row change.
+  assert.ok(route.includes("if (body.rowId) {") && route.includes("reviseLiveEbayListing(null, ebayToken, { itemId: listingId, variationSku: b.data.ebaySku, price: priceCents / 100, quantity, trading: true })"), 'edit = that bundle\'s choice only');
+  assert.ok(route.includes('focPresaleOriginalQty: soldSoFar + quantity'), 'bundles already sold stay counted');
+  assert.ok(foc.includes('onclick="focAddBundleEdit(') && foc.includes("'SAVE BUNDLE CHANGES'") && foc.includes('window.focAddBundleCoverPrice=focAddBundleCoverPrice;'));
+  console.log('Per-book bundle prices and bundle edit: passed');
+}

@@ -7281,7 +7281,7 @@ async function routeRequest(request, env, ctx) {
       const groupKey = rows[0].data.ebayInventoryItemGroupKey, sibling = rows[0].data;
       const covers = rows.map(r => { const k = skuById.get(r.data.focSkuId) || {}; return { skuId: r.data.focSkuId, label: k.variant_label || r.data.name || 'Cover', price: Number(r.data.salePrice || r.data.market || 0), qty: Number(r.data.qty ?? r.data.quantity ?? 0), image: r.data.image || k.cover_image_url || '' }; });
       const { data: bundleRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&status=in.(presale,in_stock)&data->>source=eq.foc_presale_bundle&data->>ebayListingId=eq.${encodeURIComponent(listingId)}&select=id,data`);
-      const bundles = (bundleRows || []).filter(r => !r.data?.ebayWithdrawnAt).map(r => ({ id: r.id, label: r.data.name, price: Number(r.data.salePrice || 0), qty: Number(r.data.qty ?? 0), skuIds: r.data.focBundleSkuIds || [] }));
+      const bundles = (bundleRows || []).filter(r => !r.data?.ebayWithdrawnAt).map(r => ({ id: r.id, label: r.data.name, price: Number(r.data.salePrice || 0), qty: Number(r.data.qty ?? 0), skuIds: r.data.focBundleSkuIds || [], coverPrices: r.data.focBundleCoverPrices || null }));
       if (body.preview) return json({ ok: true, listingId, listingIds, covers, bundles });
       const picked = [...new Set((Array.isArray(body.skuIds) ? body.skuIds : []).map(String))].filter(id => covers.some(c => c.skuId === id));
       if (picked.length < 2) return json({ ok: false, error: 'Pick at least 2 covers from this listing for the bundle' }, 400);
@@ -7289,11 +7289,29 @@ async function routeRequest(request, env, ctx) {
       if (!(priceCents > 0) || priceCents > 10000000) return json({ ok: false, error: 'Give the bundle a price' }, 400);
       const quantity = Math.max(1, Math.min(200, parseInt(body.quantity, 10) || 0));
       if (!quantity) return json({ ok: false, error: 'Give the bundle a quantity' }, 400);
+      // Each book's price inside the bundle (store, 2026-11-16: "adjust the prices of each book for the bundle ... I don't
+      // want it changing prices of the other books"): saved with the bundle only -- the covers' own listings keep theirs.
+      const coverPrices = {};
+      for (const id of picked) { const n = Math.round(Number(body.coverPrices?.[id]) * 100) / 100; if (Number.isFinite(n) && n >= 0 && n < 100000) coverPrices[id] = n; }
       let label = String(body.label || '').replace(/\s+/g, ' ').trim().substring(0, 60);
       if (!label) label = picked.length === covers.length ? `All Covers Bundle (${picked.length} Books)` : `Bundle: ${picked.map(id => covers.find(c => c.skuId === id).label).join(' + ')}`.substring(0, 60);
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); } catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
       if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first' }, 401);
+      // EDIT a bundle already on the listing: its price, how many are up, its covers and their prices. Its name stays
+      // (it's the Cover choice buyers already see). Only that bundle's choice on eBay changes.
+      if (body.rowId) {
+        const b = (bundleRows || []).find(r => r.id === String(body.rowId) && !r.data?.ebayWithdrawnAt);
+        if (!b) return json({ ok: false, error: 'That bundle isn\'t on this listing anymore' }, 404);
+        try { await reviseLiveEbayListing(null, ebayToken, { itemId: listingId, variationSku: b.data.ebaySku, price: priceCents / 100, quantity, trading: true }); }
+        catch (e) { return json({ ok: false, error: 'eBay would not update the bundle: ' + e.message }, 502); }
+        const soldSoFar = Math.max(0, Number(b.data.focPresaleOriginalQty || 0) - Number(b.data.qty ?? b.data.quantity ?? 0));
+        const editCost = picked.reduce((sum, id) => sum + Math.round(Number(skuById.get(id)?.msrp_cents || 0) * 0.5), 0);
+        const next = { ...b.data, focBundleSkuIds: picked, focBundleCoverPrices: coverPrices, cost: editCost / 100, market: priceCents / 100, salePrice: priceCents / 100,
+          qty: quantity, quantity, focPresaleOriginalQty: soldSoFar + quantity, focBundleEditedAt: new Date().toISOString() };
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(b.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: next }) });
+        return json({ ok: true, listingId, label: b.data.name, edited: true, rowId: b.id });
+      }
       const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
       if (!liveLabels.size) return json({ ok: false, error: 'Could not read the live listing\'s covers from eBay -- try again' }, 502);
       if ([...liveLabels.values()].some(v => String(v).toLowerCase() === label.toLowerCase())) return json({ ok: false, error: `"${label}" is already a choice on this listing -- give the bundle another name` }, 409);
@@ -7313,7 +7331,7 @@ async function routeRequest(request, env, ctx) {
       const { data: made } = await supabaseAdminFetch(env, 'inventory_items', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ store_id: storeId, status: 'presale', data: {
         name: label, category: 'Comic', publisher: sibling.publisher || '', upc: '',
         cost: costCents / 100, market: priceCents / 100, salePrice: priceCents / 100, qty: quantity, quantity, image,
-        source: 'foc_presale_bundle', focSkuId: null, focCycleId: sibling.focCycleId || firstSku.cycle_id || null, focBundleSkuIds: picked,
+        source: 'foc_presale_bundle', focSkuId: null, focCycleId: sibling.focCycleId || firstSku.cycle_id || null, focBundleSkuIds: picked, focBundleCoverPrices: coverPrices,
         onSaleDate: sibling.onSaleDate || firstSku.on_sale_date || null, focPresaleOriginalQty: quantity,
         ebayListingId: listingId, ebayOfferId: '', ebaySku: newSku, ebayListedAt: new Date().toISOString(),
         ebayInventoryItemGroupKey: groupKey, ebayVolumeDiscountPromotionId: sibling.ebayVolumeDiscountPromotionId, ebayApiSystem: 'trading', focBundleAddedAt: new Date().toISOString(),
