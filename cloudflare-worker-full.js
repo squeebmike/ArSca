@@ -7254,6 +7254,79 @@ async function routeRequest(request, env, ctx) {
       return json({ ok: true, listingId, label, sku: newSku, rowId: row?.id || '', warnings: photoWarning ? [photoWarning] : [] });
     }
 
+    // ADD A BUNDLE TO A LIVE MULTI-COVER LISTING (store, 2026-11-16: "I have Spider-Woman on eBay now. How to add an
+    // every cover option to the already made listing ... and I'd like to select what's in the bundle"). One more Cover
+    // choice on the same eBay listing (it keeps its watchers and sales), made of the covers picked -- all of them or
+    // some -- at the store's price and quantity. Tracked like the bundle a new listing can include
+    // (source:'foc_presale_bundle', focBundleSkuIds = the covers in it), so each bundle sold counts one copy of each.
+    // { preview:true } lists the listing's covers and any bundles it already has.
+    if (url.pathname === '/foc/ebay/add-bundle-to-group-listing') {
+      if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
+      if (auth.error) return auth.error;
+      let body = {}; try { body = await request.json(); } catch (_) {}
+      const familyId = String(body.familyId || '').trim();
+      if (!/^[0-9a-f-]{36}$/i.test(familyId)) return json({ ok: false, error: 'familyId required' }, 400);
+      const s = encodeURIComponent(storeId);
+      const { data: familySkus } = await supabaseAdminFetch(env, `comic_skus?family_id=eq.${encodeURIComponent(familyId)}&store_id=eq.${s}&select=id,title,variant_label,msrp_cents,customer_price_cents,cover_image_url,cycle_id,on_sale_date&order=id.asc`);
+      const skuById = new Map((familySkus || []).map(r => [r.id, r]));
+      if (!skuById.size) return json({ ok: false, error: 'Title not found for this store' }, 404);
+      const { data: liveRows } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${s}&status=in.(presale,in_stock)&data->>source=eq.foc_presale&data->>focSkuId=in.(${[...skuById.keys()].map(encodeURIComponent).join(',')})&select=id,status,data`);
+      const live = (liveRows || []).filter(r => r.data?.ebayApiSystem === 'trading' && r.data?.ebayListingId && r.data?.ebaySku && r.data?.ebayInventoryItemGroupKey && !r.data?.ebayWithdrawnAt);
+      if (!live.length) return json({ ok: false, error: 'This title has no live multi-cover eBay listing that can take a bundle (only listings made with LIST ALL COVERS · 1 EBAY LISTING can)' }, 404);
+      const listingIds = [...new Set(live.map(r => r.data.ebayListingId))];
+      const listingId = listingIds.includes(String(body.listingId || '')) ? String(body.listingId) : listingIds[0];
+      const rows = live.filter(r => r.data.ebayListingId === listingId);
+      const groupKey = rows[0].data.ebayInventoryItemGroupKey, sibling = rows[0].data;
+      const covers = rows.map(r => { const k = skuById.get(r.data.focSkuId) || {}; return { skuId: r.data.focSkuId, label: k.variant_label || r.data.name || 'Cover', price: Number(r.data.salePrice || r.data.market || 0), qty: Number(r.data.qty ?? r.data.quantity ?? 0), image: r.data.image || k.cover_image_url || '' }; });
+      const { data: bundleRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&status=in.(presale,in_stock)&data->>source=eq.foc_presale_bundle&data->>ebayListingId=eq.${encodeURIComponent(listingId)}&select=id,data`);
+      const bundles = (bundleRows || []).filter(r => !r.data?.ebayWithdrawnAt).map(r => ({ id: r.id, label: r.data.name, price: Number(r.data.salePrice || 0), qty: Number(r.data.qty ?? 0), skuIds: r.data.focBundleSkuIds || [] }));
+      if (body.preview) return json({ ok: true, listingId, listingIds, covers, bundles });
+      const picked = [...new Set((Array.isArray(body.skuIds) ? body.skuIds : []).map(String))].filter(id => covers.some(c => c.skuId === id));
+      if (picked.length < 2) return json({ ok: false, error: 'Pick at least 2 covers from this listing for the bundle' }, 400);
+      const priceCents = Math.round(Number(body.price) * 100);
+      if (!(priceCents > 0) || priceCents > 10000000) return json({ ok: false, error: 'Give the bundle a price' }, 400);
+      const quantity = Math.max(1, Math.min(200, parseInt(body.quantity, 10) || 0));
+      if (!quantity) return json({ ok: false, error: 'Give the bundle a quantity' }, 400);
+      let label = String(body.label || '').replace(/\s+/g, ' ').trim().substring(0, 60);
+      if (!label) label = picked.length === covers.length ? `All Covers Bundle (${picked.length} Books)` : `Bundle: ${picked.map(id => covers.find(c => c.skuId === id).label).join(' + ')}`.substring(0, 60);
+      let ebayToken = '';
+      try { ebayToken = await getEbayUserAccessToken(env); } catch (tokenErr) { return json({ needsToken: true, error: tokenErr.message }, 401); }
+      if (!ebayToken) return json({ needsToken: true, error: 'Connect eBay first' }, 401);
+      const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
+      if (!liveLabels.size) return json({ ok: false, error: 'Could not read the live listing\'s covers from eBay -- try again' }, 502);
+      if ([...liveLabels.values()].some(v => String(v).toLowerCase() === label.toLowerCase())) return json({ ok: false, error: `"${label}" is already a choice on this listing -- give the bundle another name` }, 409);
+      const newSku = groupKey + '-b' + Date.now().toString(36);
+      const allLabels = [...new Set([...liveLabels.values(), label])];
+      const reviseXml = `<Item><ItemID>${xmlEscape(listingId)}</ItemID><Variations>` +
+        `<Variation><SKU>${xmlEscape(newSku)}</SKU><StartPrice currencyID="USD">${(priceCents / 100).toFixed(2)}</StartPrice><Quantity>${quantity}</Quantity>` +
+        `<VariationSpecifics><NameValueList><Name>Cover</Name><Value>${xmlEscape(label)}</Value></NameValueList></VariationSpecifics></Variation>` +
+        `<VariationSpecificsSet><NameValueList><Name>Cover</Name>${allLabels.map(v => `<Value>${xmlEscape(v)}</Value>`).join('')}</NameValueList></VariationSpecificsSet>` +
+        `</Variations></Item>`;
+      try { await ebayTradingApiCall(ebayToken, 'ReviseFixedPriceItem', reviseXml); }
+      catch (e) { return json({ ok: false, error: 'eBay would not add the bundle: ' + e.message }, 502); }
+      // One bundle = one copy of each cover in it: its cost is their wholesale cost (half of MSRP), as a new listing's bundle.
+      const costCents = picked.reduce((sum, id) => sum + Math.round(Number(skuById.get(id)?.msrp_cents || 0) * 0.5), 0);
+      const image = (typeof body.imageUrl === 'string' && /^https:\/\//i.test(body.imageUrl.trim())) ? body.imageUrl.trim().substring(0, 1000) : (covers.find(c => c.skuId === picked[0])?.image || FOC_COVER_COMING_SOON_URL);
+      const firstSku = skuById.get(picked[0]) || {};
+      const { data: made } = await supabaseAdminFetch(env, 'inventory_items', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ store_id: storeId, status: 'presale', data: {
+        name: label, category: 'Comic', publisher: sibling.publisher || '', upc: '',
+        cost: costCents / 100, market: priceCents / 100, salePrice: priceCents / 100, qty: quantity, quantity, image,
+        source: 'foc_presale_bundle', focSkuId: null, focCycleId: sibling.focCycleId || firstSku.cycle_id || null, focBundleSkuIds: picked,
+        onSaleDate: sibling.onSaleDate || firstSku.on_sale_date || null, focPresaleOriginalQty: quantity,
+        ebayListingId: listingId, ebayOfferId: '', ebaySku: newSku, ebayListedAt: new Date().toISOString(),
+        ebayInventoryItemGroupKey: groupKey, ebayVolumeDiscountPromotionId: sibling.ebayVolumeDiscountPromotionId, ebayApiSystem: 'trading', focBundleAddedAt: new Date().toISOString(),
+      } }) });
+      const row = Array.isArray(made) ? made[0] : made;
+      let photoWarning = '';
+      try {
+        const { data: allGroupRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&status=neq.sold&data->>ebayInventoryItemGroupKey=eq.${encodeURIComponent(groupKey)}&select=id,data`);
+        await repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, allGroupRows?.length ? allGroupRows : [...rows, row].filter(Boolean));
+      } catch (e) { photoWarning = 'Bundle added, but its photo could not be set yet: ' + e.message; }
+      return json({ ok: true, listingId, label, sku: newSku, rowId: row?.id || '', covers: picked.length, warnings: photoWarning ? [photoWarning] : [] });
+    }
+
     if (url.pathname === '/foc/ebay/repair-group-listing-photos') {
       if (request.method !== 'POST') return json({ error: 'POST only' }, 405);
       const storeId = requestStoreId(request, url);
