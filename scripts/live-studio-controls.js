@@ -320,10 +320,14 @@
   const saveSettings=async msg=>{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;};
   {const b=host.querySelector('#mq-use');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.t)throw Error('Pick a template first.');const ta=form.elements.namedItem('message');ta.value=p.t.t;preview();await saveSettings('Marquee: '+p.t.n+' is on the sign.');});}
   {const b=host.querySelector('#mq-save');if(b)b.onclick=()=>run(async()=>{const text=String(form.elements.namedItem('message').value||'').trim();if(!text)throw Error('Type a marquee message first, then save it.');
-    const name=String(prompt('Name this template',text.split(/\s*[•|]\s*/)[0].slice(0,30))||'').trim().slice(0,30);if(!name)return;
-    const mine=savedMarqueeTemplates().filter(t=>t.n.toLowerCase()!==name.toLowerCase());if(mine.length>=12)throw Error('12 saved templates is the most -- delete one first.');
-    mine.push({n:name,t:text.slice(0,300)});const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=JSON.stringify(mine);
-    try{await saveSettings('Template saved: '+name);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();host.querySelector('#mq-tpl').value='m'+(mine.length-1);});}
+    // (store, 2026-11-16) One of your saved templates picked: its name is filled in, so OK updates it in its place.
+    const picked=pickedMarquee(),suggest=picked?.mine&&picked.t?picked.t.n:text.split(/\s*[•|]\s*/)[0].slice(0,30);
+    const name=String(prompt(picked?.mine?'Save over "'+picked.t.n+'" (or type a new name for a new template)':'Name this template',suggest)||'').trim().slice(0,30);if(!name)return;
+    const mine=savedMarqueeTemplates(),at=mine.findIndex(t=>t.n.toLowerCase()===name.toLowerCase());
+    if(at<0&&mine.length>=12)throw Error('12 saved templates is the most -- delete one first.');
+    if(at>=0)mine[at]={n:name,t:text.slice(0,300)};else mine.push({n:name,t:text.slice(0,300)});
+    const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=JSON.stringify(mine);
+    try{await saveSettings((at>=0?'Template updated: ':'Template saved: ')+name);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();host.querySelector('#mq-tpl').value='m'+(at>=0?at:mine.length-1);});}
   {const b=host.querySelector('#mq-del');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.mine)throw Error('The ★ templates are built in -- pick one of your saved ones to delete.');if(!confirm('Delete the template "'+p.t.n+'"?'))return;
     const mine=savedMarqueeTemplates();mine.splice(p.i,1);const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=mine.length?JSON.stringify(mine):'';
     try{await saveSettings('Template deleted: '+p.t.n);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();});}
