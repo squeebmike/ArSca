@@ -33,7 +33,8 @@ const html = fs.readFileSync('dashboard.html', 'utf8');
   const fnStart = html.indexOf('function aggregateReportsData(');
   const fnEnd = html.indexOf('\n// Shared hand-rolled bar-chart', fnStart);
   const fnBody = html.slice(fnStart, fnEnd);
-  assert.match(fnBody, /const c = getCategory\(line\.category \|\| 'Uncategorized'\);/, 'must aggregate by category');
+  // Categories go through canonicalSaleCategory so one category isn't split under different spellings.
+  assert.match(fnBody, /const c = getCategory\(line\.category \? canonicalSaleCategory\(line\.category\) : 'Uncategorized'\);/, 'must aggregate by category');
   assert.match(fnBody, /const it = getItem\(line\.title \|\| 'Untitled'\);/, 'must aggregate by item title (not item_id -- inventory row ids are one-off and fragment repeat sales of the same product)');
   assert.doesNotMatch(fnBody, /getItem\(line\.item_id/, 'must not group top-sellers by item_id');
   assert.match(fnBody, /const key = normalizeTenderType\(pmt\.method\);/, 'payment aggregation must run through normalizeTenderType to avoid method-string fragmentation');

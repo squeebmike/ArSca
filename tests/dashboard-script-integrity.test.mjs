@@ -13,11 +13,16 @@ const html = fs.readFileSync('dashboard.html', 'utf8');
 // to write out that string escapes it as "<\/script>" specifically to avoid
 // this; this guards against a future comment/string missing that escape.
 
-const scriptOpen = html.indexOf('<script>');
-assert.ok(scriptOpen !== -1, 'could not find the main inline <script> tag');
-const scriptClose = html.indexOf('</script>', scriptOpen);
-assert.ok(scriptClose !== -1, 'could not find a closing </script>');
-const body = html.slice(scriptOpen + '<script>'.length, scriptClose);
+// The app code now lives in scripts/dashboard-app.js; under the test run's dashboard-source-hook it's put back inline
+// where its <script src> tag sits, after a few small inline scripts. The main script is the biggest <script> block.
+const blocks = [];
+for (let at = html.indexOf('<script>'); at !== -1; at = html.indexOf('<script>', at + 1)) {
+  const close = html.indexOf('</script>', at);
+  assert.ok(close !== -1, 'could not find a closing </script>');
+  blocks.push(html.slice(at + '<script>'.length, close));
+}
+assert.ok(blocks.length, 'could not find the main inline <script> tag');
+const body = blocks.reduce((a, b) => (b.length > a.length ? b : a), '');
 
 // The main application script is enormous (tens of thousands of lines) --
 // a premature truncation from a stray unescaped </script> would produce a

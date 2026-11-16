@@ -364,10 +364,30 @@ function tradesLine(t){
   return '<div style="padding:2px 0 2px 12px;color:var(--dim)">TRADES &amp; BUYS: ' + t.count + ' deal' + (t.count === 1 ? '' : 's') + (t.cards ? ' · ' + t.cards + ' card' + (t.cards === 1 ? '' : 's') + ' in' : '') + worth + ' · gave ' + gave + gain +
     '<div style="font-size:9px">The gain is in inventory, not profit yet -- it counts as profit when those cards sell.' + (t.unknownMarket ? ' ' + t.unknownMarket + ' older deal' + (t.unknownMarket === 1 ? '' : 's') + ' had no market value saved.' : '') + '</div></div>';
 }
+// OLD BUYS TO SHOWS (store, 2026-11-16): customer buys / trade-ins saved before they were tagged with a show. A buy on a
+// day exactly one show sold on belongs to that show; a day with no show, or two, is left alone.
+function isCustomerBuy(e){ return e && e.kind === 'inventory' && (/^Customer buy/i.test(e.note || '') || e.category === 'Customer buys'); }
+function untaggedBuyMatches(sales, entries){
+  var showsByDay = {};
+  (sales || []).forEach(function(sale){
+    if(!sale.show_session_id) return;
+    var day = pacificDay(sale.completed_at); if(!day) return;
+    (showsByDay[day] = showsByDay[day] || {})[sale.show_session_id] = true;
+  });
+  var out = [];
+  (entries || []).forEach(function(e){
+    if(e.show_session_id || !isCustomerBuy(e)) return;
+    var ids = Object.keys(showsByDay[e.spent_on] || {});
+    if(ids.length === 1) out.push({ entry:e, showId:ids[0] });
+  });
+  return out;
+}
 function showsHtml(){
   var list = showResults(state.sales, state.entries, state.shows);
   if(!list.length) return '';
-  return '<div style="margin-top:8px"><b>SHOWS THIS MONTH</b>' + list.map(function(r){
+  var matches = untaggedBuyMatches(state.sales, state.entries);
+  var matchBtn = matches.length ? '<div style="margin:4px 0"><button class="hbtn" style="margin:0;padding:2px 8px;font-size:9px;color:var(--gold)" onclick="EXP.matchOldBuys()">MATCH ' + matches.length + ' OLDER BUY' + (matches.length === 1 ? '' : 'S') + ' TO SHOWS</button> <span style="color:var(--dim);font-size:9px">buys saved before they were tagged, on a day only one show sold</span></div>' : '';
+  return '<div style="margin-top:8px"><b>SHOWS THIS MONTH</b>' + matchBtn + list.map(function(r){
     var perDay = (r.dayList || []).length > 1 ? r.dayList.map(function(d){
       return '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0 2px 12px;color:var(--dim)"><span>' + esc(d.label) + ': sales ' + usd(d.sales) + ' · profit ' + usd(d.profit) + (d.costs ? ' · costs -' + usd(d.costs) : '') + '</span><b style="color:' + (d.net >= 0 ? 'var(--g)' : 'var(--red)') + ';white-space:nowrap">' + usd(d.net) + '</b></div>';
     }).join('') + (r.costs ? '<div style="padding:0 0 2px 12px;color:var(--dim);font-size:9px">Show costs are split evenly across the days.</div>' : '') : '';
@@ -400,6 +420,22 @@ async function writeShowRecord(rec){
 }
 function newShowId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'show_' + Date.now().toString(36); }
 window.EXP = {
+  matchOldBuys:async function(){
+    var client = sb(), store = storeId(); if(!client || !store) return;
+    var matches = untaggedBuyMatches(state.sales, state.entries);
+    if(!matches.length){ toast('No older buys to match'); return; }
+    var name = function(id){ var sh = (state.shows || []).find(function(x){ return x.id === id; }); return sh ? showLabel(sh) : 'Show'; };
+    var lines = matches.slice(0, 12).map(function(m){ return shortDay(m.entry.spent_on) + ' ' + usd(m.entry.amount) + ' → ' + name(m.showId); });
+    if(!confirm('Tag ' + matches.length + ' older buy' + (matches.length === 1 ? '' : 's') + ' with the show that ran that day?\n\n' + lines.join('\n') + (matches.length > 12 ? '\n…and ' + (matches.length - 12) + ' more' : ''))) return;
+    var done = 0, failed = 0;
+    for(var i = 0; i < matches.length; i++){
+      var m = matches[i];
+      var res = await client.from('store_expenses').update({ show_session_id:m.showId }).eq('id', m.entry.id).eq('store_id', store).is('show_session_id', null).select('id');
+      if(res.error || !(res.data || []).length) failed++; else done++;
+    }
+    toast('Matched ' + done + ' buy' + (done === 1 ? '' : 's') + ' to shows' + (failed ? ' (' + failed + ' skipped)' : ''));
+    load();
+  },
   renameShow:async function(id){
     var rec = await readShowRecord(id);
     var current = (rec && rec.eventName) || ((state.shows || []).find(function(x){ return x.id === id; }) || {}).name || 'Show';
@@ -519,6 +555,7 @@ window.EXP = {
 window.renderExpensesPanel = function(){ if(!state.month) state.month = thisMonth(); render(); if(canSee()) load(); };
 window.expensesMonthMoney = monthMoney;
 window.expensesShowResults = showResults;
+window.expensesUntaggedBuyMatches = untaggedBuyMatches;
 window.expensesExportRows = exportRows;
 window.addStoreInventoryPurchase = function(opts){ return window.EXP.addInventoryPurchase(opts); };
 })();

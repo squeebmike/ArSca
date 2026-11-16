@@ -20,7 +20,8 @@ assert.match(dashboard, /function startShowSessionSyncLoop\(\)\{/, 'missing star
   const fnStart = dashboard.indexOf('function startShowSessionSyncLoop(){');
   const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
   const fn = dashboard.slice(fnStart, fnEnd);
-  assert.match(fn, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\)return;syncShowModeFromWorker\(\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):null\)\.catch\(\(\)=>\{\}\);\};/,
+  // (and skips while the dashboard is idle -- see dashboardIdle)
+  assert.match(fn, /const tick=\(\)=>\{if\(document\.visibilityState!=='visible'\|\|dashboardIdle\(\)\)return;syncShowModeFromWorker\(\)\.then\(\(\)=>drawerState\?joinCashBag\(drawerState\.id,\{silent:true\}\):null\)\.catch\(\(\)=>\{\}\);\};/,
     'the 15s tick must call syncShowModeFromWorker (the function that actually refreshes the joined show\'s live status), not just the narrower index/cash-bag calls it used to');
   assert.doesNotMatch(fn, /fetchShowSessionIndex\(false\)\.then\(\(\)=>getShowMode\(\)\?fetchSharedCashBags\(\)/,
     'must not still have the old tick body that skipped syncShowModeFromWorker entirely');
@@ -41,7 +42,9 @@ assert.match(dashboard, /function syncShowModeFromWorker\(\)\{/, 'missing syncSh
   const realStart = asyncStart > -1 ? asyncStart : fnStart;
   const fnEnd = dashboard.indexOf('\n}', realStart) + 2;
   const fn = dashboard.slice(realStart, fnEnd);
-  assert.match(fn, /if\(!selected\?\.id\)\{ renderShowMode\(\); await syncSharedShowTransactions\(\)\.catch\(\(\)=>\{\}\); return; \}/,
+  // Through syncStoreSalesThrottled now: the same reconciliation, at most once a minute.
+  assert.match(dashboard, /async function syncStoreSalesThrottled\(\)\{\s*\n\s*if\(Date\.now\(\) - lastStoreSalesSyncAt < 60000\) return;\s*\n\s*lastStoreSalesSyncAt = Date\.now\(\);\s*\n\s*await syncSharedShowTransactions\(\)\.catch\(\(\)=>\{\}\);/);
+  assert.match(fn, /if\(!selected\?\.id\)\{ renderShowMode\(\); await syncStoreSalesThrottled\(\); return; \}/,
     'the no-show-joined early return must still run general sales reconciliation, now that the tick loop relies on this function alone');
 }
 

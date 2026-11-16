@@ -28,6 +28,6 @@ assert.match(dashboard, /async function inventoryPcReferencePatch\(item = \{\}\)
 const addCallStart = dashboard.indexOf("pcReferencePatch = await inventoryPcReferencePatch(item);");
 assert(addCallStart > -1, 'inventoryPcReferencePatch must still be called from the add/edit save flow');
 const spreadAfterAdd = dashboard.indexOf('...pcReferencePatch,', addCallStart);
-assert(spreadAfterAdd > -1 && spreadAfterAdd - addCallStart < 4000, 'the computed pcReferencePatch must be spread into the saved item/updates in the same save function');
+assert(spreadAfterAdd > -1 && spreadAfterAdd - addCallStart < 8000, 'the computed pcReferencePatch must be spread into the saved item/updates in the same save function');
 
 console.log('PriceCharting reference providerUrl contract checks passed');

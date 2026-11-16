@@ -42,10 +42,11 @@ assert.match(patchBody, /const url = verified\?\.url \|\| item\.tcgPlayerUrl \|\
 // search could still lose its TCGplayer link at whichever read site
 // forgot the fallback. Setting both at the source removes the whole class
 // of "which fallback chain does this particular read site have" bugs.
-const catalogRowStart = html.indexOf("priceSource:'Scryfall market',\n      tcgUrl:c.purchase_uris?.tcgplayer");
+// (2026-11-14) The exact product link comes first now, and Scryfall's partner link is unwrapped (plainTcgplayerUrl).
+const catalogRowStart = html.indexOf("tcgUrl:(c.tcgplayer_id ? 'https://www.tcgplayer.com/product/' + encodeURIComponent(c.tcgplayer_id) : '') || (c.purchase_uris?.tcgplayer ? plainTcgplayerUrl(c.purchase_uris.tcgplayer) : '') || c.scryfall_uri || '',");
 assert.ok(catalogRowStart !== -1, 'fetchScryfallCatalog\'s Scryfall row builder must exist');
-const catalogRowSnippet = html.slice(catalogRowStart, catalogRowStart + 400);
-assert.match(catalogRowSnippet, /tcgPlayerUrl:c\.purchase_uris\?\.tcgplayer \|\| \(c\.tcgplayer_id \? 'https:\/\/www\.tcgplayer\.com\/product\/' \+ encodeURIComponent\(c\.tcgplayer_id\) : ''\) \|\| c\.scryfall_uri \|\| '',/,
+const catalogRowSnippet = html.slice(catalogRowStart, catalogRowStart + 800);
+assert.match(catalogRowSnippet, /tcgPlayerUrl:\(c\.tcgplayer_id \? 'https:\/\/www\.tcgplayer\.com\/product\/' \+ encodeURIComponent\(c\.tcgplayer_id\) : ''\) \|\| \(c\.purchase_uris\?\.tcgplayer \? plainTcgplayerUrl\(c\.purchase_uris\.tcgplayer\) : ''\) \|\| c\.scryfall_uri \|\| '',/,
   'the universal-search Scryfall row must set tcgPlayerUrl the same way its Set Browser sibling (scryfallCardToQplRow) already does, not just tcgUrl');
 
 // Store report: a card's cover image wasn't sticking when added through
@@ -61,11 +62,11 @@ const buyUpdatesStart = html.indexOf('function buyItemToInventoryUpdates(item){'
 const buyUpdatesEnd = html.indexOf('\n\nlet buyInventoryFinalizing', buyUpdatesStart);
 const buyUpdatesBody = html.slice(buyUpdatesStart, buyUpdatesEnd);
 assert.ok(buyUpdatesStart !== -1, 'buyItemToInventoryUpdates must exist');
-assert.match(buyUpdatesBody, /imageUrl:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| '',/,
+assert.match(buyUpdatesBody, /imageUrl:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| catalogImageFromIds\(item\),/,
   'must set imageUrl explicitly, not rely on every read path falling back to image/images');
-assert.match(buyUpdatesBody, /thumbnail:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| '',/,
+assert.match(buyUpdatesBody, /thumbnail:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| catalogImageFromIds\(item\),/,
   'must set thumbnail explicitly too, since that is the first field inventoryImageUrl() checks');
-assert.match(buyUpdatesBody, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| '',/,
+assert.match(buyUpdatesBody, /image:item\.imageUrl \|\| item\.images\?\.\[0\] \|\| catalogImageFromIds\(item\),/,
   'must keep setting image/images as well for back-compat with anything still keying off them');
 
 console.log('MTG TCGplayer-link and buy-tray image fix contract checks passed');

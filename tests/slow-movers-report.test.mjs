@@ -12,7 +12,7 @@ assert.match(dashboard, /function computeSlowMovers\(items, opts=\{\}\)\{/, 'mis
 const fnStart = dashboard.indexOf('function computeSlowMovers(items, opts={}){');
 const fnEnd = dashboard.indexOf('\n}', fnStart) + 2;
 const fn = dashboard.slice(fnStart, fnEnd);
-assert.match(fn, /\.filter\(inventoryItemIsSellable\)/, 'must only consider currently sellable items');
+assert.match(fn, /\.filter\(i=>!inventoryIsDropship\(i\) && inventoryItemIsSellable\(i\)\)/, 'must only consider currently sellable items the store owns (no dropship)');
 assert.match(fn, /x\.days !== null && x\.days >= thresholdDays/, 'must filter to items at/over the aging threshold, same 90-day default as Category Health/Inventory Aging');
 assert.match(fn, /cashTiedUp: Number\(x\.item\.cost \|\| 0\) \* qty/, 'cash tied up must be cost x quantity, matching how Category Health computes unsoldCost');
 assert.match(fn, /\.sort\(\(a, b\) => b\.cashTiedUp - a\.cashTiedUp\)/, 'must sort worst (most cash tied up) first');
