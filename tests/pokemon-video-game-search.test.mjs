@@ -37,8 +37,8 @@ console.log('Pokemon video game search: passed');
   lib.applyQplVideoGameCondition(game, 'NM'); assert.equal(game.condition, 'Loose', 'no NM for a game');
   const chips = lib.qplVideoGameChipsHtml(game, 0);
   assert.ok(chips.includes('LOOSE') && chips.includes('CIB') && chips.includes('NEW') && chips.includes('BOX ONLY') && !chips.includes('MANUAL ONLY') && !chips.includes('>NM<'), 'Loose/CIB/New always, others only with a price');
-  assert.ok(app.includes("if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') return qplVideoGameChipsHtml(r, idx);"), 'chips');
-  assert.ok(app.includes("if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') { applyQplVideoGameCondition(r, r.selectedCondition);"), 'picking a condition reprices');
+  assert.ok(app.includes("if(qplIsVideoGameRow(r)) return qplVideoGameChipsHtml(r, idx);"), 'chips');
+  assert.ok(app.includes("if(qplIsVideoGameRow(r)) { applyQplVideoGameCondition(r, r.selectedCondition);"), 'picking a condition reprices');
   assert.ok(app.includes("row.category = 'Video Games';\n    applyQplVideoGameCondition(row, 'Loose');"), 'saved under Video Games, Loose to start');
   assert.ok(app.includes('const QPL_PC_IMAGE_LIMIT = 8;') && app.includes('.slice(0,QPL_PC_IMAGE_LIMIT);'), 'more pictures filled in');
   console.log('Video game conditions: passed');
@@ -46,11 +46,38 @@ console.log('Pokemon video game search: passed');
 // Store BUY / SELL for the condition picked, UPC, release date, genre and sales on a game's card.
 {
   const s = app.indexOf('function qplVideoGameFactsHtml('), e = app.indexOf('function qplVideoGameChipsHtml(');
-  const facts = new Function('qplResultCategoryKey', 'escHtml', app.slice(s, e) + '\nreturn qplVideoGameFactsHtml;')(() => 'video_games', x => String(x));
+  const facts = new Function('qplIsVideoGameRow', 'escHtml', app.slice(s, e) + '\nreturn qplVideoGameFactsHtml;')(r => r?.source === 'PriceCharting', x => String(x));
   const game = { source: 'PriceCharting', selectedCondition: 'CIB', pricecharting: { retail: { looseBuy: 40, looseSell: 95, cibBuy: 80, cibSell: 175 }, demand: { upc: '045496740613', releaseDate: '2010-03-14', genre: 'RPG', salesVolume: 212 } } };
   const html = facts(game);
   for (const t of ['STORE BUY CIB $80.00', 'STORE SELL $175.00', 'UPC 045496740613', 'Released 2010-03-14', 'RPG', '212 sold']) assert.ok(html.includes(t), t);
   assert.equal(facts({ source: 'scryfall' }), '');
   assert.ok(app.includes('${qplVideoGameFactsHtml(r)}'), 'on the card');
   console.log('Video game facts on the card: passed');
+}
+// (2026-11-16, 1) A game's card: no Finish / card language / PSA grades -- its region instead.
+{
+  const s = app.indexOf('function qplIsVideoGameRow('), e = app.indexOf('function qplVideoGameFactsHtml(');
+  const { qplVideoGameRegion } = new Function(app.slice(s, e) + '\nreturn { qplVideoGameRegion };')();
+  assert.equal(qplVideoGameRegion({ pricecharting: { consoleName: 'PAL Nintendo DS' } }), 'PAL (Europe)');
+  assert.equal(qplVideoGameRegion({ pricecharting: { consoleName: 'JP Nintendo 64' } }), 'Japan');
+  assert.equal(qplVideoGameRegion({ pricecharting: { consoleName: 'Nintendo 64' } }), 'NTSC (US)');
+  assert.ok(app.includes("${qplIsVideoGameRow(r) ? '' : qplGradedQuickChips(r, idx)}"), 'no PSA chips on a game');
+  assert.ok(app.includes('` : qplIsVideoGameRow(r) ? `') && app.includes('${escHtml(qplVideoGameRegion(r))}'), 'condition + region + qty, no finish/language');
+  assert.ok(app.includes("${isComic || qplIsVideoGameRow(r) ? '' : qplSlabControls(r, idx)}"));
+  assert.ok(app.includes("if(!isComic && qplIsVideoGameRow(r)) return QPL_GAME_CONDITIONS.map("), 'the full price table says Loose / CIB / New');
+  console.log('Game card tidy: passed');
+}
+// (2026-11-16, 2) A scanned game's barcode opens its game card.
+{
+  const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  const cs = worker.indexOf('const barcodeCategory = (product'), ce = worker.indexOf('const barcodeCandidate = (product');
+  const barcodeCategory = new Function(worker.slice(cs, ce) + '\nreturn barcodeCategory;')();
+  assert.equal(barcodeCategory({ productName: 'Pokemon HeartGold', consoleName: 'Nintendo DS' }), 'video_games');
+  assert.equal(barcodeCategory({ productName: 'Halo 3', consoleName: 'Xbox 360' }), 'video_games');
+  assert.equal(barcodeCategory({ productName: 'Charizard #4', consoleName: 'Pokemon Cards Base Set' }), 'pokemon', 'cards stay cards');
+  assert.equal(barcodeCategory({ productName: 'Pokemon 151 Booster Box', consoleName: 'Pokemon Cards' }), 'sealed');
+  assert.ok(worker.includes("...(category === 'video_games' ? { pricecharting:{"), 'a game barcode carries its prices');
+  assert.ok(app.includes("video_games:'Video Games',other:'Collectibles'}") && app.includes("if(candidate?.category!=='video_games')return row;") && app.includes("return applyQplVideoGameCondition(row,'Loose');"));
+  assert.ok(app.includes("['PriceCharting','pricecharting_barcode','barcode_confirmed'].includes(r?.source)"), 'a scanned game gets the game card');
+  console.log('Game barcode: passed');
 }
