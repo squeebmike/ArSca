@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.16.1-inventory-paste';
+const APP_VERSION = '2026.11.16.2-pokemon-games';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -33938,9 +33938,29 @@ async function searchChinesePokemonPriceCharting(q = ''){
   });
 }
 
+// (store, 2026-11-16: "Pokemon heartgold" on GAMES said "no Video Games results"; on ALL it showed 3 Pokemon cards.)
+// A search starting with "Pokemon" went to the Pokemon card source, which answers alone -- PriceCharting, where the
+// games are, was never asked. A Pokemon game's own title (HeartGold, FireRed, Stadium...) or a console word now
+// searches the games too; on ALL the games come first, then the cards.
+const POKEMON_GAME_TITLE_RE = /\b(heart\s*gold|soul\s*silver|fire\s*red|leaf\s*green|colosseum|stadium|snap|xd|ranger|mystery\s+dungeon|pinball|puzzle\s+(league|challenge)|let'?s\s+go|legends\s+(arceus|z-?a)|brilliant\s+diamond|shining\s+pearl|ultra\s+(sun|moon)|omega\s+ruby|alpha\s+sapphire|conquest|battle\s+revolution|trading\s+card\s+game\s+(gb|game\s*boy)|(red|blue|yellow|green|gold|silver|crystal|ruby|sapphire|emerald|diamond|pearl|platinum|black|white|x|y|sun|moon|sword|shield|scarlet|violet)\s+version)\b/i;
+const VIDEO_GAME_WORD_RE = /\b(video\s*games?|game\s*boy(\s*(color|advance))?|gbc|gba|nintendo|n64|nds|ds|3ds|2ds|gamecube|ngc|wii(\s*u)?|switch|cartridge|cart|cib|complete\s+in\s+box|loose\s+cart)\b/i;
+function isPokemonVideoGameQuery(q = ''){
+  const s = String(q || '');
+  return /\bpok[eé]mon\b/i.test(s) && (POKEMON_GAME_TITLE_RE.test(s) || VIDEO_GAME_WORD_RE.test(s));
+}
+const QPL_NON_CARD_CATEGORIES = ['video_games','funko','lego','coins','amiibo','books_guides'];
 async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(q, cat)){
+  if(!qplCategoryKey(cat) && isPokemonVideoGameQuery(q)) {
+    const [games, cards] = await Promise.all([
+      searchQuickCatalog(q, 'Video Games', buildUniversalSearchPlan(q, 'Video Games')).catch(() => []),
+      searchQuickCatalog(q, 'Pokemon TCG', buildUniversalSearchPlan(q, 'Pokemon TCG')).catch(() => []),
+    ]);
+    return [...games, ...cards];
+  }
   const results = [];
   const wants = qplCategoryKey(cat);
+  // A game / Funko / LEGO... picked: the Pokemon, Magic and comic sources never answer for it.
+  const nonCardWanted = QPL_NON_CARD_CATEGORIES.includes(wants);
   const intent = detectQuickQueryIntent(q, cat);
   const plannedFromPlan = (searchPlan?.intent?.inferredCategories || []).filter(Boolean);
   const plannedFromIntent = (intent?.intents || []).filter(Boolean);
@@ -33967,14 +33987,14 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     } catch(e) {}
   }
 
-  if((plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat) || wants === 'pokemon') && isChinesePokemonQuery(q)) {
+  if(!nonCardWanted && (plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat) || wants === 'pokemon') && isChinesePokemonQuery(q)) {
     const rows = await searchChinesePokemonPriceCharting(q);
     rows.forEach(add);
     recordSearchPlanRoute(searchPlan, '/pricing/pricecharting/search', q, rows.length);
     return results;
   }
 
-  if(plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat)) {
+  if(!nonCardWanted && (plannedCategories.has('pokemon') || pokemonSealedIntent || isPokemonLookupIntent(q, cat))) {
     // Intent signals
     // The EN / JP switch beside the search box wins; on AUTO the search's own words decide.
     const isJapanese = qplSearchIsJapanese(q);
@@ -34105,14 +34125,14 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     return results;
   }
 
-  if((wants === 'mtg' || plannedCategories.has('mtg') || isMtgLookupIntent(q, cat)) && !sealedIntent) {
+  if(!nonCardWanted && (wants === 'mtg' || plannedCategories.has('mtg') || isMtgLookupIntent(q, cat)) && !sealedIntent) {
     const mtgQuery = universalSearchQueries(searchPlan, 'mtg', 'Scryfall')[0] || q;
     const rows = await fetchScryfallCatalog(mtgQuery, searchPlan);
     rows.forEach(add);
     return rankQuickLookupResults(results, q, cat).slice(0, 20);
   }
 
-  if(wants === 'comic' || plannedCategories.has('comic') || isComicLookupIntent(q, cat)) {
+  if(!nonCardWanted && (wants === 'comic' || plannedCategories.has('comic') || isComicLookupIntent(q, cat))) {
     const parsed=window.ArsCaComicIssueHub?.parseComicQuery(q)||{};
     const rows=await searchMetronComicCatalog(q,parsed);
     rows.forEach(add);
@@ -34151,8 +34171,8 @@ async function searchQuickCatalog(q, cat, searchPlan = buildUniversalSearchPlan(
     Promise.resolve().then(work).catch(()=>[]),
     new Promise(resolve=>setTimeout(()=>resolve([]),deadlineMs)),
   ]).then(rows=>{(rows||[]).forEach(add);return rows||[];}));};
-  const pokemonOnly = wants === 'pokemon' || plannedCategories.has('pokemon') || pokemonSealedIntent;
-  const mtgOnly = (wants === 'mtg' || plannedCategories.has('mtg')) && !sealedIntent;
+  const pokemonOnly = !nonCardWanted && (wants === 'pokemon' || plannedCategories.has('pokemon') || pokemonSealedIntent);
+  const mtgOnly = !nonCardWanted && (wants === 'mtg' || plannedCategories.has('mtg')) && !sealedIntent;
   const priceChartingBackedCategories = ['comic','video_games','funko','lego','coins','sports','graded','sealed','collectibles','yugioh','one_piece','lorcana','digimon','dragon_ball','garbage_pail','marvel','star_wars','amiibo','books_guides'];
   const autoUnknown = !wants && !plannedCategories.size;
   queueProvider(!pokemonOnly && !mtgOnly && (autoUnknown || plannedCategories.has('graded') || priceChartingBackedCategories.some(category => plannedCategories.has(category)) || sealedIntent), ()=>fetchPriceChartingLiveCatalog(q,cat,searchPlan));
