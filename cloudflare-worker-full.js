@@ -16164,7 +16164,9 @@ async function routeRequest(request, env, ctx) {
         if (/\b(pokemon cards?|pok[eé]mon cards?)\b/.test(text)) return 'pokemon';
         if (/\b(magic cards?|magic the gathering|mtg)\b/.test(text)) return 'mtg';
         if (/\b(sports? cards?|baseball|football|basketball|hockey|soccer|topps|panini|bowman|upper deck)\b/.test(text)) return 'sports';
-        return ['comics','pokemon','mtg','sports','sealed','other'].includes(hint) ? hint : 'other';
+        // A game's console (store, 2026-11-16: scan a game's barcode to find the exact game).
+        if (/\b(nintendo|n64|nes|snes|super famicom|famicom|gamecube|wii|switch|game ?boy|gba|gbc|3ds|nds|virtual boy|playstation|ps[1-5]|psp|vita|xbox|sega|genesis|dreamcast|saturn|game gear|atari|jaguar|neo ?geo|turbografx|colecovision|intellivision|pc games)\b/.test(String(product.consoleName || '').toLowerCase())) return 'video_games';
+        return ['comics','pokemon','mtg','sports','sealed','video_games','other'].includes(hint) ? hint : 'other';
       };
       const barcodeCandidate = (product, hint, routeType, attemptedCode) => {
         const category = barcodeCategory(product, hint);
@@ -16184,7 +16186,9 @@ async function routeRequest(request, env, ctx) {
           matchReason:routeType === 'upc' ? ['Exact UPC response from PriceCharting', isComic ? 'Barcode narrows the issue; cover still requires confirmation' : isSealed ? 'Sealed-product UPC is strong evidence' : 'Confirm product before saving'] : ['PriceCharting candidate search fallback'],
           needsConfirmation:true, needsCoverConfirmation:isComic,
           evidence:{ type:'barcode', routeType, barcode:attemptedCode || upc, supplement:'' },
-          raw:{ productId:product.productId || '', productName:product.productName || '', consoleName:product.consoleName || '', genre:product.genre || '', releaseDate:product.releaseDate || null }
+          raw:{ productId:product.productId || '', productName:product.productName || '', consoleName:product.consoleName || '', genre:product.genre || '', releaseDate:product.releaseDate || null },
+          // A game carries all its PriceCharting prices (Loose / CIB / New, store buy/sell, UPC) for its card.
+          ...(category === 'video_games' ? { pricecharting:{ productId:product.productId || '', productName:product.productName || '', consoleName:product.consoleName || '', genre:product.genre || '', releaseDate:product.releaseDate || null, url:product.url || '', prices:product.prices || {}, retail:product.retail || {}, demand:product.demand || {} } } : {}),
         };
       };
       const metronBarcodeCandidate = (issue, attemptedCode, supplement = '') => ({

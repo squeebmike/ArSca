@@ -27,7 +27,7 @@ assert.match(dashboard, /category:looksLikeSports \? 'Sports' : \(m\.consoleName
 
 // 2. The barcode scanner used a DIFFERENT string, "Sports Card" (singular),
 // for the same conceptual bucket every other add path calls "Sports".
-assert.match(dashboard, /const categoryMap=\{comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports',other:'Collectibles'\};/,
+assert.match(dashboard, /const categoryMap=\{comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports',video_games:'Video Games',other:'Collectibles'\};/,
   'barcodeCandidateToResearch must use the same "Sports" category string as every other add path, not a one-off "Sports Card"');
 assert.doesNotMatch(dashboard, /sports:'Sports Card'/, 'the old mismatched "Sports Card" string must be gone');
 

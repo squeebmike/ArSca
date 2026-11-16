@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.16.5-game-facts';
+const APP_VERSION = '2026.11.16.6-game-card-paste-any';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -30722,7 +30722,16 @@ async function savePocketScoutSettings(){
   }catch(e){ if(status) status.textContent = 'Save failed: '+e.message; }
 }
 
+// A scanned game opens as a game card: Loose / CIB / New with PriceCharting's prices, store buy/sell, UPC
+// (store, 2026-11-16: "scan a game's barcode to find the exact game").
 function barcodeCandidateToResearch(candidate,n){
+  const row=barcodeCandidateToResearchBase(candidate,n);
+  if(candidate?.category!=='video_games')return row;
+  row.category='Video Games'; row.is_sealed=false;
+  row.pricecharting={...(row.pricecharting||{}),...(candidate.pricecharting||{}),url:candidate.providerUrl||candidate.pricecharting?.url||row.pricecharting?.url||''};
+  return applyQplVideoGameCondition(row,'Loose');
+}
+function barcodeCandidateToResearchBase(candidate,n){
   if(candidate?.provider==='metron'&&candidate?.metronIssueId){
     const row=metronIssueToQplRow(candidate.raw||{},[]);
     return {...row,barcode:n.primary,barcodePrimary:n.primary,barcodeSupplement:n.supplement||'',barcodeType:n.typeGuess,barcodeEvidence:{raw:n.raw,primary:n.primary,supplement:n.supplement||'',candidatesTried:n.candidates||[],confidence:candidate.confidence||98,matchReason:candidate.matchReason||[],confirmed:false},confidence:Number(candidate.confidence||98),matchWhy:candidate.matchReason||row.matchWhy,note:'Metron barcode match. Select it to confirm the exact cover and load PriceCharting prices.'};
@@ -30733,7 +30742,7 @@ function barcodeCandidateToResearch(candidate,n){
   // strings for the same conceptual bucket meant a barcode-scanned card
   // never showed up anywhere "Sports" gets filtered/browsed, since nothing
   // treats them as the same category.
-  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports',other:'Collectibles'};
+  const categoryMap={comics:'Comic',pokemon:'Pokemon TCG',mtg:'Magic: The Gathering',sports:'Sports',video_games:'Video Games',other:'Collectibles'};
   // The barcode provider's own "sealed" bucket means it couldn't pin a
   // specific game from the UPC alone -- try the product's own title/console
   // text before falling back to a generic bucket, so a sealed Pokemon box
@@ -36587,7 +36596,7 @@ async function updateQplVariant(idx, patch = {}, rerender = true){
   const r = qplResults[idx];
   if(!r) return;
   Object.assign(r, patch);
-  if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') { applyQplVideoGameCondition(r, r.selectedCondition); if(rerender) updateQplResultCard(idx); return; }
+  if(qplIsVideoGameRow(r)) { applyQplVideoGameCondition(r, r.selectedCondition); if(rerender) updateQplResultCard(idx); return; }
   applyQplSelectedVariant(r);
   if(rerender) updateQplResultCard(idx);
   if(isPokemonChartCandidate(r) && !r.pokemonPriceTracker) hydratePokemonPriceTrackerPricing(idx, rerender);
@@ -36677,6 +36686,8 @@ function qplPriceChartingTableRows(r){
   const pc = r.pricecharting || {};
   const isComic = qplCategoryKey(r.category) === 'comic' || /comic/i.test([r.category, pc.consoleName, pc.genre].filter(Boolean).join(' '));
   const source = isComic ? (pc.comicPrices || {}) : (pc.prices || {});
+  // A game's price slots are Loose / CIB / New..., not grades.
+  if(!isComic && qplIsVideoGameRow(r)) return QPL_GAME_CONDITIONS.map(([label, k]) => { const v = Number(source[k] || 0); return `<tr><td>${label}</td><td>${v ? '$'+v.toFixed(2) : '-'}</td><td>-</td><td>-</td><td>${escHtml(pc.confidence || 'guide')}</td><td>${escHtml(pc.lastUpdated || 'current')}</td></tr>`; }).join('');
   const keys = isComic ? ['ungraded','grade4','grade6','grade8','grade9_2','grade9_4','grade9_8','grade10'] : ['ungraded','grade7','grade8','grade9','grade9_5','psa10','bgs10','cgc10','sgc10'];
   return keys.map(k => {
     const v = Number(source[k] || 0);
@@ -36796,8 +36807,17 @@ function applyQplVideoGameCondition(r, label){
 }
 // The rest of what PriceCharting has on a game, right on its card (store, 2026-11-16): its suggested store BUY / SELL
 // for the condition picked, UPC (to match a barcode), release date, genre and how many sell.
+// A game's card has no finish, card language or PSA grades (store, 2026-11-16: tidy the game card) -- its region instead.
+function qplIsVideoGameRow(r){ return ['PriceCharting','pricecharting_barcode','barcode_confirmed'].includes(r?.source) && qplResultCategoryKey(r) === 'video_games'; }
+function qplVideoGameRegion(r){
+  const c = String(r?.pricecharting?.consoleName || r?.set || '');
+  if(/^PAL\b/i.test(c)) return 'PAL (Europe)';
+  if(/^(JP|Japanese)\b/i.test(c)) return 'Japan';
+  if(/^(Asian|China|Chinese)\b/i.test(c)) return 'Asia';
+  return 'NTSC (US)';
+}
 function qplVideoGameFactsHtml(r){
-  if(r?.source !== 'PriceCharting' || qplResultCategoryKey(r) !== 'video_games') return '';
+  if(!qplIsVideoGameRow(r)) return '';
   const pc = r.pricecharting || {}, retail = pc.retail || {}, demand = pc.demand || {}, vg = pc.videoGame || {};
   const cond = r.selectedCondition || 'Loose', k = cond === 'CIB' ? 'cib' : cond === 'New' ? 'new' : 'loose';
   const money = v => Number(v) > 0 ? '$' + Number(v).toFixed(2) : '';
@@ -39430,7 +39450,7 @@ function quickLookupResultCard(r, idx){
   // Condition chips — derive from availableVariants or fallback conditions
   const condChips = (() => {
     if(r.is_sealed) return '<span style="font-size:11px;color:var(--g);font-weight:600;letter-spacing:.04em">FACTORY SEALED</span>';
-    if(r.source === 'PriceCharting' && qplResultCategoryKey(r) === 'video_games') return qplVideoGameChipsHtml(r, idx);
+    if(qplIsVideoGameRow(r)) return qplVideoGameChipsHtml(r, idx);
     const activeCond = r.selectedCondition || r.condition || 'NM';
     const activeFinish = r.selectedFinish || r.finish || '';
     // Use PPT matrix rows (iterates all finish keys correctly — no finish-key guessing).
@@ -39515,7 +39535,7 @@ function quickLookupResultCard(r, idx){
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
       ${qplVideoGameFactsHtml(r)}
-      ${qplGradedQuickChips(r, idx)}
+      ${qplIsVideoGameRow(r) ? '' : qplGradedQuickChips(r, idx)}
       <!-- Finish / Language / Qty controls -->
       <div class="qpl-quick-controls">
         ${isComic ? `
@@ -39528,6 +39548,12 @@ function quickLookupResultCard(r, idx){
             <option value="grade6">CGC 6.0</option>
             <option value="grade4">CGC 4.0</option>
           </select>
+          <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
+        ` : qplIsVideoGameRow(r) ? `
+          <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
+            ${qplConditionOptionsFor(r).map(c => `<option value="${c}" ${String(r.selectedCondition || 'Loose') === c ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+          <span class="qpl-badge" title="Region, from PriceCharting's console name">${escHtml(qplVideoGameRegion(r))}</span>
           <input type="number" min="1" step="1" value="${Number(r.qty || 1)}" onchange="qplResults[${idx}].qty=parseInt(this.value,10)||1" aria-label="Quantity">
         ` : `
         <select onchange="updateQplVariant(${idx},{selectedCondition:this.value})" aria-label="Condition">
@@ -39551,10 +39577,10 @@ function quickLookupResultCard(r, idx){
       ${signals.length ? `<div class="qpl-signal" style="color:${needs.length?'var(--g)':'var(--gold)'}">${escHtml(signals.join(' / '))}</div>` : ''}
       <!-- Advanced pricing table — starts collapsed; user opens to see conditions + graded -->
       <details class="research-secondary-actions ${isComic?'comic-book-details':''}" style="margin-top:12px" ${isComic?`ontoggle="openComicDetailsAndHydrate(${idx},this)"`:''}>
-        <summary>${isComic?'CHOOSE COVER / VARIANT + SEE PRICES':'VIEW PRICES + GRADING DETAILS'}</summary>
+        <summary>${isComic?'CHOOSE COVER / VARIANT + SEE PRICES':qplIsVideoGameRow(r)?'VIEW ALL PRICES':'VIEW PRICES + GRADING DETAILS'}</summary>
         <div style="padding:8px 0;max-width:100%;overflow-x:auto">
           ${isComic ? qplComicBookInfoPanel(r, idx) + qplComicKeyPanel(r,idx) + qplComicPricePanelV2(r, idx) + qplComicAppraisalPanel(r, idx) : qplVariantPriceTable(r, idx)}
-          ${isComic ? '' : qplSlabControls(r, idx)}
+          ${isComic || qplIsVideoGameRow(r) ? '' : qplSlabControls(r, idx)}
         </div>
       </details>
       <!-- Action buttons — inside info column, no separate column that causes overlap -->
@@ -42841,6 +42867,7 @@ Object.assign(window, { openMtgListReview, closeMtgListReview, renderMtgListBann
 // (Scryfall, each line's own printing). Every line is one inventory row with its quantity; PAID is per card.
 let invPaste = null; // { lines:[{ uid, row, qty, condition, pay, payByHand }], missing, skipped, pct, adding }
 const INV_PASTE_CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+function invPasteConditionsFor(l){ return qplIsVideoGameRow(l.row) ? QPL_GAME_CONDITIONS.map(c => c[0]) : INV_PASTE_CONDITIONS; }
 function invPasteFinishes(row){ return [...new Set((row.availableVariants || []).map(v => normalizeQplFinish(v.finish)).filter(Boolean))]; }
 function invPastePayFor(market, pct){ return Math.round((Number(market) || 0) * (Number(pct) || 0)) / 100; }
 function invPasteTotals(){
@@ -42852,7 +42879,8 @@ function openInventoryPaste(){
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;overflow-y:auto;padding:16px;box-sizing:border-box';
   m.innerHTML = '<div style="max-width:980px;margin:0 auto;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;display:grid;gap:10px">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-family:Orbitron,monospace;color:var(--g);font-size:13px;letter-spacing:2px">📋 PASTE TO INVENTORY</div><button class="hbtn" onclick="closeInventoryPaste()">✕ CLOSE</button></div>'
-    + '<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">Magic, one card a line: <b>1 Corpses of the Lost (Extended Art) [LCI] 366</b>, <b>1x Sol Ring (C21) 263 *F*</b>, or just the name. Check each card, change the finish, condition, quantity or what you paid, take out any you don\'t want, then ADD ALL TO INVENTORY.</div>'
+    + '<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">One item a line, quantity first if more than one. Magic: <b>1 Corpses of the Lost (Extended Art) [LCI] 366</b> or <b>1x Sol Ring (C21) 263 *F*</b>. Pokémon / games / sports / other: <b>2 Charizard ex 199/165</b>, <b>Pokemon HeartGold DS</b>. Check each one (pick another match if it guessed wrong), change the finish, condition, quantity or what you paid, take out any you don\'t want, then ADD ALL TO INVENTORY.</div>'
+    + '<label style="font:10px var(--font-mono);color:var(--dim)">WHAT\'S ON THE LIST <select id="inv-paste-kind">' + INV_PASTE_KINDS.map(([k, label]) => '<option value="' + k + '">' + label + '</option>').join('') + '</select></label>'
     + '<textarea id="inv-paste-text" class="tsi" rows="6" style="width:100%;box-sizing:border-box;font:12px var(--font-mono)" placeholder="4 Lightning Bolt [M10] 146"></textarea>'
     + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="hbtn" style="color:var(--g)" id="inv-paste-go" onclick="runInventoryPaste()">SHOW CARDS</button><span id="inv-paste-status" style="font:10px var(--font-mono);color:var(--dim)"></span></div>'
     + '<div id="inv-paste-list" style="display:grid;gap:8px"></div></div>';
@@ -42864,17 +42892,53 @@ function closeInventoryPaste(){
   if(invPaste?.lines?.length && !confirm('Close without adding these ' + invPasteTotals().copies + ' cards?')) return;
   invPaste = null; document.getElementById('inv-paste-modal')?.remove();
 }
+// (store, 2026-11-16: paste to inventory for more than Magic.) Anything but Magic is looked up a line at a time
+// through the Research search for that kind -- the top match, with the next few to pick from.
+const INV_PASTE_KINDS = [['mtg','Magic'],['pokemon','Pokémon'],['video_games','Video games'],['sports','Sports cards'],['other','Other (auto)']];
+const INV_PASTE_SEARCH_CAT = { pokemon:'Pokemon TCG', video_games:'Video Games', sports:'Sports', other:'' };
+const INV_PASTE_MAX_SEARCH_LINES = 40;
+function parseInventoryPasteLines(text){
+  return String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const m = l.match(/^(\d{1,3})\s*x?\s+(.+)$/i);
+    return m ? { quantity:Math.max(1, Math.min(999, Number(m[1]))), name:m[2].trim() } : { quantity:1, name:l };
+  }).filter(it => it.name.length > 1);
+}
+async function runInventoryPasteSearch(text, kind, status){
+  const items = parseInventoryPasteLines(text);
+  if(!items.length) throw new Error('Nothing to look up -- one item a line');
+  if(items.length > INV_PASTE_MAX_SEARCH_LINES) throw new Error(items.length + ' lines -- ' + INV_PASTE_MAX_SEARCH_LINES + ' at a time for this kind (each line is its own search)');
+  const cat = INV_PASTE_SEARCH_CAT[kind] ?? '', pct = invPaste?.pct ?? 50, lines = [], missing = [];
+  for(let n = 0; n < items.length; n++){
+    const it = items[n];
+    if(status) status.textContent = 'Looking up ' + (n + 1) + ' of ' + items.length + ': ' + it.name + '...';
+    let found = [];
+    try { found = rankQuickLookupResults(await searchQuickCatalog(it.name, cat, buildUniversalSearchPlan(it.name, cat)), it.name, cat).filter(r => r && r.source !== 'inventory' && r.source !== 'tcgplayer_search_link'); } catch(e) {}
+    if(!found.length) { missing.push(it); continue; }
+    const alts = found.slice(0, 5), row = alts[0];
+    lines.push({ uid:'paste_' + Date.now().toString(36) + '_' + n, kind, row, alts, qty:it.quantity, condition:qplIsVideoGameRow(row) ? (row.selectedCondition || 'Loose') : 'NM', pay:invPastePayFor(row.market, pct), payByHand:false, typed:it.name });
+  }
+  return { lines, missing, skipped:[] };
+}
 async function runInventoryPaste(){
   const go = document.getElementById('inv-paste-go'), status = document.getElementById('inv-paste-status');
   const text = document.getElementById('inv-paste-text')?.value || '';
+  const kind = document.getElementById('inv-paste-kind')?.value || 'mtg';
   if(go) go.disabled = true;
   try {
+    if(kind !== 'mtg') {
+      const res = await runInventoryPasteSearch(text, kind, status);
+      invPaste = { ...res, pct:invPaste?.pct ?? 50, adding:false };
+      if(status) status.textContent = res.missing.length ? res.missing.length + ' not found' : '';
+      renderInventoryPaste();
+      if(go) go.disabled = false;
+      return;
+    }
     const res = await lookupMtgList(text, msg => { if(status) status.textContent = msg; });
     const pct = invPaste?.pct ?? 50, lines = [], missing = [];
     res.lines.forEach((line, n) => {
       const row = line.card ? mtgListCardToResult(line) : null;
       if(!row) { missing.push(line.it); return; }
-      lines.push({ uid:'paste_' + Date.now().toString(36) + '_' + n, row, qty:Math.max(1, Number(line.it.quantity) || 1), condition:'NM', pay:invPastePayFor(row.market, pct), payByHand:false });
+      lines.push({ uid:'paste_' + Date.now().toString(36) + '_' + n, kind:'mtg', row, qty:Math.max(1, Number(line.it.quantity) || 1), condition:'NM', pay:invPastePayFor(row.market, pct), payByHand:false });
     });
     invPaste = { lines, missing, skipped:res.skipped, pct, adding:false };
     if(status) status.textContent = res.skipped.length ? res.skipped.length + ' line' + (res.skipped.length === 1 ? '' : 's') + " couldn't be read: " + res.skipped.slice(0, 3).join(' / ') : '';
@@ -42891,7 +42955,7 @@ function renderInventoryPaste(){
     + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><label style="font:10px var(--font-mono);color:var(--dim)">PAID % OF MARKET <input type="number" min="0" max="200" step="1" value="' + invPaste.pct + '" style="width:64px" onchange="setInventoryPastePct(this.value)"></label>'
     + '<button class="hbtn" onclick="setInventoryPastePct(' + invPaste.pct + ', true)" title="Also reset the prices you typed by hand">APPLY TO ALL</button>'
     + '<button class="hbtn" style="color:var(--g)" ' + (invPaste.adding || !invPaste.lines.length ? 'disabled' : '') + ' onclick="addInventoryPasteToInventory()">' + (invPaste.adding ? 'ADDING...' : 'ADD ALL ' + t.copies + ' TO INVENTORY') + '</button></div></div>'
-    + (invPaste.missing.length ? '<div style="font:10px/1.6 var(--font-mono);color:var(--gold)">⚠ Not found on Scryfall (' + invPaste.missing.length + '): ' + invPaste.missing.map(it => esc(it.quantity + ' ' + it.name + (it.set ? ' [' + it.set + '] ' + it.number : ''))).join(' · ') + ' -- add these by hand.</div>' : '')
+    + (invPaste.missing.length ? '<div style="font:10px/1.6 var(--font-mono);color:var(--gold)">⚠ Not found (' + invPaste.missing.length + '): ' + invPaste.missing.map(it => esc(it.quantity + ' ' + it.name + (it.set ? ' [' + it.set + '] ' + it.number : ''))).join(' · ') + ' -- add these by hand.</div>' : '')
     + '</div>';
   const rows = invPaste.lines.map((l, i) => {
     const r = l.row, fin = normalizeQplFinish(r.selectedFinish || r.finish || 'normal');
@@ -42902,8 +42966,9 @@ function renderInventoryPaste(){
       +   '<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>' + esc(r.name) + '</b><div style="font:10px var(--font-mono);color:var(--dim)">' + esc(r.set || '') + (r.card_number ? ' · #' + esc(r.card_number) : '') + (r.matchWhy?.[1] ? ' · <span style="color:var(--gold)">' + esc(r.matchWhy[1]) + '</span>' : '') + '</div></div>'
       +   '<button class="ra" title="Take this card out" onclick="removeInventoryPasteLine(' + i + ')">✕</button></div>'
       +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;font:10px var(--font-mono);color:var(--dim)">'
-      +     '<label>FINISH<br><select onchange="setInventoryPasteLine(' + i + ',\'finish\',this.value)">' + (finishes.length ? finishes : [fin]).map(f => '<option value="' + esc(f) + '"' + (f === fin ? ' selected' : '') + '>' + esc(qplFinishLabel(f)) + '</option>').join('') + '</select></label>'
-      +     '<label>COND<br><select onchange="setInventoryPasteLine(' + i + ',\'condition\',this.value)">' + INV_PASTE_CONDITIONS.map(c => '<option' + (c === l.condition ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></label>'
+      +     (l.alts?.length > 1 ? '<label style="flex:1 1 100%">MATCH<br><select style="max-width:100%" onchange="setInventoryPasteLine(' + i + ',\'alt\',this.value)">' + l.alts.map((a, k) => '<option value="' + k + '"' + (a === r ? ' selected' : '') + '>' + esc([a.name, a.set, a.card_number ? '#' + a.card_number : '', a.market > 0 ? fd$(a.market) : ''].filter(Boolean).join(' · ')) + '</option>').join('') + '</select></label>' : '')
+      +     (l.kind === 'mtg' || finishes.length > 1 ? '<label>FINISH<br><select onchange="setInventoryPasteLine(' + i + ',\'finish\',this.value)">' + (finishes.length ? finishes : [fin]).map(f => '<option value="' + esc(f) + '"' + (f === fin ? ' selected' : '') + '>' + esc(qplFinishLabel(f)) + '</option>').join('') + '</select></label>' : '')
+      +     '<label>COND<br><select onchange="setInventoryPasteLine(' + i + ',\'condition\',this.value)">' + invPasteConditionsFor(l).map(c => '<option' + (c === l.condition ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></label>'
       +     '<label>QTY<br><input type="number" min="1" max="999" step="1" value="' + l.qty + '" style="width:58px" onchange="setInventoryPasteLine(' + i + ',\'qty\',this.value)"></label>'
       +     '<label>MARKET<br><b style="color:var(--g);font-size:12px">' + (r.market > 0 ? fd$(r.market) : '—') + '</b></label>'
       +     '<label>PAID EACH<br><input type="number" min="0" step="0.01" value="' + (Number(l.pay) || 0).toFixed(2) + '" style="width:76px' + (l.payByHand ? ';border-color:var(--gold)' : '') + '" onchange="setInventoryPasteLine(' + i + ',\'pay\',this.value)"></label>'
@@ -42922,7 +42987,13 @@ function setInventoryPastePct(v, all = false){
 function setInventoryPasteLine(i, field, value){
   const l = invPaste?.lines?.[i]; if(!l) return;
   if(field === 'qty') l.qty = Math.max(1, Math.min(999, Math.floor(Number(value) || 1)));
-  else if(field === 'condition') l.condition = INV_PASTE_CONDITIONS.includes(value) ? value : 'NM';
+  else if(field === 'condition') {
+    if(qplIsVideoGameRow(l.row)) { applyQplVideoGameCondition(l.row, value); l.condition = l.row.selectedCondition; if(!l.payByHand) l.pay = invPastePayFor(l.row.market, invPaste.pct); }
+    else l.condition = INV_PASTE_CONDITIONS.includes(value) ? value : 'NM';
+  }
+  else if(field === 'alt') {
+    const next = l.alts?.[Number(value)]; if(next) { l.row = next; l.condition = qplIsVideoGameRow(next) ? (next.selectedCondition || 'Loose') : l.condition; if(!l.payByHand) l.pay = invPastePayFor(next.market, invPaste.pct); }
+  }
   else if(field === 'pay') { l.pay = Math.max(0, Math.round((Number(value) || 0) * 100) / 100); l.payByHand = true; }
   else if(field === 'finish') {
     l.row.selectedFinish = value; l.row.finish = value; applyQplSelectedVariant(l.row);
@@ -42932,18 +43003,30 @@ function setInventoryPasteLine(i, field, value){
 }
 function removeInventoryPasteLine(i){ if(!invPaste || invPaste.adding) return; invPaste.lines.splice(i, 1); renderInventoryPaste(); }
 // One inventory row per line: its quantity, PAID EACH as the cost, the market for the finish picked.
+// The category each kind goes in under; "Other" keeps what the match says it is.
+function inventoryPasteCategory(l){
+  const kind = l.kind || 'mtg', r = l.row || {};
+  if(kind === 'mtg') return 'Magic: The Gathering';
+  if(kind === 'pokemon') return 'Pokemon TCG';
+  if(kind === 'video_games' || qplIsVideoGameRow(r)) return 'Video Games';
+  if(kind === 'sports') return 'Sports';
+  const c = normalizeQuickCategory(r.category || '');
+  return c === 'TCG' ? (tcgLineFromText([r.category, r.name, r.set].filter(Boolean).join(' ')).category || 'Collectibles') : c;
+}
 function inventoryPasteUpdates(l){
   const r = l.row, fin = normalizeQplFinish(r.selectedFinish || r.finish || 'normal'), market = Number(r.market) || 0, cost = Number(l.pay) || 0;
-  const img = r.imageUrl || '';
+  const img = r.imageUrl || '', mtg = (l.kind || 'mtg') === 'mtg', game = qplIsVideoGameRow(r);
+  const source = mtg ? 'Scryfall (pasted list)' : (r.priceSource || r.source || 'Pasted list');
   return {
-    name:r.name + (fin && fin !== 'normal' ? ' (' + qplFinishLabel(fin) + ')' : ''), category:'Magic: The Gathering', productType:'Single',
+    name:r.name + (!game && fin && fin !== 'normal' ? ' (' + qplFinishLabel(fin) + ')' : ''), category:inventoryPasteCategory(l), productType:'Single',
+    pricechartingProductId:r.pricecharting?.productId || '', tcgPlayerId:r.tcgPlayerId || r.tcgplayerId || '',
     set:r.set || '', variant:r.variant || '', year:r.year || '', card_number:r.card_number || '', condition:l.condition,
-    market, cost, priceUsed:market, resolvedPrice:market, priceSource:'Scryfall (pasted list)', priceLabel:'Scryfall (pasted list)',
-    selectedCondition:l.condition, selectedFinish:fin, selectedPrinting:qplFinishLabel(fin), selectedLanguage:'English',
-    scryfallId:r.scryfallId || '', tcgPlayerId:r.tcgPlayerId || r.tcgplayerId || '', tcgPlayerUrl:r.tcgPlayerUrl || r.tcgUrl || '', providerUrl:r.tcgUrl || '',
+    market, cost, priceUsed:market, resolvedPrice:market, priceSource:source, priceLabel:source,
+    selectedCondition:l.condition, selectedFinish:game ? '' : fin, selectedPrinting:game ? '' : qplFinishLabel(fin), selectedLanguage:r.selectedLanguage || 'English',
+    scryfallId:r.scryfallId || '', tcgPlayerUrl:r.tcgPlayerUrl || r.tcgUrl || '', providerUrl:r.tcgUrl || r.productUrl || r.pricecharting?.url || '',
     sourceType:'pasted_list', buyItemUid:l.uid, expectedProfit:Math.round((market - cost) * 100) / 100,
     imageUrl:img, thumbnail:img, image:img, images:img ? [img] : [], location:'Pasted list',
-    key_notes:['Pasted list into inventory', 'Paid each: $' + cost.toFixed(2), 'Price source: Scryfall (TCGplayer market)'].join('\n'),
+    key_notes:['Pasted list into inventory', 'Paid each: $' + cost.toFixed(2), 'Price source: ' + (mtg ? 'Scryfall (TCGplayer market)' : source), l.typed ? 'Pasted as: ' + l.typed : ''].filter(Boolean).join('\n'),
     qty:l.qty, quantity:l.qty,
   };
 }
@@ -42957,7 +43040,7 @@ async function addInventoryPasteToInventory(){
   for(const l of invPaste.lines){
     try {
       // Already added on an earlier try whose answer got lost? Don't make a second row.
-      const id = (await findInventoryIdByBuyItemUid(l.uid)) || (await createInventoryRecord({ name:l.row.name, set:l.row.set, card_number:l.row.card_number, category:'Magic: The Gathering', scryfallId:l.row.scryfallId || '' }, inventoryPasteUpdates(l)));
+      const id = (await findInventoryIdByBuyItemUid(l.uid)) || (await createInventoryRecord({ name:l.row.name, set:l.row.set, card_number:l.row.card_number, category:inventoryPasteCategory(l), scryfallId:l.row.scryfallId || '' }, inventoryPasteUpdates(l)));
       if(!id) throw new Error('Inventory save did not return an item ID');
       ok++;
     } catch(e) { l.error = e.message || 'Inventory add failed'; if(!firstError) firstError = l.error; fail++; left.push(l); }
