@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.15.10-sold-cards';
+const APP_VERSION = '2026.11.16.1-inventory-paste';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -21138,9 +21138,11 @@ function scanToBuyItem(scan){
 // Persists buyList into the active tray record and pushes it to the
 // worker under that tray's own key, so each open tray (customer) syncs
 // independently and two trays never mix their items together.
+const BUY_TRAY_MAX_ITEMS = 1000;
 function saveBuyList(){
   const tray = ensureActiveBuyTray();
-  tray.items = buyList.slice(0,100);
+  // (store, 2026-11-16: "I'm maxed at 100 bulk buy") -- a tray kept only its first 100 cards; a pasted list goes to 1,000.
+  tray.items = buyList.slice(0,BUY_TRAY_MAX_ITEMS);
   tray.itemCount = tray.items.length;
   tray.pct = parseFloat(document.getElementById('bl-pct')?.value || tray.pct || 50);
   tray.marketTotal = Math.round(buyList.reduce((a,i)=>a+buyItemMarketValue(i),0) * 100) / 100;
@@ -21292,7 +21294,7 @@ async function fetchBuyListFromWorker(){
     }
     tray.removedIds = [...mergedRemovedById.values()];
     if(!changed && tray.removedIds.length === localRemovedIds.length) return;
-    tray.items = buyList.slice(0,100);
+    tray.items = buyList.slice(0,BUY_TRAY_MAX_ITEMS);
     upsertLocalBuyTray(tray);
     renderBuyList();
     syncBuyListToWorker(); // push the merged union (items + removedIds) back so every device converges
@@ -42744,6 +42746,142 @@ function mtgListAddAllToBuy(){
   switchTab('intake', [...document.querySelectorAll('.tab')].find(x => x.textContent.trim() === 'BUY'));
 }
 Object.assign(window, { openMtgListReview, closeMtgListReview, renderMtgListBanner, mtgListAddAllToBuy });
+
+// ── INVENTORY: PASTE A LIST STRAIGHT IN (store, 2026-11-16: "I need the inventory tab to have a quick paste there ...
+// it pulls up all cards from the pasted list. You can see the info and change foil finishes etc just like the research
+// tab. You can change the price you pay for each card or set the percent paid to the bulk. You can remove any ... then
+// hit add to inventory and it'll import them all.") A Magic list is looked up the same way as Buy's PASTE MTG LIST
+// (Scryfall, each line's own printing). Every line is one inventory row with its quantity; PAID is per card.
+let invPaste = null; // { lines:[{ uid, row, qty, condition, pay, payByHand }], missing, skipped, pct, adding }
+const INV_PASTE_CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+function invPasteFinishes(row){ return [...new Set((row.availableVariants || []).map(v => normalizeQplFinish(v.finish)).filter(Boolean))]; }
+function invPastePayFor(market, pct){ return Math.round((Number(market) || 0) * (Number(pct) || 0)) / 100; }
+function invPasteTotals(){
+  return (invPaste?.lines || []).reduce((t, l) => { t.copies += l.qty; t.market += (Number(l.row.market) || 0) * l.qty; t.paid += (Number(l.pay) || 0) * l.qty; return t; }, { copies:0, market:0, paid:0 });
+}
+function openInventoryPaste(){
+  document.getElementById('inv-paste-modal')?.remove();
+  const m = document.createElement('div'); m.id = 'inv-paste-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:10000;overflow-y:auto;padding:16px;box-sizing:border-box';
+  m.innerHTML = '<div style="max-width:980px;margin:0 auto;background:var(--surf);border:1px solid var(--border);border-radius:12px;padding:16px;display:grid;gap:10px">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="font-family:Orbitron,monospace;color:var(--g);font-size:13px;letter-spacing:2px">📋 PASTE TO INVENTORY</div><button class="hbtn" onclick="closeInventoryPaste()">✕ CLOSE</button></div>'
+    + '<div style="font:10px/1.6 var(--font-mono);color:var(--dim)">Magic, one card a line: <b>1 Corpses of the Lost (Extended Art) [LCI] 366</b>, <b>1x Sol Ring (C21) 263 *F*</b>, or just the name. Check each card, change the finish, condition, quantity or what you paid, take out any you don\'t want, then ADD ALL TO INVENTORY.</div>'
+    + '<textarea id="inv-paste-text" class="tsi" rows="6" style="width:100%;box-sizing:border-box;font:12px var(--font-mono)" placeholder="4 Lightning Bolt [M10] 146"></textarea>'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="hbtn" style="color:var(--g)" id="inv-paste-go" onclick="runInventoryPaste()">SHOW CARDS</button><span id="inv-paste-status" style="font:10px var(--font-mono);color:var(--dim)"></span></div>'
+    + '<div id="inv-paste-list" style="display:grid;gap:8px"></div></div>';
+  document.body.appendChild(m);
+  setTimeout(() => m.querySelector('#inv-paste-text')?.focus(), 50);
+}
+function closeInventoryPaste(){
+  if(invPaste?.adding) return toast_dash('Still adding -- wait for it to finish');
+  if(invPaste?.lines?.length && !confirm('Close without adding these ' + invPasteTotals().copies + ' cards?')) return;
+  invPaste = null; document.getElementById('inv-paste-modal')?.remove();
+}
+async function runInventoryPaste(){
+  const go = document.getElementById('inv-paste-go'), status = document.getElementById('inv-paste-status');
+  const text = document.getElementById('inv-paste-text')?.value || '';
+  if(go) go.disabled = true;
+  try {
+    const res = await lookupMtgList(text, msg => { if(status) status.textContent = msg; });
+    const pct = invPaste?.pct ?? 50, lines = [], missing = [];
+    res.lines.forEach((line, n) => {
+      const row = line.card ? mtgListCardToResult(line) : null;
+      if(!row) { missing.push(line.it); return; }
+      lines.push({ uid:'paste_' + Date.now().toString(36) + '_' + n, row, qty:Math.max(1, Number(line.it.quantity) || 1), condition:'NM', pay:invPastePayFor(row.market, pct), payByHand:false });
+    });
+    invPaste = { lines, missing, skipped:res.skipped, pct, adding:false };
+    if(status) status.textContent = res.skipped.length ? res.skipped.length + ' line' + (res.skipped.length === 1 ? '' : 's') + " couldn't be read: " + res.skipped.slice(0, 3).join(' / ') : '';
+    renderInventoryPaste();
+  } catch(e) { if(status) status.textContent = e.message || String(e); }
+  if(go) go.disabled = false;
+}
+function renderInventoryPaste(){
+  const el = document.getElementById('inv-paste-list'); if(!el || !invPaste) return;
+  const t = invPasteTotals(), esc = escHtml;
+  const head = '<div class="panel" style="display:grid;gap:8px;position:sticky;top:0;z-index:2">'
+    + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between">'
+    + '<div style="font:12px var(--font-mono)"><b>' + t.copies + '</b> card' + (t.copies === 1 ? '' : 's') + ' · market <b style="color:var(--g)">' + fd$(t.market) + '</b> · you paid <b style="color:var(--gold)">' + fd$(t.paid) + '</b>' + (t.market > 0 ? ' <span style="color:var(--dim)">(' + Math.round(t.paid / t.market * 100) + '%)</span>' : '') + '</div>'
+    + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><label style="font:10px var(--font-mono);color:var(--dim)">PAID % OF MARKET <input type="number" min="0" max="200" step="1" value="' + invPaste.pct + '" style="width:64px" onchange="setInventoryPastePct(this.value)"></label>'
+    + '<button class="hbtn" onclick="setInventoryPastePct(' + invPaste.pct + ', true)" title="Also reset the prices you typed by hand">APPLY TO ALL</button>'
+    + '<button class="hbtn" style="color:var(--g)" ' + (invPaste.adding || !invPaste.lines.length ? 'disabled' : '') + ' onclick="addInventoryPasteToInventory()">' + (invPaste.adding ? 'ADDING...' : 'ADD ALL ' + t.copies + ' TO INVENTORY') + '</button></div></div>'
+    + (invPaste.missing.length ? '<div style="font:10px/1.6 var(--font-mono);color:var(--gold)">⚠ Not found on Scryfall (' + invPaste.missing.length + '): ' + invPaste.missing.map(it => esc(it.quantity + ' ' + it.name + (it.set ? ' [' + it.set + '] ' + it.number : ''))).join(' · ') + ' -- add these by hand.</div>' : '')
+    + '</div>';
+  const rows = invPaste.lines.map((l, i) => {
+    const r = l.row, fin = normalizeQplFinish(r.selectedFinish || r.finish || 'normal');
+    const finishes = invPasteFinishes(r);
+    return '<div class="panel" style="display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;align-items:start;padding:10px' + (l.error ? ';border-color:var(--red)' : '') + '">'
+      + (r.imageUrl ? '<img src="' + esc(r.imageUrl) + '" alt="" loading="lazy" style="width:64px;border-radius:6px">' : '<div style="width:64px;height:89px;border-radius:6px;background:var(--surf2)"></div>')
+      + '<div style="display:grid;gap:6px;min-width:0">'
+      +   '<div style="display:flex;justify-content:space-between;gap:8px"><div style="min-width:0"><b>' + esc(r.name) + '</b><div style="font:10px var(--font-mono);color:var(--dim)">' + esc(r.set || '') + (r.card_number ? ' · #' + esc(r.card_number) : '') + (r.matchWhy?.[1] ? ' · <span style="color:var(--gold)">' + esc(r.matchWhy[1]) + '</span>' : '') + '</div></div>'
+      +   '<button class="ra" title="Take this card out" onclick="removeInventoryPasteLine(' + i + ')">✕</button></div>'
+      +   '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;font:10px var(--font-mono);color:var(--dim)">'
+      +     '<label>FINISH<br><select onchange="setInventoryPasteLine(' + i + ',\'finish\',this.value)">' + (finishes.length ? finishes : [fin]).map(f => '<option value="' + esc(f) + '"' + (f === fin ? ' selected' : '') + '>' + esc(qplFinishLabel(f)) + '</option>').join('') + '</select></label>'
+      +     '<label>COND<br><select onchange="setInventoryPasteLine(' + i + ',\'condition\',this.value)">' + INV_PASTE_CONDITIONS.map(c => '<option' + (c === l.condition ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></label>'
+      +     '<label>QTY<br><input type="number" min="1" max="999" step="1" value="' + l.qty + '" style="width:58px" onchange="setInventoryPasteLine(' + i + ',\'qty\',this.value)"></label>'
+      +     '<label>MARKET<br><b style="color:var(--g);font-size:12px">' + (r.market > 0 ? fd$(r.market) : '—') + '</b></label>'
+      +     '<label>PAID EACH<br><input type="number" min="0" step="0.01" value="' + (Number(l.pay) || 0).toFixed(2) + '" style="width:76px' + (l.payByHand ? ';border-color:var(--gold)' : '') + '" onchange="setInventoryPasteLine(' + i + ',\'pay\',this.value)"></label>'
+      +   '</div>'
+      +   (l.error ? '<div style="font:10px var(--font-mono);color:var(--red)">' + esc(l.error) + '</div>' : '')
+      + '</div></div>';
+  }).join('');
+  el.innerHTML = head + (rows || '<div style="font:11px var(--font-mono);color:var(--dim)">No cards left on the list.</div>');
+}
+function setInventoryPastePct(v, all = false){
+  if(!invPaste) return;
+  invPaste.pct = Math.max(0, Math.min(200, Number(v) || 0));
+  invPaste.lines.forEach(l => { if(all || !l.payByHand){ l.pay = invPastePayFor(l.row.market, invPaste.pct); if(all) l.payByHand = false; } });
+  renderInventoryPaste();
+}
+function setInventoryPasteLine(i, field, value){
+  const l = invPaste?.lines?.[i]; if(!l) return;
+  if(field === 'qty') l.qty = Math.max(1, Math.min(999, Math.floor(Number(value) || 1)));
+  else if(field === 'condition') l.condition = INV_PASTE_CONDITIONS.includes(value) ? value : 'NM';
+  else if(field === 'pay') { l.pay = Math.max(0, Math.round((Number(value) || 0) * 100) / 100); l.payByHand = true; }
+  else if(field === 'finish') {
+    l.row.selectedFinish = value; l.row.finish = value; applyQplSelectedVariant(l.row);
+    if(!l.payByHand) l.pay = invPastePayFor(l.row.market, invPaste.pct);
+  }
+  renderInventoryPaste();
+}
+function removeInventoryPasteLine(i){ if(!invPaste || invPaste.adding) return; invPaste.lines.splice(i, 1); renderInventoryPaste(); }
+// One inventory row per line: its quantity, PAID EACH as the cost, the market for the finish picked.
+function inventoryPasteUpdates(l){
+  const r = l.row, fin = normalizeQplFinish(r.selectedFinish || r.finish || 'normal'), market = Number(r.market) || 0, cost = Number(l.pay) || 0;
+  const img = r.imageUrl || '';
+  return {
+    name:r.name + (fin && fin !== 'normal' ? ' (' + qplFinishLabel(fin) + ')' : ''), category:'Magic: The Gathering', productType:'Single',
+    set:r.set || '', variant:r.variant || '', year:r.year || '', card_number:r.card_number || '', condition:l.condition,
+    market, cost, priceUsed:market, resolvedPrice:market, priceSource:'Scryfall (pasted list)', priceLabel:'Scryfall (pasted list)',
+    selectedCondition:l.condition, selectedFinish:fin, selectedPrinting:qplFinishLabel(fin), selectedLanguage:'English',
+    scryfallId:r.scryfallId || '', tcgPlayerId:r.tcgPlayerId || r.tcgplayerId || '', tcgPlayerUrl:r.tcgPlayerUrl || r.tcgUrl || '', providerUrl:r.tcgUrl || '',
+    sourceType:'pasted_list', buyItemUid:l.uid, expectedProfit:Math.round((market - cost) * 100) / 100,
+    imageUrl:img, thumbnail:img, image:img, images:img ? [img] : [], location:'Pasted list',
+    key_notes:['Pasted list into inventory', 'Paid each: $' + cost.toFixed(2), 'Price source: Scryfall (TCGplayer market)'].join('\n'),
+    qty:l.qty, quantity:l.qty,
+  };
+}
+async function addInventoryPasteToInventory(){
+  if(!invPaste || invPaste.adding || !invPaste.lines.length) return;
+  const t = invPasteTotals();
+  if(!confirm('Add ' + t.copies + ' cards (' + invPaste.lines.length + ' rows) to inventory?\nMarket ' + fd$(t.market) + ' · you paid ' + fd$(t.paid) + '.')) return;
+  invPaste.adding = true; renderInventoryPaste();
+  let ok = 0, fail = 0, firstError = '';
+  const left = [];
+  for(const l of invPaste.lines){
+    try {
+      // Already added on an earlier try whose answer got lost? Don't make a second row.
+      const id = (await findInventoryIdByBuyItemUid(l.uid)) || (await createInventoryRecord({ name:l.row.name, set:l.row.set, card_number:l.row.card_number, category:'Magic: The Gathering', scryfallId:l.row.scryfallId || '' }, inventoryPasteUpdates(l)));
+      if(!id) throw new Error('Inventory save did not return an item ID');
+      ok++;
+    } catch(e) { l.error = e.message || 'Inventory add failed'; if(!firstError) firstError = l.error; fail++; left.push(l); }
+  }
+  invPaste.lines = left; invPaste.adding = false;
+  logOpsEvent('inventory_bulk_add', 'Pasted list added to inventory', { added:ok, failed:fail, copies:t.copies });
+  toast_dash('Added ' + ok + ' row' + (ok === 1 ? '' : 's') + ' to inventory' + (fail ? ' -- ' + fail + ' failed (still on the list): ' + firstError : ''));
+  if(ok) loadInventory();
+  if(!left.length){ invPaste = null; document.getElementById('inv-paste-modal')?.remove(); } else renderInventoryPaste();
+}
+Object.assign(window, { openInventoryPaste, closeInventoryPaste, runInventoryPaste, setInventoryPastePct, setInventoryPasteLine, removeInventoryPasteLine, addInventoryPasteToInventory });
 // The buy-offer rows from an import (an export or a pasted list): one row per copy, priced or marked for review.
 function addImportedRowsToBuyList(items, format, skipped = 0){
   const session = getActiveBuySession(), stamp = Date.now(); let n = 0;
