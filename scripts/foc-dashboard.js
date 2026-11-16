@@ -1498,63 +1498,89 @@ async function openFamilyEbayGroupReview(familyId,opts){
 // image happened to be (or, before that, every checked cover's photo
 // piled together).
 // ADD BUNDLE TO EBAY LISTING (store, 2026-11-16): pick the covers in the bundle (all by default), its name, price,
-// quantity and photo; it joins the title's live listing as one more Cover choice.
+// quantity and photo; it joins the title's live listing as one more Cover choice. Each book has its own price IN THE
+// BUNDLE ("adjust the prices of each book for the bundle ... I don't want it changing prices of the other books"): they
+// add up to the bundle price and are saved with the bundle only -- the covers' own listings keep their prices.
+// EDIT on a bundle already on the listing changes its covers, prices and quantity (its name stays).
 var focAddBundle=null;
 async function openFocAddBundle(familyId){
   document.getElementById('foc-add-bundle-modal')?.remove();
   var m=document.createElement('div');m.id='foc-add-bundle-modal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;overflow-y:auto;padding:16px;box-sizing:border-box';
-  m.innerHTML='<div class="panel" style="max-width:640px;margin:0 auto;display:grid;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-family:Orbitron,monospace;color:var(--purple)">+ ADD BUNDLE TO EBAY LISTING</b><button class="hbtn" onclick="closeFocAddBundle()">✕</button></div><div id="foc-add-bundle-body" style="font:11px var(--font-mono);color:var(--dim)">Loading the listing…</div></div>';
+  m.innerHTML='<div class="panel" style="max-width:640px;margin:0 auto;display:grid;gap:10px"><div style="display:flex;justify-content:space-between;align-items:center"><b id="foc-add-bundle-title" style="font-family:Orbitron,monospace;color:var(--purple)">+ ADD BUNDLE TO EBAY LISTING</b><button class="hbtn" onclick="closeFocAddBundle()">✕</button></div><div id="foc-add-bundle-body" style="font:11px var(--font-mono);color:var(--dim)">Loading the listing…</div></div>';
   document.body.appendChild(m);
   try{
     var d=await api('/foc/ebay/add-bundle-to-group-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:familyId,preview:true})});
-    focAddBundle={familyId:familyId,listingId:d.listingId,covers:d.covers||[],bundles:d.bundles||[],picked:{}};
-    focAddBundle.covers.forEach(function(c){focAddBundle.picked[c.skuId]=true;});
-    renderFocAddBundle(true);
+    focAddBundle={familyId:familyId,listingId:d.listingId,covers:d.covers||[],bundles:d.bundles||[],picked:{},coverPrice:{},editing:null};
+    focAddBundleReset(null);
   }catch(e){var b=document.getElementById('foc-add-bundle-body');if(b)b.innerHTML='<span style="color:var(--red)">'+esc(e.message||String(e))+'</span>';}
+}
+// Start the sheet fresh (a new bundle), or from a bundle already on the listing (edit).
+function focAddBundleReset(bundle){
+  var st=focAddBundle;if(!st)return;
+  st.editing=bundle||null;st.picked={};st.coverPrice={};
+  st.covers.forEach(function(c){
+    st.picked[c.skuId]=bundle?(bundle.skuIds||[]).indexOf(c.skuId)>-1:true;
+    var saved=bundle&&bundle.coverPrices&&bundle.coverPrices[c.skuId];
+    st.coverPrice[c.skuId]=saved!=null?Number(saved):Number(c.price||0);
+  });
+  ['foc-add-bundle-name','foc-add-bundle-price','foc-add-bundle-qty'].forEach(function(id){document.getElementById(id)?.remove();});
+  renderFocAddBundle(bundle?{name:bundle.label,price:Number(bundle.price||0).toFixed(2),qty:String(bundle.qty||1)}:null);
 }
 function closeFocAddBundle(){focAddBundle=null;document.getElementById('foc-add-bundle-modal')?.remove();}
 function focAddBundleTotals(){
   var st=focAddBundle,picked=st.covers.filter(function(c){return st.picked[c.skuId];});
-  return {picked:picked,sum:picked.reduce(function(t,c){return t+Number(c.price||0);},0),most:picked.length?Math.min.apply(null,picked.map(function(c){return Math.max(0,Number(c.qty||0));})):0};
+  var price=function(c){var p=st.coverPrice&&st.coverPrice[c.skuId];return p!=null&&isFinite(p)?Number(p):Number(c.price||0);};
+  return {picked:picked,
+    sum:picked.reduce(function(t,c){return t+Number(c.price||0);},0),
+    bundleSum:Math.round(picked.reduce(function(t,c){return t+price(c);},0)*100)/100,
+    most:picked.length?Math.min.apply(null,picked.map(function(c){return Math.max(0,Number(c.qty||0));})):0};
 }
 function focAddBundleDefaultName(picked){return picked.length===focAddBundle.covers.length?'All Covers Bundle ('+picked.length+' Books)':('Bundle: '+picked.map(function(c){return c.label;}).join(' + ')).slice(0,60);}
-function renderFocAddBundle(first){
+function renderFocAddBundle(preset){
   var st=focAddBundle,b=document.getElementById('foc-add-bundle-body');if(!st||!b)return;
-  var t=focAddBundleTotals();
-  var keep=function(id,fallback){var el=document.getElementById(id);return first||!el?fallback:el.value;};
-  var nameEl=document.getElementById('foc-add-bundle-name');
-  var autoName=!nameEl||nameEl.dataset.auto==='1';
-  var name=autoName?focAddBundleDefaultName(t.picked):nameEl.value;
-  var priceEl=document.getElementById('foc-add-bundle-price'),autoPrice=!priceEl||priceEl.dataset.auto==='1';
-  var price=autoPrice?(t.sum?t.sum.toFixed(2):''):priceEl.value;
-  var qtyEl=document.getElementById('foc-add-bundle-qty'),autoQty=!qtyEl||qtyEl.dataset.auto==='1';
-  var qty=autoQty?String(Math.max(1,Math.min(5,t.most||1))):qtyEl.value;
-  var img=keep('foc-add-bundle-image-url','');
-  b.innerHTML=(st.bundles.length?'<div style="color:var(--gold)">Already on this listing: '+st.bundles.map(function(x){return esc(x.label)+' · $'+Number(x.price).toFixed(2)+' · '+x.qty+' left';}).join(' | ')+'</div>':'')+
-    '<div><b style="color:var(--text)">WHAT\'S IN THE BUNDLE</b> <span>(one copy of each picked cover per bundle sold)</span></div>'+
-    st.covers.map(function(c){return '<label style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)"><input type="checkbox" '+(st.picked[c.skuId]?'checked':'')+' onchange="focAddBundlePick(\''+esc(c.skuId)+'\',this.checked)">'+(c.image?'<img src="'+esc(c.image)+'" style="width:34px;border-radius:4px" alt="">':'')+'<span style="flex:1;color:var(--text)">'+esc(c.label)+'</span><span>$'+Number(c.price||0).toFixed(2)+' · '+Number(c.qty||0)+' left</span></label>';}).join('')+
-    '<div>Picked: <b style="color:var(--text)">'+t.picked.length+'</b> covers · separately $'+t.sum.toFixed(2)+'</div>'+
-    '<label>BUNDLE NAME (what buyers see in the Cover menu)<input id="foc-add-bundle-name" class="tsi" maxlength="60" data-auto="'+(autoName?'1':'0')+'" value="'+esc(name)+'" oninput="this.dataset.auto=\'0\'"></label>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap"><label>PRICE<input id="foc-add-bundle-price" class="tsi" type="number" min="0.01" step="0.01" style="width:110px" data-auto="'+(autoPrice?'1':'0')+'" oninput="this.dataset.auto=\'0\'" value="'+esc(price)+'"></label><label>QUANTITY<input id="foc-add-bundle-qty" class="tsi" type="number" min="1" max="200" step="1" style="width:90px" data-auto="'+(autoQty?'1':'0')+'" oninput="this.dataset.auto=\'0\'" value="'+esc(qty)+'"></label></div>'+
+  var t=focAddBundleTotals(),editing=st.editing;
+  var title=document.getElementById('foc-add-bundle-title');if(title)title.textContent=editing?'✏️ EDIT BUNDLE: '+editing.label:'+ ADD BUNDLE TO EBAY LISTING';
+  var nameEl=document.getElementById('foc-add-bundle-name'),priceEl=document.getElementById('foc-add-bundle-price'),qtyEl=document.getElementById('foc-add-bundle-qty');
+  var autoName=!editing&&(!nameEl||nameEl.dataset.auto==='1'),autoPrice=preset?true:(!priceEl||priceEl.dataset.auto==='1'),autoQty=preset?false:(!qtyEl||qtyEl.dataset.auto==='1');
+  var name=preset?preset.name:(autoName?focAddBundleDefaultName(t.picked):nameEl.value);
+  var price=preset?preset.price:(autoPrice?(t.bundleSum?t.bundleSum.toFixed(2):''):priceEl.value);
+  var qty=preset?preset.qty:(autoQty?String(Math.max(1,Math.min(5,t.most||1))):qtyEl.value);
+  var img=document.getElementById('foc-add-bundle-image-url')?.value||'';
+  b.innerHTML=(st.bundles.length?'<div style="display:grid;gap:4px"><b style="color:var(--text)">ALREADY ON THIS LISTING</b>'+st.bundles.map(function(x,k){return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;color:var(--gold)"><span>'+esc(x.label)+' · $'+Number(x.price).toFixed(2)+' · '+x.qty+' left</span><button class="hbtn" style="min-height:24px;font-size:9px" onclick="focAddBundleEdit('+k+')">EDIT</button></div>';}).join('')+(editing?'<button class="hbtn" style="min-height:24px;font-size:9px" onclick="focAddBundleReset(null)">+ MAKE A NEW BUNDLE INSTEAD</button>':'')+'</div>':'')+
+    '<div><b style="color:var(--text)">WHAT\'S IN THE BUNDLE</b> <span>(one copy of each picked cover per bundle sold · IN BUNDLE = that book\'s price inside this bundle only -- its own listing keeps its price)</span></div>'+
+    st.covers.map(function(c){var on=!!st.picked[c.skuId];return '<div style="display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)"><input type="checkbox" '+(on?'checked':'')+' onchange="focAddBundlePick(\''+esc(c.skuId)+'\',this.checked)">'+(c.image?'<img src="'+esc(c.image)+'" style="width:34px;border-radius:4px" alt="">':'')+'<span style="flex:1;min-width:0;color:var(--text)">'+esc(c.label)+'<br><span style="color:var(--dim)">own price $'+Number(c.price||0).toFixed(2)+' · '+Number(c.qty||0)+' left</span></span><label style="white-space:nowrap;'+(on?'':'opacity:.4')+'">IN BUNDLE $<input type="number" min="0" step="0.01" style="width:78px" '+(on?'':'disabled')+' value="'+Number(st.coverPrice[c.skuId]||0).toFixed(2)+'" oninput="focAddBundleCoverPrice(\''+esc(c.skuId)+'\',this.value)"></label></div>';}).join('')+
+    '<div id="foc-add-bundle-sum">'+focAddBundleSumText(t)+'</div>'+
+    '<label>BUNDLE NAME (what buyers see in the Cover menu'+(editing?' -- stays the same when editing':'')+')<input id="foc-add-bundle-name" class="tsi" maxlength="60" '+(editing?'disabled':'')+' data-auto="'+(autoName?'1':'0')+'" value="'+esc(name)+'" oninput="this.dataset.auto=\'0\'"></label>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap"><label>BUNDLE PRICE<input id="foc-add-bundle-price" class="tsi" type="number" min="0.01" step="0.01" style="width:110px" data-auto="'+(autoPrice?'1':'0')+'" oninput="this.dataset.auto=\'0\'" value="'+esc(price)+'"></label><label>QUANTITY<input id="foc-add-bundle-qty" class="tsi" type="number" min="1" max="200" step="1" style="width:90px" data-auto="'+(autoQty?'1':'0')+'" oninput="this.dataset.auto=\'0\'" value="'+esc(qty)+'"></label></div>'+
+    '<div style="font-size:9px">The bundle price follows the IN BUNDLE prices until you type your own.</div>'+
     (t.most&&Number(qty)>t.most?'<div style="color:var(--gold)">More bundles than copies left of a cover in it ('+t.most+') -- they could oversell.</div>':'')+
-    '<div><b style="color:var(--text)">BUNDLE PHOTO</b> (shown when a buyer picks the bundle -- else the first picked cover)<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><div id="foc-add-bundle-image-preview" style="width:64px;height:64px;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px">'+(img?'<img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:contain">':'NONE')+'</div><input type="file" id="foc-add-bundle-image-file" accept="image/*" onchange="handleFocGroupImageFile(this.files[0],\'foc-add-bundle-image\',\'Bundle photo\')"><input type="hidden" id="foc-add-bundle-image-url" value="'+esc(img)+'"></div></div>'+
-    '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" onclick="closeFocAddBundle()">CANCEL</button><button class="hbtn" id="foc-add-bundle-go" style="color:var(--g)" '+(t.picked.length<2?'disabled':'')+' onclick="submitFocAddBundle()">ADD TO THE LISTING</button></div>'+
+    (editing?'':'<div><b style="color:var(--text)">BUNDLE PHOTO</b> (shown when a buyer picks the bundle -- else the first picked cover)<div style="display:flex;gap:8px;align-items:center;margin-top:4px"><div id="foc-add-bundle-image-preview" style="width:64px;height:64px;border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8px">'+(img?'<img src="'+esc(img)+'" style="width:100%;height:100%;object-fit:contain">':'NONE')+'</div><input type="file" id="foc-add-bundle-image-file" accept="image/*" onchange="handleFocGroupImageFile(this.files[0],\'foc-add-bundle-image\',\'Bundle photo\')"><input type="hidden" id="foc-add-bundle-image-url" value="'+esc(img)+'"></div></div>')+
+    '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" onclick="closeFocAddBundle()">CANCEL</button><button class="hbtn" id="foc-add-bundle-go" style="color:var(--g)" '+(t.picked.length<2?'disabled':'')+' onclick="submitFocAddBundle()">'+(editing?'SAVE BUNDLE CHANGES':'ADD TO THE LISTING')+'</button></div>'+
     '<div id="foc-add-bundle-status"></div>';
 }
-function focAddBundlePick(skuId,on){if(!focAddBundle)return;focAddBundle.picked[skuId]=!!on;renderFocAddBundle(false);}
+function focAddBundleSumText(t){return 'Picked: <b style="color:var(--text)">'+t.picked.length+'</b> covers · own prices $'+t.sum.toFixed(2)+' · in bundle <b style="color:var(--text)">$'+t.bundleSum.toFixed(2)+'</b>';}
+function focAddBundlePick(skuId,on){if(!focAddBundle)return;focAddBundle.picked[skuId]=!!on;renderFocAddBundle(null);}
+// Typing a book's bundle price: the totals (and the bundle price, unless typed by hand) follow without redrawing the sheet.
+function focAddBundleCoverPrice(skuId,value){
+  var st=focAddBundle;if(!st)return;var n=Number(value);st.coverPrice[skuId]=isFinite(n)&&n>=0?Math.round(n*100)/100:0;
+  var t=focAddBundleTotals(),sum=document.getElementById('foc-add-bundle-sum');if(sum)sum.innerHTML=focAddBundleSumText(t);
+  var priceEl=document.getElementById('foc-add-bundle-price');if(priceEl&&priceEl.dataset.auto==='1')priceEl.value=t.bundleSum?t.bundleSum.toFixed(2):'';
+}
+function focAddBundleEdit(k){var x=focAddBundle&&focAddBundle.bundles[k];if(x)focAddBundleReset(x);}
 async function submitFocAddBundle(){
-  var st=focAddBundle;if(!st)return;var t=focAddBundleTotals();
+  var st=focAddBundle;if(!st)return;var t=focAddBundleTotals(),editing=st.editing;
   if(t.picked.length<2){toast_dash('Pick at least 2 covers');return;}
-  var name=(document.getElementById('foc-add-bundle-name')?.value||'').trim(),price=Number(document.getElementById('foc-add-bundle-price')?.value||0),qty=parseInt(document.getElementById('foc-add-bundle-qty')?.value||'0',10);
+  var name=editing?editing.label:(document.getElementById('foc-add-bundle-name')?.value||'').trim(),price=Number(document.getElementById('foc-add-bundle-price')?.value||0),qty=parseInt(document.getElementById('foc-add-bundle-qty')?.value||'0',10);
   if(!(price>0)){toast_dash('Give the bundle a price');return;}
   if(!(qty>0)){toast_dash('Give the bundle a quantity');return;}
-  if(!confirm('Add "'+(name||focAddBundleDefaultName(t.picked))+'" to the eBay listing at $'+price.toFixed(2)+', '+qty+' available?'))return;
-  var go=document.getElementById('foc-add-bundle-go'),status=document.getElementById('foc-add-bundle-status');if(go)go.disabled=true;if(status)status.textContent='Adding to eBay…';
+  if(!confirm((editing?'Update "'+name+'" on the eBay listing to ':'Add "'+(name||focAddBundleDefaultName(t.picked))+'" to the eBay listing at ')+'$'+price.toFixed(2)+', '+qty+' available? The covers\' own prices don\'t change.'))return;
+  var coverPrices={};t.picked.forEach(function(c){coverPrices[c.skuId]=Number(st.coverPrice[c.skuId]||0);});
+  var go=document.getElementById('foc-add-bundle-go'),status=document.getElementById('foc-add-bundle-status');if(go)go.disabled=true;if(status)status.textContent=editing?'Updating eBay…':'Adding to eBay…';
   try{
-    var d=await api('/foc/ebay/add-bundle-to-group-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:st.familyId,listingId:st.listingId,skuIds:t.picked.map(function(c){return c.skuId;}),label:name,price:price,quantity:qty,imageUrl:document.getElementById('foc-add-bundle-image-url')?.value||''})});
+    var d=await api('/foc/ebay/add-bundle-to-group-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),familyId:st.familyId,listingId:st.listingId,rowId:editing?editing.id:undefined,skuIds:t.picked.map(function(c){return c.skuId;}),coverPrices:coverPrices,label:name,price:price,quantity:qty,imageUrl:editing?'':(document.getElementById('foc-add-bundle-image-url')?.value||'')})});
     (d.warnings||[]).forEach(function(w){toast_dash(w);});
-    toast_dash('Bundle added to the listing: '+d.label);closeFocAddBundle();
+    toast_dash((d.edited?'Bundle updated: ':'Bundle added to the listing: ')+d.label);closeFocAddBundle();
     if(typeof refreshCycleFamilies==='function')refreshCycleFamilies();
   }catch(e){if(status)status.innerHTML='<span style="color:var(--red)">'+esc(e.message||String(e))+'</span>';if(go)go.disabled=false;}
 }
@@ -3746,7 +3772,7 @@ function renderSlipReceived(summary,slip){
     (toShip.length?'<section class="foc-family"><header class="foc-family-head"><div class="foc-family-title">TO PACK &amp; SHIP / SET ASIDE ('+toShip.length+')</div></header>'+toShip.map(line).join('')+'</section>':'')+
     '<details class="foc-family"'+(toShip.length?'':' open')+'><summary class="foc-family-head" style="cursor:pointer"><div class="foc-family-title">EVERYTHING RECEIVED ('+rows.length+')</div></summary>'+rows.map(line).join('')+'</details>';
 }
-window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocArtist=function(v){state.artist=v;renderFamilies();};window.openFocAddBundle=openFocAddBundle;window.closeFocAddBundle=closeFocAddBundle;window.focAddBundlePick=focAddBundlePick;window.submitFocAddBundle=submitFocAddBundle;window.handleFocGroupImageFile=handleFocGroupImageFile;window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.openPackingSlipScan=openPackingSlipScan;window.handleSlipFiles=handleSlipFiles;window.focSlipPickPhotos=slipPickPhotos;window.focSlipPick=focSlipPick;window.focSlipQty=focSlipQty;window.focSlipPrice=focSlipPrice;window.focSlipMarkup=focSlipMarkup;window.focTextPullHeld=focTextPullHeld;window.focSlipDamaged=focSlipDamaged;window.focCopyClaim=focCopyClaim;window.focDownloadClaim=focDownloadClaim;window.confirmSlipReceive=confirmSlipReceive;window.focPrintReceivedLabels=function(){queueReceivedLabels(pickState.labelItems,[]);};window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.fillLunarCovers=fillLunarCovers;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;window.openOrphanedEbayScan=openOrphanedEbayScan;window.endSelectedOrphanedEbayListings=endSelectedOrphanedEbayListings;
+window.ensureFocPanel=function(){loadCycles(false);};window.loadFocCycles=loadCycles;window.openFocCycle=openCycle;window.handleFocImportFile=handleImport;window.handleLunarFocImportFile=handleLunarImport;window.switchFocDistributor=switchDistributor;window.loadLunarDiscountSettings=loadLunarDiscountSettings;window.saveLunarDiscountSettings=saveLunarDiscountSettings;window.filterFocAdmin=function(v){state.query=v;renderFamilies();};window.filterFocPublisher=function(v){state.publisher=v;renderFamilies();};window.filterFocFlag=function(v){state.flag=v;renderFamilies();};window.filterFocArtist=function(v){state.artist=v;renderFamilies();};window.openFocAddBundle=openFocAddBundle;window.closeFocAddBundle=closeFocAddBundle;window.focAddBundlePick=focAddBundlePick;window.focAddBundleCoverPrice=focAddBundleCoverPrice;window.focAddBundleEdit=focAddBundleEdit;window.focAddBundleReset=focAddBundleReset;window.submitFocAddBundle=submitFocAddBundle;window.handleFocGroupImageFile=handleFocGroupImageFile;window.filterFocEbay=function(v){state.ebay=v;renderFamilies();};window.saveFocSku=saveSku;window.saveFocFamily=saveFamily;window.toggleFocCycle=toggleCycle;window.archiveFocCycle=archiveCycle;window.unarchiveFocCycle=unarchiveCycle;window.saveFocCycleCutoff=saveCutoff;window.exportFocPrh=exportPrh;window.loadFocShippingSettings=loadShipping;window.saveFocShippingSettings=saveShipping;window.openReceiveShipment=openReceiveShipment;window.openPackingSlipScan=openPackingSlipScan;window.handleSlipFiles=handleSlipFiles;window.focSlipPickPhotos=slipPickPhotos;window.focSlipPick=focSlipPick;window.focSlipQty=focSlipQty;window.focSlipPrice=focSlipPrice;window.focSlipMarkup=focSlipMarkup;window.focTextPullHeld=focTextPullHeld;window.focSlipDamaged=focSlipDamaged;window.focCopyClaim=focCopyClaim;window.focDownloadClaim=focDownloadClaim;window.confirmSlipReceive=confirmSlipReceive;window.focPrintReceivedLabels=function(){queueReceivedLabels(pickState.labelItems,[]);};window.confirmReceiveShipment=confirmReceiveShipment;window.createFocEbayPresale=openEbayPresaleReview;window.submitEbayPresaleReview=submitEbayPresaleReview;window.openFamilyEbayGroupReview=openFamilyEbayGroupReview;window.submitFamilyEbayGroupReview=submitFamilyEbayGroupReview;window.handleFocGroupMainImageFile=handleFocGroupMainImageFile;window.clearFocGroupMainImage=clearFocGroupMainImage;window.handleFocGroupBundleImageFile=handleFocGroupBundleImageFile;window.clearFocGroupBundleImage=clearFocGroupBundleImage;window.loadEbaySafeDays=loadEbaySafeDays;window.saveFocEbaySafeDays=saveEbaySafeDays;window.openFocReview=openFocReview;window.openFocIntelligence=openFocIntelligence;window.submitPrhOrder=submitPrhOrder;window.handleFocPrhCartImportFile=handleFocPrhCartImportFile;window.endFocEbayListings=endFocEbayListings;window.toggleFocEndEbayAll=toggleFocEndEbayAll;window.confirmEndFocEbayListings=confirmEndFocEbayListings;window.repairFocEbayGroupPhotos=repairFocEbayGroupPhotos;window.fillLunarCovers=fillLunarCovers;window.reviewStoreQtyChanged=reviewStoreQtyChanged;window.focPublishBulkCheckboxChanged=focPublishBulkCheckboxChanged;window.toggleFocPublishBulkSelectAll=toggleFocPublishBulkSelectAll;window.bulkSetCustomerEnabled=bulkSetCustomerEnabled;window.openOrphanedEbayScan=openOrphanedEbayScan;window.endSelectedOrphanedEbayListings=endSelectedOrphanedEbayListings;
 window.generateFocAiDescription=generateFocAiDescription;window.generateFocGroupAiDescription=generateFocGroupAiDescription;
 // Store report: "+ ADD TO INVENTORY" on a FOC cover-wall card threw
 // "quickAddFocSkuToInventory is not defined" -- this whole file is wrapped
