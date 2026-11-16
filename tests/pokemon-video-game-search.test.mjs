@@ -43,3 +43,14 @@ console.log('Pokemon video game search: passed');
   assert.ok(app.includes('const QPL_PC_IMAGE_LIMIT = 8;') && app.includes('.slice(0,QPL_PC_IMAGE_LIMIT);'), 'more pictures filled in');
   console.log('Video game conditions: passed');
 }
+// Store BUY / SELL for the condition picked, UPC, release date, genre and sales on a game's card.
+{
+  const s = app.indexOf('function qplVideoGameFactsHtml('), e = app.indexOf('function qplVideoGameChipsHtml(');
+  const facts = new Function('qplResultCategoryKey', 'escHtml', app.slice(s, e) + '\nreturn qplVideoGameFactsHtml;')(() => 'video_games', x => String(x));
+  const game = { source: 'PriceCharting', selectedCondition: 'CIB', pricecharting: { retail: { looseBuy: 40, looseSell: 95, cibBuy: 80, cibSell: 175 }, demand: { upc: '045496740613', releaseDate: '2010-03-14', genre: 'RPG', salesVolume: 212 } } };
+  const html = facts(game);
+  for (const t of ['STORE BUY CIB $80.00', 'STORE SELL $175.00', 'UPC 045496740613', 'Released 2010-03-14', 'RPG', '212 sold']) assert.ok(html.includes(t), t);
+  assert.equal(facts({ source: 'scryfall' }), '');
+  assert.ok(app.includes('${qplVideoGameFactsHtml(r)}'), 'on the card');
+  console.log('Video game facts on the card: passed');
+}

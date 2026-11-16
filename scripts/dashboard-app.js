@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.16.4-game-conditions';
+const APP_VERSION = '2026.11.16.5-game-facts';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -36794,6 +36794,27 @@ function applyQplVideoGameCondition(r, label){
   r.priceSource = price ? 'PriceCharting Guide Value · ' + label : 'No ' + label + ' price on PriceCharting';
   return r;
 }
+// The rest of what PriceCharting has on a game, right on its card (store, 2026-11-16): its suggested store BUY / SELL
+// for the condition picked, UPC (to match a barcode), release date, genre and how many sell.
+function qplVideoGameFactsHtml(r){
+  if(r?.source !== 'PriceCharting' || qplResultCategoryKey(r) !== 'video_games') return '';
+  const pc = r.pricecharting || {}, retail = pc.retail || {}, demand = pc.demand || {}, vg = pc.videoGame || {};
+  const cond = r.selectedCondition || 'Loose', k = cond === 'CIB' ? 'cib' : cond === 'New' ? 'new' : 'loose';
+  const money = v => Number(v) > 0 ? '$' + Number(v).toFixed(2) : '';
+  const buy = money(retail[k + 'Buy'] ?? vg['retail' + k[0].toUpperCase() + k.slice(1) + 'Buy']);
+  const sell = money(retail[k + 'Sell'] ?? vg['retail' + k[0].toUpperCase() + k.slice(1) + 'Sell']);
+  const upc = demand.upc || vg.upc || '', released = String(demand.releaseDate || pc.releaseDate || '').slice(0, 10);
+  const genre = demand.genre || pc.genre || '', sold = Number(demand.salesVolume || vg.salesVolume || 0);
+  const bits = [
+    buy ? '<span class="qpl-badge good" title="PriceCharting\'s suggested store buy price">STORE BUY ' + (cond === 'Loose' || cond === 'CIB' || cond === 'New' ? cond.toUpperCase() + ' ' : '') + buy + '</span>' : '',
+    sell ? '<span class="qpl-badge" title="PriceCharting\'s suggested store sell price">STORE SELL ' + sell + '</span>' : '',
+    upc ? '<span class="qpl-badge">UPC ' + escHtml(String(upc)) + '</span>' : '',
+    released ? '<span class="qpl-badge">Released ' + escHtml(released) + '</span>' : '',
+    genre ? '<span class="qpl-badge">' + escHtml(genre) + '</span>' : '',
+    sold ? '<span class="qpl-badge">' + sold + ' sold</span>' : '',
+  ].filter(Boolean).join(' ');
+  return bits ? '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">' + bits + '</div>' : '';
+}
 function qplVideoGameChipsHtml(r, idx){
   const active = r.selectedCondition || 'Loose';
   return QPL_GAME_CONDITIONS.map(([label]) => [label, qplVideoGamePrice(r, label)])
@@ -39493,6 +39514,7 @@ function quickLookupResultCard(r, idx){
       ${qplLanguageChip(r, idx)}
       <!-- Condition chips — large touch targets -->
       <div class="qpl-condition-chips">${condChips}</div>
+      ${qplVideoGameFactsHtml(r)}
       ${qplGradedQuickChips(r, idx)}
       <!-- Finish / Language / Qty controls -->
       <div class="qpl-quick-controls">
