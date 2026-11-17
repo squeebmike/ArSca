@@ -610,7 +610,7 @@ function words(e) {
     // Show start: a boss-fight intro card.
     // Beasts' own moments.
     case 'spotlight': return ['','',''];
-    case 'fister': return ['MR FISTER!','IF I CAN DO IT, YOU CAN!','THE GAUNTLET OF GRAILS'];
+    case 'fister': return ['MR FISTER!',"IT'S FISTIN' TIME!",'THE GAUNTLET OF GRAILS'];
     case 'fistergoo': return ['SYMBIOTE FISTER!','THE GOO HAS TAKEN HOLD','GOO MODE: ACTIVATED'];
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];
       if(e.beastEvent==='learn')return [(e.beastName||'YOUR BEAST')+' HIT LV '+(e.level||'')+'!','IT CAN LEARN A NEW ATTACK','CHAT: NAME IT!'];

@@ -58,3 +58,12 @@ assert.ok(ctl.includes('<div id="chest-load" class="chest-load"></div>') && ctl.
 assert.ok(ctl.includes("💾 SAVE THE CHESTS") && ctl.includes("+ ADD A CHEST") && ctl.includes("🔎 pick its book"));
 assert.ok(fs.readFileSync('assets/live-studio.css', 'utf8').includes('.mana-controls .chest-row{'));
 console.log('Loaded chests: passed');
+// (2026-11-17: "Fister needs to pump his fist. It looks backwards. He needs to say It's Fistin' Time!")
+{
+  const g3 = fs.readFileSync('scripts/live-studio-3d.mjs', 'utf8'), ovl = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), bosses = fs.readFileSync('scripts/live-studio-bosses.mjs', 'utf8');
+  assert.ok(g3.includes("shoulder.rotation.z = -ease(2.0, 2.78, pump);") && g3.includes("elbow.rotation.z = -ease(1.14, 0.22, pump);"), 'arm up and bent, punching straight up');
+  assert.ok(!g3.includes('shoulder.rotation.z = -ease(1.9, 2.95, raise) + 0.55 * low;'), 'no more low swing out to the side');
+  assert.ok(ovl.includes(`case 'fister': return ['MR FISTER!',"IT'S FISTIN' TIME!",`) && bosses.includes(`taunt: "IT'S FISTIN' TIME!"`), 'his catchphrase');
+  assert.ok(!/IF I CAN DO IT, YOU CAN/.test(ovl + bosses));
+  console.log('Mr Fister fist pump and catchphrase: passed');
+}
