@@ -23,11 +23,11 @@ assert.match(src, /if \(!coins\.length && now >= rainUntil\) \{ cancelAnimationF
 const html = fs.readFileSync('arcade-overlay.html', 'utf8');
 for (const id of ['mana-boss-sprite', 'mana-boss-3d', 'mana-effect-boss', 'mana-coins-3d', 'mana-coins']) assert.match(html, new RegExp('id="' + id + '"'));
 assert.match(html, /family=Bangers&family=Luckiest\+Guy&family=Press\+Start\+2P/);
-assert.match(html, /live-studio-overlay\.mjs\?v=86/);
+assert.match(html, /live-studio-overlay\.mjs\?v=88/);
 
 const overlay = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8');
 // Loaded on the side: if WebGL or the module fails, the flat sprites stay.
-assert.match(overlay, /import\('\.\/live-studio-3d\.mjs'\)\.then\(/);
+assert.match(overlay, /import\('\.\/live-studio-3d\.mjs(\?v=\d+)?'\)\.then\(/); // versioned so the stream gets a new Mr Fister (2026-11-17)
 assert.match(overlay, /\}\)\.catch\(e=>console\.warn\('\[studio\] 3D off:'/);
 assert.match(overlay, /document\.body\.classList\.add\('mana-3d'\)/);
 assert.match(overlay, /bossView\?\.hit\(\)/, 'each sale hits the 3D boss');

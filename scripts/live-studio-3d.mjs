@@ -252,22 +252,23 @@ const BUILD = {
       feats.visible = !fisterFaceOn && gk < 0.5;
       tendrils.forEach(({ g, balls, k }) => { g.visible = gk > 0.3; const reach = Math.min(1, (gk - 0.3) / 0.7); balls.forEach((b, n) => { const u = n / balls.length, a = k * 1.05 + Math.sin(t * 2.2 + k) * 0.5; b.position.set(Math.cos(a) * u * 1.3 * reach + Math.sin(t * 4 + n * 0.7 + k) * 0.1 * u, (Math.sin(a) * 0.8 + 0.45) * u * reach + Math.sin(t * 3 + n * 0.5) * 0.12 * u, -u * 0.45 * reach); }); });
       veins.forEach(v => { v.scale.set(1 + 2 * gk, 1, 1 + 2 * gk); });
-      // THE FIST PUMP (store, 2026-11-17: "Fister needs to pump his fist. It looks backwards."). It used to swing the
-      // arm out low to the side and hold it straight up like a torch. Now (1.8 s): the arm up and bent beside his head,
-      // gauntlet high, then THREE quick punches straight up -- each one flares -- and back to the flex.
+      // THE FIST PUMP (store, 2026-11-17: "Fister needs to pump his fist. It looks backwards." -- then, of the first try,
+      // "he looks like he is doing triceps raises"). The real "YES!" pump: forearm up, gauntlet by his face, knuckles to
+      // the camera -- then yanked DOWN hard to his chest, elbow driving back past his ribs, twice, a shake on each.
       const P = 1.8, p = (t % P) / P;
       let pump = 0;
-      if (p >= 0.12 && p < 0.78) { const q = ((p - 0.12) % 0.22) / 0.22; pump = q < 0.3 ? q / 0.3 : 1 - (q - 0.3) / 0.7; }
-      const raise = 1, low = 0;
-      shoulder.rotation.z = -ease(2.0, 2.78, pump); shoulder.rotation.x = -0.12 * (1 - pump);
-      elbow.rotation.z = -ease(1.14, 0.22, pump); fist.rotation.z = 0.12 * (1 - pump);
-      const shake = pump > 0.85 ? Math.sin(t * 70) * 0.012 : 0;
-      body.position.set(shake, 0.04 * pump, 0); head.rotation.x = -0.1 - 0.12 * pump; head.rotation.y = Math.sin(t * 0.8) * 0.1;
-      for (const g of legsG) g.rotation.x = 0; legsG[0].rotation.z = 0; legsG[1].rotation.z = 0;
-      torso.rotation.y = -0.08 - 0.05 * pump + Math.sin(t * 0.8) * 0.03;
-      armL.rotation.z = 0.12 + 0.18 * raise; armL.rotation.x = Math.sin(t * 1.8) * 0.05;
+      for (const at of [0.1, 0.5]) { const q = p - at; if (q >= 0 && q < 0.4) pump = Math.max(pump, q < 0.06 ? q / 0.06 : q < 0.2 ? 1 : 1 - (q - 0.2) / 0.2); }
+      const raise = 1 - pump, low = 0;
+      shoulder.rotation.z = -0.28 + 0.1 * pump; shoulder.rotation.x = ease(-0.75, 0.35, pump);
+      elbow.rotation.z = 0; elbow.rotation.x = ease(-2.35, -1.75, pump);
+      fist.rotation.set(0, Math.PI, 0.1); // the knuckles (and their covers) face out, not back at him
+      const shake = pump > 0.95 ? Math.sin(t * 70) * 0.014 : 0;
+      body.position.set(shake, -0.05 * pump, 0); head.rotation.x = 0.12 * pump - 0.05; head.rotation.y = Math.sin(t * 0.8) * 0.1;
+      for (const g of legsG) g.rotation.x = 0; legsG[0].rotation.z = -0.04 * pump; legsG[1].rotation.z = 0.04 * pump;
+      torso.rotation.y = 0.12 * pump + Math.sin(t * 0.8) * 0.03;
+      armL.rotation.z = 0.12 + 0.1 * pump; armL.rotation.x = Math.sin(t * 1.8) * 0.05;
       // The glow: building in the wind-up, flaring at the top.
-      const flare = pump > 0.6 ? (pump - 0.6) / 0.4 : 0, g = 0.55 + 0.45 * Math.sin(t * 9) * 0.5 + 0.5 * flare + 0.3 * low;
+      const flare = pump > 0.9 ? 0.35 : 0, g = 0.55 + 0.45 * Math.sin(t * 9) * 0.5 + 0.5 * flare + 0.3 * low;
       aura.material.opacity = 0.1 + 0.22 * g; aura.scale.setScalar(1 + 0.25 * g + 0.6 * flare); lamp.intensity = 1.4 + 2.2 * g;
       veins.forEach((v, k) => { v.material.opacity = 0.45 + 0.5 * Math.abs(Math.sin(t * 6 + k)); });
       // Sparks: an orbit round the fist that bursts out at the top.
@@ -279,7 +280,7 @@ const BUILD = {
       for (let k = 0; k < ep.count; k++) { const life = (t * (0.18 + 0.2 * seeded(k, 4)) + seeded(k, 5)) % 1, a = seeded(k, 6) * Math.PI * 2 + life * 1.5, r = 0.55 + 0.6 * seeded(k, 7); ep.setXYZ(k, Math.cos(a) * r, -1.5 + life * 3.4, Math.sin(a) * r * 0.6); }
       ep.needsUpdate = true; embers.material.opacity = 0.75;
       // The shockwave: out across the floor from the punch.
-      const sw = p >= 0.12 && p < 0.78 ? ((p - 0.12) % 0.22) / 0.22 : -1; // a ring with each punch
+      const sw = p >= 0.1 && p < 0.3 ? (p - 0.1) / 0.2 : p >= 0.5 && p < 0.7 ? (p - 0.5) / 0.2 : -1; // a ring with each pump
       ring.material.opacity = sw >= 0 ? 0.8 * (1 - sw) : 0; ring.scale.setScalar(sw >= 0 ? 0.6 + sw * 2.4 : 0.6);
       glowFloor.material.opacity = 0.1 + 0.2 * g;
     } };
