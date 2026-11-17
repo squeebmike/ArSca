@@ -71,3 +71,30 @@ console.log('Loaded chests: passed');
   assert.ok(!/IF I CAN DO IT, YOU CAN/.test(ovl + bosses));
   console.log('Mr Fister fist pump and catchphrase: passed');
 }
+// (2026-11-17: "1st boss today won't be Fister. Why's it say 100 until we summon him? I want to select him for a boss
+// if needed.") The host picks this floor's boss, and can summon it now.
+{
+  const s = { ...M.DEFAULT_STUDIO };
+  let d = D.emptyDungeon(D.weekKey());
+  assert.equal(D.bossOf(d, 1), 'fister', 'floor 1 is Mr Fister by the set order');
+  d = D.adjustDungeon(d, { boss: 'mimic' });
+  assert.equal(D.bossOf(d, 1), 'mimic'); assert.equal(D.publicDungeon(d, s).boss.character, 'mimic'); assert.equal(D.publicDungeon(d, s).boss.picked, 'mimic');
+  assert.throws(() => D.adjustDungeon(d, { boss: 'nobody' }), /Invalid boss/);
+  // The flask filling brings out the picked boss.
+  let r = D.addMana(d, 1000, s);
+  assert.equal(r.events.find(e => e.kind === 'floor')?.bossCharacter, 'mimic');
+  // SUMMON NOW: straight to the boss, its full HP.
+  let e = D.adjustDungeon(D.adjustDungeon(D.emptyDungeon(D.weekKey()), { boss: 'fister' }), { summon: true, settings: s });
+  assert.equal(e.phase, 'boss'); assert.equal(e.bossHp, D.bossMax(s, 1, e)); assert.equal(e.mana, D.floorGoal(s, 1, e));
+  assert.throws(() => D.adjustDungeon(e, { summon: true, settings: s }), /already out/);
+  assert.throws(() => D.adjustDungeon(e, { boss: 'mimic' }), /already out/, 'pick before summoning');
+  // Back to the set order.
+  assert.equal(D.bossOf(D.adjustDungeon(D.emptyDungeon(D.weekKey()), { boss: '' }), 1), 'fister');
+  // The remote and the room.
+  const room = fs.readFileSync('scripts/live-studio-room.mjs', 'utf8'), api = fs.readFileSync('scripts/live-studio-api.mjs', 'utf8');
+  assert.ok(room.includes("else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss }, now);") && room.includes("s.dungeon = adjustDungeon(s.dungeon, { summon: true, settings: s.settings }, now);"));
+  assert.ok(api.includes("...(typeof body.boss==='string'?{boss:body.boss.slice(0,20)}:{}),...(body.summon===true?{summon:true}:{})"));
+  assert.ok(ctl.includes('id="mana-boss-pick"') && ctl.includes('⚔ SUMMON THE BOSS NOW') && ctl.includes("api('dungeon-adjust',{summon:true})"));
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("from './live-studio-bosses.mjs?v=3';"), 'the overlay loads the new catchphrase, not a cached one');
+  console.log('Pick and summon the boss: passed');
+}

@@ -5,8 +5,9 @@ import { makeSpots, upIndex } from './vending.mjs';
 import { cleanFlipItems } from './flipbook.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
-import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, nextChestLoad, useChestLoad, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
+import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, bossOf, shedFor, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, nextChestLoad, useChestLoad, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
+import { bossById } from './live-studio-bosses.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
 // boss appearing, which beats a show unlock, which beats the sale itself.
@@ -102,6 +103,12 @@ export class ManaLiveStudio extends DurableObject {
       // Chat's vote: the door the host tapped sets this floor's room.
       s.dungeon = adjustDungeon(s.dungeon, { door: input.door }, now);
       fx = { kind: 'room', floor: s.dungeon.floor, room: s.dungeon.rooms[s.dungeon.floor] };
+    } else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss }, now);
+    else if (input.summon) {
+      // SUMMON THE BOSS NOW: the flask fills and this floor's boss comes out, as when chat fills it.
+      s.dungeon = adjustDungeon(s.dungeon, { summon: true, settings: s.settings }, now);
+      const id = bossOf(s.dungeon, s.dungeon.floor);
+      fx = dungeonEffect([{ kind: 'floor', floor: s.dungeon.floor, shed: shedFor(s.dungeon.floor), bossCharacter: id, bossName: bossById(id).name }], [], {});
     } else s.dungeon = adjustDungeon(s.dungeon, { floor: input.floor, resetWeek: !!input.resetWeek }, now);
     if (fx) s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);

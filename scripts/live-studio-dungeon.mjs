@@ -16,6 +16,10 @@ export const shedFor = floor => SHEDS[Math.min(Math.max(1, floor), SHEDS.length)
 // Each shed has its own boss (the Long Box Mimic in the garden shed ... the
 // Grail Dragon in the shed beneath the shed), then all of them in turn.
 export const bossForFloor = floor => BOSS_ORDER[(Math.max(1, floor) - 1) % BOSS_ORDER.length];
+// THE HOST PICKS THE BOSS (store, 2026-11-17: "1st boss today won't be Fister ... I want to select him for a boss if
+// needed"). A floor's boss is the one picked for it in the remote, else the set order above.
+export const bossOf = (d, floor) => (d?.bosses?.[floor] && BOSS_ORDER.includes(d.bosses[floor]) ? d.bosses[floor] : bossForFloor(floor));
+export const BOSS_PICKS = BOSS_ORDER.map(id => ({ id, name: bossById(id).name }));
 export const DUNGEON_RESET_DAY = 3; // Wednesday
 export const TAP_KINDS = ['follow', 'share', 'bookmark'];
 // Chat picks the path (store, 2026-11-05: "more adventure and exploration"):
@@ -277,12 +281,12 @@ export function addMana(dIn, amount, s, now = Date.now()) {
       left = r2(left - need); d.mana = goal; d.phase = 'boss'; d.bossHp = bossMax(s, d.floor, d);
       // Chat didn't pick in time: the first door it is (stated on the overlay).
       if (d.doors?.length) { d.rooms[d.floor] = d.doors[0]; d.doors = null; events.push({ kind: 'room', floor: d.floor, room: d.rooms[d.floor], auto: true }); }
-      const id = bossForFloor(d.floor);
+      const id = bossOf(d, d.floor);
       events.push({ kind: 'floor', floor: d.floor, shed: shedFor(d.floor), bossCharacter: id, bossName: bossById(id).name });
     } else {
       if (left < d.bossHp) { d.bossHp = r2(d.bossHp - left); left = 0; break; }
       left = r2(left - d.bossHp); d.bossHp = 0;
-      const cleared = d.floor, id = bossForFloor(cleared);
+      const cleared = d.floor, id = bossOf(d, cleared);
       d.stars += Number(s.starsPerFloor) || 0;
       const relic = relicFor(cleared);
       d.cleared.push({ floor: cleared, at: now, room: d.rooms[cleared] || '' });
@@ -302,8 +306,21 @@ export function addTap(dIn, kind, s, now = Date.now()) {
   return { ...addMana({ ...w, taps, floorTaps }, amount, s, now), amount };
 }
 // The host's fixes: set the floor, or start the week over.
-export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name } = {}, now = Date.now()) {
+export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name, boss, summon, settings } = {}, now = Date.now()) {
   const w = ensureWeek(dIn, now);
+  // The boss for this floor ('' = back to the set order), and SUMMON NOW: the flask fills and the boss comes out.
+  if (boss !== undefined) {
+    if (boss !== '' && !BOSS_ORDER.includes(boss)) throw new Error('Invalid boss');
+    if (w.phase === 'boss') throw new Error('The boss is already out -- pick before summoning');
+    const bosses = { ...(w.bosses || {}) }; if (boss) bosses[w.floor] = boss; else delete bosses[w.floor];
+    return { ...w, bosses, lastAt: now };
+  }
+  if (summon) {
+    if (w.phase === 'boss') throw new Error('The boss is already out');
+    const s = settings || {}, rooms = { ...(w.rooms || {}) };
+    if (w.doors?.length) rooms[w.floor] = w.doors[0]; // chat didn't pick in time: the first door, as when the flask fills
+    return { ...w, rooms, doors: null, mana: floorGoal(s, w.floor, w), phase: 'boss', bossHp: bossMax(s, w.floor, w), lastAt: now };
+  }
   // Chat's pick at the fork, and the floor name chat came up with.
   if (fork !== undefined) {
     if (!FORKS.some(f => f.id === fork)) throw new Error('Invalid fork');
@@ -349,12 +366,12 @@ function mapOf(d) {
 // What the overlay sees.
 export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
   const d = ensureWeek(dIn, now);
-  const goal = floorGoal(s, d.floor, d), max = bossMax(s, d.floor, d), id = bossForFloor(d.floor);
+  const goal = floorGoal(s, d.floor, d), max = bossMax(s, d.floor, d), id = bossOf(d, d.floor);
   const unlocks = parseLines(s.showUnlocks).map(u => ({ at: u.n, text: u.text, done: showGross >= u.n }));
   return {
     on: !!s.dungeonOn, week: d.week, resets: nextResetKey(now), floor: d.floor, shed: shedFor(d.floor), phase: d.phase,
     mana: d.mana, goal, pct: d.phase === 'boss' ? Math.round(d.bossHp / max * 1000) / 10 : Math.round(Math.min(1, d.mana / goal) * 1000) / 10,
-    boss: { character: id, name: bossById(id).name, hp: d.phase === 'boss' ? d.bossHp : max, max, active: d.phase === 'boss' },
+    boss: { character: id, name: bossById(id).name, hp: d.phase === 'boss' ? d.bossHp : max, max, active: d.phase === 'boss', picked: d.bosses?.[d.floor] || '' },
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
