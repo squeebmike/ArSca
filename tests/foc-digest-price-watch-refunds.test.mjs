@@ -146,7 +146,7 @@ assert.match(worker, /await focLogActivity\(env, r\.store_id, \['Cover art swapp
   assert.equal(salePatch('S5').length, 0, 'nothing new');
 }
 assert.match(worker, /try \{ refunds = await recordEbayRefunds\(env, storeId, ebayToken, confirmedBy\); \}/);
-assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matchedCount, recorded: results\.length, results, linked, consigned, errors, cancelled, refunds \};/);
+assert.match(worker, /return \{ ok: true, checked: orders\.length, matched: matchedCount, recorded: results\.length, results, linked, consigned, errors, cancelled, refunds, bundleLinks \};/); // bundleLinks: linked bundle counts (2026-11-17)
 // Profit counts refunds (eBay and Stripe): spread over the sale's lines.
 {
   const fn = app.slice(app.indexOf('async function loadLedgerSoldRows('), app.indexOf('function markLedgerSoldRowsStale('));

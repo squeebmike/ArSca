@@ -25,6 +25,7 @@ on:
       - tests/mtg-learning.test.mjs
       - cloudflare-worker-full.js
       - scripts/foc-preorders.mjs
+      - scripts/foc-bundle-stock.mjs
       - scripts/card-intake.mjs
       - scripts/daily-tasks.mjs
       - scripts/bcw-storefront.mjs

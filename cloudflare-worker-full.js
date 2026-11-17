@@ -51,6 +51,7 @@ import { storeOrganization, productFacts, productCondition, productHeading, rend
 // It has zero Node dependencies (pure-JS SHA-1), so it bundles straight into
 // the Worker -- reused here instead of duplicating checklist-parsing logic.
 import { buildChecklistIndex, parseChecklistText, sha1Hex, slugify } from './scripts/topps-checklist-parser.js';
+import { planBundleStockLinks } from './scripts/foc-bundle-stock.mjs';
 import { handleFocRequest, syncFocStripeEvent, shippingSettings, runScheduledStockHealth, withRatioWord, parseMyEbaySellingActive, ebayItemFromGetItem, uniqueCoverLabels, coverLabelFromTitle, pullListNeeds, coverMarketQuery, summarizeCoverMarket, coverMarketListings, priceWatchFlag, focDigestEmail, isPullListCover, ebayQtyOffDashboard } from './scripts/foc-preorders.mjs';
 import { handleOrdersBoard, handleOrderMarkShipped } from './scripts/orders-board.mjs';
 import { handleWhatnotWebhook, handleWhatnotStatus, whatnotStoreId } from './scripts/whatnot-api.mjs';
@@ -4360,6 +4361,42 @@ async function recordEbayRefunds(env, storeId, ebayToken, userId) {
   }
   return out;
 }
+// LINKED BUNDLE COUNTS (see scripts/foc-bundle-stock.mjs): applies planBundleStockLinks to the listings that just sold --
+// the row's count, and the same count on eBay (left to buy; eBay's own sold count is added back if it took it as total).
+async function linkFocBundleCounts(env, storeId, ebayToken, listingIds, bundleSales = []) {
+  const ids = [...new Set(listingIds.map(String).filter(id => /^\d+$/.test(id)))];
+  if (!ids.length) return [];
+  const { data: rows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>source=in.(foc_presale,foc_presale_bundle)&data->>ebayListingId=in.(${ids.join(',')})&status=neq.archived&select=id,status,data`);
+  const trading = (rows || []).filter(r => r.data?.ebayApiSystem === 'trading');
+  if (!trading.some(r => r.data?.source === 'foc_presale_bundle')) return [];
+  const changes = planBundleStockLinks(trading, bundleSales);
+  const done = [];
+  for (const c of changes) {
+    const row = trading.find(r => r.id === c.id);
+    await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(c.id)}&store_id=eq.${encodeURIComponent(storeId)}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ data: { ...row.data, qty: c.qty, quantity: c.qty, focPresaleOriginalQty: c.originalQty, focBundleLinkedAt: new Date().toISOString(), focBundleLinkNote: c.why } }) });
+    if (c.ebayListingId && c.ebaySku && ebayToken) await setEbayVariationAvailable(ebayToken, c.ebayListingId, c.ebaySku, c.qty);
+    done.push(c);
+  }
+  return done;
+}
+async function ebayTradingTop(ebayToken, callName, bodyXml) {
+  const res = await fetch('https://api.ebay.com/ws/api.dll', { method: 'POST', headers: { 'X-EBAY-API-SITEID': '0', 'X-EBAY-API-COMPATIBILITY-LEVEL': '1155', 'X-EBAY-API-CALL-NAME': callName, 'X-EBAY-API-IAF-TOKEN': ebayToken, 'Content-Type': 'text/xml' },
+    body: `<?xml version="1.0" encoding="utf-8"?><${callName}Request xmlns="urn:ebay:apis:eBLBaseComponents">${bodyXml}</${callName}Request>` });
+  const txt = await res.text(), ack = (txt.match(/<Ack>([^<]+)<\/Ack>/) || [])[1] || '';
+  if (ack !== 'Success' && ack !== 'Warning') throw new Error(callName + ' failed: ' + ((txt.match(/<LongMessage>([^<]+)<\/LongMessage>/) || [])[1] || ack || 'no answer'));
+  return txt;
+}
+async function setEbayVariationAvailable(ebayToken, listingId, sku, available) {
+  const esc = v => String(v).replace(/[<>&'"]/g, ch => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[ch]);
+  const status = q => `<InventoryStatus><ItemID>${esc(listingId)}</ItemID><SKU>${esc(sku)}</SKU><Quantity>${Math.max(0, q)}</Quantity></InventoryStatus>`;
+  await ebayTradingTop(ebayToken, 'ReviseInventoryStatus', status(available));
+  try {
+    const item = ebayItemFromGetItem(await ebayTradingTop(ebayToken, 'GetItem', `<ItemID>${esc(listingId)}</ItemID><DetailLevel>ReturnAll</DetailLevel><IncludeVariations>true</IncludeVariations>`));
+    const v = item?.variations?.find(x => x.sku === sku);
+    if (v && v.available !== available && v.sold > 0 && v.available === Math.max(0, available - v.sold)) await ebayTradingTop(ebayToken, 'ReviseInventoryStatus', status(available + v.sold));
+  } catch (_) {}
+}
 async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, { reconcile, confirmedBy }) {
     // Regular sync only looks at orders eBay itself hasn't marked fulfilled yet.
     // Reconcile mode additionally covers orders already fulfilled (through eBay's
@@ -4400,6 +4437,8 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     const linked = [];
     const consigned = [];
     const errors = [];
+    // Multi-cover listings with a sale in this sync, and the bundles sold -- their counts are linked after the loop.
+    const bundleLinkListings = new Set(), bundleSales = [];
     for (const order of orders) {
       if (order.orderPaymentStatus !== 'PAID') continue;
       if (ebayOrderIsCancelled(order)) continue; // never record a cancelled order
@@ -4463,6 +4502,10 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
             const applied = await applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice, profit, soldAt, saleId, feeAmount);
             ({ remaining, depleted } = applied);
             if (applied.consigned) consigned.push(applied.consigned);
+            if (isFocPresaleRow(invRow) && d.ebayApiSystem === 'trading' && d.ebayListingId) {
+              bundleLinkListings.add(String(d.ebayListingId));
+              if (d.source === 'foc_presale_bundle') bundleSales.push({ rowId: invRow.id, qty: quantitySold });
+            }
           }
 
           if (env.LBA_KV) await env.LBA_KV.put(trackKey, '1', { expirationTtl: 60 * 60 * 24 * 180 });
@@ -4485,7 +4528,13 @@ async function syncEbayOrdersForStore(env, storeId, ebayToken, receiptSettings, 
     let refunds = [];
     try { refunds = await recordEbayRefunds(env, storeId, ebayToken, confirmedBy); }
     catch (e) { errors.push({ error: 'refunds: ' + e.message }); }
-    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, linked, consigned, errors, cancelled, refunds };
+    // LINKED BUNDLE COUNTS: a bundle sold takes a copy of each cover in it; a bundle never offers more than its scarcest cover.
+    let bundleLinks = [];
+    if (bundleLinkListings.size) {
+      try { bundleLinks = (await linkFocBundleCounts(env, storeId, ebayToken, [...bundleLinkListings], bundleSales)).map(c => ({ itemId: c.id, from: c.was, to: c.qty, why: c.why })); }
+      catch (linkErr) { errors.push({ error: 'bundle counts: ' + linkErr.message }); }
+    }
+    return { ok: true, checked: orders.length, matched: matchedCount, recorded: results.length, results, linked, consigned, errors, cancelled, refunds, bundleLinks };
 }
 
 // Label costs (and real fees for any sale recorded with an estimate) come
@@ -7310,7 +7359,11 @@ async function routeRequest(request, env, ctx) {
         const next = { ...b.data, focBundleSkuIds: picked, focBundleCoverPrices: coverPrices, cost: editCost / 100, market: priceCents / 100, salePrice: priceCents / 100,
           qty: quantity, quantity, focPresaleOriginalQty: soldSoFar + quantity, focBundleEditedAt: new Date().toISOString() };
         await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(b.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: next }) });
-        return json({ ok: true, listingId, label: b.data.name, edited: true, rowId: b.id });
+        // Linked counts: never more bundles up than the scarcest cover in it has left.
+        let capped = [];
+        try { capped = await linkFocBundleCounts(env, storeId, ebayToken, [listingId], []); } catch (_) {}
+        const mine = capped.find(c => c.id === b.id);
+        return json({ ok: true, listingId, label: b.data.name, edited: true, rowId: b.id, warnings: mine ? [`Set to ${mine.qty} available -- ${mine.why}`] : [] });
       }
       const liveLabels = await liveEbayVariationLabels(ebayToken, listingId);
       if (!liveLabels.size) return json({ ok: false, error: 'Could not read the live listing\'s covers from eBay -- try again' }, 502);
@@ -7342,7 +7395,11 @@ async function routeRequest(request, env, ctx) {
         const { data: allGroupRows } = await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&status=neq.sold&data->>ebayInventoryItemGroupKey=eq.${encodeURIComponent(groupKey)}&select=id,data`);
         await repairEbayTradingGroupListingPhotos(env, ebayToken, groupKey, allGroupRows?.length ? allGroupRows : [...rows, row].filter(Boolean));
       } catch (e) { photoWarning = 'Bundle added, but its photo could not be set yet: ' + e.message; }
-      return json({ ok: true, listingId, label, sku: newSku, rowId: row?.id || '', covers: picked.length, warnings: photoWarning ? [photoWarning] : [] });
+      // Linked counts: never more bundles up than the scarcest cover in it has left.
+      let capped = [];
+      try { capped = await linkFocBundleCounts(env, storeId, ebayToken, [listingId], []); } catch (_) {}
+      const mine = capped.find(c => c.id === row?.id);
+      return json({ ok: true, listingId, label, sku: newSku, rowId: row?.id || '', covers: picked.length, warnings: [photoWarning, mine ? `Set to ${mine.qty} available -- ${mine.why}` : ''].filter(Boolean) });
     }
 
     if (url.pathname === '/foc/ebay/repair-group-listing-photos') {
