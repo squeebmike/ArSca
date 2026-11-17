@@ -23,7 +23,7 @@ let lastNowTitle=null, soldLine=0, lastPhase='';
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
 let beasts3d=null, battle3d=false;
 let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null, fisterView=null, fisterCovers='', fisterFaceShown='';
-import('./live-studio-3d.mjs').then(m=>{
+import('./live-studio-3d.mjs?v=4').then(m=>{
   gl3d=m;fpBoss='';
   try{
     const ps1=settings.bossStyle!=='n64';

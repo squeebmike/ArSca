@@ -61,7 +61,11 @@ console.log('Loaded chests: passed');
 // (2026-11-17: "Fister needs to pump his fist. It looks backwards. He needs to say It's Fistin' Time!")
 {
   const g3 = fs.readFileSync('scripts/live-studio-3d.mjs', 'utf8'), ovl = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), bosses = fs.readFileSync('scripts/live-studio-bosses.mjs', 'utf8');
-  assert.ok(g3.includes("shoulder.rotation.z = -ease(2.0, 2.78, pump);") && g3.includes("elbow.rotation.z = -ease(1.14, 0.22, pump);"), 'arm up and bent, punching straight up');
+  // Not the first try either ("he looks like he is doing triceps raises"): the "YES!" pump -- forearm up by his face,
+  // yanked down to his chest with the elbow driving back; the knuckles face out.
+  assert.ok(g3.includes("shoulder.rotation.x = ease(-0.75, 0.35, pump);") && g3.includes("elbow.rotation.x = ease(-2.35, -1.75, pump);"), 'cocked up, yanked down');
+  assert.ok(g3.includes("fist.rotation.set(0, Math.PI, 0.1);"), 'knuckles out');
+  assert.ok(!g3.includes("elbow.rotation.z = -ease(1.14, 0.22, pump);"), 'no overhead arm straightening (the triceps raise)');
   assert.ok(!g3.includes('shoulder.rotation.z = -ease(1.9, 2.95, raise) + 0.55 * low;'), 'no more low swing out to the side');
   assert.ok(ovl.includes(`case 'fister': return ['MR FISTER!',"IT'S FISTIN' TIME!",`) && bosses.includes(`taunt: "IT'S FISTIN' TIME!"`), 'his catchphrase');
   assert.ok(!/IF I CAN DO IT, YOU CAN/.test(ovl + bosses));
