@@ -23,7 +23,7 @@ vm.runInNewContext([
   fn(app, 'escHtml'), fn(app, 'comicPresaleBannerText'), fn(app, 'comicPresaleBannerHtml'),
   "const COMIC_SHIPPING_NOTE = 'Bagged & boarded and shipped in a Gemini mailer.';",
   "const COMIC_IN_STOCK_SHIPPING = 'In stock and ships within 1 business day with tracking.';",
-  barRe, ...['comicPresaleNotice', 'truncateHtmlSafely', 'stripCutPresaleBarTail', 'shortenHtmlToFit', 'withComicListingNotices', 'comicPresaleToInStockDescription'].map(n => fn(worker, n)),
+  barRe, worker.match(/const COMIC_PRESALE_NO_CANCEL = [^\n]+/)[0], ...['comicPresaleNotice', 'truncateHtmlSafely', 'stripCutPresaleBarTail', 'shortenHtmlToFit', 'withComicListingNotices', 'comicPresaleToInStockDescription'].map(n => fn(worker, n)),
   'this.api = { comicPresaleBannerHtml, withComicListingNotices, comicPresaleToInStockDescription };',
 ].join('\n'), ctx);
 const { comicPresaleBannerHtml, withComicListingNotices, comicPresaleToInStockDescription } = ctx.api;
