@@ -90,9 +90,10 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   mapX: 800, mapY: 330,
   showUnlocks: '',     // lines "100: Shoutout to everyone in chat"
   chestGoals: '',      // treasure chests: lines "10 follows: Free giveaway in the Whatnot tool"
+  chestLoad: '',       // LOADED CHESTS (2026-11-17): JSON [{ id, t, i?: { title, image, price } }] -- chests open in this order, each with its own words and book
 });
 export const DUNGEON_LIMITS = { beastsGoal: [5, 1000000], beastsGrowth: [0, 100], secretTaps: [0, 500], lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
-export const DUNGEON_STRINGS = { gameMode: 12, beastsBattle: 8, beastsTimeOfDay: 8, beastsGfx: 8, beastsEvolveReward: 120, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200 };
+export const DUNGEON_STRINGS = { gameMode: 12, beastsBattle: 8, beastsTimeOfDay: 8, beastsGfx: 8, beastsEvolveReward: 120, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200, chestLoad: 8000 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.
 export const CHEST_AT = [0.16, 0.47, 0.8];
@@ -133,6 +134,19 @@ export function chestsOf(s, d = {}) {
   const t = d.taps || {}, total = (t.follow || 0) + (t.share || 0) + (t.bookmark || 0);
   return parseChestLines(s.chestGoals).map(c => { const have = c.kind === 'tap' ? total : (t[c.kind] || 0); return { ...c, have: Math.min(have, c.n), open: have >= c.n }; });
 }
+// LOADED CHESTS (store, 2026-11-17: "build the part where I load chests not from NEXT UP. I want to load each chest
+// with what it says and what item shows"). The store lists what's in the chests, in order: each chest that opens
+// takes the next one -- its own words on screen and its own book spinning -- instead of a NEXT UP book. Used ones are
+// remembered for the week (by id), so a chest never repeats; new ones added mid-week are next. Nothing is drawn.
+export const CHEST_LOAD_MAX = 12;
+export function parseChestLoad(text) {
+  if (!text) return [];
+  let list; try { list = JSON.parse(text); } catch { return []; }
+  return (Array.isArray(list) ? list : []).slice(0, CHEST_LOAD_MAX).filter(c => c && typeof c.id === 'string' && /^[a-z0-9]{1,12}$/i.test(c.id) && typeof c.t === 'string' && c.t.trim())
+    .map(c => ({ id: c.id, t: c.t.trim().slice(0, 120), ...(c.i && typeof c.i === 'object' && c.i.title ? { i: { title: String(c.i.title).slice(0, 90), image: /^https:\/\/[^\s"'<>]{1,600}$/.test(String(c.i.image || '')) ? String(c.i.image) : '', price: Number.isFinite(Number(c.i.price)) ? Number(c.i.price) : 0 } } : {}) }));
+}
+export const nextChestLoad = (s, d = {}) => parseChestLoad(s.chestLoad).find(c => !(d.chestLoadUsed || []).includes(c.id)) || null;
+export const useChestLoad = (d, id) => ({ ...d, chestLoadUsed: [...(d.chestLoadUsed || []), id].slice(-50) });
 // The chests a tap just opened.
 export const chestsOpened = (before, after, s) => { const a = chestsOf(s, before); return chestsOf(s, after).filter((c, i) => c.open && !a[i]?.open); };
 // This floor's chests the crawl has reached whose goal (if any) is met and
@@ -344,7 +358,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
-    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
+    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), chestLoadUsed: (d.chestLoadUsed || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };

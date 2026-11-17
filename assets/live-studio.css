@@ -543,3 +543,11 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 @keyframes mana-spot-tilt{0%,100%{transform:rotateY(-18deg) rotateX(6deg)}50%{transform:rotateY(18deg) rotateX(-4deg)}}
 #mana-reveal.spot-mode #mana-reveal-img{border-color:#fff;box-shadow:0 0 50px #fff,0 0 120px #ffd84a88}
 #mana-reveal.spot-mode #mana-reveal-label{color:#fff;text-shadow:0 0 18px #ffd84a,4px 4px 0 #6f1fac}
+/* LOAD THE CHESTS (2026-11-17): each loaded chest -- its words, its book, a search to pick the book. */
+.mana-controls .chest-load{display:grid;gap:8px;margin:6px 0 14px}
+.mana-controls .chest-row{display:grid;gap:6px;padding:8px;background:#221733;border-radius:8px;border:1px solid #4a3470}
+.mana-controls .chest-row.opened{opacity:.55}
+.mana-controls .chest-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mana-controls .chest-row button{margin:0;padding:6px 9px;flex:0 0 auto}
+.mana-controls .chest-hits{display:grid;gap:4px}
+.mana-controls .chest-hits button{text-align:left}

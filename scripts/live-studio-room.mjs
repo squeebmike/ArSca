@@ -5,7 +5,7 @@ import { makeSpots, upIndex } from './vending.mjs';
 import { cleanFlipItems } from './flipbook.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
-import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
+import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, nextChestLoad, useChestLoad, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
 import { chanceWordIn } from './live-studio-model.mjs';
 
 // The dungeon's events become the effect to play: a boss beaten beats a
@@ -202,6 +202,15 @@ export class ManaLiveStudio extends DurableObject {
     let fx = null;
     for (const c of chestsToOpen(s.dungeon, s.settings)) {
       s.dungeon = openChest(s.dungeon, c.k, now);
+      // A chest the store loaded itself: its own words, its own book spinning. Nothing is taken from NEXT UP and
+      // nothing is added to the Whatnot show -- the host runs it in Whatnot.
+      const load = nextChestLoad(s.settings, s.dungeon);
+      if (load) {
+        s.dungeon = useChestLoad(s.dungeon, load.id);
+        this.chestLoaded = load.t;
+        fx = { kind: 'chest', chestText: load.t, chestGoal: c.goal ? 'CHAT HIT ' + c.goal.n + ' ' + c.goal.kind.toUpperCase() + 'S' : 'CHEST ' + (c.k + 1) + ' OF 3', ...(load.i ? { item: load.i } : {}) };
+        continue;
+      }
       // The first chests are a FREE giveaway for everyone watching (store,
       // 2026-11-12: "place the 1st 2 chests as givys"). No item runs; the host
       // starts a giveaway in the Whatnot app, free to enter.
@@ -245,7 +254,7 @@ export class ManaLiveStudio extends DurableObject {
     return { kind: 'found', spot: 'THE SECRET VAULT', ...(item ? { item } : {}) };
   }
   // The chest item that just opened (once), for the Worker to add to the Whatnot show.
-  takeChest(s) { const it = this.chestItem, gv = this.chestGiveaway; this.chestItem = null; this.chestGiveaway = false; return { ...(it ? { chestItem: it, showId: s.settings.showId || '' } : {}), ...(gv ? { chestGiveaway: true } : {}) }; }
+  takeChest(s) { const it = this.chestItem, gv = this.chestGiveaway, ld = this.chestLoaded; this.chestItem = null; this.chestGiveaway = false; this.chestLoaded = null; return { ...(it ? { chestItem: it, showId: s.settings.showId || '' } : {}), ...(gv ? { chestGiveaway: true } : {}), ...(ld ? { chestLoaded: ld } : {}) }; }
   closeVote() {
     const s = this.read(); s.vote = null; this.write(s);
     this.broadcast({ type:'stats', stats:this.publicStats(s), serverNow:Date.now() });
