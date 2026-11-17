@@ -86,7 +86,7 @@ console.log('Beasts items, gifts, country, gyms, time of day: passed');
   const src = readFileSync(new URL('../scripts/beasts.mjs', import.meta.url), 'utf8'), sb = readFileSync(new URL('../scripts/shed-background.mjs', import.meta.url), 'utf8');
   assert.ok(src.includes('YOUR BEAST FOLLOWS YOU') && sb.includes("follower: settings0.beastsFollow !== false ? (d.form || '') : ''") && sb.includes("gfx: settings0.beastsGfx || 'gbc'"));
   const g3 = readFileSync(new URL('../scripts/live-studio-3d.mjs', import.meta.url), 'utf8');
-  assert.ok(g3.includes('const fisterMaps = {') && g3.includes('fisterMaps.denim()') && g3.includes('THE FIST PUMP (1.8 s)'), 'Mr Fister: textures and the pump');
+  assert.ok(g3.includes('const fisterMaps = {') && g3.includes('fisterMaps.denim()') && g3.includes('THE FIST PUMP (store, 2026-11-17'), 'Mr Fister: textures and the pump');
   console.log('Beasts graphics settings: passed');
 }
 // Symbiote Mr Fister, his beard, the back of his cap (2026-11-14).

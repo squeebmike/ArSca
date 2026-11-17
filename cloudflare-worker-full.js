@@ -13860,6 +13860,32 @@ async function routeRequest(request, env, ctx) {
     // POST /whatnot/apply-costs -- past Whatnot-only sales still at $0 cost
     // get the cost Settings -> Whatnot gives them; ended shows are worked
     // out again (the last 20, so older shows get their totals too).
+    // COST ADDED AFTER A SALE (store, 2026-11-17: "When something doesn't have a cost and it sells, then I add a cost,
+    // the profit doesn't change"). A sale keeps its own copy of the cost from when it sold; an item that had none sold
+    // at $0. Its sale lines still at $0 get the cost now, and their profit drops by the same amount. A sale that already
+    // had a cost is never changed. Lines this Worker writes keep the cost per copy; the register keeps the line's whole
+    // cost -- each is filled the way it was written.
+    if (url.pathname === '/sales/fill-item-cost' && request.method === 'POST') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      let body = {}; try { body = await request.json(); } catch (_) {}
+      const itemId = String(body.itemId || '').trim();
+      const unit = Math.round(Number(body.cost) * 100) / 100;
+      if (!/^[A-Za-z0-9_-]{6,80}$/.test(itemId)) return json({ ok: false, error: 'itemId required' }, 400);
+      if (!(unit > 0) || unit > 1000000) return json({ ok: false, error: 'cost required' }, 400);
+      const s = encodeURIComponent(storeId);
+      const { data: lines } = await supabaseAdminFetch(env, `pos_sale_lines?store_id=eq.${s}&item_id=eq.${encodeURIComponent(itemId)}&cost_basis=eq.0&select=id,quantity,profit,source_id&limit=200`);
+      const filled = [];
+      for (const l of lines || []) {
+        const qty = Math.max(1, Number(l.quantity) || 1), total = Math.round(unit * qty * 100) / 100;
+        const costBasis = l.source_id ? unit : total;
+        const profit = Math.round(((Number(l.profit) || 0) - total) * 100) / 100;
+        const { data: done } = await supabaseAdminFetch(env, `pos_sale_lines?id=eq.${encodeURIComponent(l.id)}&store_id=eq.${s}&cost_basis=eq.0`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ cost_basis: costBasis, profit }) });
+        if ((done || []).length) filled.push({ id: l.id, cost: total, profit });
+      }
+      return json({ ok: true, filled: filled.length, lines: filled });
+    }
     if (url.pathname === '/whatnot/apply-costs' && request.method === 'POST') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);

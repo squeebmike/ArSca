@@ -13,7 +13,7 @@ export const BOSSES = {
   // comics from our inventory embedded in it like the power stones"): a friend of the shop, drawn here from scratch --
   // backwards cap, full beard, black tee, and THE GAUNTLET OF GRAILS raised: a steel glove glowing green with comic
   // covers set in the knuckles. Original art; no one else's characters or logos.
-  fister: { name: 'MR FISTER', taunt: 'IF I CAN DO IT, YOU CAN!', move: 'comics', svg: svg(
+  fister: { name: 'MR FISTER', taunt: "IT'S FISTIN' TIME!", move: 'comics', svg: svg(
     `<circle cx="32" cy="30" r="29" fill="#39ff14" fill-opacity=".16"/>` +
     `<path d="M12 64 L15 42 Q32 34 49 42 L52 64 Z" fill="#111317" ${ink}/>` +
     `<path d="M22 40 Q32 46 42 40" fill="none" stroke="#2a2d33" stroke-width="2"/>` +

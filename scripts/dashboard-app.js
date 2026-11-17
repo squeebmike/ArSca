@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.17.2-presale-no-cancel';
+const APP_VERSION = '2026.11.17.5-fistin-time';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -44339,9 +44339,24 @@ async function adjustCartLineQuantity(idx, delta){
   logOpsEvent('cart_qty_adjusted', 'Adjusted cart line quantity: ' + (item.name || 'item'), { cartLineId:item.id || '', quantity:nextQty });
 }
 
+// (store, 2026-11-17: "When something doesn't have a cost and it sells, then I add a cost, the profit doesn't
+// change") A sale keeps the cost it sold at; one that sold at $0 gets the cost added afterwards, and its profit drops.
+async function fillSoldCostAfterEdit(itemId, cost){
+  if(!(Number(cost) > 0) || !itemId) return;
+  try {
+    const res = await storeWorkerFetch('/sales/fill-item-cost', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:getActiveStoreId(), itemId, cost:Number(cost) }) });
+    const d = await res.json().catch(() => ({}));
+    if(res.ok && d.filled > 0) {
+      toast_dash('Cost added to ' + d.filled + ' past sale' + (d.filled === 1 ? '' : 's') + ' of this item -- its profit is updated');
+      if(typeof markLedgerSoldRowsStale === 'function') { markLedgerSoldRowsStale(); requestLedgerSoldRows(); }
+    }
+  } catch(e) {}
+}
 async function saveInventoryEdit(item, updates){
   if(item.source === 'built_in') {
     await updateBuiltInInventoryItem(item, updates);
+    // Any save with a cost: only its sales still at $0 are touched, so re-saving an item fixes its older sales too.
+    if(updates && Number(updates.cost) > 0) fillSoldCostAfterEdit(item.supabaseRowId || item.id, updates.cost);
     // Write succeeded, so Supabase is now authoritative for this item — do not
     // shadow it with a local override that would hide future edits from
     // other devices.

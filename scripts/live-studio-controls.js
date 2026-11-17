@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.15.4';
+  const STUDIO_V='2026.11.17.1';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -75,6 +75,8 @@
   <small>🎬 SHOW READY: one tap loads the dungeon from your comics in stock.</small>
   <small hidden>One tap loads the dungeon from your comics in stock: comics on every wall and stand, NEXT UP (if it's empty -- SHOW PREP's lineup stays), the chests' and floors' rewards (free giveaways for everyone, low starts on your best books), and special books for the merchant.</small>
   <button type="button" id="mana-show-ready" style="width:100%;min-height:58px;font-size:17px;font-weight:800">🎬 LOAD THE DUNGEON FROM STOCK (COMICS)</button>
+  <small>📦 LOAD THE CHESTS: what each chest says and the book that spins when it opens, in the order chests open (all week, every floor). Loaded chests don't use NEXT UP and add nothing to Whatnot -- run the auction or giveaway in Whatnot. Empty list: chests work as before.</small>
+  <div id="chest-load" class="chest-load"></div>
   <ul id="mana-ready" class="mana-ready"></ul>
   <small>🕹️ CAMERA</small>
   <small>Drag to look around the hall (up, down, left, right); let go and it eases back after 3 seconds. Works on the green screen, the crawl window and the preview.</small>
@@ -165,6 +167,7 @@
   <label>Marquee message (separate lines with • or | -- ByteRider says them one at a time)<textarea name="message" maxlength="300"></textarea></label>
   <div class="mana-row" id="mq-tpl-row"><label>MARQUEE TEMPLATES<select id="mq-tpl"></select></label><button type="button" id="mq-use">PUT ON THE SIGN</button><button type="button" id="mq-save">SAVE THIS MESSAGE AS A TEMPLATE</button><button type="button" id="mq-del">DELETE TEMPLATE</button></div>
   <input type="hidden" name="marqueeTemplates">
+  <input type="hidden" name="chestLoad">
   <div class="mana-grid">
   ${num('x','Sign left',0,1080)}${num('y','Sign top',0,1920)}${num('width','Sign width',240,1080)}${num('height','Sign height',70,300)}
   ${num('speed','Scroll cycle (seconds)',4,60)}${num('hudY','Score board top',0,1700)}${num('cardX','Card left',0,700)}${num('cardY','Card top',0,1560)}
@@ -303,7 +306,41 @@
     if(store()!==id)throw Error('Store changed. Connect again.');return d;
   }
   const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
-  function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}paintMarqueeTemplates();preview();}
+  function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}paintMarqueeTemplates();if(!chestDirty)paintChestLoad(true);preview();}
+  // LOAD THE CHESTS (store, 2026-11-17: "I want to load each chest with what it says and what item shows"): the list
+  // is edited here and saved with the studio settings (chestLoad); each chest that opens takes the next one not used.
+  let chestRows=null,chestDirty=false;
+  function chestLoadSaved(){try{const v=JSON.parse(form.elements.namedItem('chestLoad')?.value||'[]');return Array.isArray(v)?v:[];}catch{return [];}}
+  const chestId=()=>Date.now().toString(36).slice(-6)+Math.random().toString(36).slice(2,5);
+  function paintChestLoad(fromSaved){
+    const box=host.querySelector('#chest-load');if(!box)return;
+    if(fromSaved||!chestRows)chestRows=chestLoadSaved().map(c=>({...c}));
+    const used=new Set(stats?.dungeon?.chestLoadUsed||[]),el=(t,props={},...kids)=>{const e=document.createElement(t);Object.assign(e,props);e.append(...kids);return e;};
+    const rows=chestRows.map((c,k)=>{
+      const opened=used.has(c.id),row=el('div',{className:'chest-row'+(opened?' opened':'')});
+      const text=el('input',{value:c.t||'',maxLength:120,placeholder:'What it says, e.g. Free giveaway for followers -- Midnight Spider-Man #2'});text.oninput=()=>{c.t=text.value;chestDirty=true;};
+      const pic=c.i?.image?el('img',{src:c.i.image,alt:'',style:'width:34px;border-radius:4px'}):el('span',{textContent:'📦'});
+      const book=el('span',{textContent:c.i?.title?c.i.title+(c.i.price?' · '+usd(c.i.price):''):'no book picked (the chest just shows its words)',style:'flex:1;min-width:0'});
+      const find=el('input',{placeholder:'🔎 pick its book (type a name)',style:'width:100%'}),hits=el('div',{className:'chest-hits'});
+      find.oninput=()=>{const q=find.value.trim().toLowerCase();hits.replaceChildren();if(q.length<2)return;
+        for(const i of inventory().filter(i=>i.status==='in_stock'&&String(i.name||'').toLowerCase().includes(q)).slice(0,6)){const it=stageItem(i),b=el('button',{type:'button',textContent:it.title+(it.price?' · '+usd(it.price):'')});b.onclick=()=>{c.i={title:it.title,image:it.image||'',price:it.price||0};chestDirty=true;paintChestLoad(false);};hits.append(b);}};
+      const up=el('button',{type:'button',textContent:'↑',title:'Opens earlier'});up.onclick=()=>{if(k>0){[chestRows[k-1],chestRows[k]]=[chestRows[k],chestRows[k-1]];chestDirty=true;paintChestLoad(false);}};
+      const clr=el('button',{type:'button',textContent:'no book'});clr.onclick=()=>{delete c.i;chestDirty=true;paintChestLoad(false);};
+      const del=el('button',{type:'button',textContent:'✕',title:'Take this chest out'});del.onclick=()=>{chestRows.splice(k,1);chestDirty=true;paintChestLoad(false);};
+      row.append(el('div',{style:'display:flex;gap:6px;align-items:center'},el('b',{textContent:'CHEST '+(k+1)+(opened?' · OPENED':'')}),pic,book,up,clr,del),text,find,hits);
+      return row;
+    });
+    const add=el('button',{type:'button',textContent:'+ ADD A CHEST'});add.onclick=()=>{if(chestRows.length>=12){status.textContent='12 loaded chests is the most.';return;}chestRows.push({id:chestId(),t:''});chestDirty=true;paintChestLoad(false);};
+    const save=el('button',{type:'button',textContent:'💾 SAVE THE CHESTS',style:'font-weight:800'});save.onclick=()=>run(saveChestLoad);
+    box.replaceChildren(...rows,el('div',{style:'display:flex;gap:6px;flex-wrap:wrap'},add,save));
+  }
+  async function saveChestLoad(){
+    const list=(chestRows||[]).map(c=>({id:c.id||chestId(),t:String(c.t||'').trim().slice(0,120),...(c.i?{i:c.i}:{})}));
+    if(list.some(c=>!c.t))throw Error('Every chest needs words -- what it says on screen (or take it out).');
+    const hid=form.elements.namedItem('chestLoad'),before=hid.value;hid.value=list.length?JSON.stringify(list):'';
+    try{const d=await api('settings',{settings:values(),revision});revision=d.revision;chestDirty=false;took(d);}catch(e){hid.value=before;throw e;}
+    paintChestLoad(true);status.textContent=list.length?'Chests loaded: '+list.length+' -- they open in this order.':'Loaded chests cleared -- chests work as before.';
+  }
   // MARQUEE TEMPLATES (store, 2026-11-15: "a couple templates and being able to save them for the marquee sign"): a few
   // ready-made messages (★), plus the store's own, saved with the studio settings so every device sees the same list.
   const MQ_BUILTIN=[
@@ -331,7 +368,7 @@
   {const b=host.querySelector('#mq-del');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.mine)throw Error('The ★ templates are built in -- pick one of your saved ones to delete.');if(!confirm('Delete the template "'+p.t.n+'"?'))return;
     const mine=savedMarqueeTemplates();mine.splice(p.i,1);const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=mine.length?JSON.stringify(mine):'';
     try{await saveSettings('Template deleted: '+p.t.n);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();});}
-  function took(d){if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}if(d.machine){machineCtl=d.machine;paintMachine();}preview();readyList();paintGame();paintMoves();drawFace('#beast-face-view','beastsFace');drawFace('#beast-buddy-view','beastsBuddy');}
+  function took(d){if(d.chestLoaded)status.textContent='Chest opened: '+d.chestLoaded+' -- run it in Whatnot.';if(d.stats&&!chestDirty&&!host.querySelector('#chest-load')?.contains(document.activeElement))setTimeout(()=>paintChestLoad(false),0);if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}if(d.machine){machineCtl=d.machine;paintMachine();}preview();readyList();paintGame();paintMoves();drawFace('#beast-face-view','beastsFace');drawFace('#beast-buddy-view','beastsBuddy');}
   // The dungeon's status line: floor, mana, stars, the week's reset.
   function paintDungeon(){
     const d=stats?.dungeon,el=host.querySelector('#mana-dungeon-status'),pick=host.querySelector('#mana-doors-pick');pick.replaceChildren();
