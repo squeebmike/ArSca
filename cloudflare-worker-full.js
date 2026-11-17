@@ -3563,9 +3563,13 @@ const COMIC_GEMINI_MAILER = { dimLength: 12.75, dimWidth: 7.75, dimHeight: 1.25,
 // Store call: a single issue in its Gemini mailer, bagged and boarded, ships at 8 oz.
 const COMIC_SINGLE_PACKED_LB = 0.5;
 const COMIC_SHIPPING_NOTE = 'Bagged & boarded and shipped in a Gemini mailer.';
+// (store, 2026-11-17: buyers keep cancelling presales on FOC day, after the copy is ordered for them, and eBay sided
+// with a buyer.) Every presale says so up front.
+const COMIC_PRESALE_NO_CANCEL = 'Presale copies are ordered from the distributor for you at FOC -- no cancellations after purchase.';
 function comicPresaleNotice(onSaleLabel = '') {
   return 'PRESALE -- This comic has not been released yet and is not currently in stock.'
-    + (onSaleLabel ? ` Expected on-sale/ship date: ${onSaleLabel}. Your order ships once we receive it from the distributor.` : '');
+    + (onSaleLabel ? ` Expected on-sale/ship date: ${onSaleLabel}. Your order ships once we receive it from the distributor.` : '')
+    + ' ' + COMIC_PRESALE_NO_CANCEL;
 }
 // The yellow PRESALE bar (the dashboard's comicPresaleBannerHtml and the one
 // below share this style).
@@ -3618,11 +3622,14 @@ function withComicListingNotices(description, { presale = false, onSaleLabel = '
   // Only a real banner (upper-case PRESALE) counts as one -- a shipping
   // sentence's "presale comics" alone isn't the disclosure a buyer sees.
   const freshBar = () => `<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center;box-sizing:border-box">${escape(comicPresaleNotice(onSaleLabel))}</div>`;
+  // A bar from before the no-cancellations line is made fresh (it says it now).
   const head = keptBar
-    ? (onSaleLabel && !keptBar.includes(escape(onSaleLabel)) ? freshBar() : keptBar)
+    ? ((onSaleLabel && !keptBar.includes(escape(onSaleLabel))) || !keptBar.includes('no cancellations') ? freshBar() : keptBar)
     : presale && !/\bPRESALE\b/.test(body)
       ? (isHtml ? freshBar() : comicPresaleNotice(onSaleLabel))
-      : '';
+      : presale && !/no cancellations/i.test(body)
+        ? (isHtml ? `<p><b>${escape(COMIC_PRESALE_NO_CANCEL)}</b></p>` : COMIC_PRESALE_NO_CANCEL)
+        : '';
   let tail = '';
   if (!/gemini/i.test(body)) {
     // Store ask: "it should be in the fast secure section", not stuck at

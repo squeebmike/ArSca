@@ -13,7 +13,7 @@ const grab = (src, sig) => { const s = src.indexOf(sig); assert.ok(s >= 0, 'miss
 const line = (src, sig) => { const s = src.indexOf(sig); assert.ok(s >= 0, 'missing ' + sig); return src.slice(s, src.indexOf('\n', s) + 1); };
 
 const helpers = new Function([
-  line(worker, 'const COMIC_GEMINI_MAILER ='), line(worker, 'const COMIC_SINGLE_PACKED_LB ='), line(worker, 'const COMIC_SHIPPING_NOTE ='),
+  line(worker, 'const COMIC_GEMINI_MAILER ='), line(worker, 'const COMIC_SINGLE_PACKED_LB ='), line(worker, 'const COMIC_SHIPPING_NOTE ='), line(worker, 'const COMIC_PRESALE_NO_CANCEL ='),
   grab(worker, 'function truncateHtmlSafely('), grab(worker, 'function comicPresaleNotice('),
   line(worker, 'const COMIC_PRESALE_BAR_RE ='), grab(worker, 'function stripCutPresaleBarTail('), grab(worker, 'function shortenHtmlToFit('), grab(worker, 'function withComicListingNotices('), grab(worker, 'function ebayOnSaleLabel('),
   grab(worker, 'function isComicEbayListing('), grab(worker, 'function applyComicListingDefaults('),
@@ -44,7 +44,9 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
   assert.match(presale, /Expected on-sale\/ship date: November 5, 2026\./, 'with the ship date eBay\'s presale policy asks for');
   assert.match(presale, /^Story text\.\n\nBagged & boarded and shipped in a Gemini mailer\.\n\nPRESALE/);
   const already = withComicListingNotices('PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.', { presale:true, onSaleLabel:'November 5, 2026' });
-  assert.equal(already, 'PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.', 'nothing is added twice');
+  // (2026-11-17) Only the no-cancellations line is added to a description that already says PRESALE -- and only once.
+  assert.equal(already, 'PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.\n\nPresale copies are ordered from the distributor for you at FOC -- no cancellations after purchase.', 'nothing else is added twice');
+  assert.equal(withComicListingNotices(already, { presale:true, onSaleLabel:'November 5, 2026' }), already, 'running it again adds nothing');
   assert.doesNotMatch(withComicListingNotices('In stock.', {}), /PRESALE/, 'an in-stock comic is never called a presale');
   const html = withComicListingNotices('<h2>Saga #1</h2><p>Story.</p>', { presale:true, onSaleLabel:'November 5, 2026' });
   assert.match(html, /<div style="[^"]*background:#ffd166[^"]*">PRESALE -- [^<]*<\/div>$/, 'an HTML template gets the notice as a PRESALE bar at the bottom');
