@@ -239,7 +239,7 @@ export function whatnotEffect(event, settings, now = Date.now()) {
   const big = amount?.currency === settings.currency && Number.isFinite(Number(amount.amount)) && Number(amount.amount) >= settings.jackpotAmount;
   return { kind: big ? 'jackpot' : 'sold', at };
 }
-const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000, chest: 8000, found: 8000, trivia: 7000, beast: 7000, fister: 7500, fistergoo: 9500, spotlight: 12000 };
+const DURATION = { countdown: 0, clear: 0, boss: 9000, jackpot: 6500, winner: 7000, giveaway: 8000, mascot: 4000, floor: 8000, unlock: 7000, tap: 2500, room: 6000, chest: 15000, found: 12000, trivia: 7000, beast: 7000, fister: 7500, fistergoo: 9500, spotlight: 12000 };
 export function makeEffect(kind, settings, now = Date.now(), extra = {}) {
   if (!EFFECTS.includes(kind)) throw new Error('Unknown effect');
   const length = kind === 'countdown' ? settings.countdownSeconds * 1000 + 1200 : DURATION[kind] ?? 5000;

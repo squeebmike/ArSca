@@ -21,6 +21,14 @@ function dungeonEffect(events, unlocks, base) {
   return null;
 }
 
+// A chest (or a found item) shows over just walking into a room; a boss or a new floor still wins.
+function chestFirst(fx, reached) { return reached && (!fx || fx.kind === 'room' || fx.kind === 'unlock') ? reached : fx || reached || null; }
+// 2026-11-18: "one I didn't notice, the other was too quick" -- the next sale's
+// pop wiped the chest off screen. A chest, item, boss or floor now plays out;
+// sales meanwhile still count (score, flask), they just don't cover it.
+const BIG = ['chest', 'found', 'boss', 'floor'];
+const holdsScreen = (cur, next, now) => !!cur && BIG.includes(cur.kind) && cur.endsAt > now && !BIG.includes(next.kind);
+
 export class ManaLiveStudio extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -76,7 +84,7 @@ export class ManaLiveStudio extends DurableObject {
     const wallDown = r.dungeon.floor === s.dungeon.floor && !secretOf(s.dungeon, s.settings)?.broken && !!secretOf(r.dungeon, s.settings)?.broken;
     s.dungeon = r.dungeon;
     const reached = this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now);
-    const fx = dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }) || reached || (wallDown ? { kind: 'unlock', unlockText: 'THE CRACKED WALL CRUMBLES! A SECRET VAULT!' } : null) || (chest ? { kind: 'chest', chestText: chest.text, chestGoal: chest.n + ' ' + chest.kind.toUpperCase() + 'S' } : null) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
+    const fx = chestFirst(dungeonEffect(r.events, [], { tapKind: kind, mana: r.amount }), reached) || (wallDown ? { kind: 'unlock', unlockText: 'THE CRACKED WALL CRUMBLES! A SECRET VAULT!' } : null) || (chest ? { kind: 'chest', chestText: chest.text, chestGoal: chest.n + ' ' + chest.kind.toUpperCase() + 'S' } : null) || { kind: 'tap', tapKind: kind, mana: r.amount, floor: s.dungeon.floor };
     s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast({ type:'effect', effect:s.effect, stats:this.publicStats(s), stage:s.stage, serverNow:now });
@@ -98,7 +106,7 @@ export class ManaLiveStudio extends DurableObject {
       if (!Number.isFinite(amount) || amount <= 0 || amount > 100000) throw new Error('Invalid mana');
       const r = addMana(s.dungeon, amount, s.settings, now);
       s.dungeon = r.dungeon;
-      fx = dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 }) || this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now);
+      { const reached = this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now); fx = chestFirst(dungeonEffect(r.events, [], { mana: Math.round(amount * 100) / 100 }), reached); }
     } else if (input.door !== undefined) {
       // Chat's vote: the door the host tapped sets this floor's room.
       s.dungeon = adjustDungeon(s.dungeon, { door: input.door }, now);
@@ -465,6 +473,17 @@ export class ManaLiveStudio extends DurableObject {
       followed = true;
     }
     const isOrder = /^orders\./.test(String(event?.type || ''));
+    // 2026-11-18: sales went in but the dungeon didn't move -- it was still
+    // following an older show (Whatnot's "show started" never came, and the
+    // picked show wasn't saved). Whatnot runs one live show at a time, so a
+    // FRESH sale from another of our shows means that show is the live one now.
+    if (!followed && isOrder && s.settings.automatic && event.version === 'v2' && (!s.settings.sellerId || event.seller_id === s.settings.sellerId)
+      && /^[0-9a-f-]{36}$/i.test(String(event.data?.show_id || '')) && event.data.show_id !== s.settings.showId && eventIsFresh(event, { ...s.settings, showId: event.data.show_id }, now)) {
+      s.settings = { ...s.settings, showId: String(event.data.show_id) };
+      s.revision++;
+      s.stats = emptyStats(s.settings.showId);
+      followed = true;
+    }
     // Orders count toward the show's totals even when they arrive late (a
     // webhook retry); only a fresh one plays an effect.
     const ours = s.settings.automatic && event?.version === 'v2' && event.data?.show_id === s.settings.showId && (!s.settings.sellerId || event.seller_id === s.settings.sellerId);
@@ -488,7 +507,7 @@ export class ManaLiveStudio extends DurableObject {
         const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];
         // A chest the crawl just reached opens (its item comes up next).
         const chestFx = this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now); if (chestFx?.item) { stageMoved = true; statsChanged = true; }
-        if (r.effect) dfx = dungeonEffect(m.events, unlocks, r.effect) || chestFx;
+        if (r.effect) dfx = chestFirst(dungeonEffect(m.events, unlocks, r.effect), chestFx);
       }
       if (r.effect && eventIsFresh(event, s.settings, now)) effect = dfx || r.effect;
       // A fresh auction sale moves NOW PLAYING to the next item.
@@ -504,6 +523,7 @@ export class ManaLiveStudio extends DurableObject {
       if (effect) {
         if (event.type.startsWith('shows.') && effect.at <= s.showEventAt) { if (statsChanged) this.write(s); return; }
         if (event.type.startsWith('shows.')) s.showEventAt=effect.at;
+        if (holdsScreen(s.effect, effect, now)) { this.write(s); statsChanged = true; return; }
         s.effect=makeEffect(effect.kind,s.settings,now,effect);
         emitted=true;
       }
