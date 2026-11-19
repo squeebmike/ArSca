@@ -21,7 +21,7 @@ assert.ok(ctl.includes('id="vm-who-go"'));
 assert.ok(vsrc.includes("const code = i => '#' + (i + 1);"));
 // 3. Vending only: a third choice; sales, taps and votes move no game; no game on either screen.
 assert.equal(M.validateSettings({ ...M.DEFAULT_STUDIO, gameMode: 'vending' }).gameMode, 'vending');
-for (const k of ["vendingOnly(s) { return s.settings.gameMode === 'vending'; }", "} else if (s.stats.gross > grossBefore && !this.vendingOnly(s)) {", "if (this.vendingOnly(s)) throw new Error('Vending only: no game is on (pick", "if (this.vendingOnly(s) && !['next', 'trivia'].includes(kind)) throw"]) assert.ok(room.includes(k), k);
+for (const k of ["vendingOnly(s) { return s.settings.gameMode === 'vending'; }", "} else if (fresh > 0 && !this.vendingOnly(s)) {", "if (this.vendingOnly(s)) throw new Error('Vending only: no game is on (pick", "if (this.vendingOnly(s) && !['next', 'trivia'].includes(kind)) throw"]) assert.ok(room.includes(k), k);
 assert.ok(ov.includes("const dg=()=>settings.gameMode!=='vending'&&settings.dungeonOn"));
 assert.ok(bg.includes("if (settings0.gameMode === 'vending') {") && bg.includes('const boss = beastsOn || vendOn ||'));
 assert.ok(ctl.includes('id="game-vending"') && ctl.includes('<option value="vending">VENDING ONLY'));
