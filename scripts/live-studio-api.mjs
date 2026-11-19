@@ -17,7 +17,8 @@ export async function handleLiveStudio(request,env,deps,url) {
   }
   if (request.method!=='POST') return deps.json({ok:false,error:'Not found'},404);
   // A prepped show's whole lineup (up to 60) fits.
-  const parsed=await deps.readJsonWithLimit(request,['/live-studio/stage','/live-studio/pics','/live-studio/machine','/live-studio/fister-face'].includes(url.pathname)?65536:8192);
+  // A whole FOC week in the flipbook (every book, every cover, the synopses) is the big one.
+  const parsed=await deps.readJsonWithLimit(request,url.pathname==='/live-studio/flip'?800*1024:['/live-studio/stage','/live-studio/pics','/live-studio/machine','/live-studio/fister-face'].includes(url.pathname)?65536:8192);
   if (parsed.error) return parsed.error;
   const body=parsed.data || {};
   // A chest that opened: its item goes into the Whatnot show as a $1-start
@@ -57,13 +58,13 @@ export async function handleLiveStudio(request,env,deps,url) {
       const state=await room.snapshot();
       if (!state.settings.showId) return deps.json({ok:false,error:'Pick the show first (USE LIVE / NEXT SHOW)'},400);
       const orders=await deps.showOrders(storeId,state.settings.showId);
-      return deps.json({ok:true,...await room.syncStats(orders)});
+      return deps.json({ok:true,...await withChest(await room.syncStats(orders))});
     }
 
   } catch (e) {
     // A setting the store can fix (a word Whatnot wouldn't allow, a sign off the screen) says what's wrong.
     const why=String(e?.message||'');
-    return deps.json({ok:false,error:/^(Invalid|Unknown|Sign must|Use a three|A Whatnot show|"|Stage|Settings|Vote)/.test(why)?why:'Invalid control values or service unavailable'},400);
+    return deps.json({ok:false,error:/^(Invalid|Unknown|Sign must|Use a three|A Whatnot show|"|Stage|Settings|Vote|Flipbook|No books)/.test(why)?why:'Invalid control values or service unavailable'},400);
   }
   return deps.json({ok:false,error:'Not found'},404);
 }

@@ -52,7 +52,24 @@ const sale = (id, show, amount, ageMs = 0) => ({ type: 'orders.created', version
   assert.equal(room.saved().effect.id, chest.id, 'a quick sale right after does not wipe the chest');
   assert.equal(room.saved().stats.gross, 13, 'that sale still counts');
 }
+// 4. SYNC fills the dungeon with the sales it missed -- each order once (store, 2026-11-19: "even when I hit sync").
+{
+  const room = fakeRoom({ ...base, settings: { ...settings, showId: LIVE, chestLoad: '' }, stats: M.emptyStats(LIVE) });
+  room.vendingOnly = () => false; room.beastsOn = () => false;
+  const order = (id, amt) => ({ ...sale(id, LIVE, amt).data, created_at: new Date().toISOString() });
+  room.receiveWhatnot('w1', sale('o1', LIVE, 10));
+  const m1 = room.saved().dungeon.mana;
+  const r = room.syncStats([order('o1', 10), order('o2', 25), order('o3', 5)]);
+  assert.equal(r.filled, 30, 'only the two the webhook never brought');
+  assert.equal(room.saved().dungeon.mana, m1 + 30);
+  assert.equal(room.syncStats([order('o1', 10), order('o2', 25), order('o3', 5)]).filled, 0, 'syncing again adds nothing');
+  room.resetStats();
+  assert.equal(room.syncStats([order('o1', 10), order('o2', 25), order('o3', 5)]).filled, 0, 'a score board reset does not refill the dungeon');
+  room.receiveWhatnot('w4', sale('o4', LIVE, 7));
+  assert.equal(room.saved().dungeon.mana, m1 + 37, 'a new live sale still fills it');
+}
 // The remote: picking the live show saves it in one tap.
 const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
 assert.ok(ctl.includes("status.textContent='Following this show -- its sales fill the dungeon.'"));
+assert.ok(ctl.includes("api('stats-sync',{}).then(d=>{took(d);if(d.filled>0)status.textContent='Auto sync: +'"), 'the remote syncs by itself once a minute');
 console.log('Live Studio follows the live show; chests stay on screen: passed');

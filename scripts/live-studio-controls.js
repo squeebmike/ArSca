@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.18.1';
+  const STUDIO_V='2026.11.19.1';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -28,9 +28,11 @@
   <div class="mana-row"><button type="button" id="vm-sc-both">🛒 LOAD BOTH (NEW + BIN)</button><button type="button" id="vm-sc-pre">📚 NEW RELEASES ONLY</button><button type="button" id="vm-sc-bin">🏷 BIN ONLY</button></div>
   </details>
   <details class="fb-ctl"><summary>📖 FOC FLIPBOOK -- this week's books flip by themselves on the overlay</summary>
-  <small>Loads the new books (shown to customers, with covers) and flips through them on the overlay: each cover in turn, the price, the credits, the order-by and in-store dates, and the synopsis rolling up. No screen share.</small>
+  <small>Pick a FOC week: every book in it, A to Z, flips by on the overlay -- each of its covers in turn, the price, the credits, the order-by and in-store dates, and the synopsis rolling up. Books with lots of covers stay up longer. No screen share.</small>
+  <div class="mana-row"><label>FOC WEEK<select id="fb-week"><option value="">Next FOC</option></select></label><label>FROM<select id="fb-dist"><option value="">PRH + LUNAR</option><option value="PRH">PRH (Marvel, IDW...)</option><option value="Lunar">LUNAR (DC, Image...)</option></select></label><label><input id="fb-comics" type="checkbox" checked> COMICS ONLY (no trades, merch)</label></div>
   <div class="mana-row"><label>SECONDS A BOOK<input id="fb-secs" type="number" min="5" max="60" value="14"></label><label>WHERE<select id="fb-mode"><option value="full">FULL SCREEN</option><option value="lower">LOWER HALF</option></select></label><label>HEADING<input id="fb-title" maxlength="40" placeholder="FOC THIS SUNDAY"></label></div>
   <div class="mana-row"><button type="button" id="fb-go">📖 LOAD + SHOW</button><button type="button" id="fb-back">◀ BACK</button><button type="button" id="fb-next">NEXT ▶</button><button type="button" id="fb-off">HIDE</button></div>
+  <div class="mana-row"><label>GO TO A BOOK (chat asks about one)<select id="fb-jump"><option value="">Load the flipbook first</option></select></label></div>
   </details>
   <div class="mana-row"><label>LOOK<select id="vm-theme"><option value="">KIOSK (white)</option><option value="comics">COMIC SHOP (red + yellow)</option><option value="cards">CARD SHOP (red + white)</option><option value="arcane">ARCANE (purple + gold)</option></select></label><label>CHANGE RETURN: A FREE GIVEAWAY EVERY<input id="vm-give" type="number" min="0" max="100" placeholder="0 = off"> SOLD</label><button type="button" id="vm-look-go">SET</button></div>
   <div class="mana-row"><label>⚡ FLASH SALE SLOTS<input id="vm-fl-slots" placeholder="3, 7, 12"></label><label>% OFF<input id="vm-fl-pct" type="number" min="1" max="89" placeholder="20"></label><label>OR SALE PRICE $<input id="vm-fl-price" type="number" min="0" step="0.01"></label><label>MINUTES<input id="vm-fl-min" type="number" min="1" max="60" value="5"></label><button type="button" id="vm-fl-go">⚡ FLASH SALE</button><button type="button" id="vm-fl-end">END SALE</button></div>
@@ -246,13 +248,32 @@
       if(error)throw Error('New releases: '+error.message);const md=d=>d?d.slice(5).replace('-','/'):'';
       return (data||[]).filter(r=>https(r.cover_image_url)).map(r=>({title:String((r.title||'')+(r.variant_label?' '+r.variant_label:'')).slice(0,90),detail:'FOC '+md(r.foc_date)+(r.on_sale_date?' · OUT '+md(r.on_sale_date):''),image:r.cover_image_url,price:(Number(r.customer_price_cents)||Number(r.msrp_cents)||0)/100,shelf:'pre',badge:'FOC '+md(r.foc_date)})).filter(it=>!chanceFn(it.title));};
     // THE FOC FLIPBOOK: this week's books (one per title, its covers inside) with their synopses, to the overlay.
-    const flipBooks=async()=>{const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null,id=store();if(!sb||!id)throw Error('Sign in to the dashboard first.');const today=new Date().toISOString().slice(0,10);
-      const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).eq('customer_enabled',true).gte('foc_date',today).not('cover_image_url','is',null).order('foc_date',{ascending:true}).limit(90);
-      if(error)throw Error('Flipbook: '+error.message);const F=await import('./flipbook.mjs?v='+STUDIO_V);return F.cleanFlipItems(F.booksFromSkus(data||[]).filter(b=>!chanceFn(b.title)));};
+    // 2026-11-19: "select a FOC week and it shows all covers in alphabetical order". The weeks come from the FOC
+    // cycles (two back, six ahead); the books are every cover of that week's cycles, A to Z.
+    const fbSb=()=>{const sb=typeof getSupabaseClient==='function'?getSupabaseClient():null,id=store();if(!sb||!id)throw Error('Sign in to the dashboard first.');return {sb,id};};
+    const ymd=d=>d.toISOString().slice(0,10),mdy=d=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||'');return m?(+m[2])+'/'+(+m[3]):d;};
+    let fbWeeksFor='';
+    async function fbWeeks(){const {sb,id}=fbSb();if(fbWeeksFor===id)return;const now=Date.now();
+      const {data,error}=await sb.from('foc_cycles').select('foc_date').eq('store_id',id).gte('foc_date',ymd(new Date(now-15*864e5))).lte('foc_date',ymd(new Date(now+43*864e5))).order('foc_date',{ascending:true});
+      if(error)throw Error('FOC weeks: '+error.message);const sel=host.querySelector('#fb-week'),today=ymd(new Date());
+      const days=[...new Set((data||[]).map(r=>String(r.foc_date).slice(0,10)))],next=days.find(d=>d>=today)||days[days.length-1]||'';
+      sel.replaceChildren(...days.map(d=>{const o=document.createElement('option');o.value=d;o.textContent='FOC '+mdy(d)+(d===next?' (next)':d<today?' (past)':'');return o;}));sel.value=next;fbWeeksFor=id;}
+    {const d=host.querySelector('.fb-ctl');if(d)d.addEventListener('toggle',()=>{if(d.open)fbWeeks().catch(e=>{status.textContent=e.message;});});}
+    const NOT_COMIC=/\b(TP|HC|GN|SC|OMNIBUS|VOL\.?|VOLUME|COLLECTION|POSTER|BUTTONS?|NET|STATUE|FIGURE|PIN|T-?SHIRT|PLUSH|MAGNET|BOX SET|TRADE PAPERBACK|HARDCOVER|DELUXE|EDITION)\b/i;
+    const flipBooks=async()=>{const {sb,id}=fbSb();await fbWeeks();const week=host.querySelector('#fb-week').value,dist=host.querySelector('#fb-dist').value,comics=host.querySelector('#fb-comics').checked;
+      if(!week)throw Error('No FOC weeks loaded yet (import a FOC list first).');
+      let cq=sb.from('foc_cycles').select('id,distributor').eq('store_id',id).eq('foc_date',week);if(dist)cq=cq.eq('distributor',dist);
+      const {data:cyc,error:ce}=await cq;if(ce)throw Error('Flipbook: '+ce.message);const ids=(cyc||[]).map(c=>c.id);if(!ids.length)throw Error('No '+(dist||'')+' FOC list for '+mdy(week)+'.');
+      const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).in('cycle_id',ids).not('cover_image_url','is',null).order('title',{ascending:true}).limit(1500);
+      if(error)throw Error('Flipbook: '+error.message);const F=await import('./flipbook.mjs?v='+STUDIO_V);
+      const rows=(data||[]).filter(r=>!comics||!NOT_COMIC.test(r.title||''));
+      return {books:F.cleanFlipItems(F.booksFromSkus(rows).filter(b=>!chanceFn(b.title))),week};};
+    const fbJumpList=items=>{const sel=host.querySelector('#fb-jump');if(!sel)return;sel.replaceChildren(...[{t:'Pick a book...',v:''},...(items||[]).map((b,k)=>({t:b.title+(b.covers.length>1?' ('+b.covers.length+' covers)':''),v:String(k)}))].map(x=>{const o=document.createElement('option');o.value=x.v;o.textContent=x.t;return o;}));};
     const flipDo=async body=>{if(connectedStore){const d=await api('flip',body);flipCtl=d.flip;preview();return;}
       const f={on:false,items:[],secs:12,mode:'full',title:'',at:Date.now(),...(flipCtl||{})};if(body.items){f.items=body.items;f.at=Date.now();}if(body.secs!==undefined){f.secs=body.secs;f.at=Date.now();}if(body.mode)f.mode=body.mode;if(typeof body.title==='string')f.title=body.title.toUpperCase();if(body.step)f.at-=body.step*f.secs*1000;if(typeof body.on==='boolean'){if(body.on&&!f.on)f.at=Date.now();f.on=body.on&&f.items.length>0;}flipCtl=f;preview();};
-    const fbLook=()=>({secs:Math.max(5,Math.min(60,Number(host.querySelector('#fb-secs').value)||14)),mode:host.querySelector('#fb-mode').value,title:String(host.querySelector('#fb-title').value||'NEW BOOKS THIS WEEK')});
-    {const b=host.querySelector('#fb-go');if(b)b.onclick=()=>run(async()=>{const items=await flipBooks();if(!items.length)throw Error('No new books with covers coming up (FOC books need a cover and SHOW TO CUSTOMERS).');await flipDo({items,...fbLook(),on:true});status.textContent='📖 Flipbook on: '+items.length+' books, '+fbLook().secs+' seconds each.'+(connectedStore?'':' (preview -- connect to put it on the show)');});}
+    const fbLook=()=>({secs:Math.max(5,Math.min(60,Number(host.querySelector('#fb-secs').value)||14)),mode:host.querySelector('#fb-mode').value,title:String(host.querySelector('#fb-title').value||host.querySelector('#fb-title').placeholder.replace(/^FOC THIS SUNDAY$/,'')||'NEW BOOKS THIS WEEK')});
+    {const b=host.querySelector('#fb-go');if(b)b.onclick=()=>run(async()=>{const {books:items,week}=await flipBooks();if(!items.length)throw Error('No books with covers in that FOC week.');const tIn=host.querySelector('#fb-title');if(!tIn.value)tIn.placeholder='FOC '+mdy(week);await flipDo({items,...fbLook(),...(tIn.value?{}:{title:'FOC '+mdy(week)+' · A TO Z'}),on:true});fbJumpList(items);const covers=items.reduce((n,x)=>n+x.covers.length,0);status.textContent='📖 Flipbook on: FOC '+mdy(week)+', '+items.length+' books, '+covers+' covers, A to Z.'+(connectedStore?'':' (preview -- connect to put it on the show)');});}
+    {const s=host.querySelector('#fb-jump');if(s)s.onchange=()=>{const k=Number(s.value);if(s.value===''||!flipCtl?.items?.[k])return;void run(async()=>{await flipDo({jump:k});status.textContent='📖 Now showing: '+flipCtl.items[k].title;});};}
     for(const [id,body,msg] of [['#fb-back',{step:-1},'Back a book.'],['#fb-next',{step:1},'Next book.'],['#fb-off',{on:false},'Flipbook hidden.']]){const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{if(!flipCtl?.items?.length)throw Error('Load the flipbook first.');await flipDo(body);status.textContent=msg;});}
     for(const id of ['#fb-secs','#fb-mode','#fb-title']){const el=host.querySelector(id);if(el)el.onchange=()=>{if(flipCtl?.on)void run(()=>flipDo(fbLook()));};}
     const showcase=(want,msg)=>{const b=host.querySelector(want);if(b)b.onclick=()=>run(async()=>{const pre=want!=='#vm-sc-bin'?await newReleases():[],bin=want!=='#vm-sc-pre'?binItems():[],items=[...pre,...bin].slice(0,120);if(!items.length)throw Error(want==='#vm-sc-pre'?'No new releases with covers coming up (FOC books need a cover).':want==='#vm-sc-bin'?'No Buy It Now items with photos and prices in stock.':'Nothing to show: no FOC books with covers and no BIN items with photos.');await machineDo({items,kind:'showcase',mode:'lower',on:true});status.textContent=msg+' '+pre.length+' new releases, '+bin.length+' bin items.'+(connectedStore?'':' (preview -- connect to put it on the show)');});};
@@ -318,6 +339,9 @@
     const box=host.querySelector('#chest-load');if(!box)return;
     if(fromSaved||!chestRows)chestRows=chestLoadSaved().map(c=>({...c}));
     const used=new Set(stats?.dungeon?.chestLoadUsed||[]),el=(t,props={},...kids)=>{const e=document.createElement(t);Object.assign(e,props);e.append(...kids);return e;};
+    // Where each unopened chest will open: they go in list order, the rest of this floor's chests first, then 3 a floor.
+    const dg=stats?.dungeon||{},left=Math.max(0,3-(dg.opened||[]).length),order=chestRows.filter(c=>!used.has(c.id)).map(c=>c.id);
+    const whereOf=id=>{const n=order.indexOf(id);if(n<0)return'';const fl=(Number(dg.floor)||1)+(n<left?0:1+Math.floor((n-left)/3));return' · FLOOR '+fl;};
     const rows=chestRows.map((c,k)=>{
       const opened=used.has(c.id),row=el('div',{className:'chest-row'+(opened?' opened':'')});
       const text=el('input',{value:c.t||'',maxLength:120,placeholder:'What it says, e.g. Free giveaway for followers -- Midnight Spider-Man #2'});text.oninput=()=>{c.t=text.value;chestDirty=true;};
@@ -329,10 +353,10 @@
       const up=el('button',{type:'button',textContent:'↑',title:'Opens earlier'});up.onclick=()=>{if(k>0){[chestRows[k-1],chestRows[k]]=[chestRows[k],chestRows[k-1]];chestDirty=true;paintChestLoad(false);}};
       const clr=el('button',{type:'button',textContent:'no book'});clr.onclick=()=>{delete c.i;chestDirty=true;paintChestLoad(false);};
       const del=el('button',{type:'button',textContent:'✕',title:'Take this chest out'});del.onclick=()=>{chestRows.splice(k,1);chestDirty=true;paintChestLoad(false);};
-      row.append(el('div',{style:'display:flex;gap:6px;align-items:center'},el('b',{textContent:'CHEST '+(k+1)+(opened?' · OPENED':'')}),pic,book,up,clr,del),text,find,hits);
+      row.append(el('div',{style:'display:flex;gap:6px;align-items:center'},el('b',{textContent:'CHEST '+(k+1)+(opened?' · OPENED':whereOf(c.id))}),pic,book,up,clr,del),text,find,hits);
       return row;
     });
-    const add=el('button',{type:'button',textContent:'+ ADD A CHEST'});add.onclick=()=>{if(chestRows.length>=12){status.textContent='12 loaded chests is the most.';return;}chestRows.push({id:chestId(),t:''});chestDirty=true;paintChestLoad(false);};
+    const add=el('button',{type:'button',textContent:'+ ADD A CHEST'});add.onclick=()=>{if(chestRows.length>=21){status.textContent='21 loaded chests is the most (3 a floor, 7 floors).';return;}chestRows.push({id:chestId(),t:''});chestDirty=true;paintChestLoad(false);};
     const save=el('button',{type:'button',textContent:'💾 SAVE THE CHESTS',style:'font-weight:800'});save.onclick=()=>run(saveChestLoad);
     box.replaceChildren(...rows,el('div',{style:'display:flex;gap:6px;flex-wrap:wrap'},add,save));
   }
@@ -500,7 +524,11 @@
   host.querySelector('#mana-show').onclick=()=>run(async()=>{const d=await api('current-show');if(!d.show)throw Error('No live or scheduled Whatnot show found');form.elements.namedItem('showId').value=d.show.id;host.querySelector('#mana-show-name').textContent=(d.show.live?'LIVE: ':'NEXT: ')+(d.show.title||d.show.id);preview();
     // 2026-11-18: picking the show used to need a second tap (Save) -- missed, the dungeon kept the old show and ignored the sales. One tap now.
     const s=await api('settings',{settings:values(),revision});revision=s.revision;took(s);status.textContent='Following this show -- its sales fill the dungeon.';});
-  host.querySelector('#mana-sync').onclick=()=>run(async()=>{const d=await api('stats-sync',{});took(d);status.textContent='Totals synced from Whatnot.';});
+  host.querySelector('#mana-sync').onclick=()=>run(async()=>{const d=await api('stats-sync',{});took(d);status.textContent='Totals synced from Whatnot.'+(d.filled>0?' +'+usd(d.filled)+' of missed sales went into the dungeon.':' The dungeon already had every sale.');});
+  // AUTO SYNC (2026-11-19: live sales weren't reaching the dungeon): while this remote is connected and following a
+  // show, it checks Whatnot's order list once a minute, so a sale Whatnot never told us about still counts.
+  setInterval(()=>{if(!connectedStore||connectedStore!==store()||document.hidden||!settings?.automatic||!/^[0-9a-f-]{36}$/i.test(String(settings?.showId||'')))return;
+    api('stats-sync',{}).then(d=>{took(d);if(d.filled>0)status.textContent='Auto sync: +'+usd(d.filled)+' of sales went into the dungeon.';}).catch(()=>{});},60000);
   host.querySelector('#mana-reset').onclick=()=>run(async()=>{if(!confirm('Reset the score board and boss to zero?'))return;const d=await api('stats-reset',{});took(d);status.textContent='Totals reset.';});
 
   // Now playing: picked from the dashboard's inventory.

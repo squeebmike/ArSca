@@ -283,7 +283,7 @@ import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:stud
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
 let flipDraw=null,flipState=null;
-import('./flipbook.mjs?v=1').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
+import('./flipbook.mjs?v=2').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 function paintFlip(f){flipState=f||null;flipDraw?.(flipState,{now:()=>Date.now()+offset});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 let shownLevel=0,shelfKey='';

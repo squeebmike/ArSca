@@ -19,7 +19,7 @@ assert.equal(M.validateSettings({ chestLoad: json }).chestLoad, json);
 assert.throws(() => M.validateSettings({ chestLoad: 'nope' }), /chestLoad/);
 assert.throws(() => M.validateSettings({ chestLoad: JSON.stringify([{ id: 'x', t: '' }]) }), /chestLoad/);
 assert.throws(() => M.validateSettings({ chestLoad: JSON.stringify([{ id: 'x', t: 'ok', i: { title: 'a', image: 'http://plain.example.com/a.jpg' } }]) }), /chestLoad/, 'https photos only');
-assert.throws(() => M.validateSettings({ chestLoad: JSON.stringify(Array.from({ length: 13 }, (_, k) => ({ id: 'a' + k, t: 'x' }))) }), /chestLoad/, '12 at most');
+assert.throws(() => M.validateSettings({ chestLoad: JSON.stringify(Array.from({ length: 22 }, (_, k) => ({ id: "a" + k, t: "x" }))) }), /chestLoad/, "21 at most");
 assert.throws(() => M.validateSettings({ chestLoad: JSON.stringify([{ id: 'x', t: 'Mystery raffle chest' }]) }), /game of chance/);
 // In order, each used once a week; a new one added later is next.
 const s0 = { chestLoad: json };
