@@ -73,3 +73,9 @@ const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
 assert.ok(ctl.includes("status.textContent='Following this show -- its sales fill the dungeon.'"));
 assert.ok(ctl.includes("api('stats-sync',{}).then(d=>{took(d);if(d.filled>0)status.textContent='Auto sync: +'"), 'the remote syncs by itself once a minute');
 console.log('Live Studio follows the live show; chests stay on screen: passed');
+// "Boss is too close or too big?" (2026-11-19): the boss's head stays on screen.
+{ const fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
+  assert.ok(fp.includes("if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));"));
+  assert.ok(fp.includes("s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25)"));
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=21')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=61')); }
+console.log('Boss fits on screen: passed');

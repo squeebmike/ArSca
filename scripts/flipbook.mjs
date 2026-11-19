@@ -12,7 +12,7 @@ const cents = v => { const n = Math.round(Number(v) * 100) / 100; return Number.
 export function cleanFlipItems(list) {
   const out = [];
   for (const b of (Array.isArray(list) ? list : []).slice(0, FLIP_MAX)) {
-    const covers = (Array.isArray(b?.covers) ? b.covers : []).map(c => ({ label: str(c?.label, 60), image: https(c?.image), price: cents(c?.price), tag: str(c?.tag, 20) })).filter(c => c.image).slice(0, FLIP_COVERS);
+    const covers = (Array.isArray(b?.covers) ? b.covers : []).map(c => ({ label: str(c?.label, 60), image: https(c?.image), price: cents(c?.price), tag: str(c?.tag, 20), artist: str(c?.artist, 60) })).filter(c => c.image).slice(0, FLIP_COVERS);
     const title = str(b?.title, 90); if (!title || !covers.length) continue;
     out.push({ title, covers, publisher: str(b?.publisher, 40), writer: str(b?.writer, 80), artist: str(b?.artist, 80), coverArtist: str(b?.coverArtist, 80), foc: str(b?.foc, 10), onSale: str(b?.onSale, 10), synopsis: str(b?.synopsis, FLIP_SYN) });
   }
@@ -37,7 +37,7 @@ export function booksFromSkus(rows) {
     if (!by.has(key)) by.set(key, { title: t, covers: [], publisher: r.publisher, writer: r.writer, artist: r.interior_artist, coverArtist: r.cover_artist, foc: r.foc_date, onSale: r.on_sale_date, synopsis: r.description });
     const b = by.get(key); if (!b.synopsis && r.description) b.synopsis = r.description;
     const label = cover || (LABEL_JUNK.test(String(r.variant_label || '').trim()) ? '' : r.variant_label) || 'Cover A';
-    b.covers.push({ label, image: r.cover_image_url, price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100, tag: r.is_incentive ? (r.order_requirement || (/\b1:\d+\b/.exec(label) || ['RATIO'])[0]) : '', inc: !!r.is_incentive });
+    b.covers.push({ label, image: r.cover_image_url, price: (Number(r.customer_price_cents) || Number(r.msrp_cents) || 0) / 100, tag: r.is_incentive ? (r.order_requirement || (/\b1:\d+\b/.exec(label) || ['RATIO'])[0]) : '', inc: !!r.is_incentive, artist: str(r.cover_artist, 60) });
   }
   const az = (a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' });
   return [...by.values()].sort((a, b) => az(a.title, b.title)).map(b => ({ ...b, covers: b.covers.sort((a, c) => Number(a.inc) - Number(c.inc) || az(a.label, c.label)) }));
@@ -52,6 +52,54 @@ export function flipAt(flip, now) {
   while (into >= durs[i]) { into -= durs[i]; i++; }
   const per = durs[i], covers = flip.items[i].covers.length, c = Math.min(covers - 1, Math.floor(into / (per / covers)));
   return { i, c, into, per, n };
+}
+// THE FOC SHOW (store, 2026-11-19: "I want 1 through 5. I want them automated. I'm ordering ... keep them engaged
+// while I order and talk. No button pressing from me other than to change the display type"). Besides the flipbook:
+//   wall    -- every cover tiled, a spotlight moving cover to cover
+//   versus  -- two covers of one book side by side: "which would you pull? 1 or 2 in chat"
+//   mystery -- a cover starts blurred and sharpens; the book is named at the end
+//   artist  -- "who drew this cover?", the artist named at the end
+//   wanted  -- the top 5 books in the shop's FOC order so far (no quantities)
+// AUTO MIX runs them in turn on the studio clock. Which book a game uses steps through the week in order -- nothing is
+// drawn, and every overlay shows the same thing at the same moment. Chat answers in Whatnot's chat; nothing is counted.
+export const SHOWS = ['auto', 'flip', 'wall', 'versus', 'mystery', 'artist', 'wanted'];
+export const SEG_MS = { flip: 75000, wall: 40000, versus: 25000, mystery: 25000, artist: 25000, wanted: 20000 };
+const AUTO_ORDER = ['flip', 'wall', 'versus', 'flip', 'mystery', 'wanted', 'flip', 'artist', 'wall', 'versus', 'flip', 'mystery', 'artist', 'wanted'];
+export const WALL_PAGE = 24;
+export const cleanWanted = list => (Array.isArray(list) ? list : []).map(w => ({ title: str(w?.title, 90), image: https(w?.image) })).filter(w => w.title && w.image).slice(0, 5);
+// What each game can use this week.
+export function gamePools(flip) {
+  const items = flip?.items || [], covers = items.flatMap((b, i) => b.covers.map((c, j) => ({ i, j, b, c })));
+  return { covers, versus: items.filter(b => b.covers.length >= 2), mystery: covers.filter(x => x.c.tag).length >= 3 ? covers.filter(x => x.c.tag) : covers,
+    artist: covers.filter(x => x.c.artist || (x.b.covers.length === 1 && x.b.coverArtist)), wanted: flip?.wanted || [] };
+}
+const canShow = (kind, pools) => kind === 'flip' || kind === 'wall' ? pools.covers.length > 0 : (pools[kind] || []).length > 0;
+// What's on screen now: { kind, k (how many of this kind came before), into, len, flipAt (the flipbook's own clock) }.
+export function segmentAt(flip, now) {
+  if (!flip?.items?.length) return null;
+  const t = Math.max(0, now - (Number(flip.at) || 0)), show = SHOWS.includes(flip.show) ? flip.show : 'flip', pools = gamePools(flip);
+  if (show !== 'auto') {
+    if (show === 'flip' || !canShow(show, pools)) return { kind: show === 'flip' || show === 'wanted' ? show : 'flip', k: 0, into: t, len: Infinity, flipAt: flip.at };
+    const len = SEG_MS[show]; return { kind: show, k: Math.floor(t / len), into: t % len, len, flipAt: flip.at };
+  }
+  const order = AUTO_ORDER.filter(k => canShow(k, pools)), cycle = order.reduce((a, k) => a + SEG_MS[k], 0);
+  const round = Math.floor(t / cycle); let into = t % cycle, n = 0;
+  while (into >= SEG_MS[order[n]]) { into -= SEG_MS[order[n]]; n++; }
+  const kind = order[n], per = order.filter(k => k === kind).length, before = order.slice(0, n).filter(k => k === kind).length;
+  // The flipbook carries on where it left off: its clock only runs during its own turns.
+  const flipPerRound = order.filter(k => k === 'flip').length * SEG_MS.flip, flipBefore = order.slice(0, n).filter(k => k === 'flip').length * SEG_MS.flip;
+  const flipT = round * flipPerRound + flipBefore + (kind === 'flip' ? into : 0);
+  return { kind, k: round * per + before, into, len: SEG_MS[kind], flipAt: now - flipT };
+}
+// The game's picks, stepping through the week (a stride so it moves around the alphabet).
+export function gamePick(flip, seg) {
+  const p = gamePools(flip), at = (list, step) => list.length ? list[(seg.k * step) % list.length] : null;
+  if (seg.kind === 'versus') { const b = at(p.versus, 7); if (!b) return null; const other = 1 + (seg.k % (b.covers.length - 1)); return { b, a: b.covers[0], z: b.covers[other] }; }
+  if (seg.kind === 'mystery') return at(p.mystery, 11);
+  if (seg.kind === 'artist') return at(p.artist, 13);
+  if (seg.kind === 'wall') { const pages = Math.max(1, Math.ceil(p.covers.length / WALL_PAGE)), page = seg.k % pages; return { page, pages, tiles: p.covers.slice(page * WALL_PAGE, page * WALL_PAGE + WALL_PAGE) }; }
+  if (seg.kind === 'wanted') return { list: p.wanted };
+  return null;
 }
 const money = n => n > 0 ? '$' + (n % 1 ? n.toFixed(2) : n.toFixed(0)) : '';
 const md = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (+m[2]) + '/' + (+m[3]) : ''; };
@@ -79,6 +127,20 @@ export const FLIP_CSS = `
 .fb-thumbs{display:flex;gap:12px;flex-wrap:wrap}.fb-thumbs.many{gap:8px}.fb-thumbs.many img{width:58px;border-width:3px}.fb-thumbs img{width:86px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;opacity:.45;border:4px solid transparent;transition:all .3s}.fb-thumbs img.on{opacity:1;border-color:#ffd84a;transform:translateY(-6px)}
 .fb-bar{height:10px;background:#1f2636;border-radius:6px;overflow:hidden}.fb-bar i{display:block;height:100%;background:linear-gradient(90deg,#9dff6a,#ffd84a)}
 .fb-count{font:800 24px system-ui;color:#7f889c;text-align:right}
+.fb.gaming>:not(.fbg){display:none!important}.fbg{display:none}.fb.gaming .fbg{display:flex;flex-direction:column;position:absolute;inset:30px;gap:18px}
+.fbg-head{display:flex;align-items:center;gap:16px}.fbg-head b{background:#e8213a;color:#fff;border-radius:12px;padding:8px 18px;font:900 40px/1 system-ui;letter-spacing:1px}.fbg-head span{font:800 32px system-ui;color:#ffd84a}
+.fbg-q{font:900 52px/1.1 system-ui;text-align:center}.fbg-q em{font-style:normal;color:#ffd84a}
+.fbg-main{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:40px}
+.fbg-card{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;gap:10px}.fbg-card img{height:calc(100% - 44px);width:auto;aspect-ratio:2/3;flex:none;object-fit:cover;border-radius:16px;box-shadow:0 20px 50px #000d}
+.fbg-card i{position:absolute;top:-14px;left:-14px;width:84px;height:84px;border-radius:50%;background:#ffd84a;color:#141018;font:900 56px/84px system-ui;text-align:center;font-style:normal;box-shadow:0 6px 18px #000a}
+.fbg-card span{font:800 26px system-ui;color:#aab4c8;max-width:560px;text-align:center}
+.fbg-vs{font:900 90px system-ui;color:#e8213a;text-shadow:0 0 30px #e8213a88}
+.fbg-ans{font:900 46px/1.1 system-ui;text-align:center;color:#9dff6a;min-height:52px}
+.fbg-bar{height:14px;background:#1f2636;border-radius:8px;overflow:hidden}.fbg-bar i{display:block;height:100%;background:linear-gradient(90deg,#e8213a,#ffd84a)}
+.fbg-wall{flex:1;min-height:0;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(3,minmax(0,1fr));gap:12px}.fbg-wall img{width:100%;height:100%;object-fit:cover;border-radius:8px;opacity:.55;transition:all .5s}.fbg-wall img.on{opacity:1;transform:scale(1.18);box-shadow:0 0 0 5px #ffd84a,0 14px 40px #000;z-index:2;position:relative}
+.fbg-wanted{flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center;gap:26px}.fbg-wanted div{display:flex;flex-direction:column;align-items:center;gap:8px;width:300px}.fbg-wanted img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;box-shadow:0 14px 40px #000c}
+.fbg-wanted b{font:900 60px system-ui;color:#ffd84a}.fbg-wanted span{font:800 24px/1.2 system-ui;text-align:center}.fbg-wanted div:nth-child(1){order:2;width:360px}.fbg-wanted div:nth-child(2){order:1}.fbg-wanted div:nth-child(3){order:3}.fbg-wanted div:nth-child(4){order:0;width:240px}.fbg-wanted div:nth-child(5){order:4;width:240px}
+.fb.lower .fbg-q{font-size:40px}.fb.lower .fbg-wall{grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(2,minmax(0,1fr))}.fb.lower .fbg-wanted div{width:220px}.fb.lower .fbg-wanted div:nth-child(1){width:260px}
 .fb.lower .fb-meta{font-size:21px}.fb.lower .fb-dates span{font-size:20px;padding:3px 9px}.fb.lower .fb-syn{font-size:25px}.fb.lower .fb-title{font-size:40px}.fb.lower .fb-thumbs img{width:66px}
 `;
 export function createFlipbook(doc, { img = u => u } = {}) {
@@ -86,11 +148,36 @@ export function createFlipbook(doc, { img = u => u } = {}) {
   const el = doc.createElement('div'); el.className = 'fb full'; el.hidden = true;
   el.innerHTML = '<div class="fb-head"><b>NEW THIS WEEK</b><span></span></div><div class="fb-stage"><img class="fb-cover" alt=""><i class="fb-tag" hidden></i></div><div class="fb-info"><div class="fb-title"></div><div class="fb-var"></div><div class="fb-meta"></div><div class="fb-dates"></div><div class="fb-syn"><div></div></div><div class="fb-thumbs"></div><div class="fb-bar"><i></i></div><div class="fb-count"></div></div>';
   doc.body.appendChild(el);
-  const q = s => el.querySelector(s); let flip = null, clock = () => Date.now(), shown = '', raf = 0, lastK = '';
+  const game = doc.createElement('div'); game.className = 'fbg'; el.appendChild(game);
+  const q = s => el.querySelector(s); let flip = null, clock = () => Date.now(), shown = '', raf = 0, lastK = '', gameKey = '';
+  const gq = s => game.querySelector(s), cnt = ms => Math.max(0, Math.ceil(ms / 1000));
+  // One of the games: built once when it comes up, then the countdown, blur and spotlight move on the clock.
+  function paintGame(seg, now) {
+    const key = seg.kind + ':' + seg.k + ':' + (flip.at || 0) + ':' + (flip.wanted || []).map(w => w.title).join('|');
+    const pick = gamePick(flip, seg); if (!pick) { gameKey = ''; return false; }
+    if (key !== gameKey) {
+      gameKey = key; const head = (b, s) => '<div class="fbg-head"><b>' + b + '</b><span>' + esc(s || flip.title || '') + '</span></div>';
+      if (seg.kind === 'versus') game.innerHTML = head('COVER VS COVER', pick.b.title) + '<div class="fbg-q">WHICH ONE WOULD YOU PULL? <em>TYPE 1 OR 2 IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><i>1</i><img src="' + esc(img(pick.a.image)) + '" alt=""><span>' + esc(pick.a.label) + '</span></div><div class="fbg-vs">VS</div><div class="fbg-card"><i>2</i><img src="' + esc(img(pick.z.image)) + '" alt=""><span>' + esc(pick.z.label) + '</span></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      else if (seg.kind === 'mystery') game.innerHTML = head('MYSTERY COVER', '') + '<div class="fbg-q">WHAT BOOK IS THIS? <em>GUESS IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img class="blur" src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      else if (seg.kind === 'artist') game.innerHTML = head('NAME THAT ARTIST', pick.b.title) + '<div class="fbg-q">WHO DREW THIS COVER? <em>TYPE IT IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      else if (seg.kind === 'wall') game.innerHTML = head('THE WALL', 'EVERY COVER THIS WEEK' + (pick.pages > 1 ? ' · ' + (pick.page + 1) + ' OF ' + pick.pages : '')) + '<div class="fbg-wall">' + pick.tiles.map(x => '<img src="' + esc(img(x.c.image)) + '" alt="">').join('') + '</div><div class="fbg-ans"></div>';
+      else if (seg.kind === 'wanted') game.innerHTML = head('MOST WANTED', 'TOP OF THE ORDER SO FAR') + (pick.list.length ? '<div class="fbg-wanted">' + pick.list.map((w, k) => '<div><b>#' + (k + 1) + '</b><img src="' + esc(img(w.image)) + '" alt=""><span>' + esc(w.title) + '</span></div>').join('') + '</div>' : '<div class="fbg-q">THE ORDER IS JUST GETTING STARTED -- <em>TELL US WHAT YOU WANT IN CHAT!</em></div>');
+    }
+    const left = seg.len - seg.into, reveal = Number.isFinite(seg.len) && left <= 6000, bar = gq('.fbg-bar i'), ans = gq('.fbg-ans');
+    if (bar) bar.style.width = (Math.min(1, seg.into / Math.max(1, seg.len - 6000)) * 100).toFixed(1) + '%';
+    if (seg.kind === 'versus' && ans) ans.textContent = reveal ? 'TELL US IN CHAT: 1 OR 2?' : 'VOTING ' + cnt(left - 6000) + 's';
+    if (seg.kind === 'mystery') { const im = gq('img'), f = Math.min(1, seg.into / (seg.len - 6000)); if (im) im.style.filter = reveal ? 'none' : 'blur(' + (34 * (1 - f) + 6).toFixed(1) + 'px) saturate(' + (0.4 + 0.6 * f).toFixed(2) + ')'; if (ans) ans.textContent = reveal ? "IT'S " + pick.b.title + '!' : 'REVEAL IN ' + cnt(left - 6000) + 's'; }
+    if (seg.kind === 'artist' && ans) ans.textContent = reveal ? 'COVER BY ' + (pick.c.artist || pick.b.coverArtist).toUpperCase() + '!' : 'ANSWER IN ' + cnt(left - 6000) + 's';
+    if (seg.kind === 'wall') { const tiles = game.querySelectorAll('.fbg-wall img'), on = Math.floor(seg.into / 1600) % Math.max(1, tiles.length); tiles.forEach((im, k) => im.classList.toggle('on', k === on)); const x = pick.tiles[on]; if (ans && x) ans.textContent = x.b.title + ' · ' + x.c.label; }
+    return true;
+  }
   function paint() {
     raf = 0; if (!flip || !flip.on || !flip.items?.length) { el.hidden = true; return; }
-    el.hidden = false; el.className = 'fb ' + (flip.mode === 'lower' ? 'lower' : 'full');
-    const at = flipAt(flip, clock()), b = flip.items[at.i], c = b.covers[at.c], key = at.i + ':' + at.c + ':' + (flip.at || 0);
+    el.hidden = false;
+    const now = clock(), seg = segmentAt(flip, now), gaming = seg && seg.kind !== 'flip' && paintGame(seg, now);
+    el.className = 'fb ' + (flip.mode === 'lower' ? 'lower' : 'full') + (gaming ? ' gaming' : '');
+    if (gaming) { raf = setTimeout(paint, 120); return; }
+    const at = flipAt({ ...flip, at: seg ? seg.flipAt : flip.at }, now), b = flip.items[at.i], c = b.covers[at.c], key = at.i + ':' + at.c + ':' + (flip.at || 0);
     if (key !== shown) {
       const newBook = !shown.startsWith(at.i + ':'); shown = key;
       const im = q('.fb-cover'); im.classList.remove('turn'); void im.offsetWidth; im.src = img(c.image); im.classList.add('turn');
@@ -112,5 +199,5 @@ export function createFlipbook(doc, { img = u => u } = {}) {
     q('.fb-bar i').style.width = (at.into / at.per * 100).toFixed(1) + '%'; q('.fb-count').textContent = (b.covers.length > 1 ? 'COVER ' + (at.c + 1) + ' OF ' + b.covers.length + '  ·  ' : '') + 'BOOK ' + (at.i + 1) + ' OF ' + at.n;
     raf = setTimeout(paint, 120); // ~8 times a second is smooth enough for a slow roll
   }
-  return function draw(next, { now } = {}) { flip = next || null; if (typeof now === 'function') clock = now; const k = JSON.stringify([next?.on, next?.at, next?.mode, next?.secs, next?.title, (next?.items || []).map(b => b.title)]); if (k !== lastK) { lastK = k; shown = ''; } if (raf) clearTimeout(raf); paint(); };
+  return function draw(next, { now } = {}) { flip = next || null; if (typeof now === 'function') clock = now; const k = JSON.stringify([next?.on, next?.at, next?.mode, next?.secs, next?.title, next?.show, (next?.items || []).map(b => b.title)]); if (k !== lastK) { lastK = k; shown = ''; gameKey = ''; } if (raf) clearTimeout(raf); paint(); };
 }

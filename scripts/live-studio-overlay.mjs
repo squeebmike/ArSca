@@ -152,7 +152,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=20').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=21').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked){fp.setModels(baked);front?.setModels(baked);}}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -283,7 +283,7 @@ import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:stud
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
 let flipDraw=null,flipState=null;
-import('./flipbook.mjs?v=2').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
+import('./flipbook.mjs?v=3').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 function paintFlip(f){flipState=f||null;flipDraw?.(flipState,{now:()=>Date.now()+offset});}
 function beastMoves(){return beastsLib?beastsLib.movesFrom(settings.beastsMoves):[];}
 let shownLevel=0,shelfKey='';
