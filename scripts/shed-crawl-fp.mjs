@@ -925,8 +925,12 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       let shot = null;
       if (mdl) { const rel = Math.atan2(pose.y - s.y, pose.x - s.x) - (s.face ?? 0), k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, fr = named === 'rat2' || named === 'bat2' ? 1 : base === 'brazier' ? (tm * 6 | 0) % 2 : 0; shot = mdl.frames[Math.min(fr, mdl.frames.length - 1)][k]; }
       if (pd && tY < 2.6 && Math.abs(tX / tY) < 0.5 && (!nearPic || tY < nearPic.d)) nearPic = { i: it.i, d: tY };
-      const scx = Math.floor((VW / 2) * (1 + tX / tY)), size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? (map.layout.arena ? 1.9 : 1.5) : s.kind === 'eyes' ? 0.3 : pd ? 0.82 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
-      const floorY = horizon + Math.floor(VH / tY / 2), top = (s.kind === 'eyes' ? horizon - size : floorY - size) - Math.floor((s.lift || 0) * VH / tY);
+      const scx = Math.floor((VW / 2) * (1 + tX / tY)); let size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25) : s.kind === 'eyes' ? 0.3 : pd ? 0.82 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
+      const floorY = horizon + Math.floor(VH / tY / 2);
+      // THE WHOLE BOSS ON SCREEN (store, 2026-11-19: "Boss is too close or too big?" -- only its legs showed): its head
+      // stays below the top of the view, so close up it's never taller than the room the feet leave it.
+      if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));
+      const top = (s.kind === 'eyes' ? horizon - size : floorY - size) - Math.floor((s.lift || 0) * VH / tY);
       const bl = bulbLight(s.x, s.y), warm = Math.min(1, litO * 0.6), light = Math.max(0.15, Math.min(1.3, Math.min(1, 2 / (1 + tY * 0.42)) * batt + bl * 0.45));
       // Its shadow on the floor (a soft dark oval under it; flyers cast a smaller one).
       if (s.kind !== 'eyes' && tY > 0.35) {

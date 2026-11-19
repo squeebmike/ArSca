@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { DEFAULT_STUDIO, validateSettings, makeEffect, whatnotEffect, digestToken, applyOrder, advanceStage, emptyStats, publicStats, statsFromOrders, validateStage, eventIsFresh } from './live-studio-model.mjs';
 import { WEATHERS, areaOptions, AREA_ICONS, movesFrom, STARTERS, ensureBeasts, addBeastXp, addBeastDrop, adjustBeasts, publicBeasts, beastMoment } from './beasts.mjs';
 import { makeSpots, upIndex } from './vending.mjs';
-import { cleanFlipItems } from './flipbook.mjs';
+import { cleanFlipItems, flipAt, bookMs, SHOWS, cleanWanted } from './flipbook.mjs';
 // The next open slot from i, going dir (+1 or -1) and round; -1 when all are sold.
 const openFrom = (items, i, dir) => { const n = items.length; for (let k = 1; k <= n; k++) { const j = (((i + dir * k) % n) + n) % n; if (!items[j].sold) return j; } return -1; };
 import { weekKey, ensureWeek, addMana, addTap, adjustDungeon, bossOf, shedFor, showUnlocksCrossed, publicDungeon, WEAPONS, roomById, chestsOpened, chestsToOpen, tapMana, openChest, nextChestLoad, useChestLoad, boxesToOpen, openBox, secretOf, secretToOpen, openVault, merchantPicks, FORKS, DIG_SPOTS, TRIVIA } from './live-studio-dungeon.mjs';
@@ -28,6 +28,22 @@ function chestFirst(fx, reached) { return reached && (!fx || fx.kind === 'room' 
 // sales meanwhile still count (score, flask), they just don't cover it.
 const BIG = ['chest', 'found', 'boss', 'floor'];
 const holdsScreen = (cur, next, now) => !!cur && BIG.includes(cur.kind) && cur.endsAt > now && !BIG.includes(next.kind);
+
+// Which of the followed show's orders have filled the dungeon already (so a webhook and a SYNC never both count one,
+// and resetting the score board doesn't refill it). Started from the orders the score board already holds.
+function fedInit(s) {
+  const id = s.settings.showId;
+  if (s.fed?.showId === id && Array.isArray(s.fed.ids)) return;
+  s.fed = { showId: id, ids: s.stats?.showId === id ? Object.keys(s.stats.orders || {}) : [] };
+}
+function unfed(s) {
+  fedInit(s);
+  if (s.stats?.showId !== s.settings.showId) return 0;
+  const have = new Set(s.fed.ids); let sum = 0;
+  for (const [id, o] of Object.entries(s.stats.orders || {})) if (!have.has(id) && !o.cancelled && !o.giveaway && o.amount > 0) { sum += o.amount; s.fed.ids.push(id); }
+  if (s.fed.ids.length > 2000) s.fed.ids = s.fed.ids.slice(-2000);
+  return Math.round(sum * 100) / 100;
+}
 
 export class ManaLiveStudio extends DurableObject {
   constructor(ctx, env) {
@@ -390,11 +406,21 @@ export class ManaLiveStudio extends DurableObject {
   // shows the same one. NEXT / BACK move the clock a book; nothing is random.
   setFlip(input = {}) {
     const s = this.read(), f = { on: false, items: [], secs: 12, mode: 'full', title: '', at: Date.now(), ...(s.flip || {}) }, now = Date.now();
-    if (Array.isArray(input.items)) { f.items = cleanFlipItems(input.items); if (!f.items.length) throw new Error('No books with covers to flip through'); f.at = now; }
+    if (Array.isArray(input.items)) { f.items = cleanFlipItems(input.items); if (!f.items.length) throw new Error('No books with covers to flip through'); if (JSON.stringify(f.items).length > 700000) throw new Error('Flipbook: too many books at once -- pick PRH or Lunar'); f.at = now; }
+    // GO TO a book (chat asks about one): it starts now, the rest follow in order.
+    if (Number.isInteger(input.jump) && input.jump >= 0 && input.jump < f.items.length) { f.show = 'flip'; let before = 0; for (let k = 0; k < input.jump; k++) before += bookMs(f, f.items[k]); f.at = now - before; }
     if (input.secs !== undefined) { const n = Math.round(Number(input.secs)); if (!(n >= 5 && n <= 60)) throw new Error('Flipbook: 5 to 60 seconds a book'); f.secs = n; f.at = now; }
     if (['full', 'lower'].includes(input.mode)) f.mode = input.mode;
+    // THE FOC SHOW: which display (AUTO MIX runs them all in turn), and the order's top 5 for MOST WANTED.
+    if (input.show !== undefined) { if (!SHOWS.includes(input.show)) throw new Error('Flipbook: unknown display'); f.show = input.show; }
+    if (input.wanted !== undefined) f.wanted = cleanWanted(input.wanted);
     if (typeof input.title === 'string') f.title = input.title.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 40).toUpperCase();
-    if (input.step === 1 || input.step === -1) f.at -= input.step * f.secs * 1000;
+    if ((input.step === 1 || input.step === -1) && f.items.length) {
+      if (f.show && f.show !== 'flip') { f.show = 'flip'; }
+      // BACK / NEXT jump a whole book (books with many covers stay up longer).
+      const cur = flipAt(f, now), prev = f.items[(cur.i - 1 + f.items.length) % f.items.length];
+      f.at -= input.step === 1 ? cur.per - cur.into : -(cur.into + bookMs(f, prev));
+    }
     if (typeof input.on === 'boolean') { if (input.on && !f.on) f.at = now; f.on = input.on && f.items.length > 0; }
     s.flip = f; this.write(s);
     this.broadcast({ type:'state', ...this.publicState(s) });
@@ -434,12 +460,25 @@ export class ManaLiveStudio extends DurableObject {
     return this.publicState(s);
   }
   // Totals rebuilt from Whatnot's order list for the selected show.
+  // 2026-11-19: "Why won't live sales hit the show? Even when I hit sync" -- SYNC rebuilt the score but never
+  // put those dollars in the dungeon. Now any order of the show the dungeon hasn't had yet fills it (once each).
   syncStats(orders) {
-    const s = this.read();
-    s.stats = statsFromOrders(orders, s.settings);
+    const s = this.read(), now = Date.now();
+    fedInit(s);
+    s.stats = statsFromOrders(orders, s.settings, now);
+    const fresh = unfed(s);
+    let fx = null;
+    if (fresh > 0 && this.beastsOn(s)) { const m = addBeastXp(s.beasts, fresh, s.settings, now); s.beasts = m.beasts; fx = this.beastEffect(m.events, s); }
+    else if (fresh > 0 && !this.vendingOnly(s)) {
+      const m = addMana(s.dungeon, fresh, s.settings, now);
+      s.dungeon = m.dungeon;
+      const reached = this.openReachedChests(s, now) || this.openReachedBoxes(s, now) || this.openReachedVault(s, now);
+      fx = chestFirst(dungeonEffect(m.events, [], { mana: fresh }), reached);
+    }
+    if (fx && !holdsScreen(s.effect, fx, now)) s.effect = makeEffect(fx.kind, s.settings, now, fx);
     this.write(s);
     this.broadcast({ type:'state', ...this.publicState(s) });
-    return this.publicState(s);
+    return { ...this.publicState(s), ...this.takeChest(s), filled: fresh };
   }
   async rotateOverlay() {
     const token = crypto.randomUUID() + crypto.randomUUID();
@@ -490,19 +529,21 @@ export class ManaLiveStudio extends DurableObject {
     let effect = null, statsChanged = false, stageMoved = false;
     if (isOrder && ours) {
       const grossBefore = s.stats.showId === s.settings.showId ? s.stats.gross : 0;
+      fedInit(s);
       const r = applyOrder(s.stats, event.data, s.settings, now);
       statsChanged = r.stats !== s.stats;
       s.stats = r.stats;
       // A new sale's dollars fill the dungeon's flask (cancellations don't
-      // drain it: a floor reached stays reached).
+      // drain it: a floor reached stays reached). Each order fills it once.
+      const fresh = unfed(s);
       let dfx = null;
-      if (s.stats.gross > grossBefore && this.beastsOn(s)) {
+      if (fresh > 0 && this.beastsOn(s)) {
         // Beasts: the sale walks the route (the dungeon stays where it is).
-        const m = addBeastXp(s.beasts, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
+        const m = addBeastXp(s.beasts, fresh, s.settings, now);
         s.beasts = m.beasts;
         if (r.effect) dfx = this.beastEffect(m.events, s);
-      } else if (s.stats.gross > grossBefore && !this.vendingOnly(s)) {
-        const m = addMana(s.dungeon, Math.round((s.stats.gross - grossBefore) * 100) / 100, s.settings, now);
+      } else if (fresh > 0 && !this.vendingOnly(s)) {
+        const m = addMana(s.dungeon, fresh, s.settings, now);
         s.dungeon = m.dungeon;
         const unlocks = s.settings.dungeonOn ? showUnlocksCrossed(grossBefore, s.stats.gross, s.settings) : [];
         // A chest the crawl just reached opens (its item comes up next).

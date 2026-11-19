@@ -98,7 +98,7 @@ assert.equal(makeEffect('unlock', S, WED, { unlockText: 'Shoutout', unlockAt: 10
 // The room: sales fill the flask, taps and fixes have routes, stats show it.
 const room = readFileSync(new URL('../scripts/live-studio-room.mjs', import.meta.url), 'utf8');
 assert.match(room, /s\.dungeon = ensureWeek\(s\.dungeon\)/);
-assert.match(room, /addMana\(s\.dungeon, Math\.round\(\(s\.stats\.gross - grossBefore\)/);
+assert.match(room, /const fresh = unfed\(s\);[\s\S]*?addMana\(s\.dungeon, fresh, s\.settings, now\)/);
 assert.match(room, /dungeon: publicDungeon\(/);
 const api = readFileSync(new URL('../scripts/live-studio-api.mjs', import.meta.url), 'utf8');
 assert.match(api, /\/live-studio\/dungeon-tap/); assert.match(api, /\/live-studio\/dungeon-adjust/);
