@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.19.2-foc-show';
+const APP_VERSION = '2026.11.19.3-show-bin';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4558,7 +4558,7 @@ async function setWhatnotModeSelected(mode){
 }
 // ADD TO SHOW (bulk bar, and after receiving FOC comics): pick any scheduled
 // show; the items go in as auctions (set to Auction / show only first).
-async function openWhatnotShowPicker(ids, intro, onClose){
+async function openWhatnotShowPicker(ids, intro, onClose, kind){
   ids = [...new Set((ids || []).map(String).filter(Boolean))];
   if(!ids.length){ toast_dash('Select inventory items first'); return; }
   let shows = [], rule = null;
@@ -4577,11 +4577,15 @@ async function openWhatnotShowPicker(ids, intro, onClose){
   const when = t => { try { return new Date(t).toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }); } catch(e) { return t || ''; } };
   m.innerHTML = '<div style="width:100%;max-width:460px;background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px">'
     + '<div style="font-family:Orbitron,monospace;color:var(--purple);font-size:13px;letter-spacing:2px;margin-bottom:8px">ADD TO WHATNOT SHOWS</div>'
-    + '<div style="font:11px var(--font-mono);color:var(--text);line-height:1.6;margin-bottom:10px">' + escHtml(intro || (ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' selected.')) + ' They go in as <b>auctions</b> (starting bid ' + pct + '% of the price or $' + min + ', whichever is more) and are set to <b>Auction (show only)</b> -- not in your Buy It Now shop until you set them back.</div>'
+    + '<div style="font:11px var(--font-mono);color:var(--text);line-height:1.6;margin-bottom:10px">' + escHtml(intro || (ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' selected.')) + ' They go in as you pick below.</div>'
+    // AUCTION OR BUY IT NOW (store, 2026-11-19: "it only gives me the option as auctions ... I'd rather have it as a bin.
+    // So can we have both options"): Buy It Now goes in the show at its own price and stays in the shop too.
+    + '<div style="display:flex;gap:6px;margin-bottom:10px"><label style="flex:1;font:11px var(--font-mono);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><input type="radio" name="wn-show-kind" value="auction"' + (kind === 'bin' ? '' : ' checked') + '> <b>AUCTION</b><br><span style="color:var(--dim);font-size:10px">starts at ' + pct + '% of the price or $' + min + ' (whichever is more); show only until BACK TO BUY IT NOW</span></label>'
+    + '<label style="flex:1;font:11px var(--font-mono);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><input type="radio" name="wn-show-kind" value="bin"' + (kind === 'bin' ? ' checked' : '') + '> <b>BUY IT NOW</b><br><span style="color:var(--dim);font-size:10px">its own price, in the show and in your shop</span></label></div>'
     + (shows.length ? '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:4px">Pick one show or several -- each book is one listing with one stock count, so it can\'t sell twice across shows.</div><div id="wn-show-pick" style="display:grid;gap:6px;margin:0 0 6px;max-height:40vh;overflow:auto">' + shows.map((sh, k) => '<label style="display:flex;gap:8px;align-items:center;min-height:40px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font:11px var(--font-mono);color:var(--text)"><input type="checkbox" value="' + escHtml(sh.id) + '"' + (k === 0 ? ' checked' : '') + ' style="width:20px;height:20px"> ' + escHtml(when(sh.startsAt)) + ' -- ' + escHtml(sh.title || 'Whatnot show') + '</label>').join('') + '</div>'
       + '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Pre-bids: turn them on for the show in Whatnot when you schedule it.</div>'
       : '<div style="font:11px var(--font-mono);color:var(--gold);margin-bottom:10px">No upcoming Whatnot show is scheduled. Schedule one in Whatnot first.</div>')
-    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="wn-show-skip">' + (shows.length ? 'SKIP' : 'CLOSE') + '</button>' + (shows.length ? '<button class="hbtn" style="color:var(--purple)" id="wn-show-go">ADD AS AUCTIONS</button>' : '') + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="hbtn" id="wn-show-skip">' + (shows.length ? 'SKIP' : 'CLOSE') + '</button>' + (shows.length ? '<button class="hbtn" style="color:var(--purple)" id="wn-show-go">ADD TO THE SHOW</button>' : '') + '</div>'
     + '<div id="wn-show-status" style="font:10px var(--font-mono);color:var(--dim);margin-top:8px"></div></div>';
   document.body.appendChild(m);
   const closePicker = () => { m.remove(); if(typeof onClose === 'function') onClose(); };
@@ -4592,6 +4596,7 @@ async function openWhatnotShowPicker(ids, intro, onClose){
     // into each show picked, one show after another (one listing, one stock count -- Whatnot keeps it from selling twice).
     const showIds = [...m.querySelectorAll('#wn-show-pick input:checked')].map(x => x.value), status = m.querySelector('#wn-show-status');
     if(!showIds.length){ status.textContent = 'Pick at least one show.'; return; }
+    const bin = (m.querySelector('input[name="wn-show-kind"]:checked') || {}).value === 'bin';
     const showName = id => { const sh = shows.find(x => x.id === id); return sh ? when(sh.startsAt) + ' ' + (sh.title || '') : 'show'; };
     go.disabled = true; const perShow = []; const problems = [];
     for(const showId of showIds){
@@ -4599,7 +4604,7 @@ async function openWhatnotShowPicker(ids, intro, onClose){
       for(let i = 0; i < ids.length; i += 25){
         status.textContent = 'Adding to ' + showName(showId) + ': ' + Math.min(i + 25, ids.length) + ' of ' + ids.length + '...';
         try {
-          const r = await storeWorkerFetch(WORKER + '/whatnot/show-only?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId }) });
+          const r = await storeWorkerFetch(WORKER + '/whatnot/show-only?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId, ...(bin ? { bin:true } : {}) }) });
           const d = await r.json().catch(() => ({}));
           if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add to the show');
           added += Number(d.added || 0); (d.results || []).forEach(x => { if(x.error) problems.push(showName(showId) + ' -- ' + (x.name || x.id) + ': ' + x.error); });
@@ -4608,7 +4613,7 @@ async function openWhatnotShowPicker(ids, intro, onClose){
       perShow.push(added + ' in ' + showName(showId));
     }
     const added = perShow.reduce((n, t) => n + (parseInt(t, 10) || 0), 0);
-    status.innerHTML = '<span style="color:var(--g)">Added as auctions: ' + perShow.map(escHtml).join(' · ') + '.</span>' + (problems.length ? '<div style="color:var(--red);margin-top:4px">' + problems.slice(0, 8).map(escHtml).join('<br>') + '</div>' : '');
+    status.innerHTML = '<span style="color:var(--g)">Added as ' + (bin ? 'Buy It Now' : 'auctions') + ': ' + perShow.map(escHtml).join(' · ') + '.</span>' + (problems.length ? '<div style="color:var(--red);margin-top:4px">' + problems.slice(0, 8).map(escHtml).join('<br>') + '</div>' : '');
     // This screen's copy now says Auction (a later edit keeps it).
     if(added && typeof loadInventory === 'function'){ try { await loadInventory(); } catch(e) {} }
     go.textContent = 'DONE'; go.onclick = closePicker; go.disabled = false;
@@ -4669,8 +4674,10 @@ function emailSelectedNewArrivals(){
   if(!ids.length){ toast_dash('Select the books to email first'); return; }
   offerNewArrivalsEmail(ids);
 }
-function addSelectedToWhatnotShowPicker(){
-  openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id));
+// ADD TO SHOW AS AUCTION / AS BUY IT NOW (store, 2026-11-19: "add to a show as buy it now instead of auction, so I can
+// just add them to shows from the dashboard"): the show picker opens with that one already chosen.
+function addSelectedToWhatnotShowPicker(kind){
+  openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id), '', null, kind === 'bin' ? 'bin' : 'auction');
 }
 // BACK TO BUY IT NOW (bulk bar): auctioned items return to the shop.
 async function backToBuyItNowSelected(){

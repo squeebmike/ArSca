@@ -14034,18 +14034,20 @@ async function routeRequest(request, env, ctx) {
       if (!itemIds.length || !/^[0-9a-f-]{36}$/i.test(showId)) return json({ ok: false, error: 'itemIds and showId are required' }, 400);
       const s = encodeURIComponent(storeId);
       const readRows = async ids => (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,status,updated_at,data`)).data || [];
-      // Ticked to sell on Whatnot, show only (the sync then never puts them in the shop).
+      // Ticked to sell on Whatnot, show only (the sync then never puts them in the shop) -- or, BUY IT NOW
+      // (store, 2026-11-19: "can we have both options"), sold at its price in the show and the shop.
+      const bin = parsed.data?.bin === true;
       const now = new Date().toISOString();
       for (const row of await readRows(itemIds)) {
-        if (row.data?.sellOnWhatnot === true && row.data?.whatnotShowOnly === true) continue;
+        if (row.data?.sellOnWhatnot === true && (row.data?.whatnotShowOnly === true) === !bin) continue;
         await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(row.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' },
-          body: JSON.stringify({ data: { ...(row.data || {}), sellOnWhatnot: true, whatnotShowOnly: true }, updated_at: now }) });
+          body: JSON.stringify({ data: { ...(row.data || {}), sellOnWhatnot: true, whatnotShowOnly: !bin }, updated_at: now }) });
       }
       const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
       const profileIds = (await deps.kvGet('whatnot-profiles:' + storeId)) || {};
       const results = await addItemsToWhatnotShow(itemIds, showId, { ...deps, rows: readRows,
         profileId: kind => profileIds[kind] || '',
-        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, { auction: auctionRuleFrom(deps.listingSettings) });
+        saveProfileId: async (kind, pid) => { profileIds[kind] = pid; await deps.kvPut('whatnot-profiles:' + storeId, profileIds); } }, bin ? { bin: true } : { auction: auctionRuleFrom(deps.listingSettings) });
       return json({ ok: true, added: results.filter(r => r.added).length, results });
     }
     // POST /whatnot/spots-list { showId, spots:[{ext,title,price}], category, photo, mode } -- the vending

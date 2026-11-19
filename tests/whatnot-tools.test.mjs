@@ -177,3 +177,23 @@ console.log('whatnot tools checks passed');
   const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
   assert.match(worker, /if \(existing\?\.auctionStart && !settings\.auctionStart\) kept\.auctionStart = existing\.auctionStart;/);
 }
+// BUY IT NOW in a show (store, 2026-11-19: "it only gives me the option as auctions ... I'd rather have it as a bin.
+// So can we have both options"): its own price, in the show and the shop; an old auction's starting bid is undone.
+{
+  const calls = [], kv = new Map([['whatnot-link:S:b', { productId: 'pb', variantId: 'vb', price: 25, published: true, auction: { startPrice: 5, showId: 'show-0' } }]]);
+  const api = async (m, p, b) => { calls.push([m, p, b]); return { ok: true, status: 200, data: {} }; };
+  const res = await addItemsToWhatnotShow(['b'], 'show-9', { api, storeId: 'S', kvGet: async k => kv.get(k) ?? null, kvPut: async (k, v) => { kv.set(k, v); },
+    rows: async () => [{ id: 'b', status: 'in_stock', data: { name: 'B', sellOnWhatnot: true } }], shape: () => ({ price: 25 }) }, { bin: true });
+  assert.equal(res[0].added, true); assert.equal(res[0].startPrice, undefined);
+  assert.deepEqual(calls[0], ['PATCH', '/products/pb/variants', { variants: [{ id: 'vb', price: { amount: '25.00', currency: 'USD' } }] }], 'its shop price back');
+  assert.deepEqual(calls[1][2], { transaction_type: 'buy_it_now', reserve_for_live: false, shows: { strategy: 'ADD', show_ids: ['show-9'] } });
+  assert.equal(kv.get('whatnot-link:S:b').auction, undefined); assert.deepEqual(kv.get('whatnot-link:S:b').shows, ['show-9']);
+  const dash = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), wk = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  assert.ok(dash.includes('<input type="radio" name="wn-show-kind" value="bin"') && dash.includes("...(bin ? { bin:true } : {})"));
+  assert.ok(wk.includes("const bin = parsed.data?.bin === true;") && wk.includes("bin ? { bin: true } : { auction: auctionRuleFrom(deps.listingSettings) }"));
+  console.log('Whatnot: Buy It Now in a show: passed');
+}
+{ const html = fs.readFileSync('dashboard.html', 'utf8'), dash = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.ok(html.includes(`onclick="addSelectedToWhatnotShowPicker('auction')"`) && html.includes(`onclick="addSelectedToWhatnotShowPicker('bin')"`), 'both buttons in the bulk bar');
+  assert.ok(dash.includes("value=\"bin\"' + (kind === 'bin' ? ' checked' : '') + '>"), 'the picker opens on the one tapped');
+  console.log('Whatnot: bulk bar ADD TO SHOW AS AUCTION / AS BUY IT NOW: passed'); }

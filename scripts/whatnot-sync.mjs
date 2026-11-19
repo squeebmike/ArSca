@@ -585,7 +585,7 @@ export async function nextWhatnotShow(api, now = Date.now()) {
 // rows, shape(row), profileId, saveProfileId.
 // starts: { [itemId]: dollars } -- show prep's own starting bid per item
 // (an auction even when no auction rule is given).
-export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = null, starts = null } = {}) {
+export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = null, starts = null, bin = false } = {}) {
   const results = [];
   const auctioned = [];
   const rows = new Map(((await deps.rows(itemIds)) || []).map(r => [r.id, r]));
@@ -618,7 +618,10 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
     // (Whatnot may want a price before it takes it as an auction).
     const showOnly = row.data?.whatnotShowOnly === true;
     if (showOnly && rule) await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, price: money(start) }] });
-    const merchBody = { ...(rule ? { transaction_type: 'auction' } : {}), ...(showOnly ? { reserve_for_live: true } : {}), shows: { strategy: 'ADD', show_ids: [showId] } };
+    // BUY IT NOW in the show (2026-11-19): its shop price back if it was an auction before, in the shop too.
+    if (bin && !rule && link.auction && Number(link.price) > 0 && link.variantId) await deps.api('PATCH', `/products/${encodeURIComponent(link.productId)}/variants`, { variants: [{ id: link.variantId, price: money(link.price) }] });
+    const merchBody = bin && !rule ? { transaction_type: 'buy_it_now', reserve_for_live: false, shows: { strategy: 'ADD', show_ids: [showId] } }
+      : { ...(rule ? { transaction_type: 'auction' } : {}), ...(showOnly ? { reserve_for_live: true } : {}), shows: { strategy: 'ADD', show_ids: [showId] } };
     let m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, merchBody);
     if (!m.ok && showOnly && m.status === 422) { const { reserve_for_live, ...plain } = merchBody; m = await deps.api('POST', `/merchandising/products/${encodeURIComponent(link.productId)}`, plain); }
     if (m.ok && rule) {
@@ -626,6 +629,7 @@ export async function addItemsToWhatnotShow(itemIds, showId, deps, { auction = n
       // Still an auction in the show: listed for the after-show return to the shop.
       if (!priced.ok) { auctioned.push(id); await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], auction: { startPrice: null, showId } }); results.push({ id, name: row.data?.name, error: 'In the show, but the starting bid was not set: ' + whatnotErrorText(priced) }); continue; }
     }
+    if (m.ok && bin && !rule) { const { auction: _was, ...rest } = link; link = { ...rest, published: true }; }
     if (m.ok) { await deps.kvPut(linkKey, { ...link, shows: [...new Set([...(link.shows || []), showId])], ...(rule ? { auction: { startPrice: start, showId } } : {}) }); results.push({ id, name: row.data?.name, added: true, ...(start != null ? { startPrice: start } : {}) }); if (rule) auctioned.push(id); }
     else results.push({ id, name: row.data?.name, error: whatnotErrorText(m) });
   }
