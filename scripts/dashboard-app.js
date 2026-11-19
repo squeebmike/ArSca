@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.19.3-show-bin';
+const APP_VERSION = '2026.11.19.4-select-all';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18151,9 +18151,9 @@ function renderTable(){
   renderInvBulkBar();
   const selectAllCb = document.getElementById('inv-bulk-select-all');
   if(selectAllCb){
-    const pageIds = rows.map(r => r.id);
-    selectAllCb.checked = pageIds.length>0 && pageIds.every(id => inventoryBulkSelectedIds.has(id));
-    selectAllCb.indeterminate = !selectAllCb.checked && pageIds.some(id => inventoryBulkSelectedIds.has(id));
+    const allIds = (filtered || []).map(r => r.id);
+    selectAllCb.checked = allIds.length>0 && allIds.every(id => inventoryBulkSelectedIds.has(id));
+    selectAllCb.indeterminate = !selectAllCb.checked && allIds.some(id => inventoryBulkSelectedIds.has(id));
   }
 }
 
@@ -18169,18 +18169,21 @@ function invBulkCheckboxChanged(cb){
   renderInvBulkBar();
   const selectAllCb = document.getElementById('inv-bulk-select-all');
   if(selectAllCb){
-    const pageIds = Array.from(document.querySelectorAll('#tbody .inv-bulk-cb')).map(el => el.value);
-    selectAllCb.checked = pageIds.length>0 && pageIds.every(id => inventoryBulkSelectedIds.has(id));
-    selectAllCb.indeterminate = !selectAllCb.checked && pageIds.some(id => inventoryBulkSelectedIds.has(id));
+    const allIds = (filtered || []).map(r => r.id);
+    selectAllCb.checked = allIds.length>0 && allIds.every(id => inventoryBulkSelectedIds.has(id));
+    selectAllCb.indeterminate = !selectAllCb.checked && allIds.some(id => inventoryBulkSelectedIds.has(id));
   }
 }
 
+// THE HEADER BOX SELECTS EVERYTHING THE FILTERS SHOW (store, 2026-11-19: "I can only still select the 50 at a time.
+// Why can't I click the square and have it get all of them on all the pages? I have filters to filter out the rest"):
+// ticked, every matching item on every page; unticked, all of them cleared.
 function toggleInvBulkSelectAllPage(checked){
-  document.querySelectorAll('#tbody .inv-bulk-cb').forEach(cb => {
-    cb.checked = checked;
-    if(checked) inventoryBulkSelectedIds.add(cb.value); else inventoryBulkSelectedIds.delete(cb.value);
-  });
+  const list = Array.isArray(filtered) ? filtered : [];
+  list.forEach(i => { if(checked) inventoryBulkSelectedIds.add(i.id); else inventoryBulkSelectedIds.delete(i.id); });
+  document.querySelectorAll('#tbody .inv-bulk-cb').forEach(cb => { cb.checked = checked; });
   renderInvBulkBar();
+  if(checked && list.length) toast_dash('Selected all ' + list.length + ' item' + (list.length === 1 ? '' : 's') + ' matching the filters (every page)');
 }
 
 // Grabs every item matching the current search/category/status filters --

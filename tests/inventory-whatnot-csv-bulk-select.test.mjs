@@ -20,7 +20,7 @@ assert.match(dashboard, /const thumbCell = `<td class="td-thumb">\$\{bulkCb\}<di
 
 // Header "select all on this page" checkbox, kept in the existing empty
 // th-thumb header cell rather than adding a new column.
-assert.match(dashboard, /<th class="th-thumb"><input type="checkbox" id="inv-bulk-select-all" title="Select all rows on this page" onchange="toggleInvBulkSelectAllPage\(this\.checked\)"><\/th>/, 'missing the select-all-on-page header checkbox');
+assert.match(dashboard, /<th class="th-thumb"><input type="checkbox" id="inv-bulk-select-all" title="Select everything the filters show \(every page\)" onchange="toggleInvBulkSelectAllPage\(this\.checked\)"><\/th>/, 'missing the select-all-on-page header checkbox');
 
 assert.match(dashboard, /function invBulkCheckboxChanged\(cb\)\{/, 'missing invBulkCheckboxChanged');
 assert.match(dashboard, /function toggleInvBulkSelectAllPage\(checked\)\{/, 'missing toggleInvBulkSelectAllPage');
@@ -50,3 +50,9 @@ assert.match(exportFn, /switchTab\('whatnot'\);/, 'opens the Whatnot tab export 
 assert.match(exportFn, /window\.WB\.set\('source', 'selected'\)/, 'with the checked items chosen');
 
 console.log('Inventory bulk-select and Whatnot CSV export checks passed');
+
+// 2026-11-19: the header box takes every item the filters show, on every page -- not just the 50 on screen.
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.ok(app.includes("list.forEach(i => { if(checked) inventoryBulkSelectedIds.add(i.id); else inventoryBulkSelectedIds.delete(i.id); });"));
+  assert.ok(app.includes("const allIds = (filtered || []).map(r => r.id);"));
+  console.log('Inventory: header box selects every page: passed'); }
