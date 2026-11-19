@@ -94,3 +94,15 @@ console.log('FOC show (auto mix, wall, versus, mystery, artist, most wanted): pa
   assert.ok(ov3.includes("body.fb-only>*:not(.fb):not(script):not(style){visibility:hidden!important}") && ov3.includes("document.body.classList.toggle('fb-only',!!(flipState&&flipState.on&&flipState.only&&flipState.items?.length))"));
   console.log('FOC show section, START / END, books only: passed');
 }
+// BAG & BOARD SHOW (store, 2026-11-19: "when we're boarding and bagging the new releases ... flip through all the books
+// that we ordered that will be in the show"): the books ordered for that week (PRH's Tuesday + Lunar's Wednesday),
+// only the covers ordered, A to Z, books only on the lower half.
+{
+  const c4 = read('scripts/live-studio-controls.js');
+  const sec = c4.indexOf('<section class="fb-sec" id="bb-show-sec"'), vend = c4.indexOf('<h3>🥤 Vending machine</h3>');
+  assert.ok(sec > 0 && sec < vend);
+  for (const k of ['id="bb-week"', 'id="bb-start"', 'id="bb-end"', '<button type="button" data-click="#bb-show-sec">📦 BAG &amp; BOARD</button>',
+    ".or('store_quantity.gt.0,secured_quantity.gt.0').not('cover_image_url','is',null).order('title',{ascending:true})", "gte('on_sale_date',ymd(new Date(Date.parse(day+'T12:00:00Z')-864e5))).lte('on_sale_date',day)",
+    "x.setUTCDate(x.getUTCDate()+((3-x.getUTCDay()+7)%7))", "mode:'lower',title:'NEW '+mdy(day)", 'wanted:[],only:true,on:true']) assert.ok(c4.includes(k), k);
+  console.log('Bag & board show: passed');
+}

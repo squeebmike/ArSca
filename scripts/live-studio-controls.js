@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.19.3';
+  const STUDIO_V='2026.11.19.4';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -17,7 +17,7 @@
   <p id="mana-remote-msg" class="mana-remote-msg" role="status"></p>
   <div class="mana-remote-pick"><div class="mana-row" id="mana-doors-pick"></div><div class="mana-row" id="mana-vote-pick"></div><div class="mana-row mana-trivia-who" hidden><input id="mana-trivia-who" maxlength="30" placeholder="Who got it? (their username, optional)"></div></div>
   <div class="mana-remote-grid">
-    <button type="button" data-click="#mana-load">🔌 CONNECT</button><button type="button" data-click="#mana-show">📺 USE LIVE SHOW</button><button type="button" data-click="#foc-show-sec">📚 FOC SHOW</button><button type="button" data-click="#mana-trivia">❓ TRIVIA</button>
+    <button type="button" data-click="#mana-load">🔌 CONNECT</button><button type="button" data-click="#mana-show">📺 USE LIVE SHOW</button><button type="button" data-click="#foc-show-sec">📚 FOC SHOW</button><button type="button" data-click="#bb-show-sec">📦 BAG &amp; BOARD</button><button type="button" data-click="#mana-trivia">❓ TRIVIA</button>
     <button type="button" class="tap" data-click="#mana-taps [data-tap=follow]">➕ FOLLOW</button><button type="button" class="tap" data-click="#mana-taps [data-tap=share]">➕ SHARE</button><button type="button" class="tap" data-click="#mana-taps [data-tap=bookmark]">➕ BOOKMARK</button>
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
   </div>
@@ -33,6 +33,12 @@
   <div class="mana-row"><label>DISPLAY<select id="fb-show"><option value="auto">🔁 AUTO MIX (all of them in turn)</option><option value="flip">📖 FLIPBOOK</option><option value="wall">🧱 THE WALL</option><option value="versus">⚔ COVER VS COVER</option><option value="mystery">❓ MYSTERY COVER</option><option value="artist">🎨 NAME THAT ARTIST</option><option value="wanted">🏆 MOST WANTED</option></select></label></div>
   <div class="mana-row"><label>GO TO A BOOK (chat asks about one)<select id="fb-jump"><option value="">Load the flipbook first</option></select></label></div>
   </details>
+  </section>
+  <section class="fb-sec" id="bb-show-sec" aria-label="Bag and board show">
+  <h3>📦 BAG &amp; BOARD SHOW</h3>
+  <small>While you board and bag the new releases: the bottom half flips through every book you ordered for that Wednesday -- each cover you ordered, A to Z -- so chat sees what's in the next show. Camera on top, nothing else on the overlay. DISPLAY above changes how they flip.</small>
+  <div class="mana-row"><label>NEW RELEASES FOR<select id="bb-week"><option value="">Next Wednesday</option></select></label><label>NEXT SHOW<input id="bb-when" maxlength="24" placeholder="SATURDAY"></label></div>
+  <div class="mana-row"><button type="button" id="bb-start" style="font-weight:800">📦 START BAG &amp; BOARD SHOW</button><button type="button" id="bb-end">⏹ END</button></div>
   </section>
   <h3>🥤 Vending machine</h3>
   <small>For breaks and surprise sets: a machine of items (or spots), scrolling, a BID button on each slot, the one UP NOW lit, SOLD stamped on what's gone. A sale marks its item by itself (with spots: the one UP NOW). Tap a slot below to mark it by hand.</small>
@@ -295,6 +301,28 @@
       host.querySelector('#fb-mode').value='lower';if(!host.querySelector('#fb-show').value)host.querySelector('#fb-show').value='auto';
       await flipDo({items,...fbLook(),mode:'lower',...(tIn.value?{}:{title:'FOC '+mdy(week)+' · A TO Z'}),show:host.querySelector('#fb-show').value,wanted,only:true,on:true});fbJumpList(items);
       status.textContent='📚 FOC show on: FOC '+mdy(week)+', '+items.length+' books on the bottom half, nothing else on the overlay.';});}
+    // BAG & BOARD SHOW (store, 2026-11-19: "when we're boarding and bagging the new releases ... I want the bottom screen
+    // to flip through all the books that we ordered that will be in the show"): the books ordered (the store's order
+    // count, or copies secured) for that on-sale date -- only the covers ordered -- A to Z, books only on the lower half.
+    let bbFor='';
+    async function bbWeeks(){const {sb,id}=fbSb();if(bbFor===id)return;const now=Date.now();
+      const {data,error}=await sb.from('comic_skus').select('on_sale_date').eq('store_id',id).gte('on_sale_date',ymd(new Date(now-7*864e5))).lte('on_sale_date',ymd(new Date(now+35*864e5))).or('store_quantity.gt.0,secured_quantity.gt.0').limit(3000);
+      if(error)throw Error('New release weeks: '+error.message);const today=ymd(new Date());
+      // PRH comes out Tuesday, Lunar Wednesday: each week goes by its Wednesday.
+      const wed=d=>{const x=new Date(d+'T12:00:00Z');x.setUTCDate(x.getUTCDate()+((3-x.getUTCDay()+7)%7));return ymd(x);};
+      const days=[...new Set((data||[]).map(r=>String(r.on_sale_date||'').slice(0,10)).filter(Boolean).map(wed))].sort(),next=days.find(d=>d>=wed(today))||days[days.length-1]||'';
+      const sel=host.querySelector('#bb-week');sel.replaceChildren(...days.map(d=>{const o=document.createElement('option');o.value=d;o.textContent='WEEK OF '+mdy(d)+(d===next?' (next)':d<today?' (out now)':'');return o;}));sel.value=next;bbFor=id;}
+    {const s=host.querySelector('#bb-show-sec');if(s)s.addEventListener('pointerenter',()=>{bbWeeks().catch(()=>{});},{once:true});}
+    {const b=host.querySelector('#bb-start');if(b)b.onclick=()=>run(async()=>{if(!connectedStore)await connect();const {sb,id}=fbSb();await bbWeeks();const day=host.querySelector('#bb-week').value;
+      if(!day)throw Error('No ordered books with an on-sale date coming up (import your FOC orders first).');
+      const {data,error}=await sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).gte('on_sale_date',ymd(new Date(Date.parse(day+'T12:00:00Z')-864e5))).lte('on_sale_date',day).or('store_quantity.gt.0,secured_quantity.gt.0').not('cover_image_url','is',null).order('title',{ascending:true}).limit(1500);
+      if(error)throw Error('Bag & board: '+error.message);const F=await import('./flipbook.mjs?v='+STUDIO_V);
+      const items=F.cleanFlipItems(F.booksFromSkus((data||[]).filter(r=>!NOT_COMIC.test(r.title||''))).filter(b=>!chanceFn(b.title)));
+      if(!items.length)throw Error('No ordered books with covers out '+mdy(day)+'.');
+      const when=String(host.querySelector('#bb-when').value||'').trim().toUpperCase();
+      await flipDo({items,...fbLook(),mode:'lower',title:'NEW '+mdy(day)+(when?' · IN OUR '+when+' SHOW':' · IN OUR NEXT SHOW'),show:host.querySelector('#fb-show').value||'flip',wanted:[],only:true,on:true});fbJumpList(items);
+      const covers=items.reduce((n,x)=>n+x.covers.length,0);status.textContent='📦 Bag & board show on: '+items.length+' books ('+covers+' covers) out '+mdy(day)+', on the bottom half.';});}
+    {const b=host.querySelector('#bb-end');if(b)b.onclick=()=>run(async()=>{await flipDo({on:false,only:false});status.textContent='Bag & board show off -- the rest of the overlay is back.';});}
     {const b=host.querySelector('#fb-end');if(b)b.onclick=()=>run(async()=>{await flipDo({on:false,only:false});status.textContent='FOC show off -- the rest of the overlay is back.';});}
     {const s=host.querySelector('#fb-show');if(s)s.onchange=()=>void run(async()=>{if(!flipCtl?.items?.length)throw Error('Load the flipbook first (📖 LOAD + SHOW).');await flipDo({show:s.value});status.textContent='Display: '+s.options[s.selectedIndex].textContent;});}
     {const b=host.querySelector('#fb-go');if(b)b.onclick=()=>run(async()=>{const {books:items,week}=await flipBooks();if(!items.length)throw Error('No books with covers in that FOC week.');const tIn=host.querySelector('#fb-title');if(!tIn.value)tIn.placeholder='FOC '+mdy(week);
