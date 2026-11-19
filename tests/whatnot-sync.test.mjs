@@ -422,7 +422,7 @@ assert.match(fs.readFileSync('supabase-migrations/2026-10-31-whatnot-show-id.sql
   assert.match(dash, /onclick="setWhatnotModeSelected\('bin'\)"[^>]*>BUY IT NOW</);
   assert.match(dash, /onclick="setWhatnotModeSelected\('auction'\)"[^>]*>AUCTION</);
   assert.match(dash, /onclick="setWhatnotModeSelected\('off'\)"[^>]*>OFF</);
-  assert.match(dash, /onclick="addSelectedToWhatnotShowPicker\(\)"[^>]*>ADD TO SHOW</);
+  assert.match(dash, /onclick="addSelectedToWhatnotShowPicker\('bin'\)"[^>]*>ADD TO SHOW AS BUY IT NOW</);
   const src = dash.match(/async function setSellOnWhatnotSelected\(on\)\{[\s\S]*?\n\}\n/)[0];
   const run = (items, selected, answer = true) => {
     const saved = [], toasts = []; let syncs = 0;

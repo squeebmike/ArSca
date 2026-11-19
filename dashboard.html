@@ -2124,7 +2124,8 @@ body.store-no-ebay [onclick*="ebay" i]{display:none !important;}
     <button class="fb" style="color:var(--purple)" onclick="setWhatnotModeSelected('auction')" title="Show only: out of your Buy It Now shop; sold as auctions in the shows you add them to">AUCTION</button>
     <button class="fb" onclick="setWhatnotModeSelected('off')" title="Not on Whatnot (set to 0 there)">OFF</button>
     <button class="fb" style="color:var(--g)" onclick="emailSelectedNewArrivals()" title="Email the selected books (covers, prices, BUY NOW) to your new-arrivals list">EMAIL NEW ARRIVALS</button>
-    <button class="fb" style="color:var(--purple)" onclick="addSelectedToWhatnotShowPicker()" title="Pick a scheduled Whatnot show: the selected items go in as auctions (set to Auction / show only)">ADD TO SHOW</button>
+    <button class="fb" style="color:var(--purple)" onclick="addSelectedToWhatnotShowPicker('auction')" title="Pick a scheduled Whatnot show: the selected items go in as auctions (set to Auction / show only)">ADD TO SHOW AS AUCTION</button>
+    <button class="fb" style="color:var(--g)" onclick="addSelectedToWhatnotShowPicker('bin')" title="Pick a scheduled Whatnot show: the selected items go in as Buy It Now at their price (and stay in your shop)">ADD TO SHOW AS BUY IT NOW</button>
     <button class="fb" onclick="exportSelectedToWhatnotCsv()">EXPORT TO WHATNOT CSV</button>
     <button class="fb" onclick="clearWhatnotMarkSelected()" title="Took these down on Whatnot? Clears their 📺 WHATNOT mark">CLEAR WHATNOT MARK</button>
     <button class="fb" onclick="clearInvBulkSelection()">CLEAR SELECTION</button>

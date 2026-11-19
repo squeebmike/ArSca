@@ -4558,7 +4558,7 @@ async function setWhatnotModeSelected(mode){
 }
 // ADD TO SHOW (bulk bar, and after receiving FOC comics): pick any scheduled
 // show; the items go in as auctions (set to Auction / show only first).
-async function openWhatnotShowPicker(ids, intro, onClose){
+async function openWhatnotShowPicker(ids, intro, onClose, kind){
   ids = [...new Set((ids || []).map(String).filter(Boolean))];
   if(!ids.length){ toast_dash('Select inventory items first'); return; }
   let shows = [], rule = null;
@@ -4580,8 +4580,8 @@ async function openWhatnotShowPicker(ids, intro, onClose){
     + '<div style="font:11px var(--font-mono);color:var(--text);line-height:1.6;margin-bottom:10px">' + escHtml(intro || (ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' selected.')) + ' They go in as you pick below.</div>'
     // AUCTION OR BUY IT NOW (store, 2026-11-19: "it only gives me the option as auctions ... I'd rather have it as a bin.
     // So can we have both options"): Buy It Now goes in the show at its own price and stays in the shop too.
-    + '<div style="display:flex;gap:6px;margin-bottom:10px"><label style="flex:1;font:11px var(--font-mono);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><input type="radio" name="wn-show-kind" value="auction" checked> <b>AUCTION</b><br><span style="color:var(--dim);font-size:10px">starts at ' + pct + '% of the price or $' + min + ' (whichever is more); show only until BACK TO BUY IT NOW</span></label>'
-    + '<label style="flex:1;font:11px var(--font-mono);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><input type="radio" name="wn-show-kind" value="bin"> <b>BUY IT NOW</b><br><span style="color:var(--dim);font-size:10px">its own price, in the show and in your shop</span></label></div>'
+    + '<div style="display:flex;gap:6px;margin-bottom:10px"><label style="flex:1;font:11px var(--font-mono);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><input type="radio" name="wn-show-kind" value="auction"' + (kind === 'bin' ? '' : ' checked') + '> <b>AUCTION</b><br><span style="color:var(--dim);font-size:10px">starts at ' + pct + '% of the price or $' + min + ' (whichever is more); show only until BACK TO BUY IT NOW</span></label>'
+    + '<label style="flex:1;font:11px var(--font-mono);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px"><input type="radio" name="wn-show-kind" value="bin"' + (kind === 'bin' ? ' checked' : '') + '> <b>BUY IT NOW</b><br><span style="color:var(--dim);font-size:10px">its own price, in the show and in your shop</span></label></div>'
     + (shows.length ? '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:4px">Pick one show or several -- each book is one listing with one stock count, so it can\'t sell twice across shows.</div><div id="wn-show-pick" style="display:grid;gap:6px;margin:0 0 6px;max-height:40vh;overflow:auto">' + shows.map((sh, k) => '<label style="display:flex;gap:8px;align-items:center;min-height:40px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font:11px var(--font-mono);color:var(--text)"><input type="checkbox" value="' + escHtml(sh.id) + '"' + (k === 0 ? ' checked' : '') + ' style="width:20px;height:20px"> ' + escHtml(when(sh.startsAt)) + ' -- ' + escHtml(sh.title || 'Whatnot show') + '</label>').join('') + '</div>'
       + '<div style="font:9px var(--font-mono);color:var(--dim);margin-bottom:10px">Pre-bids: turn them on for the show in Whatnot when you schedule it.</div>'
       : '<div style="font:11px var(--font-mono);color:var(--gold);margin-bottom:10px">No upcoming Whatnot show is scheduled. Schedule one in Whatnot first.</div>')
@@ -4674,8 +4674,10 @@ function emailSelectedNewArrivals(){
   if(!ids.length){ toast_dash('Select the books to email first'); return; }
   offerNewArrivalsEmail(ids);
 }
-function addSelectedToWhatnotShowPicker(){
-  openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id));
+// ADD TO SHOW AS AUCTION / AS BUY IT NOW (store, 2026-11-19: "add to a show as buy it now instead of auction, so I can
+// just add them to shows from the dashboard"): the show picker opens with that one already chosen.
+function addSelectedToWhatnotShowPicker(kind){
+  openWhatnotShowPicker(all.filter(i => inventoryBulkSelectedIds.has(i.id) && i.source === 'built_in').map(i => i.supabaseRowId || i.id), '', null, kind === 'bin' ? 'bin' : 'auction');
 }
 // BACK TO BUY IT NOW (bulk bar): auctioned items return to the shop.
 async function backToBuyItNowSelected(){
