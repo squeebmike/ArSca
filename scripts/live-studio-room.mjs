@@ -414,6 +414,7 @@ export class ManaLiveStudio extends DurableObject {
     // THE FOC SHOW: which display (AUTO MIX runs them all in turn), and the order's top 5 for MOST WANTED.
     if (input.show !== undefined) { if (!SHOWS.includes(input.show)) throw new Error('Flipbook: unknown display'); f.show = input.show; }
     if (input.wanted !== undefined) f.wanted = cleanWanted(input.wanted);
+    if (typeof input.only === 'boolean') f.only = input.only;
     if (typeof input.title === 'string') f.title = input.title.replace(/[\u0000-\u001f<>]/g, ' ').trim().slice(0, 40).toUpperCase();
     if ((input.step === 1 || input.step === -1) && f.items.length) {
       if (f.show && f.show !== 'flip') { f.show = 'flip'; }

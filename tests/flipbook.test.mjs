@@ -19,7 +19,7 @@ const fsrc = read('scripts/flipbook.mjs'); assert.ok(!/Math\.random/.test(fsrc),
 const room = read('scripts/live-studio-room.mjs'), api = read('scripts/live-studio-api.mjs'), ov = read('scripts/live-studio-overlay.mjs'), ctl = read('scripts/live-studio-controls.js');
 for (const k of ['  setFlip(input = {}) {', 'f.items = cleanFlipItems(input.items)', "f.at -= input.step === 1 ? cur.per - cur.into : -(cur.into + bookMs(f, prev));", 'flip:state.flip || null']) assert.ok(room.includes(k), k);
 assert.ok(api.includes("url.pathname==='/live-studio/flip'"));
-for (const k of ["import('./flipbook.mjs?v=3')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
+for (const k of ["import('./flipbook.mjs?v=4')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
 for (const k of ['id="fb-go"', 'id="fb-next"', 'id="fb-back"', 'id="fb-off"', 'id="fb-week"', 'id="fb-jump"', "sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).in('cycle_id',ids)", "api('flip',body)", 'flip:flipCtl']) assert.ok(ctl.includes(k), k);
 // The leader's entrance: letterboxed camera sweep round the leader, their name and line, then the fight.
 const b3 = read('scripts/beasts-3d.mjs');
@@ -82,3 +82,27 @@ console.log('FOC flipbook: a week, A to Z, every cover: passed');
   for (const k of ['id="fb-show"', '<option value="auto">', "await flipDo({show:s.value})", ".or('store_quantity.gt.0,secured_quantity.gt.0')", '},120000);']) assert.ok(ctl2.includes(k), k);
 }
 console.log('FOC show (auto mix, wall, versus, mystery, artist, most wanted): passed');
+
+// FOC SHOW (store, 2026-11-19: "How is it in its own little section and easy to get to, easy to change?"): its own
+// section near the top of the remote, one START / END, and BOOKS ONLY on the overlay (camera on top, books below).
+{
+  const ctl3 = read('scripts/live-studio-controls.js'), ov3 = read('scripts/live-studio-overlay.mjs'), room3 = read('scripts/live-studio-room.mjs');
+  const sec = ctl3.indexOf('<section class="fb-sec" id="foc-show-sec"'), vend = ctl3.indexOf('<h3>🥤 Vending machine</h3>');
+  assert.ok(sec > 0 && sec < vend, 'its own section, above the vending machine');
+  for (const k of ['id="fb-start"', 'id="fb-end"', '<button type="button" data-click="#foc-show-sec">📚 FOC SHOW</button>', "mode:'lower'", 'only:true,on:true', 'await flipDo({on:false,only:false})']) assert.ok(ctl3.includes(k), k);
+  assert.ok(room3.includes("if (typeof input.only === 'boolean') f.only = input.only;"));
+  assert.ok(ov3.includes("body.fb-only>*:not(.fb):not(script):not(style){visibility:hidden!important}") && ov3.includes("document.body.classList.toggle('fb-only',!!(flipState&&flipState.on&&flipState.only&&flipState.items?.length))"));
+  console.log('FOC show section, START / END, books only: passed');
+}
+// BAG & BOARD SHOW (store, 2026-11-19: "when we're boarding and bagging the new releases ... flip through all the books
+// that we ordered that will be in the show"): the books ordered for that week (PRH's Tuesday + Lunar's Wednesday),
+// only the covers ordered, A to Z, books only on the lower half.
+{
+  const c4 = read('scripts/live-studio-controls.js');
+  const sec = c4.indexOf('<section class="fb-sec" id="bb-show-sec"'), vend = c4.indexOf('<h3>🥤 Vending machine</h3>');
+  assert.ok(sec > 0 && sec < vend);
+  for (const k of ['id="bb-week"', 'id="bb-start"', 'id="bb-end"', '<button type="button" data-click="#bb-show-sec">📦 BAG &amp; BOARD</button>',
+    ".or('store_quantity.gt.0,secured_quantity.gt.0').not('cover_image_url','is',null).order('title',{ascending:true})", "gte('on_sale_date',ymd(new Date(Date.parse(day+'T12:00:00Z')-864e5))).lte('on_sale_date',day)",
+    "x.setUTCDate(x.getUTCDate()+((3-x.getUTCDay()+7)%7))", "mode:'lower',title:'NEW '+mdy(day)", 'wanted:[],only:true,on:true']) assert.ok(c4.includes(k), k);
+  console.log('Bag & board show: passed');
+}
