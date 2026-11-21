@@ -623,7 +623,7 @@ async function pendingQtyBySku(db, cycleId, now = new Date()) {
 // The few item fields the FOC copy counts read, fetched on their own instead of the whole data record.
 export const FOC_COUNT_SELECT = 'id,status,source:data->source,focSkuId:data->focSkuId,focBundleSkuIds:data->focBundleSkuIds,focPresaleOriginalQty:data->focPresaleOriginalQty,qty:data->qty,quantity:data->quantity,focReceivedAt:data->focReceivedAt';
 export function slimRowsToData(rows) {
-  return (rows || []).map(({ id, status, ...d }) => ({ id, status, data: Object.fromEntries(Object.entries(d).filter(([, v]) => v !== null && v !== undefined)) }));
+  return (rows || []).map(r => r && typeof r.data === 'object' && r.data !== null ? r : (({ id, status, ...d }) => ({ id, status, data: Object.fromEntries(Object.entries(d).filter(([, v]) => v !== null && v !== undefined)) }))(r || {}));
 }
 
 export async function afterFocAvailability(db, storeId, cycle, skus, { now = new Date(), websiteQty = null, includePending = false } = {}) {
