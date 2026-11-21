@@ -3610,7 +3610,8 @@ function shortenHtmlToFit(html, maxLen) {
 }
 function withComicListingNotices(description, { presale = false, onSaleLabel = '' } = {}) {
   // The older no-cancellations line becomes the new one (never both).
-  let body = String(description || '').trim().replace(/Presale copies are ordered from the distributor for you at FOC -- no cancellations after purchase\./g, COMIC_PRESALE_NO_CANCEL);
+  let body = String(description || '').trim();
+  if (presale) body = body.replace(/Presale copies are ordered from the distributor for you at FOC -- no cancellations after purchase\./g, COMIC_PRESALE_NO_CANCEL);
   // A store template can be HTML; the notices then go in as HTML.
   const isHtml = /<\/?[a-z][\s\S]*>/i.test(body);
   const escape = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
