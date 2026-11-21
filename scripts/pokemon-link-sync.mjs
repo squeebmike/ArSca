@@ -72,7 +72,8 @@ export function linkedData(d = {}, card = {}, at) {
 export async function runPokemonLinkSync(storeId, deps, { now = Date.now(), size = LINK_BATCH } = {}) {
   if (deps.isPlatform?.(storeId)) return { skipped: 'The Mana Pocket is not linked by this job' };
   const s = encodeURIComponent(storeId);
-  const { data: rows } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,status,data&limit=5000`);
+  // Only Pokémon rows not checked for a link yet come back (2026-11-21: Supabase egress over the plan).
+  const { data: rows } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&data->>category=imatch.${encodeURIComponent('^pok')}&data->>pptLinkCheckedAt=is.null&select=id,status,data&limit=5000`);
   const todo = (rows || []).filter(linkCandidate);
   const out = { linked: 0, noMatch: 0, failed: 0, left: Math.max(0, todo.length - size) };
   const at = new Date(now).toISOString();
