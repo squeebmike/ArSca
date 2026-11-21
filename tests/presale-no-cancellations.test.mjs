@@ -14,7 +14,7 @@ vm.runInNewContext([
   'this.api = { withComicListingNotices, comicPresaleNotice };',
 ].join('\n'), ctx);
 const { withComicListingNotices, comicPresaleNotice } = ctx.api;
-const LINE = 'no cancellations after purchase';
+const LINE = 'ABSOLUTELY NO CANCELLATIONS. If we secure the book for you, it\'s your book. Happy bidding!';
 assert.ok(comicPresaleNotice('December 23, 2026').includes(LINE), 'the presale notice says it');
 // Every kind of presale description gets it once: a plain one, an HTML template, one with an older bar, one with a PRESALE line already.
 for (const d of [
@@ -24,9 +24,13 @@ for (const d of [
   'PRESALE -- This comic has not been released yet and is not currently in stock.\n\nSynopsis...',
 ]) {
   const out = withComicListingNotices(d, { presale: true, onSaleLabel: 'December 23, 2026' });
-  assert.equal((out.match(new RegExp(LINE, 'g')) || []).length, 1, 'once: ' + d.slice(0, 30));
+  assert.equal(out.split(LINE).length - 1, 1, 'once: ' + d.slice(0, 30));
   assert.ok(out.length <= 4000);
 }
 assert.ok(!withComicListingNotices('In stock book.', { presale: false }).includes(LINE), 'not on in-stock listings');
-assert.ok(app.includes('Presale copies are ordered from the distributor for you at FOC -- no cancellations after purchase.'), 'the dashboard\'s own bar says it too');
+assert.ok(app.includes("Presale copies are ordered from the distributor for you at FOC. ABSOLUTELY NO CANCELLATIONS. If we secure the book for you, it\\'s your book. Happy bidding!"), 'the dashboard\'s own bar says it too');
+// (2026-11-21) A listing with the older line gets the new one in its place -- never both.
+{ const old = 'PRESALE -- Ships Dec 23.\n\nPresale copies are ordered from the distributor for you at FOC -- no cancellations after purchase.';
+  const out = withComicListingNotices(old, { presale: true });
+  assert.ok(!out.includes('no cancellations after purchase') && out.split(LINE).length - 1 === 1, 'old line swapped'); }
 console.log('Presale no-cancellations line: passed');

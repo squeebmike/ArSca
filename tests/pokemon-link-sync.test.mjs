@@ -49,3 +49,14 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.match(worker, /if \(!isPlatformStore\(storeId, env\)\) \{\n\s+try \{\n\s+const linked = await runPokemonLinkSync\(/);
 assert.match(worker, /source: 'server-link'/);
 console.log('Pokemon link sync: sure matches only, a few credits each, second stores only');
+// Supabase egress (2026-11-21: 11.6 GB of a 5.5 GB plan -- the hourly Pokémon jobs read all 1,480 in-stock items,
+// ~10 MB, every run): only Pokémon rows come back now, and a day whose checks are done reads nothing more.
+{ const fs = await import('node:fs');
+  const daily = fs.readFileSync('scripts/pokemon-daily-sync.mjs', 'utf8'), link = fs.readFileSync('scripts/pokemon-link-sync.mjs', 'utf8'), foc = fs.readFileSync('scripts/foc-preorders.mjs', 'utf8');
+  if (!daily.includes("data->>category=imatch.${encodeURIComponent('^pok')}&select=id,status,data") || !daily.includes("if (deps.kvGet && await deps.kvGet(doneKey)) return { skipped: 'all checked today' };")) throw new Error('daily sync reads everything');
+  if (!link.includes("data->>category=imatch.${encodeURIComponent('^pok')}&data->>pptLinkCheckedAt=is.null&select=id,status,data")) throw new Error('link sync reads everything');
+  if (!foc.includes('&select=${FOC_COUNT_SELECT}`).then(r => ({ ...r, data: slimRowsToData(r?.data) }))')) throw new Error('FOC count reads whole items');
+  const { slimRowsToData } = await import('../scripts/foc-preorders.mjs');
+  const rows = slimRowsToData([{ id: 'a', status: 'sold', source: 'foc_presale', focSkuId: 's1', focBundleSkuIds: null, focPresaleOriginalQty: 2, qty: 0, quantity: null, focReceivedAt: null }]);
+  if (JSON.stringify(rows) !== JSON.stringify([{ id: 'a', status: 'sold', data: { source: 'foc_presale', focSkuId: 's1', focPresaleOriginalQty: 2, qty: 0 } }])) throw new Error('slim rows shape');
+  console.log('Supabase egress: Pokémon jobs and FOC counts read only what they use: passed'); }

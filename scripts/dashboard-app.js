@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.19.6-bag-board';
+const APP_VERSION = '2026.11.21.1-no-cancel';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4471,6 +4471,21 @@ function ensureWhatnotConnectionPanel(backoffice){
 // checked item asks the Worker to push it now; a few saves in a row share
 // one request. The Worker also runs every 10 minutes on its own.
 let _whatnotSyncTimer = null;
+// Just these items' Whatnot listings, right now (a delete, a new price or count). Edits made together (a bulk change)
+// are gathered for a moment and sent 50 at a time.
+const _whatnotPushIds = new Set(); let _whatnotPushTimer = 0;
+function pushWhatnotNow(ids){
+  for(const id of (ids || [])) if(id) _whatnotPushIds.add(String(id));
+  if(!_whatnotPushIds.size) return;
+  clearTimeout(_whatnotPushTimer);
+  _whatnotPushTimer = setTimeout(async () => {
+    const all = [..._whatnotPushIds]; _whatnotPushIds.clear();
+    for(let i = 0; i < all.length; i += 50){
+      try { await storeWorkerFetch(WORKER + '/whatnot/push-items?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:all.slice(i, i + 50) }) }); } catch(e) {}
+    }
+    _whatnotItemsCache = null;
+  }, 600);
+}
 function queueWhatnotSync(){
   clearTimeout(_whatnotSyncTimer);
   _whatnotSyncTimer = setTimeout(() => {
@@ -22661,7 +22676,7 @@ function renderEbayDescriptionTemplate(template, tokens){
 const COMIC_GEMINI_LINE = 'Bagged & boarded and shipped in a Gemini mailer.';
 function comicPresaleBannerText(onSaleLabel = ''){
   // (2026-11-17) Same no-cancellations line the Worker's presale notice has, so a bar made here is kept as is.
-  return 'PRESALE -- This comic has not been released yet.' + (onSaleLabel ? ' Expected release/ship date: ' + onSaleLabel + '.' : '') + ' Your order ships once it arrives from our distributor. Presale copies are ordered from the distributor for you at FOC -- no cancellations after purchase.';
+  return 'PRESALE -- This comic has not been released yet.' + (onSaleLabel ? ' Expected release/ship date: ' + onSaleLabel + '.' : '') + ' Your order ships once it arrives from our distributor. Presale copies are ordered from the distributor for you at FOC. ABSOLUTELY NO CANCELLATIONS. If we secure the book for you, it\'s your book. Happy bidding!';
 }
 function comicPresaleBannerHtml(onSaleLabel = ''){
   return '<div style="max-width:760px;margin:8px auto 0;background:#ffd166;color:#171717;border:2px solid #171717;padding:12px 16px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:900;text-align:center;box-sizing:border-box">' + escHtml(comicPresaleBannerText(onSaleLabel)) + '</div>';
@@ -25704,6 +25719,11 @@ async function updateBuiltInInventoryItem(item, updates){
     if((nextData.ebayListingId || item.ebayListingId) && (Number(nextData.qty ?? nextData.quantity ?? 0) !== beforeQty || (nextData.status || 'in_stock') !== beforeStatus)) storeWorkerFetch('/ebay/sync-item-quantities', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:[item.supabaseRowId || item.id] }) }).catch(() => {});
     // Whatnot follows too (checked now, or checked before and just unchecked).
     if(nextData.sellOnWhatnot === true || item.sellOnWhatnot === true) queueWhatnotSync();
+    // A new price, count or status goes to that listing NOW (store, 2026-11-20: "make deletes and price changes push
+    // to Whatnot right away") -- not only with the store-wide pass a few seconds later.
+    // (Any edit: the listing's price comes from several fields -- market, floor, ceiling, a locked price -- and the
+    // push only sends Whatnot what actually changed.)
+    if(nextData.sellOnWhatnot === true || item.sellOnWhatnot === true || item.whatnotListing) pushWhatnotNow([item.supabaseRowId || item.id]);
     // Auction -> Buy It Now: back in the Whatnot shop at its shop price.
     if(item.whatnotShowOnly === true && nextData.whatnotShowOnly !== true && nextData.sellOnWhatnot === true) backToBuyItNowIds([item.supabaseRowId || item.id]).catch(() => {});
     return true;
@@ -25775,6 +25795,9 @@ async function deleteInventoryRecord(id){
   } else {
     removeUniversalInventoryItem(item.id);
   }
+  // Deleted: its Whatnot listing goes to 0 now, not at the next 10-minute run (2026-11-20). One listing, one count --
+  // so it can't sell in a show it was in either.
+  if(item.source === 'built_in' && (item.sellOnWhatnot === true || item.whatnotListing)) pushWhatnotNow([item.supabaseRowId || item.id]);
   all = all.filter(i => i.id !== id);
   filtered = filtered.filter(i => i.id !== id);
   renderAll();

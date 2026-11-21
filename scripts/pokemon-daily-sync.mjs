@@ -149,10 +149,14 @@ export function nextBatch(rows = [], now = Date.now(), size = SERVER_SYNC_BATCH)
 export async function runPokemonServerSync(storeId, deps, now = Date.now()) {
   if (pacificHour(now) < SERVER_SYNC_START_HOUR) return { skipped:'before 3 AM' };
   const s = encodeURIComponent(storeId);
-  const { data:rows } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&select=id,status,data&limit=5000`);
+  // Supabase egress (2026-11-21: over the plan): only Pokémon rows come back (the database filters on category), and
+  // once a day's checks are all done the remaining hourly runs that day read nothing at all.
+  const doneKey = 'pokemon-sync-done:' + storeId + ':' + pacificDay(now);
+  if (deps.kvGet && await deps.kvGet(doneKey)) return { skipped: 'all checked today' };
+  const { data:rows } = await deps.db(`inventory_items?store_id=eq.${s}&status=eq.in_stock&data->>category=imatch.${encodeURIComponent('^pok')}&select=id,status,data&limit=5000`);
   const batch = nextBatch(rows || [], now);
   const out = { checked:0, applied:0, unchanged:0, review:0, noPrice:0, failed:0, left:0 };
-  if (!batch.length) return out;
+  if (!batch.length) { if (deps.kvPut) await deps.kvPut(doneKey, '1'); return out; }
   const cardCache = new Map();
   const queue = [];
   for (const row of batch) {

@@ -197,3 +197,12 @@ console.log('whatnot tools checks passed');
   assert.ok(html.includes(`onclick="addSelectedToWhatnotShowPicker('auction')"`) && html.includes(`onclick="addSelectedToWhatnotShowPicker('bin')"`), 'both buttons in the bulk bar');
   assert.ok(dash.includes("value=\"bin\"' + (kind === 'bin' ? ' checked' : '') + '>"), 'the picker opens on the one tapped');
   console.log('Whatnot: bulk bar ADD TO SHOW AS AUCTION / AS BUY IT NOW: passed'); }
+// "Make deletes and price changes push to Whatnot right away" (2026-11-20): a delete, and any edit to an item on
+// Whatnot, sends that listing now (gathered for a moment, 50 at a time) instead of waiting for the 10-minute run.
+{ const dash = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
+  assert.ok(dash.includes("if(item.source === 'built_in' && (item.sellOnWhatnot === true || item.whatnotListing)) pushWhatnotNow([item.supabaseRowId || item.id]);"), 'a delete');
+  assert.ok(dash.includes("if(nextData.sellOnWhatnot === true || item.sellOnWhatnot === true || item.whatnotListing) pushWhatnotNow([item.supabaseRowId || item.id]);"), 'an edit (price, count, status)');
+  assert.ok(dash.includes("WORKER + '/whatnot/push-items?store_id='") && dash.includes('all.slice(i, i + 50)'));
+  const del = dash.slice(dash.indexOf('async function deleteInventoryRecord(id){'), dash.indexOf('async function archiveInventoryItem(id){'));
+  assert.ok(del.indexOf('pushWhatnotNow(') > del.indexOf(".from('inventory_items').delete()"), 'only after the row is really gone');
+  console.log('Whatnot: deletes and edits push right away: passed'); }

@@ -620,12 +620,20 @@ async function pendingQtyBySku(db, cycleId, now = new Date()) {
   return totals;
 }
 
+// The few item fields the FOC copy counts read, fetched on their own instead of the whole data record.
+export const FOC_COUNT_SELECT = 'id,status,source:data->source,focSkuId:data->focSkuId,focBundleSkuIds:data->focBundleSkuIds,focPresaleOriginalQty:data->focPresaleOriginalQty,qty:data->qty,quantity:data->quantity,focReceivedAt:data->focReceivedAt';
+export function slimRowsToData(rows) {
+  return (rows || []).map(r => r && typeof r.data === 'object' && r.data !== null ? r : (({ id, status, ...d }) => ({ id, status, data: Object.fromEntries(Object.entries(d).filter(([, v]) => v !== null && v !== undefined)) }))(r || {}));
+}
+
 export async function afterFocAvailability(db, storeId, cycle, skus, { now = new Date(), websiteQty = null, includePending = false } = {}) {
   if (!afterFocCycle(cycle, now) || !afterFocCartOnFile(skus)) return new Map();
   const today = pacificDay(now);
   if (!(skus || []).some(sku => Number(sku.secured_quantity || 0) > 0 && String(sku.on_sale_date || '').slice(0, 10) > today)) return new Map();
   const [{ data:rows }, website, pending] = await Promise.all([
-    db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focCycleId=eq.${encodeURIComponent(cycle.id)}&select=id,status,data`),
+    // Only the fields the count reads (2026-11-21: this ran ~240 times a day per open FOC week, and the whole item record
+    // each time was most of the Supabase egress over the plan).
+    db(`inventory_items?store_id=eq.${encodeURIComponent(storeId)}&data->>focCycleId=eq.${encodeURIComponent(cycle.id)}&select=${FOC_COUNT_SELECT}`).then(r => ({ ...r, data: slimRowsToData(r?.data) })),
     websiteQty ? Promise.resolve(websiteQty) : orderedQtyBySku(db, cycle.id),
     includePending ? pendingQtyBySku(db, cycle.id, now) : Promise.resolve(new Map()),
   ]);

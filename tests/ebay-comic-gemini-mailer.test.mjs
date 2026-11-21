@@ -45,7 +45,7 @@ assert.equal(COMIC_GEMINI_MAILER.dimHeight, 1.25);
   assert.match(presale, /^Story text\.\n\nBagged & boarded and shipped in a Gemini mailer\.\n\nPRESALE/);
   const already = withComicListingNotices('PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.', { presale:true, onSaleLabel:'November 5, 2026' });
   // (2026-11-17) Only the no-cancellations line is added to a description that already says PRESALE -- and only once.
-  assert.equal(already, 'PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.\n\nPresale copies are ordered from the distributor for you at FOC -- no cancellations after purchase.', 'nothing else is added twice');
+  assert.equal(already, 'PRESALE! Ships Nov 5.\n\nBagged and boarded, shipped in a Gemini mailer.\n\nPresale copies are ordered from the distributor for you at FOC. ABSOLUTELY NO CANCELLATIONS. If we secure the book for you, it\'s your book. Happy bidding!', 'nothing else is added twice');
   assert.equal(withComicListingNotices(already, { presale:true, onSaleLabel:'November 5, 2026' }), already, 'running it again adds nothing');
   assert.doesNotMatch(withComicListingNotices('In stock.', {}), /PRESALE/, 'an in-stock comic is never called a presale');
   const html = withComicListingNotices('<h2>Saga #1</h2><p>Story.</p>', { presale:true, onSaleLabel:'November 5, 2026' });
