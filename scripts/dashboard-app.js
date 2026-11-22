@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.21.1-no-cancel';
+const APP_VERSION = '2026.11.22.2-dungeon-plan';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18060,6 +18060,12 @@ function inventoryMatchesAge(i, age){
   if(age === 'all') return true;
   return i.status === 'in_stock' && inventoryAgingBucket(i) === age; // age buckets were always in-stock-only, same as before
 }
+function inventoryReleaseKey(i){
+  const d = String(i?.onSaleDate || i?.raw?.onSaleDate || i?.releaseDate || i?.raw?.releaseDate || '').slice(0, 10);
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const y = String(i?.year || i?.raw?.year || '').match(/\b(19|20)\d{2}\b/);
+  return y ? y[0] + '-00-00' : '';
+}
 function filterTable(){
   const q=(document.getElementById('tbl-q')?.value||'').trim();
   const smartRows = q ? smartSearchLocalItems(q, all, all.length) : [];
@@ -18074,7 +18080,17 @@ function filterTable(){
       && inventoryMatchesFlag(i, filterState.flag)
       && inventoryMatchesAge(i, filterState.age);
   });
-  if(q) {
+  // RELEASE DATE (store, 2026-11-22: "filter by release date, especially for comics -- newest to oldest, oldest to
+  // newest"): the comic's on-sale date (else a release date or year); items with none go to the end either way.
+  const relSort = document.getElementById('inv-sort')?.value || '';
+  if(relSort === 'release-new' || relSort === 'release-old') {
+    const dir = relSort === 'release-new' ? -1 : 1;
+    filtered.sort((a,b)=>{
+      const av = inventoryReleaseKey(a), bv = inventoryReleaseKey(b);
+      if(!av || !bv) return av ? -1 : bv ? 1 : String(a.name||'').localeCompare(String(b.name||''));
+      return av < bv ? -dir : av > bv ? dir : String(a.name||'').localeCompare(String(b.name||''));
+    });
+  } else if(q) {
     filtered.sort((a,b)=>(smartMap.get(b.id)?.score||0)-(smartMap.get(a.id)?.score||0));
   } else {
     filtered.sort((a,b)=>{

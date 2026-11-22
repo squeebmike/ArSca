@@ -56,3 +56,10 @@ console.log('Inventory bulk-select and Whatnot CSV export checks passed');
   assert.ok(app.includes("list.forEach(i => { if(checked) inventoryBulkSelectedIds.add(i.id); else inventoryBulkSelectedIds.delete(i.id); });"));
   assert.ok(app.includes("const allIds = (filtered || []).map(r => r.id);"));
   console.log('Inventory: header box selects every page: passed'); }
+// 2026-11-22: "filter by release date, especially for comics -- newest to oldest, oldest to newest".
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), html = fs.readFileSync('dashboard.html', 'utf8');
+  assert.ok(html.includes('<select class="tsi" id="inv-sort" onchange="filterTable()"') && html.includes('<option value="release-new">Release date: newest first</option><option value="release-old">Release date: oldest first</option>'));
+  const key = new Function(app.match(/function inventoryReleaseKey\(i\)\{[\s\S]*?\n\}/)[0] + '; return inventoryReleaseKey;')();
+  assert.equal(key({ onSaleDate: '2026-12-02' }), '2026-12-02'); assert.equal(key({ raw: { onSaleDate: '2026-11-04T00:00:00' } }), '2026-11-04'); assert.equal(key({ year: '1991' }), '1991-00-00'); assert.equal(key({}), '');
+  assert.ok(app.includes("if(!av || !bv) return av ? -1 : bv ? 1 :"), 'no date: last either way');
+  console.log('Inventory: sort by release date: passed'); }

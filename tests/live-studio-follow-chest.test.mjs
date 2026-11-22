@@ -77,5 +77,38 @@ console.log('Live Studio follows the live show; chests stay on screen: passed');
 { const fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
   assert.ok(fp.includes("if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));"));
   assert.ok(fp.includes("s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25)"));
-  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=21')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=61')); }
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=62')); }
 console.log('Boss fits on screen: passed');
+// 2026-11-22: "Next chest should tell us what's in it and how much to get to it" / "Get rid of the displayed books off
+// the side of the screen" / "Rat walks backwards".
+{ const D = await import('../scripts/live-studio-dungeon.mjs');
+  const d = { ...D.emptyDungeon(D.weekKey()), mana: 5 };
+  assert.deepEqual(D.nextChestInfo({ chestLoad: JSON.stringify([{ id: 'c1', t: 'Low start on a Momoko' }]), giveawayChests: 0 }, d, 100), { k: 0, what: 'Low start on a Momoko', need: 11 });
+  assert.equal(D.nextChestInfo({ giveawayChests: 2 }, d, 100).what, 'FREE GIVEAWAY');
+  assert.equal(D.nextChestInfo({ giveawayChests: 0 }, { ...d, opened: { 1: [0] } }, 100).need, 42, 'chest 2 sits at 47% of the floor');
+  const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
+  assert.ok(ov.includes("'🧰 NEXT CHEST: '+d.nextChest.what+(d.nextChest.need>0?' · $'+d.nextChest.need+' TO GO':' · OPENS NOW')"));
+  assert.equal((ov.match(/settings\.propsInFront===true/g) || []).length, 2, 'the big props in front are off unless ticked');
+  assert.equal(D.DUNGEON_DEFAULTS.propsInFront, false);
+  assert.ok(fp.includes('k = ((Math.round(-rel / (Math.PI / 4)) % 8) + 8) % 8'), 'side views the right way round');
+  console.log('Next chest, no big side props, rat the right way: passed'); }
+// THE DUNGEON PLAN (store, 2026-11-22: "make it easier to see what is set up in each chest and floor, so we can change
+// them ... and the thing that says pack forge"): rooms and bosses set ahead, one card a floor in the remote.
+{ const D = await import('../scripts/live-studio-dungeon.mjs');
+  let d = D.emptyDungeon(D.weekKey());
+  d = D.adjustDungeon(d, { room: 'forge', at: 2 }); d = D.adjustDungeon(d, { boss: D.BOSS_PICKS[3].id, at: 3 });
+  const plan = D.planOf({ floorRewards: '2: Low start on a Momoko' }, d);
+  assert.equal(plan[0].floor, 1); assert.equal(plan[1].room, 'forge'); assert.equal(plan[1].reward, 'Low start on a Momoko'); assert.equal(plan[2].boss.picked, D.BOSS_PICKS[3].id);
+  assert.deepEqual(plan[0].chestAt, [16, 47, 80]);
+  assert.throws(() => D.adjustDungeon(d, { room: 'nope', at: 2 }), /Invalid room/);
+  // A room set ahead: that floor's doors never open.
+  let e = { ...d, mana: 0 }; const r = D.addMana(e, 1000, { floorBase: 100 }, Date.now()); let w = r.dungeon;
+  for (let i = 0; i < 5 && w.floor < 2; i++) w = D.addMana(w, 1000, { floorBase: 100 }, Date.now()).dungeon;
+  if (w.floor === 2) { assert.equal(w.doors, null, 'preset room: no door vote'); assert.equal(w.rooms[2], 'forge'); }
+  // Clearing a preset room on the current floor brings the doors back.
+  const f1 = D.adjustDungeon(D.adjustDungeon(D.emptyDungeon(D.weekKey()), { room: 'vault' }), { room: '' });
+  assert.equal(f1.rooms[1], undefined);
+  const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), api = fs.readFileSync('scripts/live-studio-api.mjs', 'utf8');
+  for (const k of ['<details id="dg-plan" class="dg-plan" open>', '<button type="button" data-click="#dg-plan">🗺 DUNGEON PLAN</button>', "api('dungeon-adjust',{room:s.value,at:Number(s.dataset.planRoom)})", "api('dungeon-adjust',{boss:s.value,at:Number(s.dataset.planBoss)})", 'data-plan-reward=', 'id="dg-plan-edit"']) assert.ok(ctl.includes(k), k);
+  assert.ok(api.includes("...(typeof body.room==='string'?{room:body.room.slice(0,20)}:{}),...(Number.isInteger(body.at)?{at:body.at}:{}),"));
+  console.log('Dungeon plan: rooms and bosses ahead, chests and rewards per floor: passed'); }

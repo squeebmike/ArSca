@@ -152,7 +152,7 @@ function paintDungeon(d){
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
 // spots; the boss waits in the last room. The weapon chat picked is in hand.
 let fp=null,fpBoss='',fpOn=false;const fpBossCanvas=document.createElement('canvas');
-import('./shed-crawl-fp.mjs?v=21').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
+import('./shed-crawl-fp.mjs?v=22').then(m=>{fpLib=m;fp=m.createShedCrawl($('mana-fp'));
   // The 3D props (Duke Nukem style): photographed once from 8 angles.
   import('./prop-models.mjs?v=3').then(pm=>{baked=pm.bakeProps({size:64});if(baked){fp.setModels(baked);front?.setModels(baked);}}).catch(e=>console.warn('[studio] 3D props off:',e?.message||e));
   fp.onPeek(showPeek);
@@ -193,7 +193,7 @@ function paintCrawl(d,center){
   const g=nextK==null?null:goals[nextK];
   // The next locked long box: chat's taps on this floor are its key.
   const bx=(d.boxes||[]).find(b=>!b.open),sw=d.secret;
-  $('mana-fp-chest').textContent=(nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':'🧰 CHEST '+(nextK+1)+' AHEAD')+(bx?'  ·  '+(bx.unlocked?'🔓 LONG BOX '+(bx.k+1)+' UNLOCKED':'🔒 LONG BOX '+(bx.k+1)+': '+bx.have+'/'+bx.need+' TAPS'):'')+(sw&&!sw.open?'  ·  '+(sw.broken?'🧱 THE WALL IS DOWN!':'🧱 CRACKED WALL: '+sw.have+'/'+sw.need+' TAPS'):'');
+  $('mana-fp-chest').textContent=(nextK==null?'🧰 ALL 3 CHESTS OPEN':g&&!g.open?'🔒 CHEST '+(nextK+1)+': '+g.have+'/'+g.n+' '+g.kind.toUpperCase()+'S':(d.nextChest&&d.nextChest.k===nextK?'🧰 NEXT CHEST: '+d.nextChest.what+(d.nextChest.need>0?' · $'+d.nextChest.need+' TO GO':' · OPENS NOW'):'🧰 CHEST '+(nextK+1)+' AHEAD'))+(bx?'  ·  '+(bx.unlocked?'🔓 LONG BOX '+(bx.k+1)+' UNLOCKED':'🔒 LONG BOX '+(bx.k+1)+': '+bx.have+'/'+bx.need+' TAPS'):'')+(sw&&!sw.open?'  ·  '+(sw.broken?'🧱 THE WALL IS DOWN!':'🧱 CRACKED WALL: '+sw.have+'/'+sw.need+' TAPS'):'');
   // The battery: bars, and a warning when it's low.
   const bars=Math.round(batt*5);$('mana-fp-batt').textContent='🔦 '+'▮'.repeat(bars)+'▯'.repeat(5-bars)+(batt<0.35?' FOLLOW/SHARE TO RECHARGE!':'');
   el.classList.toggle('lowbatt',batt<0.35);
@@ -309,7 +309,7 @@ function paintBeasts(d){
   if(!beastsOn){battle.start();beastsOn=true;}
 }
 function paintFront(d,center){
-  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.foreground!==false&&settings.crawlWindow!==true&&!beastMode());
+  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.propsInFront===true&&settings.crawlWindow!==true&&!beastMode());
   if(cv)cv.classList.toggle('mana-hidden',!on);
   if(!on){if(frontOn){front?.stop();frontOn=false;}return false;}
   const W=settings.crawlSharp===true?480:360;
@@ -324,7 +324,7 @@ function paintFront(d,center){
   return true;
 }
 function paintForeground(d,center){
-  const el=$('mana-fg'),on=!!d&&center&&settings.foreground!==false&&!!fpLib&&!beastMode()&&!paintFront(d,center);
+  const el=$('mana-fg'),on=!!d&&center&&settings.propsInFront===true&&!!fpLib&&!beastMode()&&!paintFront(d,center);
   el.classList.toggle('mana-hidden',!on);if(!on)return;
   const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
   if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}

@@ -92,8 +92,8 @@ console.log('Loaded chests: passed');
   assert.equal(D.bossOf(D.adjustDungeon(D.emptyDungeon(D.weekKey()), { boss: '' }), 1), 'fister');
   // The remote and the room.
   const room = fs.readFileSync('scripts/live-studio-room.mjs', 'utf8'), api = fs.readFileSync('scripts/live-studio-api.mjs', 'utf8');
-  assert.ok(room.includes("else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss }, now);") && room.includes("s.dungeon = adjustDungeon(s.dungeon, { summon: true, settings: s.settings }, now);"));
-  assert.ok(api.includes("...(typeof body.boss==='string'?{boss:body.boss.slice(0,20)}:{}),...(body.summon===true?{summon:true}:{})"));
+  assert.ok(room.includes("else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss, at: input.at }, now);") && room.includes("s.dungeon = adjustDungeon(s.dungeon, { summon: true, settings: s.settings }, now);"));
+  assert.ok(api.includes("...(typeof body.boss==='string'?{boss:body.boss.slice(0,20)}:{}),") && api.includes("...(body.summon===true?{summon:true}:{})"));
   assert.ok(ctl.includes('id="mana-boss-pick"') && ctl.includes('⚔ SUMMON THE BOSS NOW') && ctl.includes("api('dungeon-adjust',{summon:true})"));
   assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("from './live-studio-bosses.mjs?v=3';"), 'the overlay loads the new catchphrase, not a cached one');
   console.log('Pick and summon the boss: passed');
