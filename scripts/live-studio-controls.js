@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.22.1';
+  const STUDIO_V='2026.11.22.2';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -17,7 +17,7 @@
   <p id="mana-remote-msg" class="mana-remote-msg" role="status"></p>
   <div class="mana-remote-pick"><div class="mana-row" id="mana-doors-pick"></div><div class="mana-row" id="mana-vote-pick"></div><div class="mana-row mana-trivia-who" hidden><input id="mana-trivia-who" maxlength="30" placeholder="Who got it? (their username, optional)"></div></div>
   <div class="mana-remote-grid">
-    <button type="button" data-click="#mana-load">🔌 CONNECT</button><button type="button" data-click="#mana-show">📺 USE LIVE SHOW</button><button type="button" data-click="#foc-show-sec">📚 FOC SHOW</button><button type="button" data-click="#bb-show-sec">📦 BAG &amp; BOARD</button><button type="button" data-click="#mana-trivia">❓ TRIVIA</button>
+    <button type="button" data-click="#mana-load">🔌 CONNECT</button><button type="button" data-click="#mana-show">📺 USE LIVE SHOW</button><button type="button" data-click="#foc-show-sec">📚 FOC SHOW</button><button type="button" data-click="#bb-show-sec">📦 BAG &amp; BOARD</button><button type="button" data-click="#dg-plan">🗺 DUNGEON PLAN</button><button type="button" data-click="#mana-trivia">❓ TRIVIA</button>
     <button type="button" class="tap" data-click="#mana-taps [data-tap=follow]">➕ FOLLOW</button><button type="button" class="tap" data-click="#mana-taps [data-tap=share]">➕ SHARE</button><button type="button" class="tap" data-click="#mana-taps [data-tap=bookmark]">➕ BOOKMARK</button>
     <button type="button" class="vote" data-click="#mana-vote-open [data-vote=next]">⏭ WHAT'S NEXT</button><button type="button" data-click="#mana-mascot [data-mascot=excited]">🤖 HYPE</button>
   </div>
@@ -81,6 +81,9 @@
   <div class="mana-row"><button type="button" id="quick-floor">🔢 SET FLOOR…</button><button type="button" data-click="#mana-reset-week">⏮ START THE WEEK OVER</button></div>
   <div class="mana-row"><label style="flex:1">THIS FLOOR'S BOSS <select id="mana-boss-pick"><option value="">Auto (the set order)</option></select></label><button type="button" id="mana-summon">⚔ SUMMON THE BOSS NOW</button></div>
   <small>Pick who comes out when this floor's flask fills (or when you summon). SUMMON fills the flask now: the boss comes out and sales and taps hit it.</small>
+  <details id="dg-plan" class="dg-plan" open><summary>🗺 DUNGEON PLAN -- every floor: its boss, room, reward and what's in each chest</summary>
+  <small>This floor and the ones after it. Change a boss or a room here (a room set ahead skips chat's door vote on that floor). Chests open at the $ shown; what's in them comes from LOAD THE CHESTS (in order) -- ✏ EDIT CHESTS to change it.</small>
+  <div id="dg-plan-body"><small>Tap CONNECT to see the plan.</small></div></details>
   <small>Chat votes: chat types a number in Whatnot's chat; tap the winner at the top. Nothing is random.</small>
   <div class="mana-remote-grid"><button type="button" class="vote" data-click="#mana-vote-open [data-vote=dig]">⛏ WHERE TO DIG</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=fork]">🔀 FORK</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=merchant]">🧙 MERCHANT</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=weapon]">🗡 WEAPON</button><button type="button" class="vote" data-click="#mana-vote-open [data-vote=door]">🚪 DOOR</button></div>
   <div class="mana-row" id="mana-vote-open" hidden><button type="button" data-vote="starter">CHAT VOTE: THE STARTER (BEASTS)</button><button type="button" data-vote="move">CHAT VOTE: THE ATTACK (BEASTS)</button><button type="button" data-vote="area">CHAT VOTE: THE NEXT AREA (BEASTS)</button><button type="button" data-vote="weather">CHAT VOTE: THE WEATHER (BEASTS)</button><button type="button" data-vote="merchant">CHAT VOTE: THE MERCHANT (2 SPECIAL ITEMS -- THE PICK RUNS)</button><button type="button" data-vote="dig">CHAT VOTE: WHERE TO DIG (FOUND IT!)</button><button type="button" data-vote="fork">CHAT VOTE: FORK IN THE HALL</button><button type="button" data-vote="weapon">CHAT VOTE: HERO'S WEAPON</button><button type="button" data-vote="next">CHAT VOTE: WHAT'S NEXT</button><button type="button" data-vote="door">CHAT VOTE: DOOR</button></div>
@@ -449,7 +452,37 @@
   {const b=host.querySelector('#mq-del');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.mine)throw Error('The ★ templates are built in -- pick one of your saved ones to delete.');if(!confirm('Delete the template "'+p.t.n+'"?'))return;
     const mine=savedMarqueeTemplates();mine.splice(p.i,1);const hid=form.elements.namedItem('marqueeTemplates'),before=hid.value;hid.value=mine.length?JSON.stringify(mine):'';
     try{await saveSettings('Template deleted: '+p.t.n);}catch(e){hid.value=before;throw e;}paintMarqueeTemplates();});}
-  function took(d){if(d.chestLoaded)status.textContent='Chest opened: '+d.chestLoaded+' -- run it in Whatnot.';if(d.stats&&!chestDirty&&!host.querySelector('#chest-load')?.contains(document.activeElement))setTimeout(()=>paintChestLoad(false),0);if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}if(d.machine){machineCtl=d.machine;paintMachine();}preview();readyList();paintGame();paintMoves();drawFace('#beast-face-view','beastsFace');drawFace('#beast-buddy-view','beastsBuddy');}
+  // THE DUNGEON PLAN (store, 2026-11-22: "make it easier to see what is set up in each chest and floor, so we can change
+  // them ... and the thing that says pack forge"): one card a floor -- boss, room, reward, and each chest's $ and contents.
+  let dgLib=null;import('./live-studio-dungeon.mjs?v='+STUDIO_V).then(m=>{dgLib=m;paintPlan();}).catch(()=>{});
+  function planChestWords(plan){
+    // Which loaded chest lands where: in list order, this floor's unopened chests first, then 3 a floor (as they open).
+    const used=new Set(stats?.dungeon?.chestLoadUsed||[]),load=chestLoadSaved().filter(c=>!used.has(c.id)),give=Number(settings?.giveawayChests??2)||0;let n=0;
+    return plan.map(p=>[0,1,2].map(k=>{if(p.opened.includes(k))return {open:true};const c=load[n++];return {what:c?c.t+(c.i?.title?' ('+c.i.title+')':''):k<give?'FREE GIVEAWAY':'the next book up (NEXT UP)',loaded:!!c};}));
+  }
+  function paintPlan(){
+    const box=host.querySelector('#dg-plan-body'),plan=stats?.dungeon?.plan;if(!box||!dgLib)return;
+    if(!plan?.length){box.innerHTML='<small>Tap CONNECT to see the plan.</small>';return;}
+    if(box.contains(document.activeElement))return;
+    const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    const words=planChestWords(plan),rooms=dgLib.ROOMS||[],bosses=dgLib.BOSS_PICKS||[];
+    box.innerHTML=plan.map((p,i)=>{
+      const roomName=id=>{const r=rooms.find(x=>x.id===id);return r?r.icon+' '+r.name:'';};
+      const roomOpts='<option value="">'+(p.doors.length?'Chat picks: '+p.doors.map(roomName).join(' or '):'Chat picks at the doors')+'</option>'+rooms.map(r=>'<option value="'+r.id+'"'+(p.room===r.id?' selected':'')+'>'+esc(r.icon+' '+r.name+' -- '+r.blurb)+'</option>').join('');
+      const bossOpts='<option value="">Auto: '+esc(p.boss.picked?'the set order':p.boss.name)+'</option>'+bosses.map(b=>'<option value="'+b.id+'"'+(p.boss.picked===b.id?' selected':'')+'>'+esc(b.name)+'</option>').join('');
+      const chests=words[i].map((w,k)=>'<div class="dg-chest'+(w.open?' open':'')+'"><b>CHEST '+(k+1)+' · $'+p.chestAt[k]+'</b> '+(w.open?'✓ OPENED':esc(w.what)+(w.loaded?'':' <i>(not loaded)</i>'))+'</div>').join('');
+      return '<div class="dg-floor"><div class="dg-head"><b>FLOOR '+p.floor+(i===0?' (NOW)':'')+'</b> · '+esc(p.shed)+' · $'+p.goal+' to clear</div>'
+        +'<div class="mana-row"><label>BOSS<select data-plan-boss="'+p.floor+'"'+(i===0&&stats?.dungeon?.boss?.active?' disabled':'')+'>'+bossOpts+'</select></label><label>ROOM<select data-plan-room="'+p.floor+'">'+roomOpts+'</select></label></div>'
+        +'<div class="mana-row"><label style="flex:1">REWARD<input data-plan-reward="'+p.floor+'" maxlength="120" value="'+esc(p.reward)+'" placeholder="What clearing this floor wins"></label></div>'+chests+'</div>';
+    }).join('')+'<div class="mana-row"><button type="button" id="dg-plan-edit">✏ EDIT CHESTS</button></div>';
+    box.querySelectorAll('[data-plan-boss]').forEach(s=>s.onchange=()=>run(async()=>{const d=await api('dungeon-adjust',{boss:s.value,at:Number(s.dataset.planBoss)});took(d);status.textContent='Floor '+s.dataset.planBoss+' boss: '+(s.value?s.options[s.selectedIndex].text:'the set order')+'.';}));
+    box.querySelectorAll('[data-plan-room]').forEach(s=>s.onchange=()=>run(async()=>{const d=await api('dungeon-adjust',{room:s.value,at:Number(s.dataset.planRoom)});took(d);status.textContent='Floor '+s.dataset.planRoom+' room: '+(s.value?s.options[s.selectedIndex].text.split(' -- ')[0]:'chat picks at the doors')+'.';}));
+    box.querySelectorAll('[data-plan-reward]').forEach(inp=>inp.onchange=()=>run(async()=>{const f=Number(inp.dataset.planReward),el=form.elements.namedItem('floorRewards');
+      const lines=String(el?.value||'').split('\n').filter(l=>l.trim()&&!new RegExp('^\\s*'+f+'\\s*:').test(l));const v=inp.value.trim();if(v)lines.push(f+': '+v);
+      lines.sort((a,b)=>parseInt(a,10)-parseInt(b,10));if(el)el.value=lines.join('\n');const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Floor '+f+' reward '+(v?'saved.':'cleared (the room\'s reward, if any).');}));
+    const ed=box.querySelector('#dg-plan-edit');if(ed)ed.onclick=()=>{const c=host.querySelector('#chest-load');const det=c?.closest('details');if(det)det.open=true;c?.scrollIntoView({behavior:'smooth',block:'start'});};
+  }
+  function took(d){setTimeout(paintPlan,0);if(d.chestLoaded)status.textContent='Chest opened: '+d.chestLoaded+' -- run it in Whatnot.';if(d.stats&&!chestDirty&&!host.querySelector('#chest-load')?.contains(document.activeElement))setTimeout(()=>paintChestLoad(false),0);if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}if(d.machine){machineCtl=d.machine;paintMachine();}preview();readyList();paintGame();paintMoves();drawFace('#beast-face-view','beastsFace');drawFace('#beast-buddy-view','beastsBuddy');}
   // The dungeon's status line: floor, mana, stars, the week's reset.
   function paintDungeon(){
     {const bp=host.querySelector('#mana-boss-pick');if(bp&&document.activeElement!==bp&&bp.options.length>1){bp.value=stats?.dungeon?.boss?.picked||'';bp.disabled=!!stats?.dungeon?.boss?.active;}}
@@ -503,7 +536,7 @@
   host.querySelector('#mana-set-floor-go').onclick=()=>run(async()=>{const f=Number(host.querySelector('#mana-set-floor').value);if(!Number.isInteger(f)||f<1)throw Error('Type a floor number');const bm=values().gameMode==='beasts',w=bm?'route':'floor';if(!confirm('Jump to '+w+' '+f+'? It starts at $0.'))return;const d=await api('dungeon-adjust',{floor:f});took(d);status.textContent='Now on '+w+' '+f+'.';});
   // The show remote's big buttons press the real ones (in ALL SETTINGS); its
   // status line mirrors the floor and score.
-  host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(!b)return;const el=host.querySelector(b.dataset.click);if(el?.tagName==='SECTION'){el.scrollIntoView({behavior:'smooth',block:'start'});const d=el.querySelector('details');if(d)d.open=true;}else el?.click();};
+  host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(!b)return;const el=host.querySelector(b.dataset.click);if(el?.tagName==='SECTION'||el?.tagName==='DETAILS'){el.scrollIntoView({behavior:'smooth',block:'start'});const d=el.tagName==='DETAILS'?el:el.querySelector('details');if(d)d.open=true;}else el?.click();};
   new MutationObserver(()=>{const m=host.querySelector('#mana-remote-msg');if(m)m.textContent=status.textContent;}).observe(status,{childList:true,characterData:true,subtree:true});
   // While connected, pick up what happened on stream (doors opening, chests,
   // the floor) every 8 seconds, so the winner buttons are always current.

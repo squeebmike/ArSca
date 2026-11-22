@@ -127,7 +127,8 @@ export class ManaLiveStudio extends DurableObject {
       // Chat's vote: the door the host tapped sets this floor's room.
       s.dungeon = adjustDungeon(s.dungeon, { door: input.door }, now);
       fx = { kind: 'room', floor: s.dungeon.floor, room: s.dungeon.rooms[s.dungeon.floor] };
-    } else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss }, now);
+    } else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss, at: input.at }, now);
+    else if (input.room !== undefined) s.dungeon = adjustDungeon(s.dungeon, { room: input.room, at: input.at }, now);
     else if (input.summon) {
       // SUMMON THE BOSS NOW: the flask fills and this floor's boss comes out, as when chat fills it.
       s.dungeon = adjustDungeon(s.dungeon, { summon: true, settings: s.settings }, now);

@@ -275,7 +275,7 @@ assert.match(controls, /'dungeon-adjust',\{door:i\}/);
   assert.match(controls, /<details class="mana-all mana-sec" id="mana-all"><summary>⚙ Settings<\/summary>/);
   for (const t of ['#mana-taps [data-tap=follow]', '#mana-vote-open [data-vote=dig]', '#mana-trivia', '#mana-load']) assert.ok(controls.includes('data-click="' + t + '"'), t);
   assert.ok(controls.indexOf('id="mana-vote-pick"') < controls.indexOf('<details class="mana-all mana-sec"'), 'the winner buttons are in the remote');
-  assert.ok(controls.includes("host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(!b)return;const el=host.querySelector(b.dataset.click);if(el?.tagName==='SECTION'){el.scrollIntoView({behavior:'smooth',block:'start'});const d=el.querySelector('details');if(d)d.open=true;}else el?.click();};"));
+  assert.ok(controls.includes("host.querySelector('.mana-remote').onclick=e=>{const b=e.target.closest('[data-click]');if(!b)return;const el=host.querySelector(b.dataset.click);if(el?.tagName==='SECTION'||el?.tagName==='DETAILS'){el.scrollIntoView({behavior:'smooth',block:'start'});const d=el.tagName==='DETAILS'?el:el.querySelector('details');if(d)d.open=true;}else el?.click();};"));
   assert.equal(DUNGEON_DEFAULTS.propsInFront, false, 'props in front: off unless ticked (2026-11-22)');
   const { drawSprite, SPRITE_KINDS } = await import('../scripts/shed-crawl-fp.mjs');
   assert.ok(['comics', 'dollarbin', 'cardbox', 'chest', 'chestopen'].every(k => SPRITE_KINDS.includes(k)));

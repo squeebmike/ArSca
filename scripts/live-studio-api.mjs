@@ -44,7 +44,7 @@ export async function handleLiveStudio(request,env,deps,url) {
     if (url.pathname==='/live-studio/screen') return deps.json({ok:true,...room.screen(body)});
     if (url.pathname==='/live-studio/camera') return deps.json({ok:true,...room.camera(body)});
     if (url.pathname==='/live-studio/dungeon-tap') return deps.json({ok:true,...await withChest(await room.dungeonTap(String(body.kind||'')))});
-    if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await withChest(await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),...(typeof body.boss==='string'?{boss:body.boss.slice(0,20)}:{}),...(body.summon===true?{summon:true}:{}),resetWeek:body.resetWeek===true}))});
+    if (url.pathname==='/live-studio/dungeon-adjust') return deps.json({ok:true,...await withChest(await room.dungeonAdjust({...(body.mana!==undefined?{mana:body.mana}:{}),...(body.floor!==undefined?{floor:body.floor}:{}),...(body.door!==undefined?{door:body.door}:{}),...(typeof body.boss==='string'?{boss:body.boss.slice(0,20)}:{}),...(typeof body.room==='string'?{room:body.room.slice(0,20)}:{}),...(Number.isInteger(body.at)?{at:body.at}:{}),...(body.summon===true?{summon:true}:{}),resetWeek:body.resetWeek===true}))});
     // Chat picks: open a vote, tap the winner, or close it.
     if (url.pathname==='/live-studio/vote-open') return deps.json({ok:true,...await room.openVote(String(body.kind||''))});
     if (url.pathname==='/live-studio/vote-pick') return deps.json({ok:true,...await withChest(await room.pickVote(Number(body.index),String(body.who||'')))});

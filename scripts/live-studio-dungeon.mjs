@@ -292,7 +292,7 @@ export function addMana(dIn, amount, s, now = Date.now()) {
       d.stars += Number(s.starsPerFloor) || 0;
       const relic = relicFor(cleared);
       d.cleared.push({ floor: cleared, at: now, room: d.rooms[cleared] || '' });
-      d.floor = cleared + 1; d.phase = 'floor'; d.mana = 0; d.floorTaps = 0; d.doors = doorsFor(d.floor);
+      d.floor = cleared + 1; d.phase = 'floor'; d.mana = 0; d.floorTaps = 0; d.doors = d.rooms?.[d.floor] ? null : doorsFor(d.floor);
       events.push({ kind: 'boss', floor: cleared, nextFloor: d.floor, shed: shedFor(d.floor), bossCharacter: id, bossName: bossById(id).name, reward: floorReward(s, cleared, d), stars: d.stars, relic: relic.name, relicIcon: relic.icon, doors: d.doors });
     }
   }
@@ -308,13 +308,15 @@ export function addTap(dIn, kind, s, now = Date.now()) {
   return { ...addMana({ ...w, taps, floorTaps }, amount, s, now), amount };
 }
 // The host's fixes: set the floor, or start the week over.
-export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name, boss, summon, settings } = {}, now = Date.now()) {
+export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name, boss, summon, settings, room, at } = {}, now = Date.now()) {
   const w = ensureWeek(dIn, now);
   // The boss for this floor ('' = back to the set order), and SUMMON NOW: the flask fills and the boss comes out.
   if (boss !== undefined) {
     if (boss !== '' && !BOSS_ORDER.includes(boss)) throw new Error('Invalid boss');
-    if (w.phase === 'boss') throw new Error('The boss is already out -- pick before summoning');
-    const bosses = { ...(w.bosses || {}) }; if (boss) bosses[w.floor] = boss; else delete bosses[w.floor];
+    // THE DUNGEON PLAN (2026-11-22): a later floor's boss can be picked ahead too.
+    const f = Number.isInteger(at) && at >= 1 && at <= 99 ? at : w.floor;
+    if (f === w.floor && w.phase === 'boss') throw new Error('The boss is already out -- pick before summoning');
+    const bosses = { ...(w.bosses || {}) }; if (boss) bosses[f] = boss; else delete bosses[f];
     return { ...w, bosses, lastAt: now };
   }
   if (summon) {
@@ -336,6 +338,15 @@ export function adjustDungeon(dIn, { floor, resetWeek, door, weapon, fork, name,
   if (weapon !== undefined) {
     if (!weaponById(weapon)) throw new Error('Invalid weapon');
     return { ...w, weapons: { ...(w.weapons || {}), [w.floor]: weapon }, lastAt: now };
+  }
+  // THE DUNGEON PLAN (store, 2026-11-22: "see what is set up in each chest and floor ... and the thing that says pack
+  // forge"): a floor's room set by hand, now or ahead ('' = chat picks at the doors again). Set ahead, that floor's
+  // doors don't open -- the room is already chosen.
+  if (room !== undefined) {
+    if (room !== '' && !roomById(room)) throw new Error('Invalid room');
+    const f = Number.isInteger(at) && at >= 1 && at <= 99 ? at : w.floor, rooms = { ...(w.rooms || {}) };
+    if (room) rooms[f] = room; else delete rooms[f];
+    return { ...w, rooms, doors: f === w.floor ? (room || w.floor < 2 ? null : (w.doors?.length ? w.doors : doorsFor(w.floor))) : w.doors, lastAt: now };
   }
   // The door chat voted for (0 or 1) sets this floor's room.
   if (door !== undefined) {
@@ -376,6 +387,17 @@ export function nextChestInfo(s, d, goal) {
   const need = d.phase === 'boss' ? 0 : Math.max(0, Math.ceil(CHEST_AT[k] * goal - (d.mana || 0)));
   return { k, what: String(what).slice(0, 80), need };
 }
+// This floor and the next ones (to the last shed): boss, room, reward, goal and where each chest sits -- for the remote.
+export function planOf(s, d) {
+  const out = [];
+  for (let f = d.floor; f <= Math.max(d.floor, SHEDS.length) && out.length < 7; f++) {
+    const goal = floorGoal(s, f, d), id = bossOf(d, f);
+    out.push({ floor: f, shed: shedFor(f), goal, boss: { id, name: bossById(id).name, picked: d.bosses?.[f] || '' }, room: d.rooms?.[f] || '',
+      doors: f === d.floor && d.doors?.length ? d.doors.slice() : f > d.floor ? doorsFor(f) : [], reward: floorReward(s, f, d),
+      chestAt: CHEST_AT.map(a => Math.ceil(a * goal)), opened: (d.opened?.[f] || []).slice() });
+  }
+  return out;
+}
 export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
   const d = ensureWeek(dIn, now);
   const goal = floorGoal(s, d.floor, d), max = bossMax(s, d.floor, d), id = bossOf(d, d.floor);
@@ -387,7 +409,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
-    chests: chestsOf(s, d), nextChest: nextChestInfo(s, d, goal), opened: (d.opened?.[d.floor] || []).slice(), chestLoadUsed: (d.chestLoadUsed || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
+    chests: chestsOf(s, d), nextChest: nextChestInfo(s, d, goal), plan: planOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), chestLoadUsed: (d.chestLoadUsed || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };

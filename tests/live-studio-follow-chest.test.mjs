@@ -92,3 +92,23 @@ console.log('Boss fits on screen: passed');
   assert.equal(D.DUNGEON_DEFAULTS.propsInFront, false);
   assert.ok(fp.includes('k = ((Math.round(-rel / (Math.PI / 4)) % 8) + 8) % 8'), 'side views the right way round');
   console.log('Next chest, no big side props, rat the right way: passed'); }
+// THE DUNGEON PLAN (store, 2026-11-22: "make it easier to see what is set up in each chest and floor, so we can change
+// them ... and the thing that says pack forge"): rooms and bosses set ahead, one card a floor in the remote.
+{ const D = await import('../scripts/live-studio-dungeon.mjs');
+  let d = D.emptyDungeon(D.weekKey());
+  d = D.adjustDungeon(d, { room: 'forge', at: 2 }); d = D.adjustDungeon(d, { boss: D.BOSS_PICKS[3].id, at: 3 });
+  const plan = D.planOf({ floorRewards: '2: Low start on a Momoko' }, d);
+  assert.equal(plan[0].floor, 1); assert.equal(plan[1].room, 'forge'); assert.equal(plan[1].reward, 'Low start on a Momoko'); assert.equal(plan[2].boss.picked, D.BOSS_PICKS[3].id);
+  assert.deepEqual(plan[0].chestAt, [16, 47, 80]);
+  assert.throws(() => D.adjustDungeon(d, { room: 'nope', at: 2 }), /Invalid room/);
+  // A room set ahead: that floor's doors never open.
+  let e = { ...d, mana: 0 }; const r = D.addMana(e, 1000, { floorBase: 100 }, Date.now()); let w = r.dungeon;
+  for (let i = 0; i < 5 && w.floor < 2; i++) w = D.addMana(w, 1000, { floorBase: 100 }, Date.now()).dungeon;
+  if (w.floor === 2) { assert.equal(w.doors, null, 'preset room: no door vote'); assert.equal(w.rooms[2], 'forge'); }
+  // Clearing a preset room on the current floor brings the doors back.
+  const f1 = D.adjustDungeon(D.adjustDungeon(D.emptyDungeon(D.weekKey()), { room: 'vault' }), { room: '' });
+  assert.equal(f1.rooms[1], undefined);
+  const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), api = fs.readFileSync('scripts/live-studio-api.mjs', 'utf8');
+  for (const k of ['<details id="dg-plan" class="dg-plan" open>', '<button type="button" data-click="#dg-plan">🗺 DUNGEON PLAN</button>', "api('dungeon-adjust',{room:s.value,at:Number(s.dataset.planRoom)})", "api('dungeon-adjust',{boss:s.value,at:Number(s.dataset.planBoss)})", 'data-plan-reward=', 'id="dg-plan-edit"']) assert.ok(ctl.includes(k), k);
+  assert.ok(api.includes("...(typeof body.room==='string'?{room:body.room.slice(0,20)}:{}),...(Number.isInteger(body.at)?{at:body.at}:{}),"));
+  console.log('Dungeon plan: rooms and bosses ahead, chests and rewards per floor: passed'); }
