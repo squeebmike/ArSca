@@ -923,7 +923,9 @@ export function createShedCrawl(canvas, { w: VW = VIEW_W, h: VH = VIEW_H, fov: F
       const named = s.kind === 'chest' ? (state.chests?.[s.idx] ? 'chestopen' : 'chest') : s.kind === 'lockbox' ? (state.boxes?.[s.idx] ? 'lockboxopen' : 'lockbox') : s.kind, base = named === 'rat2' ? 'rat' : named === 'bat2' ? 'bat' : named;
       const mdl = !pd && models?.[base] ? models[base] : null;
       let shot = null;
-      if (mdl) { const rel = Math.atan2(pose.y - s.y, pose.x - s.x) - (s.face ?? 0), k = ((Math.round(rel / (Math.PI / 4)) % 8) + 8) % 8, fr = named === 'rat2' || named === 'bat2' ? 1 : base === 'brazier' ? (tm * 6 | 0) % 2 : 0; shot = mdl.frames[Math.min(fr, mdl.frames.length - 1)][k]; }
+      // (2026-11-22 "rat walks backwards") The models are photographed turning the other way round from the map's
+      // angles, so the view index runs backwards (-rel): a side view had the head where the tail should be.
+      if (mdl) { const rel = Math.atan2(pose.y - s.y, pose.x - s.x) - (s.face ?? 0), k = ((Math.round(-rel / (Math.PI / 4)) % 8) + 8) % 8, fr = named === 'rat2' || named === 'bat2' ? 1 : base === 'brazier' ? (tm * 6 | 0) % 2 : 0; shot = mdl.frames[Math.min(fr, mdl.frames.length - 1)][k]; }
       if (pd && tY < 2.6 && Math.abs(tX / tY) < 0.5 && (!nearPic || tY < nearPic.d)) nearPic = { i: it.i, d: tY };
       const scx = Math.floor((VW / 2) * (1 + tX / tY)); let size = Math.max(2, Math.floor(Math.floor(VH / tY) * (s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25) : s.kind === 'eyes' ? 0.3 : pd ? 0.82 : shot ? (MODEL_SIZE[base] || 0.8) : (SPRITE_SIZE[s.kind] || 0.55))));
       const floorY = horizon + Math.floor(VH / tY / 2);

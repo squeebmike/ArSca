@@ -86,7 +86,9 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   miniMap: true,       // the mini-map in the green screen's corner, filling in as the crawl walks
   crawlSharp: false,   // the green-screen crawl at 480 pixels across instead of 360 (sharper; harder on the streaming computer)
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
-  foreground: true,    // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
+  // (2026-11-22: "get rid of the displayed books off the side of the screen, it's too big") -- off unless ticked; a new
+  // name so a studio saved with the old one on comes back with it off.
+  propsInFront: false, // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
   secretTaps: 15,      // the cracked wall comes down at N follows / shares / bookmarks on a floor (0: off)
   lockboxTaps: 5,      // a locked long box opens every N follows / shares / bookmarks on a floor (0: off) -- chat's taps, never sales
@@ -364,6 +366,16 @@ function mapOf(d) {
   return out;
 }
 // What the overlay sees.
+// THE NEXT CHEST (store, 2026-11-22: "Next chest should tell us what's in it and how much to get to it"): what it holds
+// (the loaded chest's own words, a free giveaway, or the next item up) and the dollars of mana still to go to reach it.
+export function nextChestInfo(s, d, goal) {
+  const done = d.opened?.[d.floor] || [], k = [0, 1, 2].find(n => !done.includes(n));
+  if (k == null) return null;
+  const load = nextChestLoad(s, d);
+  const what = load ? load.t : k < (Number(s.giveawayChests ?? 2) || 0) ? 'FREE GIVEAWAY' : 'THE NEXT BOOK UP';
+  const need = d.phase === 'boss' ? 0 : Math.max(0, Math.ceil(CHEST_AT[k] * goal - (d.mana || 0)));
+  return { k, what: String(what).slice(0, 80), need };
+}
 export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
   const d = ensureWeek(dIn, now);
   const goal = floorGoal(s, d.floor, d), max = bossMax(s, d.floor, d), id = bossOf(d, d.floor);
@@ -375,7 +387,7 @@ export function publicDungeon(dIn, s, showGross = 0, now = Date.now()) {
     weapon: weaponById(d.weapons?.[d.floor]) || null,
     room: roomPublic(d.rooms?.[d.floor]), doors: d.doors?.length ? d.doors.map(roomPublic) : null,
     map: mapOf(d), relics: (d.cleared || []).map(c => ({ floor: c.floor, ...relicFor(c.floor) })),
-    chests: chestsOf(s, d), opened: (d.opened?.[d.floor] || []).slice(), chestLoadUsed: (d.chestLoadUsed || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
+    chests: chestsOf(s, d), nextChest: nextChestInfo(s, d, goal), opened: (d.opened?.[d.floor] || []).slice(), chestLoadUsed: (d.chestLoadUsed || []).slice(), boxes: boxesOf(d, s), secret: secretOf(d, s), floorTaps: d.floorTaps || 0, fork: d.forks?.[d.floor] || '', name: d.names?.[d.floor] || '', lastAt: d.lastAt || 0,
     stars: d.stars, taps: { follow: d.taps?.follow || 0, share: d.taps?.share || 0, bookmark: d.taps?.bookmark || 0 }, finale: !!s.finale, reward: floorReward(s, d.floor, d), unlocks, nextUnlock: unlocks.find(u => !u.done) || null,
     lastWeek: d.lastWeek || null,
   };

@@ -77,5 +77,18 @@ console.log('Live Studio follows the live show; chests stay on screen: passed');
 { const fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
   assert.ok(fp.includes("if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));"));
   assert.ok(fp.includes("s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25)"));
-  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=21')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=61')); }
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=62')); }
 console.log('Boss fits on screen: passed');
+// 2026-11-22: "Next chest should tell us what's in it and how much to get to it" / "Get rid of the displayed books off
+// the side of the screen" / "Rat walks backwards".
+{ const D = await import('../scripts/live-studio-dungeon.mjs');
+  const d = { ...D.emptyDungeon(D.weekKey()), mana: 5 };
+  assert.deepEqual(D.nextChestInfo({ chestLoad: JSON.stringify([{ id: 'c1', t: 'Low start on a Momoko' }]), giveawayChests: 0 }, d, 100), { k: 0, what: 'Low start on a Momoko', need: 11 });
+  assert.equal(D.nextChestInfo({ giveawayChests: 2 }, d, 100).what, 'FREE GIVEAWAY');
+  assert.equal(D.nextChestInfo({ giveawayChests: 0 }, { ...d, opened: { 1: [0] } }, 100).need, 42, 'chest 2 sits at 47% of the floor');
+  const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
+  assert.ok(ov.includes("'🧰 NEXT CHEST: '+d.nextChest.what+(d.nextChest.need>0?' · $'+d.nextChest.need+' TO GO':' · OPENS NOW')"));
+  assert.equal((ov.match(/settings\.propsInFront===true/g) || []).length, 2, 'the big props in front are off unless ticked');
+  assert.equal(D.DUNGEON_DEFAULTS.propsInFront, false);
+  assert.ok(fp.includes('k = ((Math.round(-rel / (Math.PI / 4)) % 8) + 8) % 8'), 'side views the right way round');
+  console.log('Next chest, no big side props, rat the right way: passed'); }
