@@ -63,3 +63,18 @@ console.log('Inventory bulk-select and Whatnot CSV export checks passed');
   assert.equal(key({ onSaleDate: '2026-12-02' }), '2026-12-02'); assert.equal(key({ raw: { onSaleDate: '2026-11-04T00:00:00' } }), '2026-11-04'); assert.equal(key({ year: '1991' }), '1991-00-00'); assert.equal(key({}), '');
   assert.ok(app.includes("if(!av || !bv) return av ? -1 : bv ? 1 :"), 'no date: last either way');
   console.log('Inventory: sort by release date: passed'); }
+// 2026-11-23: "I should be able to do like the control click and the select click like normal stuff".
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), html = fs.readFileSync('dashboard.html', 'utf8');
+  const src = app.match(/function invBulkSelectRange\(fromId, toId, on\)\{[\s\S]*?\n\}/)[0];
+  const sel = new Set(['x']); const range = new Function('filtered', 'inventoryBulkSelectedIds', src + '; return invBulkSelectRange;')(['a','b','c','d','e'].map(id => ({ id })), sel);
+  assert.equal(range('b', 'd', true), true); assert.deepEqual([...sel].sort(), ['b','c','d','x']);
+  range('d', 'c', false); assert.deepEqual([...sel].sort(), ['b','x'], 'backwards works, and unticking a range clears it');
+  assert.equal(range('a', 'zz', true), false, 'not in the list: nothing');
+  for (const k of ["if(e.shiftKey && _invBulkAnchor && _invBulkAnchor !== id && invBulkSelectRange(_invBulkAnchor, id, cb.checked))", "if(!(e.ctrlKey || e.metaKey || e.shiftKey)) return;", "if(e.target.closest('button,select,input,textarea,a')) return;", "e.preventDefault(); e.stopPropagation();", '}, true);', 'installInvBulkClicks();']) assert.ok(app.includes(k), k);
+  assert.ok(html.includes('tr.inv-selected td{background:'));
+  console.log('Inventory: shift-click and ctrl-click selecting: passed'); }
+// 2026-11-23: "click and dragging over all those squares".
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), html = fs.readFileSync('dashboard.html', 'utf8');
+  for (const k of ["tb.addEventListener('pointerdown', e => {", "_invDrag = { start: tr.dataset.itemId, on: !inventoryBulkSelectedIds.has(tr.dataset.itemId), moved: false, pid: e.pointerId };", "if(_invDragSuppressClick){ _invDragSuppressClick = false; e.preventDefault(); e.stopPropagation();"]) assert.ok(app.includes(k), k);
+  assert.ok(html.includes('.inv-bulk-cb{touch-action:none'), 'drag works from a box on a phone too');
+  console.log('Inventory: drag to select: passed'); }

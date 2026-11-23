@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.23.2-side-pictures';
+const APP_VERSION = '2026.11.23.3-shift-select';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18163,7 +18163,9 @@ function renderTable(){
       </div></td>
     </tr>`;
   }).join('');
+  installInvBulkClicks();
   tb.querySelectorAll('tr[data-item-id]').forEach(tr => {
+    tr.classList.toggle('inv-selected', inventoryBulkSelectedIds.has(tr.dataset.itemId));
     const item = rows.find(r => r.id === tr.dataset.itemId);
     const nameCell = tr.children[1];
     if(item && nameCell && !nameCell.querySelector('.inv-source-tag')) {
@@ -18194,9 +18196,77 @@ function renderTable(){
 // actually going into tonight's Whatnot show, out of a much larger filtered
 // list. Selection is a Set of ids (not DOM state) so it survives paging,
 // re-filtering, and re-renders, same convention as ebayBulkSelectedIds.
+// DESKTOP-STYLE SELECTING (store, 2026-11-23: "some comics I want to put on Whatnot and some I don't ... I should be able
+// to do like the control click and the select click like normal stuff"): SHIFT-click a box or a row to take everything
+// between it and the last one clicked (across pages, in the list's order); CTRL/CMD-click a row to add or drop just it.
+// Selected rows are tinted. Plain clicks still do what they did.
+let _invBulkAnchor = null;
+function syncInvBulkRows(){
+  document.querySelectorAll('#tbody tr[data-item-id]').forEach(tr => {
+    const on = inventoryBulkSelectedIds.has(tr.dataset.itemId), cb = tr.querySelector('.inv-bulk-cb');
+    if(cb) cb.checked = on; tr.classList.toggle('inv-selected', on);
+  });
+  renderInvBulkBar();
+  const selectAllCb = document.getElementById('inv-bulk-select-all');
+  if(selectAllCb){ const allIds = (filtered || []).map(r => r.id); selectAllCb.checked = allIds.length>0 && allIds.every(id => inventoryBulkSelectedIds.has(id)); selectAllCb.indeterminate = !selectAllCb.checked && allIds.some(id => inventoryBulkSelectedIds.has(id)); }
+}
+function invBulkSelectRange(fromId, toId, on){
+  const ids = (filtered || []).map(r => r.id), a = ids.indexOf(fromId), b = ids.indexOf(toId);
+  if(a < 0 || b < 0) return false;
+  for(let k = Math.min(a, b); k <= Math.max(a, b); k++){ if(on) inventoryBulkSelectedIds.add(ids[k]); else inventoryBulkSelectedIds.delete(ids[k]); }
+  return true;
+}
+// DRAG TO SELECT (2026-11-23: "click and dragging over all those squares"): press on a box (or beside it) and drag over
+// the others -- every row passed takes the first box's new state (tick, or untick if it started ticked). A plain click
+// still just flips the one box.
+let _invDrag = null, _invDragSuppressClick = false;
+function invDragRowAt(x, y){ const el = document.elementFromPoint(x, y); return el?.closest?.('#tbody tr[data-item-id]') || null; }
+function installInvBulkClicks(){
+  const tb = document.getElementById('tbody');
+  if(!tb || tb.dataset.bulkClicks) return;
+  tb.dataset.bulkClicks = '1';
+  tb.addEventListener('pointerdown', e => {
+    if(e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return;
+    const cell = e.target.closest('td.td-thumb'); if(!cell || e.target.closest('.inv-thumb,.inv-thumb-placeholder')) return;
+    const tr = cell.closest('tr[data-item-id]'); if(!tr) return;
+    _invDrag = { start: tr.dataset.itemId, on: !inventoryBulkSelectedIds.has(tr.dataset.itemId), moved: false, pid: e.pointerId };
+  });
+  document.addEventListener('pointermove', e => {
+    if(!_invDrag || e.pointerId !== _invDrag.pid) return;
+    const tr = invDragRowAt(e.clientX, e.clientY); if(!tr) return;
+    const id = tr.dataset.itemId;
+    if(!_invDrag.moved && id === _invDrag.start) return;
+    if(!_invDrag.moved){ _invDrag.moved = true; if(_invDrag.on) inventoryBulkSelectedIds.add(_invDrag.start); else inventoryBulkSelectedIds.delete(_invDrag.start); }
+    e.preventDefault(); window.getSelection?.().removeAllRanges();
+    if(_invDrag.on) inventoryBulkSelectedIds.add(id); else inventoryBulkSelectedIds.delete(id);
+    _invBulkAnchor = id; syncInvBulkRows();
+  });
+  const endDrag = () => { if(_invDrag?.moved){ _invDragSuppressClick = true; setTimeout(() => { _invDragSuppressClick = false; }, 300); } _invDrag = null; };
+  document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
+  tb.addEventListener('click', e => {
+    // The click that ends a drag doesn't flip the last box back.
+    if(_invDragSuppressClick){ _invDragSuppressClick = false; e.preventDefault(); e.stopPropagation(); setTimeout(syncInvBulkRows, 0); return; }
+    const tr = e.target.closest('tr[data-item-id]'); if(!tr) return;
+    const id = tr.dataset.itemId, cb = e.target.closest('.inv-bulk-cb');
+    if(cb){
+      // The box already flipped itself; SHIFT carries that to everything since the last one.
+      if(e.shiftKey && _invBulkAnchor && _invBulkAnchor !== id && invBulkSelectRange(_invBulkAnchor, id, cb.checked)) { window.getSelection?.().removeAllRanges(); setTimeout(syncInvBulkRows, 0); }
+      _invBulkAnchor = id; return;
+    }
+    if(!(e.ctrlKey || e.metaKey || e.shiftKey)) return;
+    if(e.target.closest('button,select,input,textarea,a')) return;
+    // A modifier click on the row selects -- it doesn't open the item or Research.
+    e.preventDefault(); e.stopPropagation(); window.getSelection?.().removeAllRanges();
+    if(e.shiftKey && _invBulkAnchor && _invBulkAnchor !== id) invBulkSelectRange(_invBulkAnchor, id, true);
+    else { if(inventoryBulkSelectedIds.has(id)) inventoryBulkSelectedIds.delete(id); else inventoryBulkSelectedIds.add(id); }
+    _invBulkAnchor = id;
+    syncInvBulkRows();
+  }, true);
+}
 function invBulkCheckboxChanged(cb){
   if(cb.checked) inventoryBulkSelectedIds.add(cb.value);
   else inventoryBulkSelectedIds.delete(cb.value);
+  cb.closest('tr')?.classList.toggle('inv-selected', cb.checked);
   renderInvBulkBar();
   const selectAllCb = document.getElementById('inv-bulk-select-all');
   if(selectAllCb){
@@ -18212,8 +18282,7 @@ function invBulkCheckboxChanged(cb){
 function toggleInvBulkSelectAllPage(checked){
   const list = Array.isArray(filtered) ? filtered : [];
   list.forEach(i => { if(checked) inventoryBulkSelectedIds.add(i.id); else inventoryBulkSelectedIds.delete(i.id); });
-  document.querySelectorAll('#tbody .inv-bulk-cb').forEach(cb => { cb.checked = checked; });
-  renderInvBulkBar();
+  syncInvBulkRows();
   if(checked && list.length) toast_dash('Selected all ' + list.length + ' item' + (list.length === 1 ? '' : 's') + ' matching the filters (every page)');
 }
 
