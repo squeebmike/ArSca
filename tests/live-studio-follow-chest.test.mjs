@@ -88,8 +88,8 @@ console.log('Boss fits on screen: passed');
   assert.equal(D.nextChestInfo({ giveawayChests: 0 }, { ...d, opened: { 1: [0] } }, 100).need, 42, 'chest 2 sits at 47% of the floor');
   const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
   assert.ok(ov.includes("'🧰 NEXT CHEST: '+d.nextChest.what+(d.nextChest.need>0?' · $'+d.nextChest.need+' TO GO':' · OPENS NOW')"));
-  assert.equal((ov.match(/settings\.propsInFront===true/g) || []).length, 2, 'the big props in front are off unless ticked');
-  assert.equal(D.DUNGEON_DEFAULTS.propsInFront, false);
+  assert.equal((ov.match(/settings\.sidePictures!==false/g) || []).length, 2, 'the side pictures stay (2026-11-23)');
+  assert.equal(D.DUNGEON_DEFAULTS.sidePictures, true);
   assert.ok(fp.includes('k = ((Math.round(-rel / (Math.PI / 4)) % 8) + 8) % 8'), 'side views the right way round');
   console.log('Next chest, no big side props, rat the right way: passed'); }
 // THE DUNGEON PLAN (store, 2026-11-22: "make it easier to see what is set up in each chest and floor, so we can change

@@ -309,7 +309,7 @@ function paintBeasts(d){
   if(!beastsOn){battle.start();beastsOn=true;}
 }
 function paintFront(d,center){
-  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.propsInFront===true&&settings.crawlWindow!==true&&!beastMode());
+  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.sidePictures!==false&&settings.crawlWindow!==true&&!beastMode());
   if(cv)cv.classList.toggle('mana-hidden',!on);
   if(!on){if(frontOn){front?.stop();frontOn=false;}return false;}
   const W=settings.crawlSharp===true?480:360;
@@ -324,7 +324,7 @@ function paintFront(d,center){
   return true;
 }
 function paintForeground(d,center){
-  const el=$('mana-fg'),on=!!d&&center&&settings.propsInFront===true&&!!fpLib&&!beastMode()&&!paintFront(d,center);
+  const el=$('mana-fg'),on=!!d&&center&&settings.sidePictures!==false&&!!fpLib&&!beastMode()&&!paintFront(d,center);
   el.classList.toggle('mana-hidden',!on);if(!on)return;
   const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
   if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}

@@ -86,10 +86,8 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   miniMap: true,       // the mini-map in the green screen's corner, filling in as the crawl walks
   crawlSharp: false,   // the green-screen crawl at 480 pixels across instead of 360 (sharper; harder on the streaming computer)
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
-  // (2026-11-22: "get rid of the displayed books off the side of the screen, it's too big") -- off unless ticked; a new
-  // name so a studio saved with the old one on comes back with it off.
-  itemCard: false,     // the card top right with the book you're walking past (2026-11-23: off unless ticked)
-  propsInFront: false, // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
+  itemCard: false,     // the card top right with the book you're walking past (2026-11-23: "I don't like that card")
+  sidePictures: true,  // the books and shed junk you pass slide by at the sides (2026-11-23: "I liked the side pictures")
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
   secretTaps: 15,      // the cracked wall comes down at N follows / shares / bookmarks on a floor (0: off)
   lockboxTaps: 5,      // a locked long box opens every N follows / shares / bookmarks on a floor (0: off) -- chat's taps, never sales
