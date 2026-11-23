@@ -19,7 +19,7 @@ const fsrc = read('scripts/flipbook.mjs'); assert.ok(!/Math\.random/.test(fsrc),
 const room = read('scripts/live-studio-room.mjs'), api = read('scripts/live-studio-api.mjs'), ov = read('scripts/live-studio-overlay.mjs'), ctl = read('scripts/live-studio-controls.js');
 for (const k of ['  setFlip(input = {}) {', 'f.items = cleanFlipItems(input.items)', "f.at -= input.step === 1 ? cur.per - cur.into : -(cur.into + bookMs(f, prev));", 'flip:state.flip || null']) assert.ok(room.includes(k), k);
 assert.ok(api.includes("url.pathname==='/live-studio/flip'"));
-for (const k of ["import('./flipbook.mjs?v=4')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
+for (const k of ["import('./flipbook.mjs?v=6')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
 for (const k of ['id="fb-go"', 'id="fb-next"', 'id="fb-back"', 'id="fb-off"', 'id="fb-week"', 'id="fb-jump"', "sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).in('cycle_id',ids)", "api('flip',body)", 'flip:flipCtl']) assert.ok(ctl.includes(k), k);
 // The leader's entrance: letterboxed camera sweep round the leader, their name and line, then the fight.
 const b3 = read('scripts/beasts-3d.mjs');
@@ -106,3 +106,15 @@ console.log('FOC show (auto mix, wall, versus, mystery, artist, most wanted): pa
     "x.setUTCDate(x.getUTCDate()+((3-x.getUTCDay()+7)%7))", "mode:'lower',title:'NEW '+mdy(day)", 'wanted:[],only:true,on:true']) assert.ok(c4.includes(k), k);
   console.log('Bag & board show: passed');
 }
+// 2026-11-23: "Which one would you pull? Change pull to grab."
+assert.ok(read('scripts/flipbook.mjs').includes('WHICH ONE WOULD YOU GRAB?') && !read('scripts/flipbook.mjs').includes('WOULD YOU PULL'));
+console.log('Cover vs cover says GRAB: passed');
+// 2026-11-23: "The wall should show all the covers and slide across screen ... you can't see anything" / "Change who drew
+// this cover to name the artist".
+{ const fb = read('scripts/flipbook.mjs');
+  assert.ok(fb.includes('export const WALL_PAGE = 90, WALL_COVER_MS = 2400;') && fb.includes('<div class="fbg-row"><div class="fbg-track"') && fb.includes(".fbg-track img{height:100%;aspect-ratio:2/3"));
+  assert.ok(fb.includes("tr.style.transform = 'translateX(' + (dir < 0 ? -dist : dist - n * tw) + 'px)';"), 'rows slide on the studio clock, odd rows the other way');
+  assert.ok(fb.includes('NAME THE ARTIST! <em>TYPE IT IN CHAT!</em>') && !fb.includes('WHO DREW THIS COVER'));
+  const wall = F.gamePick({ items: Array.from({ length: 100 }, (_, k) => ({ title: 'B' + k, covers: [{ image: 'https://i/' + k }] })) }, { kind: 'wall', k: 1 });
+  assert.equal(wall.tiles.length, 10, 'the second page: the rest'); assert.equal(wall.pages, 2);
+  console.log('The wall slides; name the artist: passed'); }

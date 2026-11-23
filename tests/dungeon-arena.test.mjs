@@ -89,7 +89,7 @@ assert.match(read('scripts/live-studio-controls.js'), /id="mana-test-attack"/);
   assert.match(fp, /const torchFlame = \(tx, ty, sx\) =>/); assert.match(fp, /if \(cell === 19 && tx >= 9/);
   assert.match(fp, /nearItem\(\) \{ return seenPic/);
   const bg = read('scripts/shed-background.mjs'), html = read('shed-background.html');
-  assert.match(bg, /i = boss \? -1 : fp\?\.nearItem\?\.\(\) \?\? -1/); assert.ok(html.includes('#shed-item.on{'), 'the sharp close-up card');
+  assert.match(bg, /i = boss \|\| settings0\.itemCard !== true \? -1 : fp\?\.nearItem\?\.\(\) \?\? -1/); assert.ok(html.includes('#shed-item.on{'), 'the sharp close-up card');
 }
 // 8. The boss taunts with the store's items; the mini-map (2026-11-12: "do 6 and 7").
 {

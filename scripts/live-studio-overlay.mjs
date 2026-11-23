@@ -283,7 +283,7 @@ import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:stud
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
 let flipDraw=null,flipState=null;
-import('./flipbook.mjs?v=4').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
+import('./flipbook.mjs?v=6').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 // FOC SHOW MODE (store, 2026-11-19: "the top camera will just be the top camera ... the bottom camera is going to just
 // flip through the books"): with BOOKS ONLY on, the overlay shows the books and nothing else -- no sign, game or mascot.
 if(!document.getElementById('fb-only-css')){const st=document.createElement('style');st.id='fb-only-css';st.textContent='body.fb-only>*:not(.fb):not(script):not(style){visibility:hidden!important}';document.head.appendChild(st);}
@@ -309,7 +309,7 @@ function paintBeasts(d){
   if(!beastsOn){battle.start();beastsOn=true;}
 }
 function paintFront(d,center){
-  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.propsInFront===true&&settings.crawlWindow!==true&&!beastMode());
+  const cv=$('mana-front'),on=!!(cv&&fpLib&&d&&center&&settings.sidePictures!==false&&settings.crawlWindow!==true&&!beastMode());
   if(cv)cv.classList.toggle('mana-hidden',!on);
   if(!on){if(frontOn){front?.stop();frontOn=false;}return false;}
   const W=settings.crawlSharp===true?480:360;
@@ -324,7 +324,7 @@ function paintFront(d,center){
   return true;
 }
 function paintForeground(d,center){
-  const el=$('mana-fg'),on=!!d&&center&&settings.propsInFront===true&&!!fpLib&&!beastMode()&&!paintFront(d,center);
+  const el=$('mana-fg'),on=!!d&&center&&settings.sidePictures!==false&&!!fpLib&&!beastMode()&&!paintFront(d,center);
   el.classList.toggle('mana-hidden',!on);if(!on)return;
   const pct=d.phase==='boss'?1:Math.max(0,Math.min(1,d.pct/100));
   if(fgFloor!==d.floor){fgFloor=d.floor;fgShown=pct;}

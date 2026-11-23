@@ -295,7 +295,8 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       const card = Object.assign(document.createElement('div'), { id: 'shed-item' }), cardImg = document.createElement('img'), cardTxt = document.createElement('b');
       cardImg.alt = ''; card.append(cardImg, cardTxt); document.body.append(card);
       setInterval(() => {
-        const boss = beastsOn || vendOn || stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
+        // (2026-11-23: "I don't like that top right corner book. It's always popping up in my way") -- off unless ticked.
+        const boss = beastsOn || vendOn || stats?.dungeon?.phase === 'boss' || Date.now() < testUntil, i = boss || settings0.itemCard !== true ? -1 : fp?.nearItem?.() ?? -1, it = i >= 0 ? picItems[i] : null; // in a boss fight the boss's item is the star
         if (it && it.image) { if (cardAt !== i) { cardAt = i; cardImg.src = img(it.image); cardTxt.textContent = String(it.title || '').slice(0, 60) + (Number(it.price) > 0 ? '  ·  $' + Number(it.price).toFixed(2) : ''); cardTxt.hidden = !it.title; } card.classList.add('on'); }
         else if (cardAt >= 0 && !card.classList.contains('hold')) { card.classList.remove('on'); cardAt = -1; }
       }, 250);
