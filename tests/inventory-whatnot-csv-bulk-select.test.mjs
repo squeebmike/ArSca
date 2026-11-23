@@ -73,3 +73,8 @@ console.log('Inventory bulk-select and Whatnot CSV export checks passed');
   for (const k of ["if(e.shiftKey && _invBulkAnchor && _invBulkAnchor !== id && invBulkSelectRange(_invBulkAnchor, id, cb.checked))", "if(!(e.ctrlKey || e.metaKey || e.shiftKey)) return;", "if(e.target.closest('button,select,input,textarea,a')) return;", "e.preventDefault(); e.stopPropagation();", '}, true);', 'installInvBulkClicks();']) assert.ok(app.includes(k), k);
   assert.ok(html.includes('tr.inv-selected td{background:'));
   console.log('Inventory: shift-click and ctrl-click selecting: passed'); }
+// 2026-11-23: "click and dragging over all those squares".
+{ const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), html = fs.readFileSync('dashboard.html', 'utf8');
+  for (const k of ["tb.addEventListener('pointerdown', e => {", "_invDrag = { start: tr.dataset.itemId, on: !inventoryBulkSelectedIds.has(tr.dataset.itemId), moved: false, pid: e.pointerId };", "if(_invDragSuppressClick){ _invDragSuppressClick = false; e.preventDefault(); e.stopPropagation();"]) assert.ok(app.includes(k), k);
+  assert.ok(html.includes('.inv-bulk-cb{touch-action:none'), 'drag works from a box on a phone too');
+  console.log('Inventory: drag to select: passed'); }

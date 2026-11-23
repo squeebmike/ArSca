@@ -18216,11 +18216,36 @@ function invBulkSelectRange(fromId, toId, on){
   for(let k = Math.min(a, b); k <= Math.max(a, b); k++){ if(on) inventoryBulkSelectedIds.add(ids[k]); else inventoryBulkSelectedIds.delete(ids[k]); }
   return true;
 }
+// DRAG TO SELECT (2026-11-23: "click and dragging over all those squares"): press on a box (or beside it) and drag over
+// the others -- every row passed takes the first box's new state (tick, or untick if it started ticked). A plain click
+// still just flips the one box.
+let _invDrag = null, _invDragSuppressClick = false;
+function invDragRowAt(x, y){ const el = document.elementFromPoint(x, y); return el?.closest?.('#tbody tr[data-item-id]') || null; }
 function installInvBulkClicks(){
   const tb = document.getElementById('tbody');
   if(!tb || tb.dataset.bulkClicks) return;
   tb.dataset.bulkClicks = '1';
+  tb.addEventListener('pointerdown', e => {
+    if(e.button !== 0 || e.shiftKey || e.ctrlKey || e.metaKey) return;
+    const cell = e.target.closest('td.td-thumb'); if(!cell || e.target.closest('.inv-thumb,.inv-thumb-placeholder')) return;
+    const tr = cell.closest('tr[data-item-id]'); if(!tr) return;
+    _invDrag = { start: tr.dataset.itemId, on: !inventoryBulkSelectedIds.has(tr.dataset.itemId), moved: false, pid: e.pointerId };
+  });
+  document.addEventListener('pointermove', e => {
+    if(!_invDrag || e.pointerId !== _invDrag.pid) return;
+    const tr = invDragRowAt(e.clientX, e.clientY); if(!tr) return;
+    const id = tr.dataset.itemId;
+    if(!_invDrag.moved && id === _invDrag.start) return;
+    if(!_invDrag.moved){ _invDrag.moved = true; if(_invDrag.on) inventoryBulkSelectedIds.add(_invDrag.start); else inventoryBulkSelectedIds.delete(_invDrag.start); }
+    e.preventDefault(); window.getSelection?.().removeAllRanges();
+    if(_invDrag.on) inventoryBulkSelectedIds.add(id); else inventoryBulkSelectedIds.delete(id);
+    _invBulkAnchor = id; syncInvBulkRows();
+  });
+  const endDrag = () => { if(_invDrag?.moved){ _invDragSuppressClick = true; setTimeout(() => { _invDragSuppressClick = false; }, 300); } _invDrag = null; };
+  document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
   tb.addEventListener('click', e => {
+    // The click that ends a drag doesn't flip the last box back.
+    if(_invDragSuppressClick){ _invDragSuppressClick = false; e.preventDefault(); e.stopPropagation(); setTimeout(syncInvBulkRows, 0); return; }
     const tr = e.target.closest('tr[data-item-id]'); if(!tr) return;
     const id = tr.dataset.itemId, cb = e.target.closest('.inv-bulk-cb');
     if(cb){
