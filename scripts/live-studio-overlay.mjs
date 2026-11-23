@@ -283,7 +283,7 @@ import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:stud
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
 let flipDraw=null,flipState=null;
-import('./flipbook.mjs?v=5').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
+import('./flipbook.mjs?v=6').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 // FOC SHOW MODE (store, 2026-11-19: "the top camera will just be the top camera ... the bottom camera is going to just
 // flip through the books"): with BOOKS ONLY on, the overlay shows the books and nothing else -- no sign, game or mascot.
 if(!document.getElementById('fb-only-css')){const st=document.createElement('style');st.id='fb-only-css';st.textContent='body.fb-only>*:not(.fb):not(script):not(style){visibility:hidden!important}';document.head.appendChild(st);}
