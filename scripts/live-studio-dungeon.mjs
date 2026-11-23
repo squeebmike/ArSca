@@ -88,6 +88,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
   // (2026-11-22: "get rid of the displayed books off the side of the screen, it's too big") -- off unless ticked; a new
   // name so a studio saved with the old one on comes back with it off.
+  itemCard: false,     // the card top right with the book you're walking past (2026-11-23: off unless ticked)
   propsInFront: false, // shed junk and the chests slide past in FRONT of the hosts (pseudo 3D with the green screen behind)
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
   secretTaps: 15,      // the cracked wall comes down at N follows / shares / bookmarks on a floor (0: off)

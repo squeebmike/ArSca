@@ -77,7 +77,7 @@ console.log('Live Studio follows the live show; chests stay on screen: passed');
 { const fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
   assert.ok(fp.includes("if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));"));
   assert.ok(fp.includes("s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25)"));
-  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=62')); }
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=63')); }
 console.log('Boss fits on screen: passed');
 // 2026-11-22: "Next chest should tell us what's in it and how much to get to it" / "Get rid of the displayed books off
 // the side of the screen" / "Rat walks backwards".
@@ -112,3 +112,9 @@ console.log('Boss fits on screen: passed');
   for (const k of ['<details id="dg-plan" class="dg-plan" open>', '<button type="button" data-click="#dg-plan">🗺 DUNGEON PLAN</button>', "api('dungeon-adjust',{room:s.value,at:Number(s.dataset.planRoom)})", "api('dungeon-adjust',{boss:s.value,at:Number(s.dataset.planBoss)})", 'data-plan-reward=', 'id="dg-plan-edit"']) assert.ok(ctl.includes(k), k);
   assert.ok(api.includes("...(typeof body.room==='string'?{room:body.room.slice(0,20)}:{}),...(Number.isInteger(body.at)?{at:body.at}:{}),"));
   console.log('Dungeon plan: rooms and bosses ahead, chests and rewards per floor: passed'); }
+// 2026-11-23: "I don't like that top right corner book. It's always popping up in my way" -- off unless ticked.
+{ const sb = fs.readFileSync('scripts/shed-background.mjs', 'utf8'), D = await import('../scripts/live-studio-dungeon.mjs');
+  assert.ok(sb.includes("i = boss || settings0.itemCard !== true ? -1 : fp?.nearItem?.() ?? -1,"));
+  assert.equal(D.DUNGEON_DEFAULTS.itemCard, false);
+  assert.ok(fs.readFileSync('scripts/live-studio-controls.js', 'utf8').includes("box('itemCard','ITEM CARD: the book you walk past pops up top right')"));
+  console.log('Item card top right: off: passed'); }
