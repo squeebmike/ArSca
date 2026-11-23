@@ -640,6 +640,14 @@ export async function afterFocAvailability(db, storeId, cycle, skus, { now = new
   return afterFocLeft({ skus, rows:rows || [], websiteQty:website, pendingQty:pending, today });
 }
 
+// PRH covers come full size (avg ~1.2 MB, some ~6 MB): pages of them never finished loading (2026-11-23). PRH's own
+// smaller copies for pages: 'thumb' ~320x450, 'medium' ~450x675. Stored URLs (and eBay uploads) keep the full size.
+export function prhCover(u, size = 'thumb') {
+  const m = /^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\/([A-Za-z0-9]+)(\?.*)?$/.exec(String(u || ''));
+  if (!m) return u;
+  return size === 'medium' ? `https://images.penguinrandomhouse.com/cover/d/${m[1]}?alt=x&width=1400&height=2100` : `https://images.penguinrandomhouse.com/cover/${m[1]}`;
+}
+
 function catalogCycleSelect() {
   return 'id,store_id,distributor,foc_date,customer_cutoff_at,status,preorder_mode,source_filename,source_row_count,import_report,imported_at,updated_at';
 }
@@ -767,7 +775,7 @@ async function preorderDirectory(env, deps, url) {
   const shown=entries.slice((page-1)*60,page*60),esc=deps.mtgEscapeHtml;
   const heading=(includeClosed?'Comic cover catalog':'Comic preorders')+(page>1?' — Page '+page:'');
   const intro=includeClosed?'Current and historical public comic covers from PRH and Lunar. Closed covers are shown for reference; check each page for availability.':'These covers can currently be preordered through PRH or Lunar.';
-  const cards=shown.map(e=>`<a class="mp-card" href="${esc(e.url)}">${e.image?`<img loading="lazy" width="240" height="320" style="object-fit:contain" src="${esc(e.image)}" alt="${esc(e.name)}">`:''}<div class="mp-card-body"><h2 style="font-size:18px">${esc(e.name)}</h2><p>${e.price>0?'$'+e.price.toFixed(2)+' USD':'Price not set'} · ${e.orderable?'Preorder':'Not currently orderable'}</p><p>${esc(e.distributor)}${e.release?' · Release '+esc(e.release):''}</p></div></a>`).join('');
+  const cards=shown.map(e=>`<a class="mp-card" href="${esc(e.url)}">${e.image?`<img loading="lazy" width="240" height="320" style="object-fit:contain" src="${esc(prhCover(e.image))}" alt="${esc(e.name)}">`:''}<div class="mp-card-body"><h2 style="font-size:18px">${esc(e.name)}</h2><p>${e.price>0?'$'+e.price.toFixed(2)+' USD':'Price not set'} · ${e.orderable?'Preorder':'Not currently orderable'}</p><p>${esc(e.distributor)}${e.release?' · Release '+esc(e.release):''}</p></div></a>`).join('');
   const pagination=Array.from({length:pages},(_,i)=>i+1).map(n=>n===page?`<span aria-current="page">Page ${n}</span>`:`<a href="${esc(href(n))}">Page ${n}</a>`).join('');
   const html=deps.mtgPageShell({title:heading+' | The Mana Pocket',description:intro+' Preorders ship after the books arrive; they are not received shelf stock. Page '+page+' of '+pages+'.',canonicalPath:href(page),
     jsonLd:{'@context':'https://schema.org','@type':'CollectionPage',name:heading},
@@ -860,7 +868,7 @@ async function preorderDetailPage(env, deps, skuId, providedSlug) {
       } } : {}),
     },
     bodyHtml: `<div class="mp-crumb"><a href="/preorders">← All comic preorders</a></div>` +
-      `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(image)}" alt="${deps.mtgEscapeHtml(name)}">` : ''}` +
+      `<div class="mp-detail">${image ? `<img src="${deps.mtgEscapeHtml(prhCover(image, 'medium'))}" alt="${deps.mtgEscapeHtml(name)}">` : ''}` +
       `<div><h1>${deps.mtgEscapeHtml(name)} <span style="display:block;font:500 14px/1.5 system-ui,sans-serif;margin-top:8px">${deps.mtgEscapeHtml(reference)}</span></h1>${publisher ? `<div class="mp-meta">${deps.mtgEscapeHtml(publisher)}</div>` : ''}` +
       `<div class="mp-meta">${sku.afterFoc?'FOC closed · limited ordered copies':'Preorder deadline '+deps.mtgEscapeHtml(dateOnlyLabel(cycleRow.foc_date))}</div>` +
       `<div class="mp-prices"><span class="mp-price-pill">${deps.mtgEscapeHtml(priceText)}</span></div>` +

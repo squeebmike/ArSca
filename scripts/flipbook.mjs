@@ -103,8 +103,10 @@ export function gamePick(flip, seg) {
   if (seg.kind === 'wanted') return { list: p.wanted };
   return null;
 }
-// A smaller copy of a PRH cover (its full size runs to several MB): /cover/d/<id> -> /cover/<w>/<id>. Others as they are.
-export const sizedCover = (u, w) => /^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\//.test(String(u || '')) ? String(u).replace('/cover/d/', '/cover/' + w + '/') : u;
+// PRH's own smaller copies (its full size averages ~1.2 MB and runs to ~6 MB): up to 400 px wide, the ~320x450 copy
+// (/cover/<id>); bigger, the ~450x675 one. (PRH's size numbers in the path don't change anything; these two do.)
+export const sizedCover = (u, w) => { const m = /^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\/([A-Za-z0-9]+)(\?.*)?$/.exec(String(u || '')); if (!m) return u;
+  return w <= 400 ? 'https://images.penguinrandomhouse.com/cover/' + m[1] : 'https://images.penguinrandomhouse.com/cover/d/' + m[1] + '?alt=x&width=1400&height=2100'; };
 const money = n => n > 0 ? '$' + (n % 1 ? n.toFixed(2) : n.toFixed(0)) : '';
 const md = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (+m[2]) + '/' + (+m[3]) : ''; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -141,7 +143,7 @@ export const FLIP_CSS = `
 .fbg-vs{font:900 90px system-ui;color:#e8213a;text-shadow:0 0 30px #e8213a88}
 .fbg-ans{font:900 46px/1.1 system-ui;text-align:center;color:#9dff6a;min-height:52px}
 .fbg-bar{height:14px;background:#1f2636;border-radius:8px;overflow:hidden}.fbg-bar i{display:block;height:100%;background:linear-gradient(90deg,#e8213a,#ffd84a)}
-.fbg-wall{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;overflow:hidden}.fbg-row{flex:1;min-height:0;overflow:hidden;position:relative}.fbg-track{display:flex;gap:14px;height:100%;width:max-content;will-change:transform}.fbg-track img{height:100%;aspect-ratio:2/3;object-fit:cover;border-radius:10px;box-shadow:0 8px 24px #000c;flex:none}
+.fbg-wall{flex:1;min-height:0;display:flex;flex-direction:column;gap:14px;overflow:hidden}.fbg-row{flex:1;min-height:0;overflow:hidden;position:relative}.fbg-track{display:flex;gap:14px;height:100%;width:max-content;will-change:transform;animation-timing-function:linear;animation-iteration-count:infinite}@keyframes fbgL{from{transform:translateX(0)}to{transform:translateX(var(--fbg-shift))}}@keyframes fbgR{from{transform:translateX(var(--fbg-shift))}to{transform:translateX(0)}}.fbg-track img{height:100%;aspect-ratio:2/3;object-fit:cover;border-radius:10px;box-shadow:0 8px 24px #000c;flex:none}
 .fbg-wanted{flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center;gap:26px}.fbg-wanted div{display:flex;flex-direction:column;align-items:center;gap:8px;width:300px}.fbg-wanted img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;box-shadow:0 14px 40px #000c}
 .fbg-wanted b{font:900 60px system-ui;color:#ffd84a}.fbg-wanted span{font:800 24px/1.2 system-ui;text-align:center}.fbg-wanted div:nth-child(1){order:2;width:360px}.fbg-wanted div:nth-child(2){order:1}.fbg-wanted div:nth-child(3){order:3}.fbg-wanted div:nth-child(4){order:0;width:240px}.fbg-wanted div:nth-child(5){order:4;width:240px}
 .fb.lower .fbg-q{font-size:40px}.fb.lower .fbg-wanted div{width:220px}.fb.lower .fbg-wanted div:nth-child(1){width:260px}
@@ -161,12 +163,13 @@ export function createFlipbook(doc, { img = u => u } = {}) {
     const pick = gamePick(flip, seg); if (!pick) { gameKey = ''; return false; }
     if (key !== gameKey) {
       gameKey = key; const head = (b, s) => '<div class="fbg-head"><b>' + b + '</b><span>' + esc(s || flip.title || '') + '</span></div>';
-      if (seg.kind === 'versus') game.innerHTML = head('COVER VS COVER', pick.b.title) + '<div class="fbg-q">WHICH ONE WOULD YOU GRAB? <em>TYPE 1 OR 2 IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><i>1</i><img src="' + esc(img(pick.a.image)) + '" alt=""><span>' + esc(pick.a.label) + '</span></div><div class="fbg-vs">VS</div><div class="fbg-card"><i>2</i><img src="' + esc(img(pick.z.image)) + '" alt=""><span>' + esc(pick.z.label) + '</span></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
-      else if (seg.kind === 'mystery') game.innerHTML = head('MYSTERY COVER', '') + '<div class="fbg-q">WHAT BOOK IS THIS? <em>GUESS IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img class="blur" src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
-      else if (seg.kind === 'artist') game.innerHTML = head('NAME THAT ARTIST', pick.b.title) + '<div class="fbg-q">NAME THE ARTIST! <em>TYPE IT IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      if (seg.kind === 'versus') game.innerHTML = head('COVER VS COVER', pick.b.title) + '<div class="fbg-q">WHICH ONE WOULD YOU GRAB? <em>TYPE 1 OR 2 IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><i>1</i><img src="' + esc(img(sizedCover(pick.a.image, 900))) + '" alt=""><span>' + esc(pick.a.label) + '</span></div><div class="fbg-vs">VS</div><div class="fbg-card"><i>2</i><img src="' + esc(img(sizedCover(pick.z.image, 900))) + '" alt=""><span>' + esc(pick.z.label) + '</span></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      else if (seg.kind === 'mystery') game.innerHTML = head('MYSTERY COVER', '') + '<div class="fbg-q">WHAT BOOK IS THIS? <em>GUESS IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img class="blur" src="' + esc(img(sizedCover(pick.c.image, 900))) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      else if (seg.kind === 'artist') game.innerHTML = head('NAME THAT ARTIST', pick.b.title) + '<div class="fbg-q">NAME THE ARTIST! <em>TYPE IT IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img src="' + esc(img(sizedCover(pick.c.image, 900))) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
       else if (seg.kind === 'wall') { const rows = flip.mode === 'lower' ? 2 : 3, per = Math.ceil(pick.tiles.length / rows);
         game.innerHTML = head('THE WALL', 'EVERY COVER THIS WEEK' + (pick.pages > 1 ? ' · ' + (pick.page + 1) + ' OF ' + pick.pages : '')) + '<div class="fbg-wall">'
-          + Array.from({ length: rows }, (_, r) => { const row = pick.tiles.slice(r * per, r * per + per); return '<div class="fbg-row"><div class="fbg-track" data-n="' + row.length + '" data-dir="' + (r % 2 ? 1 : -1) + '">' + Array.from({ length: Math.max(2, 2 * Math.ceil(12 / Math.max(1, row.length))) }, () => row).flat().map(x => '<img src="' + esc(img(sizedCover(x.c.image, 300))) + '" alt="">').join('') + '</div></div>'; }).join('') + '</div><div class="fbg-ans"></div>'; }
+          + Array.from({ length: rows }, (_, r) => { const row = pick.tiles.slice(r * per, r * per + per); const reps = Math.max(2, 2 * Math.ceil(12 / Math.max(1, row.length))), cyc = Math.max(1, row.length) * WALL_COVER_MS;
+            return '<div class="fbg-row"><div class="fbg-track" data-n="' + row.length + '" data-dir="' + (r % 2 ? 1 : -1) + '" style="--fbg-shift:calc(-100% / ' + reps + ');animation-name:' + (r % 2 ? 'fbgR' : 'fbgL') + ';animation-duration:' + cyc + 'ms;animation-delay:-' + Math.round(seg.into % cyc) + 'ms">' + Array.from({ length: reps }, () => row).flat().map(x => '<img src="' + esc(img(sizedCover(x.c.image, 300))) + '" alt="">').join('') + '</div></div>'; }).join('') + '</div><div class="fbg-ans"></div>'; }
       else if (seg.kind === 'wanted') game.innerHTML = head('MOST WANTED', 'TOP OF THE ORDER SO FAR') + (pick.list.length ? '<div class="fbg-wanted">' + pick.list.map((w, k) => '<div><b>#' + (k + 1) + '</b><img src="' + esc(img(sizedCover(w.image, 400))) + '" alt=""><span>' + esc(w.title) + '</span></div>').join('') + '</div>' : '<div class="fbg-q">THE ORDER IS JUST GETTING STARTED -- <em>TELL US WHAT YOU WANT IN CHAT!</em></div>');
     }
     const left = seg.len - seg.into, reveal = Number.isFinite(seg.len) && left <= 6000, bar = gq('.fbg-bar i'), ans = gq('.fbg-ans');
@@ -175,13 +178,11 @@ export function createFlipbook(doc, { img = u => u } = {}) {
     if (seg.kind === 'mystery') { const im = gq('img'), f = Math.min(1, seg.into / (seg.len - 6000)); if (im) im.style.filter = reveal ? 'none' : 'blur(' + (34 * (1 - f) + 6).toFixed(1) + 'px) saturate(' + (0.4 + 0.6 * f).toFixed(2) + ')'; if (ans) ans.textContent = reveal ? "IT'S " + pick.b.title + '!' : 'REVEAL IN ' + cnt(left - 6000) + 's'; }
     if (seg.kind === 'artist' && ans) ans.textContent = reveal ? 'COVER BY ' + (pick.c.artist || pick.b.coverArtist).toUpperCase() + '!' : 'ANSWER IN ' + cnt(left - 6000) + 's';
     if (seg.kind === 'wall') {
-      // Each row slides on the studio clock (the same spot on every overlay); odd rows the other way. The cover passing
-      // the middle of the top row is named underneath.
-      let named = null;
-      game.querySelectorAll('.fbg-track').forEach((tr, r) => { const n = Number(tr.dataset.n) || 1, im = tr.querySelector('img'); if (!im) return;
-        const tw = im.offsetWidth + 14, cycle = n * WALL_COVER_MS, f = (seg.into % cycle) / cycle, dist = f * n * tw, dir = Number(tr.dataset.dir);
-        tr.style.transform = 'translateX(' + (dir < 0 ? -dist : dist - n * tw) + 'px)';
-        if (r === 0 && tw > 14) { const mid = (tr.parentElement.clientWidth / 2 + dist) / tw; named = Math.floor(mid) % n; } });
+      // The rows slide by themselves (a CSS animation started at the studio clock's spot -- smooth, no stepping); this
+      // only reads where the top row is to name the cover in the middle.
+      let named = null; const tr = game.querySelector('.fbg-track'), im = tr?.querySelector('img');
+      if (tr && im) { const n = Number(tr.dataset.n) || 1, tw = im.offsetWidth + 14, m = /matrix\(([^)]+)\)/.exec(getComputedStyle(tr).transform || ''), dx = m ? Number(m[1].split(',')[4]) || 0 : 0;
+        if (tw > 14) named = ((Math.floor((tr.parentElement.clientWidth / 2 - dx) / tw) % n) + n) % n; }
       const per = Math.ceil(pick.tiles.length / (flip.mode === 'lower' ? 2 : 3)), x = named == null ? null : pick.tiles[Math.min(named, per - 1)];
       if (ans && x) ans.textContent = x.b.title + ' · ' + x.c.label; }
     return true;
@@ -191,11 +192,13 @@ export function createFlipbook(doc, { img = u => u } = {}) {
     el.hidden = false;
     const now = clock(), seg = segmentAt(flip, now), gaming = seg && seg.kind !== 'flip' && paintGame(seg, now);
     el.className = 'fb ' + (flip.mode === 'lower' ? 'lower' : 'full') + (gaming ? ' gaming' : '');
-    if (gaming) { raf = setTimeout(paint, seg.kind === 'wall' ? 33 : 120); return; } // the wall slides smoothly
+    if (gaming) { raf = setTimeout(paint, 120); return; }
     const at = flipAt({ ...flip, at: seg ? seg.flipAt : flip.at }, now), b = flip.items[at.i], c = b.covers[at.c], key = at.i + ':' + at.c + ':' + (flip.at || 0);
     if (key !== shown) {
       const newBook = !shown.startsWith(at.i + ':'); shown = key;
-      const im = q('.fb-cover'); im.classList.remove('turn'); void im.offsetWidth; im.src = img(c.image); im.classList.add('turn');
+      const im = q('.fb-cover'); im.classList.remove('turn'); void im.offsetWidth; im.src = img(c.image);
+      // The next cover loads while this one is up (big PRH covers take a moment), so it's there when the page turns.
+      { const nb = flip.items[(at.c + 1 < b.covers.length ? at.i : (at.i + 1) % flip.items.length)], nc = at.c + 1 < b.covers.length ? b.covers[at.c + 1] : nb?.covers?.[0]; if (nc?.image) { const pre = new Image(); pre.src = img(nc.image); } } im.classList.add('turn');
       const tg = q('.fb-tag'); tg.hidden = !c.tag; tg.textContent = c.tag;
       q('.fb-var').innerHTML = esc(c.label) + (money(c.price) ? ' <i>' + money(c.price) + '</i>' : '');
       q('.fb-thumbs').classList.toggle('many', b.covers.length > 6);

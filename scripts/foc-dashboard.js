@@ -569,7 +569,7 @@ function skuCard(v){
   var total=Number(v.customerQty||0)+Number(v.storeQuantity||0);var qual=v.qualification||{};var save="saveFocSku('"+esc(v.id)+"')";
   return '<article class="foc-sku '+(v.isIncentive?'incentive':'')+'" data-foc-sku="'+esc(v.id)+'">'+
     '<label style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font:8px var(--font-mono);color:var(--dim);cursor:pointer"><input type="checkbox" class="foc-publish-bulk-cb" value="'+esc(v.id)+'" '+(focPublishBulkSelectedIds.has(v.id)?'checked':'')+' onchange="focPublishBulkCheckboxChanged(this)"> SELECT</label>'+
-    (v.coverImageUrl?'<img src="'+esc(v.coverImageUrl)+'" alt="'+esc(v.variantLabel)+'" loading="lazy" onerror="this.style.opacity=.16">':'<div style="aspect-ratio:2/3;display:grid;place-items:center;background:var(--surf2);color:var(--dim);border-radius:7px">NO COVER</div>')+
+    (v.coverImageUrl?'<img src="'+esc(prhCover(v.coverImageUrl))+'" alt="'+esc(v.variantLabel)+'" loading="lazy" onerror="this.style.opacity=.16">':'<div style="aspect-ratio:2/3;display:grid;place-items:center;background:var(--surf2);color:var(--dim);border-radius:7px">NO COVER</div>')+
     '<div style="margin-top:8px;font-weight:800;font-size:11px;line-height:1.35;color:var(--text)">'+esc(v.variantLabel)+'</div><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(v.coverArtist||'Cover artist not listed')+'<br>UPC '+esc(v.upc)+'</div>'+lunarCostLine(v)+focVariantPillsHtml(v)+
     ((v.isIncentive||v.isFoil)?'<div style="margin-top:7px;display:flex;gap:5px;flex-wrap:wrap">'+(v.isIncentive?'<span class="foc-badge incentive">INCENTIVE '+esc(v.orderRequirement)+'</span>':'')+(v.isFoil?'<span class="foc-badge">FOIL · PRICE SEPARATELY</span>':'')+'</div>':'')+
     (v.isIncentive?'<div class="foc-progress"><i style="width:'+pct(qual.total,qual.threshold)+'%"></i></div><div style="font:8px/1.4 var(--font-mono);color:'+(qual.qualified?'var(--g)':'var(--gold)')+'">'+Number(qual.total||0)+' / '+Number(qual.threshold||0)+(qual.qualified?' · QUALIFIED':' · '+Number(qual.needed||0)+' MORE TO UNLOCK')+' · '+Number(v.waitlistRequests||0)+' WAITLISTED</div>':'')+
@@ -2848,7 +2848,7 @@ function endFocEbayListings(){
     '<div style="max-height:440px;overflow-y:auto;border-top:1px solid var(--border);padding-top:8px">'+
     live.map(function(v){return '<label style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font:10px var(--font-mono);color:var(--text);cursor:pointer">'+
       '<input type="checkbox" class="foc-end-ebay-cb" value="'+esc(v.id)+'" checked>'+
-      (v.coverImageUrl?'<img src="'+esc(v.coverImageUrl)+'" alt="" loading="lazy" style="width:40px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#050507" onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{style:\'width:40px;height:54px;flex-shrink:0;border-radius:4px;background:var(--surf2)\'}))">':'<div style="width:40px;height:54px;flex-shrink:0;border-radius:4px;background:var(--surf2);display:flex;align-items:center;justify-content:center;font:7px var(--font-mono);color:var(--dim);text-align:center;line-height:1.3">NO<br>COVER</div>')+
+      (v.coverImageUrl?'<img src="'+esc(prhCover(v.coverImageUrl))+'" alt="" loading="lazy" style="width:40px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#050507" onerror="this.replaceWith(Object.assign(document.createElement(\'div\'),{style:\'width:40px;height:54px;flex-shrink:0;border-radius:4px;background:var(--surf2)\'}))">':'<div style="width:40px;height:54px;flex-shrink:0;border-radius:4px;background:var(--surf2);display:flex;align-items:center;justify-content:center;font:7px var(--font-mono);color:var(--dim);text-align:center;line-height:1.3">NO<br>COVER</div>')+
       '<span style="flex:1;min-width:0">'+
         '<div style="font-weight:800;color:var(--text);line-height:1.3">'+esc(v.title||v.variantLabel)+'</div>'+
         (v.variantLabel&&v.variantLabel!=='Cover A'?'<div style="color:var(--gold);margin-top:1px">'+esc(v.variantLabel)+'</div>':'')+
@@ -3099,7 +3099,7 @@ function connectCoverRow(c,set,saved){
   // Status + buttons sit on their own wrapping line under the title, so
   // three buttons never squeeze the title to nothing on a phone.
   return '<div style="display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:start;padding:6px;border:1px solid var(--border);border-radius:7px;background:var(--bg);margin-top:5px">'+
-    (c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:4px;background:#050607">':'<div style="width:44px;height:64px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;font-size:8px;color:var(--dim)">'+(c.part?'#'+c.part:'COVER')+'</div>')+
+    (c.cover_image_url?'<img src="'+esc(prhCover(c.cover_image_url))+'" alt="" loading="lazy" style="width:44px;height:64px;object-fit:contain;border-radius:4px;background:#050607">':'<div style="width:44px;height:64px;display:grid;place-items:center;border:1px solid var(--border);border-radius:4px;font-size:8px;color:var(--dim)">'+(c.part?'#'+c.part:'COVER')+'</div>')+
     '<div style="min-width:0;overflow-wrap:anywhere"><b style="font-size:11px">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><div style="font:9px/1.5 var(--font-mono);color:var(--dim)">'+esc(c.variant_label||'')+'<br>'+esc(meta)+connectCoverFacts(c,set)+'</div>'+
     '<div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px"><span class="foc-badge" style="color:'+badge[1]+';border-color:'+badge[1]+'">'+badge[0]+(st==='bought'?' · '+Number(c.orderedQty||0):'')+'</span>'+actions.replace(/class="hbtn" style="/g,'class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;').replace(/class="hbtn" onclick/g,'class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px" onclick')+'</div></div></div>';
 }
@@ -3151,7 +3151,7 @@ function connectUpNext(){
     var c=x.c,need=x.target>x.ordered?x.target-x.ordered:0;
     var when=x.days<=0?'<b style="color:var(--red)">FOC TODAY</b>':x.days===1?'<b style="color:var(--red)">FOC TOMORROW</b>':'FOC in '+x.days+' days ('+esc(displayDate(c.foc_date))+')';
     return '<div style="display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;align-items:center;padding:6px;border:1px solid rgba(255,209,102,.35);border-radius:7px;margin-top:5px">'+
-      (c.cover_image_url?'<img src="'+esc(c.cover_image_url)+'" alt="" loading="lazy" style="width:34px;height:50px;object-fit:cover;border-radius:3px">':'<div style="width:34px;height:50px;border:1px solid var(--border);border-radius:3px"></div>')+
+      (c.cover_image_url?'<img src="'+esc(prhCover(c.cover_image_url))+'" alt="" loading="lazy" style="width:34px;height:50px;object-fit:cover;border-radius:3px">':'<div style="width:34px;height:50px;border:1px solid var(--border);border-radius:3px"></div>')+
       '<div style="min-width:0;font:9px/1.5 var(--font-mono);color:var(--dim);overflow-wrap:anywhere"><b style="font-size:10px;color:var(--text)">'+(c.part?'Part '+c.part+' · ':'')+esc(c.title||'')+'</b><br>'+esc(x.set.name||'')+(x.tracked?'':' (suggested)')+'<br>'+when+(x.target?' · you have '+x.target+' of the earlier parts':'')+(x.ordered?' · ordered '+x.ordered:'')+(need?' · <b style="color:var(--gold)">order '+need+' more</b>':'')+'</div>'+
       (c.cycle_id?'<button class="hbtn" style="flex:0 0 auto;width:auto;min-height:0;padding:5px 9px;font-size:9px;color:var(--gold)" onclick="focConnectOpenCycle(\''+esc(c.cycle_id)+'\')">ORDER</button>':'')+'</div>';
   }).join('');
@@ -3272,8 +3272,11 @@ function focConnectOpenCycle(cycleId){closeFocConnecting();openCycle(cycleId);}
 
 window.focConnectTrackAll=focConnectTrackAll;window.openConnectingCovers=openConnectingCovers;window.closeFocConnecting=closeFocConnecting;window.focConnectSaveSuggested=focConnectSaveSuggested;window.focConnectNewSet=focConnectNewSet;window.focConnectRename=focConnectRename;window.focConnectDelete=focConnectDelete;window.focConnectToggle=focConnectToggle;window.focConnectRemove=focConnectRemove;window.focConnectSearch=focConnectSearch;window.focConnectAdd=focConnectAdd;window.focConnectFilter=focConnectFilter;window.focConnectQuery=focConnectQuery;window.focConnectOpenCycle=focConnectOpenCycle;
 // A small cover thumbnail for receiving checklists.
+// PRH covers come full size (avg ~1.2 MB, some ~6 MB): a page of them never finished loading (2026-11-23: "some of the
+// covers aren't loading ... it's everywhere"). PRH's own smaller copies: 'thumb' ~320x450 (~60 KB), 'medium' ~450x675.
+function prhCover(u,size){u=String(u||'');var m=/^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\/([A-Za-z0-9]+)(\?.*)?$/.exec(u);if(!m)return u;return size==='medium'?'https://images.penguinrandomhouse.com/cover/d/'+m[1]+'?alt=x&width=1400&height=2100':'https://images.penguinrandomhouse.com/cover/'+m[1];}
 function focThumbHtml(url,alt){
-  return url?'<img src="'+esc(url)+'" alt="'+esc(alt||'')+'" loading="lazy" style="width:48px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onerror="this.style.opacity=.16">'
+  return url?'<img src="'+esc(prhCover(url))+'" alt="'+esc(alt||'')+'" loading="lazy" style="width:48px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onerror="this.style.opacity=.16">'
     :'<div style="width:48px;aspect-ratio:2/3;border:1px dashed var(--border);border-radius:4px;display:grid;place-items:center;font:8px var(--font-mono);color:var(--dim)">NO<br>COVER</div>';
 }
 // Presold copies of a cover: already sold (profit counted then), so here
@@ -3820,7 +3823,7 @@ function focShowPrice(v){var c=Number(v.priceCents||0)||Number(v.msrpCents||0);r
 function focShowFamilies(){return visibleFamilies().map(function(f){return Object.assign({},f,{variants:(f.variants||[]).filter(function(v){return v.customerEnabled!==false;})});}).filter(function(f){return f.variants.length;});}
 function focShowCoverHtml(v){
   var price=focShowPrice(v);
-  return '<button type="button" class="fs-cover" onclick="openFocShowCover(\''+esc(v.id)+'\')">'+(v.coverImageUrl?'<img src="'+esc(v.coverImageUrl)+'" alt="'+esc(v.variantLabel)+'" loading="lazy" onerror="this.style.opacity=.15">':'<div class="fs-nocover">COVER<br>COMING SOON</div>')+
+  return '<button type="button" class="fs-cover" onclick="openFocShowCover(\''+esc(v.id)+'\')">'+(v.coverImageUrl?'<img src="'+esc(prhCover(v.coverImageUrl))+'" alt="'+esc(v.variantLabel)+'" loading="lazy" onerror="this.style.opacity=.15">':'<div class="fs-nocover">COVER<br>COMING SOON</div>')+
     (v.isIncentive?'<i class="fs-tag">'+esc(v.orderRequirement||'RATIO')+'</i>':v.isFoil?'<i class="fs-tag">FOIL</i>':'')+
     '<span class="fs-label">'+esc(v.variantLabel)+'</span>'+(price?'<b class="fs-price">'+esc(price)+'</b>':'<b class="fs-price ask">ASK US</b>')+'</button>';
 }
@@ -3861,10 +3864,10 @@ function openFocShowCover(id){
   var hit=focShowState.byId[id];var d=document.getElementById('foc-show-detail');if(!hit||!d)return;var v=hit.v,f=hit.f,price=focShowPrice(v);
   var rows=[['PRICE',price||'Ask us'],['PUBLISHER',v.publisher||f.publisher],['WRITER',v.writer||f.writer],['ARTIST',v.interiorArtist||f.interiorArtist],['COVER',v.coverArtist],['ON SALE',v.onSaleDate||f.onSaleDate?displayDate(v.onSaleDate||f.onSaleDate):''],['ORDER BY',v.focDate?displayDate(v.focDate):''],[v.isIncentive?'RATIO':'',v.isIncentive?(v.orderRequirement||'Incentive cover'):''],['FORMAT',v.variantType]].filter(function(r){return r[0]&&r[1];});
   var syn=String(v.description||f.description||'').trim();
-  d.innerHTML='<div class="fs-card"><button type="button" class="fs-close" onclick="closeFocShowCover()">✕</button>'+(v.coverImageUrl?'<img src="'+esc(v.coverImageUrl)+'" alt="'+esc(v.variantLabel)+'">':'<div class="fs-nocover">COVER<br>COMING SOON</div>')+
+  d.innerHTML='<div class="fs-card"><button type="button" class="fs-close" onclick="closeFocShowCover()">✕</button>'+(v.coverImageUrl?'<img src="'+esc(prhCover(v.coverImageUrl,'medium'))+'" alt="'+esc(v.variantLabel)+'">':'<div class="fs-nocover">COVER<br>COMING SOON</div>')+
     '<div><h3>'+esc(f.title)+'</h3><div class="fs-var">'+esc(v.variantLabel)+(price?' · '+esc(price):'')+'</div><dl>'+rows.map(function(r){return '<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>';}).join('')+'</dl>'+
     '<div class="fs-syn">'+(syn?esc(syn):'No synopsis from the publisher yet.')+'</div>'+
-    (f.variants.length>1?'<div class="fs-others">'+f.variants.map(function(o){return o.coverImageUrl?'<img src="'+esc(o.coverImageUrl)+'" alt="'+esc(o.variantLabel)+'" title="'+esc(o.variantLabel)+'" class="'+(o.id===v.id?'on':'')+'" onclick="openFocShowCover(\''+esc(o.id)+'\')">':'';}).join('')+'</div>':'')+'</div></div>';
+    (f.variants.length>1?'<div class="fs-others">'+f.variants.map(function(o){return o.coverImageUrl?'<img src="'+esc(prhCover(o.coverImageUrl))+'" alt="'+esc(o.variantLabel)+'" title="'+esc(o.variantLabel)+'" class="'+(o.id===v.id?'on':'')+'" onclick="openFocShowCover(\''+esc(o.id)+'\')">':'';}).join('')+'</div>':'')+'</div></div>';
   d.hidden=false;d.scrollTop=0;
 }
 function closeFocShowCover(){var d=document.getElementById('foc-show-detail');if(d){d.hidden=true;d.innerHTML='';}}

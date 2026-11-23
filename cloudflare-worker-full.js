@@ -17230,17 +17230,14 @@ async function routeRequest(request, env, ctx) {
       let target; try { target = new URL(url.searchParams.get('u') || ''); } catch { return new Response('Bad image', { status: 400 }); }
       const okHost = target.protocol === 'https:' && (STUDIO_IMG_HOSTS.has(target.hostname) || target.hostname === url.hostname || /\.supabase\.co$/.test(target.hostname));
       if (!okHost) return new Response('Host not allowed', { status: 403 });
-      // (2026-11-23: "some of the covers aren't loading") PRH's full-size covers run up to ~6 MB, over the 4 MB cap below,
-      // so they came back empty. Its 600-pixel copy is ~100 KB and sharp on stream.
-      if (target.hostname === 'images.penguinrandomhouse.com' && /^\/cover\/d\//.test(target.pathname)) target.pathname = target.pathname.replace(/^\/cover\/d\//, '/cover/600/');
       const cacheKey = new Request('https://studio-img.cache/' + encodeURIComponent(target.href));
       const hit = await caches.default.match(cacheKey).catch(() => null);
       if (hit) return hit;
       const res = await fetch(target.href, { headers: { Accept: 'image/*' }, cf: { cacheTtl: 86400 } }).catch(() => null);
       const type = res?.headers.get('Content-Type') || '';
-      if (!res?.ok || !/^image\//.test(type) || Number(res.headers.get('Content-Length') || 0) > 4e6) return new Response('Image unavailable', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
+      if (!res?.ok || !/^image\//.test(type) || Number(res.headers.get('Content-Length') || 0) > 8e6) return new Response('Image unavailable', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
       const body = await res.arrayBuffer();
-      if (body.byteLength > 4e6) return new Response('Too large', { status: 413 });
+      if (body.byteLength > 8e6) return new Response('Too large', { status: 413 }); // (2026-11-23) PRH originals run to ~6 MB
       const out = new Response(body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=86400', 'Access-Control-Allow-Origin': '*', 'X-Robots-Tag': 'noindex' } });
       ctx.waitUntil(caches.default.put(cacheKey, out.clone()).catch(() => {}));
       return out;
