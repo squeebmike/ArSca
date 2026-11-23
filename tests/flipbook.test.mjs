@@ -19,7 +19,7 @@ const fsrc = read('scripts/flipbook.mjs'); assert.ok(!/Math\.random/.test(fsrc),
 const room = read('scripts/live-studio-room.mjs'), api = read('scripts/live-studio-api.mjs'), ov = read('scripts/live-studio-overlay.mjs'), ctl = read('scripts/live-studio-controls.js');
 for (const k of ['  setFlip(input = {}) {', 'f.items = cleanFlipItems(input.items)', "f.at -= input.step === 1 ? cur.per - cur.into : -(cur.into + bookMs(f, prev));", 'flip:state.flip || null']) assert.ok(room.includes(k), k);
 assert.ok(api.includes("url.pathname==='/live-studio/flip'"));
-for (const k of ["import('./flipbook.mjs?v=4')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
+for (const k of ["import('./flipbook.mjs?v=5')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
 for (const k of ['id="fb-go"', 'id="fb-next"', 'id="fb-back"', 'id="fb-off"', 'id="fb-week"', 'id="fb-jump"', "sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).in('cycle_id',ids)", "api('flip',body)", 'flip:flipCtl']) assert.ok(ctl.includes(k), k);
 // The leader's entrance: letterboxed camera sweep round the leader, their name and line, then the fight.
 const b3 = read('scripts/beasts-3d.mjs');
@@ -106,3 +106,6 @@ console.log('FOC show (auto mix, wall, versus, mystery, artist, most wanted): pa
     "x.setUTCDate(x.getUTCDate()+((3-x.getUTCDay()+7)%7))", "mode:'lower',title:'NEW '+mdy(day)", 'wanted:[],only:true,on:true']) assert.ok(c4.includes(k), k);
   console.log('Bag & board show: passed');
 }
+// 2026-11-23: "Which one would you pull? Change pull to grab."
+assert.ok(read('scripts/flipbook.mjs').includes('WHICH ONE WOULD YOU GRAB?') && !read('scripts/flipbook.mjs').includes('WOULD YOU PULL'));
+console.log('Cover vs cover says GRAB: passed');

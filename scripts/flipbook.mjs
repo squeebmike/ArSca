@@ -56,7 +56,7 @@ export function flipAt(flip, now) {
 // THE FOC SHOW (store, 2026-11-19: "I want 1 through 5. I want them automated. I'm ordering ... keep them engaged
 // while I order and talk. No button pressing from me other than to change the display type"). Besides the flipbook:
 //   wall    -- every cover tiled, a spotlight moving cover to cover
-//   versus  -- two covers of one book side by side: "which would you pull? 1 or 2 in chat"
+//   versus  -- two covers of one book side by side: "which would you grab? 1 or 2 in chat"
 //   mystery -- a cover starts blurred and sharpens; the book is named at the end
 //   artist  -- "who drew this cover?", the artist named at the end
 //   wanted  -- the top 5 books in the shop's FOC order so far (no quantities)
@@ -157,7 +157,7 @@ export function createFlipbook(doc, { img = u => u } = {}) {
     const pick = gamePick(flip, seg); if (!pick) { gameKey = ''; return false; }
     if (key !== gameKey) {
       gameKey = key; const head = (b, s) => '<div class="fbg-head"><b>' + b + '</b><span>' + esc(s || flip.title || '') + '</span></div>';
-      if (seg.kind === 'versus') game.innerHTML = head('COVER VS COVER', pick.b.title) + '<div class="fbg-q">WHICH ONE WOULD YOU PULL? <em>TYPE 1 OR 2 IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><i>1</i><img src="' + esc(img(pick.a.image)) + '" alt=""><span>' + esc(pick.a.label) + '</span></div><div class="fbg-vs">VS</div><div class="fbg-card"><i>2</i><img src="' + esc(img(pick.z.image)) + '" alt=""><span>' + esc(pick.z.label) + '</span></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
+      if (seg.kind === 'versus') game.innerHTML = head('COVER VS COVER', pick.b.title) + '<div class="fbg-q">WHICH ONE WOULD YOU GRAB? <em>TYPE 1 OR 2 IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><i>1</i><img src="' + esc(img(pick.a.image)) + '" alt=""><span>' + esc(pick.a.label) + '</span></div><div class="fbg-vs">VS</div><div class="fbg-card"><i>2</i><img src="' + esc(img(pick.z.image)) + '" alt=""><span>' + esc(pick.z.label) + '</span></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
       else if (seg.kind === 'mystery') game.innerHTML = head('MYSTERY COVER', '') + '<div class="fbg-q">WHAT BOOK IS THIS? <em>GUESS IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img class="blur" src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
       else if (seg.kind === 'artist') game.innerHTML = head('NAME THAT ARTIST', pick.b.title) + '<div class="fbg-q">WHO DREW THIS COVER? <em>TYPE IT IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
       else if (seg.kind === 'wall') game.innerHTML = head('THE WALL', 'EVERY COVER THIS WEEK' + (pick.pages > 1 ? ' · ' + (pick.page + 1) + ' OF ' + pick.pages : '')) + '<div class="fbg-wall">' + pick.tiles.map(x => '<img src="' + esc(img(x.c.image)) + '" alt="">').join('') + '</div><div class="fbg-ans"></div>';
