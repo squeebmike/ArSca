@@ -16816,7 +16816,7 @@ function catalogImageFromIds(item={}){
 // Thumbnails only: a PRH cover's own small copy (~320x450, ~60 KB) instead of its full size (avg ~1.2 MB, some ~6 MB) --
 // a page of comics never finished loading (2026-11-23). Listings and uploads keep the full picture.
 function prhCover(u, size){u=String(u||'');const m=/^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\/([A-Za-z0-9]+)(\?.*)?$/.exec(u);if(!m)return u;return size==='medium'?'https://images.penguinrandomhouse.com/cover/d/'+m[1]+'?alt=x&width=1400&height=2100':'https://images.penguinrandomhouse.com/cover/'+m[1];}
-window.prhCover = prhCover;
+if (typeof window !== "undefined") window.prhCover = prhCover;
 function inventoryImageUrl(item={}){
   const raw = item.raw || {};
   const comicPhotoKey=item.userPhotoBlobKey||raw.userPhotoBlobKey||'';
