@@ -17235,9 +17235,9 @@ async function routeRequest(request, env, ctx) {
       if (hit) return hit;
       const res = await fetch(target.href, { headers: { Accept: 'image/*' }, cf: { cacheTtl: 86400 } }).catch(() => null);
       const type = res?.headers.get('Content-Type') || '';
-      if (!res?.ok || !/^image\//.test(type) || Number(res.headers.get('Content-Length') || 0) > 4e6) return new Response('Image unavailable', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
+      if (!res?.ok || !/^image\//.test(type) || Number(res.headers.get('Content-Length') || 0) > 8e6) return new Response('Image unavailable', { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } });
       const body = await res.arrayBuffer();
-      if (body.byteLength > 4e6) return new Response('Too large', { status: 413 });
+      if (body.byteLength > 8e6) return new Response('Too large', { status: 413 }); // (2026-11-23) PRH originals run to ~6 MB
       const out = new Response(body, { headers: { 'Content-Type': type, 'Cache-Control': 'public, max-age=86400', 'Access-Control-Allow-Origin': '*', 'X-Robots-Tag': 'noindex' } });
       ctx.waitUntil(caches.default.put(cacheKey, out.clone()).catch(() => {}));
       return out;

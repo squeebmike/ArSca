@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.23.3-shift-select';
+const APP_VERSION = '2026.11.23.5-covers-small';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -16813,6 +16813,10 @@ function catalogImageFromIds(item={}){
   if(/^[0-9a-f-]{36}$/i.test(scry))return 'https://api.scryfall.com/cards/'+scry+'?format=image&version=normal';
   return '';
 }
+// Thumbnails only: a PRH cover's own small copy (~320x450, ~60 KB) instead of its full size (avg ~1.2 MB, some ~6 MB) --
+// a page of comics never finished loading (2026-11-23). Listings and uploads keep the full picture.
+function prhCover(u, size){u=String(u||'');const m=/^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\/([A-Za-z0-9]+)(\?.*)?$/.exec(u);if(!m)return u;return size==='medium'?'https://images.penguinrandomhouse.com/cover/d/'+m[1]+'?alt=x&width=1400&height=2100':'https://images.penguinrandomhouse.com/cover/'+m[1];}
+if (typeof window !== "undefined") window.prhCover = prhCover;
 function inventoryImageUrl(item={}){
   const raw = item.raw || {};
   const comicPhotoKey=item.userPhotoBlobKey||raw.userPhotoBlobKey||'';
@@ -18129,7 +18133,7 @@ function renderTable(){
     const ppc=pft>=0?'pp pos':'pp neg';
     const cat=String(i.category||'TCG').replace(/[^A-Za-z]/g,'');
     const margin=money.list>0?money.margin.toFixed(0)+'%':(money.cost>0?((pft/money.cost)*100).toFixed(0)+'%':'—');
-    const thumbSrc = inventoryImageUrl(i);
+    const thumbSrc = prhCover(inventoryImageUrl(i));
     const stale = inventoryIsPriceStale(i);
     const daysInStock = ins ? inventoryDaysInStock(i) : null;
     const aged = ins && inventoryIsAgedStock(i);
@@ -23804,7 +23808,7 @@ function renderEbayBulkList(){
   host.innerHTML = shown.map(i => {
     const money = inventoryProfitStats(i);
     const price = money.list>0?money.list:money.market;
-    const thumbSrc = inventoryImageUrl(i);
+    const thumbSrc = prhCover(inventoryImageUrl(i));
     const checked = ebayBulkSelectedIds.has(i.id);
     return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
       <input type="checkbox" class="ebay-bulk-cb" value="${i.id}" ${checked?'checked':''} onchange="ebayBulkCheckboxChanged(this)">
@@ -23871,7 +23875,7 @@ function renderEbayBulkEndList(){
   host.innerHTML = shown.map(i => {
     const money = inventoryProfitStats(i);
     const price = money.list>0?money.list:money.market;
-    const thumbSrc = inventoryImageUrl(i);
+    const thumbSrc = prhCover(inventoryImageUrl(i));
     const checked = ebayBulkEndSelectedIds.has(i.id);
     return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
       <input type="checkbox" class="ebay-bulk-end-cb" value="${i.id}" ${checked?'checked':''} onchange="ebayBulkEndCheckboxChanged(this)">
@@ -23961,7 +23965,7 @@ function renderShopifyBulkList(){
   host.innerHTML = shown.map(i => {
     const money = inventoryProfitStats(i);
     const price = money.list>0?money.list:money.market;
-    const thumbSrc = inventoryImageUrl(i);
+    const thumbSrc = prhCover(inventoryImageUrl(i));
     const checked = shopifyBulkSelectedIds.has(i.id);
     return `<label style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--border);border-radius:6px;cursor:pointer">
       <input type="checkbox" class="shopify-bulk-cb" value="${i.id}" ${checked?'checked':''} onchange="shopifyBulkCheckboxChanged(this)">
@@ -24010,7 +24014,7 @@ async function submitShopifyBulk(){
 
 function ebayBulkReviewCardHtml(item, fields, desc){
   const prefix = 'ebb-' + item.id;
-  const thumbSrc = inventoryImageUrl(item);
+  const thumbSrc = prhCover(inventoryImageUrl(item));
   return `<div class="ebay-bulk-review-card" data-item-id="${item.id}" style="border:1px solid var(--border);border-radius:8px;padding:10px">
     <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">
       ${thumbSrc?`<img src="${escHtml(thumbSrc)}" style="width:52px;height:65px;object-fit:cover;border-radius:6px;flex-shrink:0">`:''}

@@ -87,7 +87,7 @@ assert.match(openBody, /onclick="confirmEndFocEbayListings\(\)">END SELECTED LIS
 // scripts/foc-preorders.mjs sets title from comic_skus.title, not just the
 // parent family) and cover image, this just needed to render them.
 assert.match(openBody, /esc\(v\.title\|\|v\.variantLabel\)/, 'each row must show the actual book title, not just the bare cover-variant label');
-assert.match(openBody, /v\.coverImageUrl\?'<img src="'\+esc\(v\.coverImageUrl\)/, 'each row must show the cover thumbnail when one exists, so the dealer can visually confirm the book without leaving the modal');
+assert.match(openBody, /v\.coverImageUrl\?'<img src="'\+esc\(prhCover\(v\.coverImageUrl\)\)/, 'each row must show the cover thumbnail when one exists, so the dealer can visually confirm the book without leaving the modal');
 assert.match(openBody, /NO<br>COVER/, 'a SKU with no cover image on file must show a clear placeholder, not a broken image or blank space');
 assert.match(openBody, /v\.variantLabel&&v\.variantLabel!=='Cover A'\?/, 'the generic default "Cover A" label must not clutter every row -- only real variant descriptors (B Variant, Foil, etc.) need their own line');
 
