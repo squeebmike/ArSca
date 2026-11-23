@@ -150,3 +150,30 @@ function buildDb(patchCalls) {
 }
 
 console.log('PRH cart import (upload real PRH order -> set quantities + reconcile eBay listings) functional checks passed');
+
+// ADD TO MY EXISTING ORDER (store, 2026-11-23): a second PRH order for the week, its file listing only the extra books.
+// Each cover in the file goes UP by the file's count; every other cover keeps its order and its eBay listing.
+{
+  const already = skus.map(s => ({ ...s, secured_quantity: { 'sku-A': 4, 'sku-B': 5, 'sku-C': 2, 'sku-D': 0 }[s.id] }));
+  const patchCalls = [], ebayRevised = [], ebayWithdrawn = [];
+  const base = buildDb(patchCalls);
+  const deps = mockDeps({
+    supabaseAdminFetch: async (env, path, options = {}) => path.startsWith('comic_skus?cycle_id=eq.cycle-1') ? { data: already } : base(env, path, options),
+    getEbayUserAccessToken: async () => 'token-1',
+    withdrawEbayOffer: async (env, token, offerId) => { ebayWithdrawn.push(offerId); },
+    ebayReviseOfferQuantity: async (env, token, offerId, qty) => { ebayRevised.push({ offerId, qty }); },
+  });
+  const res = await handleFocRequest(mockRequest({ storeId: 'store-1', cycleId: 'cycle-1', mode: 'add', rows: [{ upc: '111', quantity: 2 }, { upc: '444', quantity: 3 }] }), {}, new URL('https://x/foc/admin/prh-cart-import'), deps);
+  assert.equal(res.data.ok, true, JSON.stringify(res.data)); assert.equal(res.data.addMode, true);
+  const patchBySku = Object.fromEntries(patchCalls.filter(c => c.path.startsWith('comic_skus?id=eq.')).map(c => [c.path.match(/id=eq\.([^&]+)/)[1], c.body]));
+  assert.deepEqual(patchBySku['sku-A'], { secured_quantity: 6, store_quantity: 5 }, '4 already + 2 more = 6; minus 1 committed');
+  assert.deepEqual(patchBySku['sku-D'], { secured_quantity: 3, store_quantity: 2 }, '0 + 3 = 3; minus 1 committed');
+  assert.equal(patchBySku['sku-B'], undefined, 'a cover not in the add-on file is not touched');
+  assert.equal(patchBySku['sku-C'], undefined);
+  assert.deepEqual(ebayWithdrawn, [], 'no listing is ended for covers missing from an add-on file');
+  assert.deepEqual(res.data.updated.map(u => [u.skuId, u.added]), [['sku-A', 2], ['sku-D', 3]]);
+  console.log('PRH cart import: ADD TO MY EXISTING ORDER: passed');
+}
+{ const fs = await import('node:fs'); const dash = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');
+  if (!dash.includes('<input type="checkbox" id="foc-import-add"> <b>ADD TO MY EXISTING ORDER</b>') || !dash.includes("...(document.getElementById('foc-import-add')?.checked?{mode:'add'}:{})")) throw new Error('the ADD TO MY EXISTING ORDER box');
+  console.log('PRH cart import: the add box is on the review screen: passed'); }

@@ -2929,7 +2929,11 @@ async function adminImportPrhCart(request,env,deps){
     if(row?.title)titleForKey.set(key,text(row.title,200));
   }
   if(!orderedByUpc.size)return deps.json({ok:false,error:'No row had both a UPC/ISBN (or item code) and a positive quantity -- is this the right file?'},400);
-  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,distributor_sku,title,variant_label`);
+  // ADD TO MY EXISTING ORDER (store, 2026-11-23: a second PRH order for the same week -- its cart file lists only the new
+  // books): each cover's quantity goes UP by the file's, and covers not in the file keep what they had (a normal upload
+  // sets every cover to the file's count, so a file of add-ons alone would have wiped the first order).
+  const addMode=body.mode==='add';
+  const {data:skus}=await db(`comic_skus?cycle_id=eq.${encodeURIComponent(cycleId)}&store_id=eq.${encodeURIComponent(storeId)}&select=id,upc,distributor_sku,title,variant_label,secured_quantity`);
   const keyByCode=new Map([...codeForUpc.entries()].map(([key,code])=>[code,key]));
   if(!skus?.length)return deps.json({ok:false,error:'FOC cycle not found, or it has no covers yet'},404);
   const customerQty=await orderedQtyBySku(db,cycleId);
@@ -2940,13 +2944,16 @@ async function adminImportPrhCart(request,env,deps){
     const upc=exactIdentifier(sku.upc);
     const code=exactIdentifier(sku.distributor_sku).toUpperCase();
     const key=upc&&orderedByUpc.has(upc)?upc:(code&&keyByCode.has(code)?keyByCode.get(code):'');
-    const orderedTotal=key?(orderedByUpc.get(key)||0):0;
+    const before=Math.max(0,Number(sku.secured_quantity)||0);
+    const orderedTotal=addMode?before+(key?(orderedByUpc.get(key)||0):0):(key?(orderedByUpc.get(key)||0):0);
     if(key)matchedUpcs.add(key);
+    // Add mode: a cover not in the file is left exactly as it was (still counted, so its eBay listing stays).
+    if(addMode&&!key){if(orderedTotal>0)finalQtyBySku.set(sku.id,orderedTotal);continue;}
     const committed=Number(customerQty.get(sku.id)||0)+Number(ebayPresold.get(sku.id)||0);
     const newStoreQuantity=Math.max(0,orderedTotal-committed);
     if(orderedTotal>0)finalQtyBySku.set(sku.id,orderedTotal);
     await db(`comic_skus?id=eq.${sku.id}&store_id=eq.${encodeURIComponent(storeId)}`,{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({secured_quantity:orderedTotal,store_quantity:newStoreQuantity})});
-    updated.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label||'',orderedTotal,websitePresold:Number(customerQty.get(sku.id)||0),ebayPresold:Number(ebayPresold.get(sku.id)||0),storeQuantity:newStoreQuantity});
+    updated.push({skuId:sku.id,title:sku.title,variantLabel:sku.variant_label||'',orderedTotal,...(addMode?{added:orderedTotal-before}:{}),websitePresold:Number(customerQty.get(sku.id)||0),ebayPresold:Number(ebayPresold.get(sku.id)||0),storeQuantity:newStoreQuantity});
   }
   // Rows whose UPC matched nothing in this cycle's catalog -- almost always
   // non-comic lines PRH's own cart mixes in (posters, merchandise) that
@@ -2968,7 +2975,7 @@ async function adminImportPrhCart(request,env,deps){
   const presaleRows=await focPresaleRows(db,storeId,'presale');
   const listedSkuIds=new Set((presaleRows||[]).filter(row=>{const d=row.data||{};return d.source==='foc_presale'&&d.focCycleId===cycleId&&(d.ebayOfferId||(d.ebayApiSystem==='trading'&&d.ebayListingId&&d.ebaySku));}).map(row=>row.data.focSkuId));
   const needsListing=updated.filter(item=>item.storeQuantity>0&&!listedSkuIds.has(item.skuId)).map(item=>({skuId:item.skuId,title:item.title,variantLabel:item.variantLabel,availableQty:item.storeQuantity}));
-  return deps.json({ok:true,websiteOnly,matchedCount:updated.filter(u=>u.orderedTotal>0).length,updated,unmatchedRows,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length,needsListing});
+  return deps.json({ok:true,websiteOnly,addMode,matchedCount:updated.filter(u=>u.orderedTotal>0).length,updated,unmatchedRows,ebayWithdrawnCount:ebayWithdrawnSkuIds.length,ebayQuantityUpdatedCount:ebayQuantityUpdatedSkuIds.length,needsListing});
 }
 
 // Manual, one-click sibling to the auto-sweep inside adminPrhSubmission
