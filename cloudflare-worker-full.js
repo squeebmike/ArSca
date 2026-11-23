@@ -17230,6 +17230,9 @@ async function routeRequest(request, env, ctx) {
       let target; try { target = new URL(url.searchParams.get('u') || ''); } catch { return new Response('Bad image', { status: 400 }); }
       const okHost = target.protocol === 'https:' && (STUDIO_IMG_HOSTS.has(target.hostname) || target.hostname === url.hostname || /\.supabase\.co$/.test(target.hostname));
       if (!okHost) return new Response('Host not allowed', { status: 403 });
+      // (2026-11-23: "some of the covers aren't loading") PRH's full-size covers run up to ~6 MB, over the 4 MB cap below,
+      // so they came back empty. Its 600-pixel copy is ~100 KB and sharp on stream.
+      if (target.hostname === 'images.penguinrandomhouse.com' && /^\/cover\/d\//.test(target.pathname)) target.pathname = target.pathname.replace(/^\/cover\/d\//, '/cover/600/');
       const cacheKey = new Request('https://studio-img.cache/' + encodeURIComponent(target.href));
       const hit = await caches.default.match(cacheKey).catch(() => null);
       if (hit) return hit;

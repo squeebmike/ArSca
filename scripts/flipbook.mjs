@@ -103,6 +103,8 @@ export function gamePick(flip, seg) {
   if (seg.kind === 'wanted') return { list: p.wanted };
   return null;
 }
+// A smaller copy of a PRH cover (its full size runs to several MB): /cover/d/<id> -> /cover/<w>/<id>. Others as they are.
+export const sizedCover = (u, w) => /^https:\/\/images\.penguinrandomhouse\.com\/cover\/d\//.test(String(u || '')) ? String(u).replace('/cover/d/', '/cover/' + w + '/') : u;
 const money = n => n > 0 ? '$' + (n % 1 ? n.toFixed(2) : n.toFixed(0)) : '';
 const md = d => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(d || ''); return m ? (+m[2]) + '/' + (+m[3]) : ''; };
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -164,8 +166,8 @@ export function createFlipbook(doc, { img = u => u } = {}) {
       else if (seg.kind === 'artist') game.innerHTML = head('NAME THAT ARTIST', pick.b.title) + '<div class="fbg-q">NAME THE ARTIST! <em>TYPE IT IN CHAT!</em></div><div class="fbg-main"><div class="fbg-card"><img src="' + esc(img(pick.c.image)) + '" alt=""></div></div><div class="fbg-ans"></div><div class="fbg-bar"><i></i></div>';
       else if (seg.kind === 'wall') { const rows = flip.mode === 'lower' ? 2 : 3, per = Math.ceil(pick.tiles.length / rows);
         game.innerHTML = head('THE WALL', 'EVERY COVER THIS WEEK' + (pick.pages > 1 ? ' · ' + (pick.page + 1) + ' OF ' + pick.pages : '')) + '<div class="fbg-wall">'
-          + Array.from({ length: rows }, (_, r) => { const row = pick.tiles.slice(r * per, r * per + per); return '<div class="fbg-row"><div class="fbg-track" data-n="' + row.length + '" data-dir="' + (r % 2 ? 1 : -1) + '">' + Array.from({ length: Math.max(2, 2 * Math.ceil(12 / Math.max(1, row.length))) }, () => row).flat().map(x => '<img src="' + esc(img(x.c.image)) + '" alt="">').join('') + '</div></div>'; }).join('') + '</div><div class="fbg-ans"></div>'; }
-      else if (seg.kind === 'wanted') game.innerHTML = head('MOST WANTED', 'TOP OF THE ORDER SO FAR') + (pick.list.length ? '<div class="fbg-wanted">' + pick.list.map((w, k) => '<div><b>#' + (k + 1) + '</b><img src="' + esc(img(w.image)) + '" alt=""><span>' + esc(w.title) + '</span></div>').join('') + '</div>' : '<div class="fbg-q">THE ORDER IS JUST GETTING STARTED -- <em>TELL US WHAT YOU WANT IN CHAT!</em></div>');
+          + Array.from({ length: rows }, (_, r) => { const row = pick.tiles.slice(r * per, r * per + per); return '<div class="fbg-row"><div class="fbg-track" data-n="' + row.length + '" data-dir="' + (r % 2 ? 1 : -1) + '">' + Array.from({ length: Math.max(2, 2 * Math.ceil(12 / Math.max(1, row.length))) }, () => row).flat().map(x => '<img src="' + esc(img(sizedCover(x.c.image, 300))) + '" alt="">').join('') + '</div></div>'; }).join('') + '</div><div class="fbg-ans"></div>'; }
+      else if (seg.kind === 'wanted') game.innerHTML = head('MOST WANTED', 'TOP OF THE ORDER SO FAR') + (pick.list.length ? '<div class="fbg-wanted">' + pick.list.map((w, k) => '<div><b>#' + (k + 1) + '</b><img src="' + esc(img(sizedCover(w.image, 400))) + '" alt=""><span>' + esc(w.title) + '</span></div>').join('') + '</div>' : '<div class="fbg-q">THE ORDER IS JUST GETTING STARTED -- <em>TELL US WHAT YOU WANT IN CHAT!</em></div>');
     }
     const left = seg.len - seg.into, reveal = Number.isFinite(seg.len) && left <= 6000, bar = gq('.fbg-bar i'), ans = gq('.fbg-ans');
     if (bar) bar.style.width = (Math.min(1, seg.into / Math.max(1, seg.len - 6000)) * 100).toFixed(1) + '%';
@@ -197,7 +199,7 @@ export function createFlipbook(doc, { img = u => u } = {}) {
       const tg = q('.fb-tag'); tg.hidden = !c.tag; tg.textContent = c.tag;
       q('.fb-var').innerHTML = esc(c.label) + (money(c.price) ? ' <i>' + money(c.price) + '</i>' : '');
       q('.fb-thumbs').classList.toggle('many', b.covers.length > 6);
-      q('.fb-thumbs').innerHTML = b.covers.length > 1 ? b.covers.map((o, k) => '<img src="' + esc(img(o.image)) + '" class="' + (k === at.c ? 'on' : '') + '" alt="">').join('') : '';
+      q('.fb-thumbs').innerHTML = b.covers.length > 1 ? b.covers.map((o, k) => '<img src="' + esc(img(sizedCover(o.image, 300))) + '" class="' + (k === at.c ? 'on' : '') + '" alt="">').join('') : '';
       if (newBook) {
         q('.fb-head span').textContent = flip.title || '';
         q('.fb-title').textContent = b.title;

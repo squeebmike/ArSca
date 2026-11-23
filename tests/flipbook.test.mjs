@@ -19,7 +19,7 @@ const fsrc = read('scripts/flipbook.mjs'); assert.ok(!/Math\.random/.test(fsrc),
 const room = read('scripts/live-studio-room.mjs'), api = read('scripts/live-studio-api.mjs'), ov = read('scripts/live-studio-overlay.mjs'), ctl = read('scripts/live-studio-controls.js');
 for (const k of ['  setFlip(input = {}) {', 'f.items = cleanFlipItems(input.items)', "f.at -= input.step === 1 ? cur.per - cur.into : -(cur.into + bookMs(f, prev));", 'flip:state.flip || null']) assert.ok(room.includes(k), k);
 assert.ok(api.includes("url.pathname==='/live-studio/flip'"));
-for (const k of ["import('./flipbook.mjs?v=6')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
+for (const k of ["import('./flipbook.mjs?v=7')", "if('flip' in m)paintFlip(m.flip);", "if('flip' in ev.data)paintFlip(ev.data.flip);", 'now:()=>Date.now()+offset']) assert.ok(ov.includes(k), k);
 for (const k of ['id="fb-go"', 'id="fb-next"', 'id="fb-back"', 'id="fb-off"', 'id="fb-week"', 'id="fb-jump"', "sb.from('comic_skus').select('title,variant_label,cover_image_url,foc_date,on_sale_date,customer_price_cents,msrp_cents,description,writer,interior_artist,cover_artist,publisher,is_incentive,order_requirement').eq('store_id',id).in('cycle_id',ids)", "api('flip',body)", 'flip:flipCtl']) assert.ok(ctl.includes(k), k);
 // The leader's entrance: letterboxed camera sweep round the leader, their name and line, then the fight.
 const b3 = read('scripts/beasts-3d.mjs');
@@ -118,3 +118,11 @@ console.log('Cover vs cover says GRAB: passed');
   const wall = F.gamePick({ items: Array.from({ length: 100 }, (_, k) => ({ title: 'B' + k, covers: [{ image: 'https://i/' + k }] })) }, { kind: 'wall', k: 1 });
   assert.equal(wall.tiles.length, 10, 'the second page: the rest'); assert.equal(wall.pages, 2);
   console.log('The wall slides; name the artist: passed'); }
+// 2026-11-23: "Some of the covers aren't loading" -- PRH's full-size covers (up to ~6 MB) were over the image relay's
+// 4 MB cap. The relay asks PRH for its 600-pixel copy; the wall, thumbnails and podium ask for smaller ones still.
+{ assert.equal(F.sizedCover('https://images.penguinrandomhouse.com/cover/d/9781506754949', 300), 'https://images.penguinrandomhouse.com/cover/300/9781506754949');
+  assert.equal(F.sizedCover('https://still-resonance-4f87.swarnerauto.workers.dev/foc/lunar-cover/1126IM0354.jpg', 300), 'https://still-resonance-4f87.swarnerauto.workers.dev/foc/lunar-cover/1126IM0354.jpg', 'Lunar covers are already small');
+  const fb = read('scripts/flipbook.mjs'), wk = read('cloudflare-worker-full.js');
+  assert.equal((fb.match(/sizedCover\((x\.c|o|w)\.image, \d+\)/g) || []).length, 3, 'wall, thumbnails, podium');
+  assert.ok(wk.includes("if (target.hostname === 'images.penguinrandomhouse.com' && /^\\/cover\\/d\\//.test(target.pathname)) target.pathname = target.pathname.replace(/^\\/cover\\/d\\//, '/cover/600/');"));
+  console.log('Covers load (PRH sized down): passed'); }
