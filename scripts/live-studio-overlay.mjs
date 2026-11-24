@@ -282,6 +282,7 @@ let vendDraw=null,machine=null;
 import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
+let regulars=null;import('./regulars.mjs?v=1').then(m=>{regulars=m.createRegulars(document,{now:()=>Date.now()+offset});}).catch(e=>console.warn('[studio] regulars off:',e?.message||e));
 let flipDraw=null,flipState=null;
 import('./flipbook.mjs?v=8').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 // FOC SHOW MODE (store, 2026-11-19: "the top camera will just be the top camera ... the bottom camera is going to just
@@ -575,6 +576,8 @@ function receiveEffect(e,initial=false) {
   if(initial && e.kind!=='countdown') return;
   if(played.has(e.id)) return;
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
+  // THE REGULARS (2026-11-24): a quick cameo, just them -- no burst, no banner.
+  if(e.kind==='seen'||e.kind==='amos'){regulars?.play(e.kind,e.startsAt,e.endsAt);return;}
   // MR FISTER: he rises in, pumping the gauntlet (the line under him is the usual burst).
   if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.mode('goo',e.kind==='fistergoo');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.mode('goo',false);fisterView.stop();},e.kind==='fistergoo'?9600:7600);}
   // A ByteRider reaction or line from the dashboard: just him, no burst.
@@ -627,7 +630,7 @@ function words(e) {
 let lastKind='';
 function draw() {
   const now=Date.now()+offset;
-  if(effect && effect.endsAt>now) {
+  if(effect && effect.endsAt>now && effect.kind!=='seen' && effect.kind!=='amos') {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind+(effect.item?.title&&['chest','found'].includes(effect.kind)?' with-item':'');lastKind=effect.id;
       if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg()&&settings.gameMode!=='vending')){
         const who=effect.bossCharacter||settings.bossCharacter;

@@ -118,3 +118,16 @@ console.log('Boss fits on screen: passed');
   assert.equal(D.DUNGEON_DEFAULTS.itemCard, false);
   assert.ok(fs.readFileSync('scripts/live-studio-controls.js', 'utf8').includes("box('itemCard','ITEM CARD: the book you walk past pops up top right')"));
   console.log('Item card top right: off: passed'); }
+// THE REGULARS (store, 2026-11-24: "More regulars added to our show like we did with Fister ... I need seen but not heard
+// ... and another person, pretty hippie, Amos"): quick cameos from the remote, drawn in code, on the clock.
+{ const M = await import('../scripts/live-studio-model.mjs'), R = await import('../scripts/regulars.mjs');
+  for (const k of ['seen', 'amos']) { assert.ok(M.EFFECTS.includes(k), k); const e = M.makeEffect(k, M.DEFAULT_STUDIO, 0); assert.equal(e.endsAt, R.REGULARS[k].ms); }
+  const calls = []; const g = new Proxy({}, { get: (_, k) => typeof k === 'string' && !['font', 'textAlign', 'lineJoin', 'lineWidth', 'strokeStyle', 'fillStyle', 'globalAlpha', 'lineCap'].includes(k) ? (...a) => { calls.push(k); } : undefined, set: () => true });
+  for (const t of [0, 0.1, 0.3, 0.45, 0.7, 0.95, 1]) { R.drawSeen(g, 1080, 900, t); R.drawAmos(g, 1080, 900, t); }
+  assert.ok(calls.includes('ellipse') && calls.includes('fillText'), 'they draw');
+  const src = fs.readFileSync('scripts/regulars.mjs', 'utf8'), ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
+  assert.ok(!/Math\.random/.test(src), 'nothing random');
+  assert.ok(src.includes("'SEEN BUT'") && src.includes("'NOT HEARD'") && src.includes("'PEACE, LOVE & COMICS ✌'"));
+  assert.ok(ov.includes("if(e.kind==='seen'||e.kind==='amos'){regulars?.play(e.kind,e.startsAt,e.endsAt);return;}") && ov.includes("effect.kind!=='seen' && effect.kind!=='amos'"));
+  assert.ok(ctl.includes("['seen','🤫 SEEN BUT NOT HEARD'],['amos','✌ AMOS']"));
+  console.log('The regulars: Seen But Not Heard and Amos: passed'); }
