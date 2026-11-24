@@ -20745,22 +20745,35 @@ async function pushWhatnotItemsNow(env, ctx, storeId, itemIds) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   return runWhatnotListingSync(storeId, deps, { onlyIds: ids, allowCreate: false });
 }
+// Items switched to BUY IT NOW (whatnotToBin): off the show's auction and reserve on Whatnot, back in the shop at
+// their own price -- 50 a run (2026-11-24: "I want all BIN items available all the time").
+async function moveMarkedToBuyItNow(env, ctx, storeId, deps) {
+  const s = encodeURIComponent(storeId);
+  const rows = (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>whatnotToBin=eq.true&select=id,data&limit=50`)).data || [];
+  if (rows.length) {
+    // Items already in a scheduled or live show stay auctions there (2026-11-24: "the 149 comics I have in already for
+    // tomorrow's show should stay as auctions") -- the flag is dropped and they're left as they are.
+    const active = new Set();
+    for (const sh of await upcomingWhatnotShows(deps.api)) active.add(String(sh.id));
+    try { const cur = await currentWhatnotShow(deps.api); if (cur?.live) active.add(String(cur.id)); } catch (_) {}
+    const move = [], kept = [];
+    for (const r of rows) {
+      const link = await deps.kvGet(`whatnot-link:${storeId}:${r.id}`), inShow = (link?.shows || []).some(id => active.has(String(id)));
+      const { whatnotToBin, ...rest } = r.data || {};
+      await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(r.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: inShow ? rest : { ...rest, whatnotShowOnly: false }, updated_at: new Date().toISOString() }) });
+      (inShow ? kept : move).push(r);
+    }
+    const res = move.length ? await backToBuyItNow(move.map(r => r.id), deps) : [];
+    const done = res.filter(x => x.done).map(x => x.id);
+    if (done.length) { try { await pushWhatnotItemsNow(env, ctx, storeId, done); } catch (_) {} }
+    return { done: done.length, keptInShows: kept.length, notListedYet: res.filter(x => x.error === 'Not on Whatnot').length, problems: res.filter(x => x.error && x.error !== 'Not on Whatnot').slice(0, 10) };
+  }
+  return null;
+}
 async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 150, allowCreate = true } = {}) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   const out = { at: new Date().toISOString() };
-  // Items switched to BUY IT NOW (whatnotToBin): off the show's auction and reserve on Whatnot, back in the shop at
-  // their own price -- 50 a run (2026-11-24: "I want all BIN items available all the time").
-  try {
-    const s = encodeURIComponent(storeId);
-    const rows = (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>whatnotToBin=eq.true&select=id,data&limit=50`)).data || [];
-    if (rows.length) {
-      for (const r of rows) { const { whatnotToBin, ...rest } = r.data || {}; await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(r.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: { ...rest, whatnotShowOnly: false }, updated_at: new Date().toISOString() }) }); }
-      const res = await backToBuyItNow(rows.map(r => r.id), deps);
-      const done = res.filter(x => x.done).map(x => x.id);
-      if (done.length) { try { await pushWhatnotItemsNow(env, ctx, storeId, done); } catch (_) {} }
-      out.toBin = { done: done.length, notListedYet: res.filter(x => x.error === 'Not on Whatnot').length, problems: res.filter(x => x.error && x.error !== 'Not on Whatnot').slice(0, 10) };
-    }
-  } catch (e) { out.toBinError = e.message; }
+  try { const tb = await moveMarkedToBuyItNow(env, ctx, storeId, deps); if (tb) out.toBin = tb; } catch (e) { out.toBinError = e.message; }
   try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit, allowCreate }); }
   catch (e) { out.listingsError = e.message; }
   if (orders) {

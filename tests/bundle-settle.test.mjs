@@ -27,5 +27,5 @@ console.log('Bundles: books sold with the bundle on every channel; BUNDLE THESE:
 // 2026-11-24: "I want all BIN items available all the time" -- BUY IT NOW from an auction goes back to the shop on Whatnot.
 { const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8'), app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
   assert.ok(app.includes("whatnotShowOnly: mode === 'auction', ...(mode === 'bin' ? { whatnotToBin: true } : {}) }"));
-  assert.ok(w.includes("data->>whatnotToBin=eq.true&select=id,data&limit=50") && w.includes('const res = await backToBuyItNow(rows.map(r => r.id), deps);'), 'the 10-minute run puts them back in the shop');
+  assert.ok(w.includes("data->>whatnotToBin=eq.true&select=id,data&limit=50") && w.includes('const res = move.length ? await backToBuyItNow(move.map(r => r.id), deps) : [];') && w.includes('(inShow ? kept : move).push(r);'), 'the 10-minute run puts them back in the shop');
   console.log('Auction items back to Buy It Now: passed'); }
