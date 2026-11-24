@@ -35,4 +35,9 @@ const calls = []; const db = async (p, i) => { calls.push([p, i]); return { data
 const json = (b, st = 200) => ({ b, st }), req = (method, body) => ({ method, headers: new Map(), json: async () => body });
 const r = await S.handleDungeonSetups(req('POST', { name: 'Week of 11/26', plan: { floors: [{ floor: 1, boss: 'fister' }] } }), {}, new URL('https://w/store/dungeon-setups?store_id=abc'), { requireStoreUser: async () => ({}), json, db });
 assert.equal(r.st, 200); assert.equal(r.b.setup.plan.floors[0].boss, 'fister'); assert.ok(calls[0][0].startsWith('dungeon_setups?on_conflict=id'));
+// Demo / PLAY THROUGH: preview only, and the chests open in it with what's loaded for that floor.
+assert.ok(ctl.includes('id="mana-demo-run"') && ctl.includes('demoRun=setInterval(step,3500)'));
+assert.ok(ctl.includes("dungeonLib.chestsToOpen(demoDungeon,{...v,chestGoals:''})") && ctl.includes("kind='chest';extra=chest;"));
+const demoBody = ctl.slice(ctl.indexOf('const demoSale=()=>{'), ctl.indexOf("host.querySelector('#mana-link')"));
+assert.ok(!/api\(/.test(demoBody), 'the demo never calls the studio');
 console.log('Saved dungeon setups: passed');

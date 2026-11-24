@@ -201,7 +201,7 @@
   <small>Buyer usernames are off unless you turn them on. Whatnot shows the winner's username in the app already; check Whatnot's seller rules before showing them. Only the username is ever shown, and there's no "top spender" board.</small>
   <button type="submit">Save live settings</button></form></details>
   <div class="mana-preview"><iframe title="Overlay preview over two camera placeholders" data-src="arcade-overlay.html#preview=1" src="about:blank"></iframe><iframe class="mana-preview-bg" title="Green-screen shed behind the top camera" data-src="shed-background.html#preview=1" src="about:blank"></iframe></div>
-  <div class="mana-row"><button type="button" id="mana-demo">DEMO A SALE (preview only)</button></div><small>Preview is silent. Both camera areas are placeholders; camera sources stay in OBS.</small>
+  <div class="mana-row"><button type="button" id="mana-demo">DEMO A SALE (preview only)</button><button type="button" id="mana-demo-run">⏩ PLAY THROUGH THE DUNGEON (preview only)</button></div><small>Demo sales only move the preview: the real dungeon, chests, stretch goals and show are not touched. PLAY THROUGH keeps demoing sales so you can watch every floor, chest, boss and stretch goal; tap it again to stop, ↺ RESET to start over.</small><small>Preview is silent. Both camera areas are placeholders; camera sources stay in OBS.</small>
   <button id="mana-link">Create / replace OBS link</button><button id="mana-revoke">Revoke OBS link</button><label>Private OBS Browser Source URL<input id="mana-url" readonly></label><label>Shed background URL (green screen)<input id="mana-shed-url" readonly></label><div class="mana-row"><a href="shed-background.html#demo=1" target="_blank" rel="noopener">PREVIEW ALL SHEDS ↗</a></div><small>Green screen: put the shed background as a Browser Source (1080 × 1920) <b>under</b> your camera, and add OBS's Chroma Key filter to the camera. The shed follows the dungeon's floor, shows the room chat picked, and glows red while a boss is up.</small><small>Link expires after 12 hours. Replacing it disconnects old overlays. OBS: Browser Source 1080 × 1920 above both cameras, enable “Control audio via OBS”. If sound is blocked, use OBS Interact and click the overlay once.</small>`;
   const form=host.querySelector('form'),status=host.querySelector('#mana-status'),frame=host.querySelector('iframe');
   // The studio is on screen: the page is showing and its tab is open (a closed tab panel has no layout).
@@ -823,6 +823,12 @@
   import('./beasts.mjs?v='+STUDIO_V).then(m=>{beastsLib=m;}).catch(()=>{});
   import('./live-studio-dungeon.mjs?v='+STUDIO_V).then(m=>{dungeonLib=m;}).catch(()=>{});
   host.querySelector('#mana-demo').onclick=()=>{try{demoSale();}catch(e){status.textContent='Demo: '+(e?.message||e)+' -- reload the dashboard.';}};
+  // ⏩ PLAY THROUGH (store, 2026-11-24: "see the whole dungeons as I go through so I can test them out"): a demo sale
+  // every few seconds, in the preview only, until tapped again.
+  let demoRun=0;const runBtn=host.querySelector('#mana-demo-run');
+  runBtn.onclick=()=>{if(demoRun){clearInterval(demoRun);demoRun=0;runBtn.textContent='⏩ PLAY THROUGH THE DUNGEON (preview only)';status.textContent='Play-through stopped.';return;}
+    const step=()=>{try{demoSale();}catch(e){clearInterval(demoRun);demoRun=0;runBtn.textContent='⏩ PLAY THROUGH THE DUNGEON (preview only)';status.textContent='Demo: '+(e?.message||e);}};
+    runBtn.textContent='⏸ STOP THE PLAY-THROUGH';demoRun=setInterval(step,3500);step();};
   const demoSale=()=>{const v=values(),amount=v.gameMode==='beasts'?[4,3,5,4,6][demo%5]:[12,45,8,150,25][demo%5]; demo++; // beasts: small steps, so the demo walks into the tall grass and fights
     if(demo===1){demoGross=stats?.gross||0;demoBig=stats?.biggest||0;}
     const wasAlive=demoGross<v.bossGoal;demoGross+=amount;demoBig=Math.max(demoBig,amount);const hp=Math.max(0,v.bossGoal-demoGross);
@@ -840,7 +846,11 @@
       if(demo===1){const p=stats?.dungeon;demoDungeon=p?{week:p.week,floor:p.floor,phase:p.phase,mana:p.mana,bossHp:p.phase==='boss'?p.boss.hp:0,stars:p.stars,cleared:[],taps:{}}:null;}
       const r=dungeonLib.addMana(demoDungeon,amount,v);demoDungeon=r.dungeon;fake.dungeon=dungeonLib.publicDungeon(demoDungeon,v,demoGross);
       const boss=r.events.filter(x=>x.kind==='boss').pop(),fl=r.events.filter(x=>x.kind==='floor').pop(),un=v.dungeonOn?dungeonLib.showUnlocksCrossed(demoGross-amount,demoGross,v).pop():null;
-      if(boss){kind='boss';extra={dungeon:true,...boss};}else if(fl){kind='floor';extra=fl;}else if(un){kind='unlock';extra={unlockText:un.text,unlockAt:un.n};}
+      // The chests open in the demo too, each with what's loaded in it for that floor (chat's tap goals count as met here).
+      let chest=null;if(!boss&&!fl){const c=dungeonLib.chestsToOpen(demoDungeon,{...v,chestGoals:''})[0];if(c){demoDungeon=dungeonLib.openChest(demoDungeon,c.k);const ld=dungeonLib.nextChestLoad(v,demoDungeon);if(ld)demoDungeon=dungeonLib.useChestLoad(demoDungeon,ld.id);
+        chest={chestText:ld?ld.t:(c.k<(Number(v.giveawayChests??2)||0)?'FREE GIVEAWAY':'THE NEXT BOOK UP'),chestGoal:'CHEST '+(c.k+1)+' OF 3',...(ld?.i?{item:ld.i}:{})};fake.dungeon=dungeonLib.publicDungeon(demoDungeon,v,demoGross);}}
+      if(boss){kind='boss';extra={dungeon:true,...boss};}else if(fl){kind='floor';extra=fl;}else if(chest){kind='chest';extra=chest;}else if(un){kind='unlock';extra={unlockText:un.text,unlockAt:un.n};}
+      if(demoRun)status.textContent='Preview: floor '+fake.dungeon.floor+' · '+fake.dungeon.shed+(fake.dungeon.phase==='boss'?' · BOSS: '+fake.dungeon.boss.name:'')+(chest?' · chest: '+chest.chestText:'');
     }
     demoFake=fake;demoUntil=Date.now()+120000;
     preview({id:'demo-'+Date.now(),kind,startsAt:Date.now(),endsAt:Date.now()+5000,amount,word:['POW!','BAM!','KRAK!','ZAP!','KA-CHING!'][demo%5],combo:demo,reward:v.bossReward,bossName:v.bossName,buyer:v.showBuyerNames?'collector42':'',...extra},fake);};
