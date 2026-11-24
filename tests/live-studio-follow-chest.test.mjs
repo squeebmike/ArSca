@@ -140,6 +140,6 @@ console.log('Boss fits on screen: passed');
   console.log('Lunar covers load in OBS: passed'); }
 // The live dungeon card (2026-11-24): floor, bar to its goal with the chests on it, the next chest and its $, boss HP.
 { const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), css = fs.readFileSync('assets/live-studio.css', 'utf8');
-  for (const k of ['<div id="dg-live" class="dg-live" hidden></div>', 'function paintLive(){', "'🧰 NEXT CHEST: <b>'+esc(next.what)+'</b> · '", "'<b>BOSS HP $'+hp+' / $'+max+'</b>", "<button type=\"button\" data-click=\"#dg-plan\">🗺 FLOOR PLAN &amp; CHESTS</button>"]) assert.ok(ctl.includes(k), k);
+  for (const k of ['<div id="dg-live" class="dg-live" hidden></div>', 'function paintLive(){', "'🧰 NEXT CHEST: <b>'+esc(next.what)+'</b> · '", "<b>BOSS HP $'+hp+' / $'+max+'</b>", "<button type=\"button\" data-click=\"#dg-plan\">🗺 FLOOR PLAN &amp; CHESTS</button>"]) assert.ok(ctl.includes(k), k);
   assert.ok(css.includes('.mana-controls .dg-live{') && css.includes('@media (max-width:640px){'));
   console.log('Live dungeon card: passed'); }
