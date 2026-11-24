@@ -27763,6 +27763,18 @@ function renderBundleDraftBar(){
     <button class="hbtn" style="min-height:28px;padding:2px 10px;font-size:9px" onclick="clearBundleDraft()">CLEAR</button>`;
 }
 
+// 🎁 BUNDLE THESE (Inventory bulk bar, store 2026-11-24): the selected books go straight into the bundle builder --
+// drag-select them instead of adding them one at a time from each row's menu.
+function bundleSelectedItems(){
+  const picked = all.filter(i => inventoryBulkSelectedIds.has(i.id)), ok = picked.filter(inventoryItemBundleEligible);
+  if(!ok.length){ toast_dash('Select in-stock items to bundle'); return; }
+  ensureBundleDraftBar();
+  for(const i of ok) bundleDraftIds.add(i.id);
+  renderBundleDraftBar();
+  if(ok.length < picked.length) toast_dash((picked.length - ok.length) + ' skipped (sold, bundled or out of stock)');
+  if(bundleDraftTotalCopies([...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean)) < 2){ toast_dash('Pick at least 2 books for a bundle'); return; }
+  openBundleBuilderModal();
+}
 function toggleBundleDraft(id){
   ensureBundleDraftBar();
   const item = all.find(i => i.id === id);

@@ -67,6 +67,7 @@ import { searchComics, comicSearchShell, comicSearchScriptResponse, injectComicS
 import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-account.mjs';
 import { handleArticlesRequest, articleSitemapPaths, fetchArticles, sameComic } from './scripts/comic-articles.mjs';
 import { handleArticleStudio, runSubstackArticlesSync } from './scripts/substack-articles.mjs';
+import { settleSoldBundleMembers } from './scripts/bundle-settle.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
@@ -20750,6 +20751,9 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
     const listingSettings = await whatnotListingSettings(env, storeId);
     try { out.orders = (await reconcileWhatnotOrders({ ...deps, feeSettings, listingSettings })).filter(r => !r.skipped); }
     catch (e) { out.ordersError = e.message; }
+    // A bundle that sold (here, eBay, the website) marks the books inside it sold (scripts/bundle-settle.mjs).
+    try { const b = await settleSoldBundleMembers(storeId, (path, init) => supabaseAdminFetch(env, path, init)); if (b.settled) out.bundles = b; }
+    catch (e) { out.bundlesError = e.message; }
     // Price/count edits made in the Whatnot app, back to the dashboard --
     // after the orders, so a sale is always recorded before a drop is read.
     try {
@@ -20781,7 +20785,7 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   // A run that did something (or hit a problem) is also kept where it can be
   // checked from outside the Worker (server_job_runs).
   const l = out.listings || {};
-  if (l.checked || l.errors?.length || out.fromWhatnot || out.orders?.length || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
+  if (l.checked || l.errors?.length || out.fromWhatnot || out.orders?.length || out.bundles || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
     await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
   }
   return out;
