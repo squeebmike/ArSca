@@ -76,12 +76,12 @@ assert.ok(articleStatsScript('avengers-is-back').includes("localStorage.setItem(
 assert.ok(fs.readFileSync('cloudflare-worker-full.js', 'utf8').includes("/^article:[a-z0-9-]{3,120}$/.test(String(body.referral || ''))"), 'record-order keeps the article');
 
 // The page counts a view and clicks on its books.
-assert.ok(articleStatsScript('avengers-is-back').includes("/public/article-hit?s="));
+assert.ok(articleStatsScript('avengers-is-back').includes("/articles/_hit?s="), 'beacon goes where the site routes to the Worker (/articles*)');
 assert.equal(articleStatsScript('bad slug"><script>'), '');
 const page = fs.readFileSync('scripts/comic-articles.mjs', 'utf8');
 assert.ok(page.includes('+ articleStatsScript(article.slug)'));
 const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
-assert.ok(worker.includes("runSubstackArticlesSync(env, articleStudioDeps(env))") && worker.includes("url.pathname === '/public/article-hit'"));
+assert.ok(worker.includes("runSubstackArticlesSync(env, articleStudioDeps(env))") && worker.includes("url.pathname === '/articles/_hit'"));
 assert.ok(fs.readFileSync('.github/workflows/deploy-worker.yml', 'utf8').includes('scripts/substack-articles.mjs'));
 // Crawlers don't count; people do.
 for (const ua of ['Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', 'Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; bingbot/2.0)', 'facebookexternalhit/1.1', 'Mozilla/5.0 HeadlessChrome/120', '', undefined]) assert.equal(isBot(ua), true, String(ua));
@@ -119,3 +119,11 @@ assert.equal(cleanEditedHtml('<div>Hi <b>there</b></div><p onclick="x()">ok <a h
 { const app = fs.readFileSync('scripts/dashboard-app.js', 'utf8');
   assert.ok(app.includes('✏️ EDIT') && app.includes("'/store/articles/save'") && app.includes('function articleEditSafe(') && app.includes('SAVE &amp; PUT ON SITE')); }
 console.log('Substack articles: feed, clean-up, comic posts only, books, drafts, report and counters passed');
+
+// 2026-11-24: "It hates some ' and other punctuation" -- Substack's &#8217; showed as text on the site.
+{ const { decodeEntities, parseSubstackFeed } = await import('../scripts/substack-articles.mjs');
+  assert.equal(decodeEntities('Marvel&#8217;s new Midnight X-Men'), 'Marvel’s new Midnight X-Men');
+  assert.equal(decodeEntities('Marvel&amp;#8217;s &ldquo;hi&rdquo; &#x2014; ok &bogus;'), 'Marvel’s “hi” — ok &bogus;');
+  const feed = parseSubstackFeed('<item><title>Carnage&#8217;s back</title><link>https://x.substack.com/p/carnage</link><description><![CDATA[Marvel&#8217;s new]]></description><content:encoded><![CDATA[<p>x</p>]]></content:encoded></item>');
+  assert.equal(feed[0].title, 'Carnage’s back'); assert.equal(feed[0].summary, 'Marvel’s new');
+  console.log('Article punctuation and the view/click beacon: passed'); }

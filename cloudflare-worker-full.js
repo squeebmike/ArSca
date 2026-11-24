@@ -6393,7 +6393,7 @@ async function routeRequest(request, env, ctx) {
     try {
     const url = new URL(request.url);
 
-    if (url.pathname === '/public/article-hit' || url.pathname.startsWith('/store/articles')) { const studio = await handleArticleStudio(request, env, url, articleStudioDeps(env)); if (studio) return studio; }
+    if (url.pathname === '/public/article-hit' || url.pathname === '/articles/_hit' || url.pathname.startsWith('/store/articles')) { const studio = await handleArticleStudio(request, env, url, articleStudioDeps(env)); if (studio) return studio; }
     const onlineDeckLab = await handleDeckLabRooms(request,env,{limit:enforceUsageLimit});
     if(onlineDeckLab)return onlineDeckLab;
     const deckLab = handleDeckLab(request,{shell:mtgPageShell});

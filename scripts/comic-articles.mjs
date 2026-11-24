@@ -6,7 +6,7 @@ import {cachedPublicCatalog} from './public-catalog-cache.mjs';
 import {catalogStoreCopyHtml,tcgplayerAffiliateUrl,marketplaceDisclosureHtml} from './catalog-inventory.mjs';
 import { renderBookAlertForm } from './book-alert-ui.mjs';
 import { afterFocAvailability } from './foc-preorders.mjs';
-import { articleStatsScript } from './substack-articles.mjs';
+import { articleStatsScript, decodeEntities } from './substack-articles.mjs';
 import { fillImageAlts, linkBookMentions, alsoLove, quickAnswers, renderQuickAnswers } from './article-extras.mjs';
 // Comic articles at www.themanapocket.com/articles.
 //
@@ -183,8 +183,8 @@ export function shapeArticle(item) {
   if (!f.slug || !f.name) return null;
   const fallback=!f[F.image]?.url&&!bodyImage?editorialCoverFallbacks.get(String(f.slug)):null;
   return {
-    id: item.id, slug: String(f.slug), title: String(f.name),
-    summary: String(f[F.summary] || '').trim(),
+    id: item.id, slug: String(f.slug), title: decodeEntities(f.name),
+    summary: decodeEntities(f[F.summary] || '').trim(),
     bodyHtml: sanitizeRichText(f[F.body] || ''),
     image: f[F.image]?.url || bodyImage || fallback?.url || '', imageAlt: f[F.image]?.alt || fallback?.alt || '',
     author: String(f[F.author] || '').trim() || 'The Mana Pocket',

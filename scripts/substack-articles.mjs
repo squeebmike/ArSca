@@ -16,6 +16,18 @@ export const SUBSTACK_FEEDS = [
 const decode = s => String(s || '')
   .replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, '$1')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// Plain words (titles, summaries): Substack sends ’ as &#8217; (sometimes twice-encoded), which showed up as
+// "Marvel&#8217;s" on the site (store, 2026-11-24: "It hates some ' and other punctuation"). Text only -- never the HTML body.
+const NAMED = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', mdash: '—', ndash: '–', hellip: '…' };
+export function decodeEntities(s) {
+  let out = String(s ?? '');
+  for (let i = 0; i < 3 && /&(#\d+|#x[0-9a-f]+|[a-z]+);/i.test(out); i++)
+    out = out.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e) => {
+      if (e[0] === '#') { const n = e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10); return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : m; }
+      return NAMED[e.toLowerCase()] ?? m;
+    });
+  return out;
+}
 const tagText = (xml, tag) => { const m = xml.match(new RegExp('<' + tag + '(?:\\s[^>]*)?>([\\s\\S]*?)</' + tag + '>')); return m ? decode(m[1]).trim() : ''; };
 
 // The feed's posts, newest first, as plain data.
@@ -26,8 +38,8 @@ export function parseSubstackFeed(xml) {
     const cover = it.match(/<enclosure\s[^>]*url="([^"]+)"[^>]*type="image\//i)?.[1] || '';
     return {
       guid: tagText(it, 'guid') || link, link, slug,
-      title: tagText(it, 'title').replace(/\s+/g, ' ').trim(),
-      summary: tagText(it, 'description').replace(/\s+/g, ' ').trim(),
+      title: decodeEntities(tagText(it, 'title')).replace(/\s+/g, ' ').trim(),
+      summary: decodeEntities(tagText(it, 'description')).replace(/\s+/g, ' ').trim(),
       author: tagText(it, 'dc:creator'),
       publishedAt: (d => isNaN(d) ? null : d.toISOString())(new Date(tagText(it, 'pubDate'))),
       cover: decode(cover),
@@ -210,10 +222,10 @@ export function articleReport({ items, stats = [], referred = new Map(), authors
   return items.filter(i => authors.includes(String(i.fieldData?.author || ''))).map(i => {
     const f = i.fieldData || {}, books = String(f['books-to-promote'] || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     return {
-      id: i.id, slug: f.slug, title: f.name, live: !i.isDraft && !!i.lastPublished, draft: !!i.isDraft, publishedAt: f['published-on-2'] || null,
+      id: i.id, slug: f.slug, title: decodeEntities(f.name), live: !i.isDraft && !!i.lastPublished, draft: !!i.isDraft, publishedAt: f['published-on-2'] || null,
       image: f['cover-image']?.url || '', books, ...(by.get(f.slug) || { views: 0, clicks: 0 }),
       // What it says, to read before it goes up (the dashboard shows it in a sandbox).
-      summary: String(f.summary || ''), body: String(f.body || '').slice(0, 60000),
+      summary: decodeEntities(f.summary || ''), body: String(f.body || '').slice(0, 60000),
       ...(referred.get(f.slug) || { orders: 0, sold: 0, soldTotal: 0 }),
     };
   }).sort((a, b) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
@@ -223,7 +235,7 @@ export function articleReport({ items, stats = [], referred = new Map(), authors
 export const isBot = ua => !ua || /bot|crawl|spider|slurp|mediapartners|lighthouse|headless|preview|facebookexternalhit|embedly|quora link|whatsapp|python-requests|curl|wget|httpclient|ahrefs|semrush|bingpreview/i.test(String(ua));
 // Routes: the page's view/click beacon, the report, put on / take off the site, check Substack now.
 export async function handleArticleStudio(request, env, url, deps) {
-  if (url.pathname === '/public/article-hit' && request.method === 'POST') {
+  if ((url.pathname === '/articles/_hit' || url.pathname === '/public/article-hit') && request.method === 'POST') {
     const slug = String(url.searchParams.get('s') || ''), kind = url.searchParams.get('k') === 'click' ? 'click' : 'view';
     if (!/^[a-z0-9-]{3,120}$/.test(slug)) return new Response(null, { status: 204 });
     // Crawlers that run page scripts (Googlebot and friends) never count.
@@ -293,8 +305,9 @@ export async function handleArticleStudio(request, env, url, deps) {
   return deps.json({ ok: false, error: 'Not found' }, 404);
 }
 
-// On the article page: count a view, and clicks on its books (buy, preorder, add to cart).
+// On the article page: count a view (sent to /articles/_hit -- on the site only /articles* reaches the Worker; the old
+// /public/article-hit went to Webflow and was lost, so every article read 0 views, 2026-11-24), and clicks on its books (buy, preorder, add to cart).
 export function articleStatsScript(slug) {
   if (!/^[a-z0-9-]{3,120}$/.test(String(slug || ''))) return '';
-  return `<script>(function(){var s=${JSON.stringify(slug)},u=function(k){try{navigator.sendBeacon('/public/article-hit?s='+s+'&k='+k)}catch(e){}};u('view');try{localStorage.setItem('mp_article_ref',JSON.stringify({s:s,at:Date.now()}))}catch(e){}document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="/item/"],a[href*="/preorder/"],.mp-art button');if(a)u('click')},true)})();</script>`;
+  return `<script>(function(){var s=${JSON.stringify(slug)},u=function(k){try{navigator.sendBeacon('/articles/_hit?s='+s+'&k='+k)}catch(e){}};u('view');try{localStorage.setItem('mp_article_ref',JSON.stringify({s:s,at:Date.now()}))}catch(e){}document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href*="/item/"],a[href*="/preorder/"],.mp-art button');if(a)u('click')},true)})();</script>`;
 }
