@@ -55,6 +55,7 @@ on:
       - scripts/substack-articles.mjs
       - scripts/bundle-settle.mjs
       - scripts/dungeon-setups.mjs
+      - scripts/live-studio-mirror.mjs
       - scripts/article-extras.mjs
       - scripts/pull-list-page.mjs
       - scripts/cover-coming-soon.mjs
