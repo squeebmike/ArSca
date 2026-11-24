@@ -20751,11 +20751,13 @@ async function moveMarkedToBuyItNow(env, ctx, storeId, deps) {
   const s = encodeURIComponent(storeId);
   const rows = (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>whatnotToBin=eq.true&select=id,data&limit=50`)).data || [];
   if (rows.length) {
-    // Items already in a scheduled or live show stay auctions there (2026-11-24: "the 149 comics I have in already for
-    // tomorrow's show should stay as auctions") -- the flag is dropped and they're left as they are.
-    const active = new Set();
-    for (const sh of await upcomingWhatnotShows(deps.api)) active.add(String(sh.id));
-    try { const cur = await currentWhatnotShow(deps.api); if (cur?.live) active.add(String(cur.id)); } catch (_) {}
+    // Items in the NEXT show day's shows stay auctions there (2026-11-24: "the 149 comics I have in already for
+    // tomorrow's show should stay as auctions ... just tomorrow's show") -- the flag is dropped and they're left as
+    // they are. Items in today's live show or later shows go to Buy It Now.
+    const active = new Set(), day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const upcoming = (await upcomingWhatnotShows(deps.api)).filter(sh => Date.parse(sh.scheduled_start_at) > Date.now());
+    const nextDay = upcoming[0] ? day(upcoming[0].scheduled_start_at) : '';
+    for (const sh of upcoming) if (day(sh.scheduled_start_at) === nextDay) active.add(String(sh.id));
     const move = [], kept = [];
     for (const r of rows) {
       const link = await deps.kvGet(`whatnot-link:${storeId}:${r.id}`), inShow = (link?.shows || []).some(id => active.has(String(id)));
