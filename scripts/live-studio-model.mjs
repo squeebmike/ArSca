@@ -121,7 +121,7 @@ export function validateSettings(input) {
   }
   if (full.chestLoad) {
     let list; try { list = JSON.parse(full.chestLoad); } catch { throw new Error('Invalid chestLoad'); }
-    if (!Array.isArray(list) || list.length > 21 || !list.every(c => c && typeof c.id === 'string' && /^[a-z0-9]{1,12}$/i.test(c.id) && typeof c.t === 'string' && c.t.trim() && c.t.length <= 120
+    if (!Array.isArray(list) || list.length > 21 || !list.every(c => c && typeof c.id === 'string' && /^[a-z0-9]{1,12}$/i.test(c.id) && typeof c.t === 'string' && c.t.trim() && c.t.length <= 120 && (c.f == null || (Number.isInteger(c.f) && c.f >= 1 && c.f <= 99))
       && (c.i == null || (typeof c.i === 'object' && typeof c.i.title === 'string' && c.i.title.length <= 90 && (!c.i.image || /^https:\/\/[^\s"'<>]{1,600}$/.test(c.i.image)))))) throw new Error('Invalid chestLoad');
     for (const c of list) { const word = chanceWordIn(c.t) || chanceWordIn(c.i?.title || ''); if (word) throw new Error(`"${word}" reads as a game of chance -- Whatnot doesn't allow those. Change that chest.`); }
   }

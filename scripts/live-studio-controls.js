@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.24.3';
+  const STUDIO_V='2026.11.24.4';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -82,6 +82,9 @@
   <div class="mana-row"><button type="button" id="quick-floor">🔢 SET FLOOR…</button><button type="button" data-click="#mana-reset-week">⏮ START THE WEEK OVER</button></div>
   <div class="mana-row"><label style="flex:1">THIS FLOOR'S BOSS <select id="mana-boss-pick"><option value="">Auto (the set order)</option></select></label><button type="button" id="mana-summon">⚔ SUMMON THE BOSS NOW</button></div>
   <small>Pick who comes out when this floor's flask fills (or when you summon). SUMMON fills the flask now: the boss comes out and sales and taps hit it.</small>
+  <details id="dg-setups" class="dg-plan" open><summary>🏰 SAVED DUNGEON SETUPS -- the whole week ready before the show</summary>
+  <small>Each setup holds every floor's boss, room, reward and its 3 chests, plus the show's stretch goals. LOAD puts it into the studio (the chests go on their own floors). Claude can write these for you: just say what's on each floor.</small>
+  <div id="dg-setups-body"><small>Tap CONNECT to see the saved setups.</small></div></details>
   <details id="dg-plan" class="dg-plan" open><summary>🗺 DUNGEON PLAN -- every floor: its boss, room, reward and what's in each chest</summary>
   <small>This floor and the ones after it. Change a boss or a room here (a room set ahead skips chat's door vote on that floor). Chests open at the $ shown; what's in them comes from LOAD THE CHESTS (in order) -- ✏ EDIT CHESTS to change it.</small>
   <div id="dg-plan-body"><small>Tap CONNECT to see the plan.</small></div></details>
@@ -400,7 +403,7 @@
     const used=new Set(stats?.dungeon?.chestLoadUsed||[]),el=(t,props={},...kids)=>{const e=document.createElement(t);Object.assign(e,props);e.append(...kids);return e;};
     // Where each unopened chest will open: they go in list order, the rest of this floor's chests first, then 3 a floor.
     const dg=stats?.dungeon||{},left=Math.max(0,3-(dg.opened||[]).length),order=chestRows.filter(c=>!used.has(c.id)).map(c=>c.id);
-    const whereOf=id=>{const n=order.indexOf(id);if(n<0)return'';const fl=(Number(dg.floor)||1)+(n<left?0:1+Math.floor((n-left)/3));return' · FLOOR '+fl;};
+    const whereOf=id=>{const fx=chestRows.find(c=>c.id===id)?.f;if(fx)return' · FLOOR '+fx;const n=order.indexOf(id);if(n<0)return'';const fl=(Number(dg.floor)||1)+(n<left?0:1+Math.floor((n-left)/3));return' · FLOOR '+fl;};
     const rows=chestRows.map((c,k)=>{
       const opened=used.has(c.id),row=el('div',{className:'chest-row'+(opened?' opened':'')});
       const text=el('input',{value:c.t||'',maxLength:120,placeholder:'What it says, e.g. Free giveaway for followers -- Midnight Spider-Man #2'});text.oninput=()=>{c.t=text.value;chestDirty=true;};
@@ -419,8 +422,45 @@
     const save=el('button',{type:'button',textContent:'💾 SAVE THE CHESTS',style:'font-weight:800'});save.onclick=()=>run(saveChestLoad);
     box.replaceChildren(...rows,el('div',{style:'display:flex;gap:6px;flex-wrap:wrap'},add,save));
   }
+  // SAVED DUNGEON SETUPS (store, 2026-11-24): list them, LOAD one into the studio, DELETE. The setups themselves are
+  // written by Claude (or saved from here later); the shape is in scripts/dungeon-setups.mjs.
+  let setups=[];
+  async function setupsCall(method,query,body){const res=await storeWorkerFetch('/store/dungeon-setups?store_id='+encodeURIComponent(store())+(query||''),method==='GET'?{cache:'no-store'}:{method,headers:{'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const d=await res.json().catch(()=>({}));if(!res.ok||!d.ok)throw Error(d.error||'Dungeon setups unavailable');return d;}
+  function setupSummary(p){const fl=p.floors||[],ch=fl.reduce((n,f)=>n+(f.chests||[]).length,0);return fl.length+' floor'+(fl.length===1?'':'s')+' · '+ch+' chest'+(ch===1?'':'s')+' · '+(p.stretch||[]).length+' stretch goal'+((p.stretch||[]).length===1?'':'s');}
+  function paintSetups(){
+    const box=host.querySelector('#dg-setups-body');if(!box)return;
+    const el=(t,props={},...kids)=>{const e=document.createElement(t);Object.assign(e,props);e.append(...kids);return e;};
+    if(!setups.length){box.replaceChildren(el('small',{textContent:'No saved setups yet. Tell Claude what goes on each floor and it will save one here.'}));return;}
+    box.replaceChildren(...setups.map(su=>{const p=su.plan||{};
+      const head=el('div',{style:'display:flex;gap:6px;align-items:center;flex-wrap:wrap'},el('b',{textContent:su.name}),el('small',{textContent:(su.show_title?'📺 '+su.show_title+' · ':'')+setupSummary(p)}));
+      const lines=el('div',{className:'dg-setup-lines',style:'font-size:11px;line-height:1.5'});
+      for(const f of p.floors||[])lines.append(el('div',{textContent:'FLOOR '+f.floor+(f.boss?' · '+(BOSS_NAMES[f.boss]||f.boss.toUpperCase()):'')+(f.room?' · '+f.room.toUpperCase():'')+(f.reward?' · 🏆 '+f.reward:'')+((f.chests||[]).length?' · 🧰 '+(f.chests||[]).map((c,k)=>(k+1)+') '+c.t+(c.i?.title?' ['+c.i.title+']':'')).join('  '):'')}));
+      for(const x of p.stretch||[])lines.append(el('div',{textContent:'🎯 $'+x.at+': '+x.text}));
+      const load=el('button',{type:'button',textContent:'▶ LOAD INTO THE STUDIO',style:'font-weight:800'});load.onclick=()=>run(()=>loadSetup(su));
+      const del=el('button',{type:'button',textContent:'✕ DELETE'});del.onclick=()=>run(async()=>{if(!confirm('Delete the setup "'+su.name+'"?'))return;await setupsCall('DELETE','&id='+encodeURIComponent(su.id));await refreshSetups();status.textContent='Setup deleted.';});
+      return el('div',{className:'chest-row'},head,lines,el('div',{style:'display:flex;gap:6px;flex-wrap:wrap'},load,del));}));
+  }
+  async function refreshSetups(){try{setups=(await setupsCall('GET')).setups||[];}catch(e){setups=[];const b=host.querySelector('#dg-setups-body');if(b)b.textContent=e.message;return;}paintSetups();}
+  async function loadSetup(su){
+    const p=su.plan||{},fl=p.floors||[];
+    if(!confirm('Load "'+su.name+'" into the studio? It replaces the floor rewards, stretch goals and loaded chests.'))return;
+    const tag=Date.now().toString(36).slice(-4);
+    const set={floorRewards:fl.filter(f=>f.reward).map(f=>f.floor+': '+f.reward).join('\n'),showUnlocks:(p.stretch||[]).map(x=>x.at+': '+x.text).join('\n'),
+      chestLoad:JSON.stringify(fl.flatMap(f=>(f.chests||[]).map((c,k)=>({id:tag+'f'+f.floor+'c'+(k+1),t:c.t,f:f.floor,...(c.i?{i:c.i}:{})}))))};
+    if(set.chestLoad==='[]')set.chestLoad='';
+    if(typeof p.chestGoals==='string')set.chestGoals=p.chestGoals;if(Number.isInteger(p.giveawayChests))set.giveawayChests=p.giveawayChests;
+    for(const [k,v] of Object.entries(set)){const e=form.elements.namedItem(k);if(e)e.value=v;}
+    const d=await api('settings',{settings:values(),revision});revision=d.revision;chestDirty=false;took(d);
+    const skipped=[];
+    for(const f of fl){
+      if(f.boss)try{took(await api('dungeon-adjust',{boss:f.boss,at:f.floor}));}catch(e){skipped.push('floor '+f.floor+' boss ('+e.message+')');}
+      if(f.room)try{took(await api('dungeon-adjust',{room:f.room,at:f.floor}));}catch(e){skipped.push('floor '+f.floor+' room ('+e.message+')');}
+    }
+    paintChestLoad(true);setTimeout(paintPlan,0);
+    status.textContent='Loaded "'+su.name+'".'+(skipped.length?' Not set: '+skipped.join('; '):'');
+  }
   async function saveChestLoad(){
-    const list=(chestRows||[]).map(c=>({id:c.id||chestId(),t:String(c.t||'').trim().slice(0,120),...(c.i?{i:c.i}:{})}));
+    const list=(chestRows||[]).map(c=>({id:c.id||chestId(),t:String(c.t||'').trim().slice(0,120),...(c.f?{f:c.f}:{}),...(c.i?{i:c.i}:{})}));
     if(list.some(c=>!c.t))throw Error('Every chest needs words -- what it says on screen (or take it out).');
     const hid=form.elements.namedItem('chestLoad'),before=hid.value;hid.value=list.length?JSON.stringify(list):'';
     try{const d=await api('settings',{settings:values(),revision});revision=d.revision;chestDirty=false;took(d);}catch(e){hid.value=before;throw e;}
@@ -459,7 +499,9 @@
   function planChestWords(plan){
     // Which loaded chest lands where: in list order, this floor's unopened chests first, then 3 a floor (as they open).
     const used=new Set(stats?.dungeon?.chestLoadUsed||[]),load=chestLoadSaved().filter(c=>!used.has(c.id)),give=Number(settings?.giveawayChests??2)||0;let n=0;
-    return plan.map(p=>[0,1,2].map(k=>{if(p.opened.includes(k))return {open:true};const c=load[n++];return {what:c?c.t+(c.i?.title?' ('+c.i.title+')':''):k<give?'FREE GIVEAWAY':'the next book up (NEXT UP)',loaded:!!c};}));
+    // A chest set for a floor (from a saved setup) goes on that floor; the rest fill in, in order.
+    const taken=new Set(),free=load.filter(c=>!c.f);
+    return plan.map(p=>[0,1,2].map(k=>{if(p.opened.includes(k))return {open:true};const own=load.find(c=>c.f===p.floor&&!taken.has(c.id)),c=own||free[n++];if(c)taken.add(c.id);return {what:c?c.t+(c.i?.title?' ('+c.i.title+')':''):k<give?'FREE GIVEAWAY':'the next book up (NEXT UP)',loaded:!!c};}));
   }
   function paintPlan(){
     const box=host.querySelector('#dg-plan-body'),plan=stats?.dungeon?.plan;if(!box||!dgLib)return;
@@ -508,7 +550,7 @@
   // The green-screen shed sits behind the top camera in the preview too (2026-11-11).
   function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:withMove(demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined),machine:values().showBuyerNames?machineCtl:{...machineCtl,items:(machineCtl.items||[]).map(({buyer,...it})=>it)},flip:flipCtl,effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
   async function run(fn){try{await fn();}catch(e){status.textContent=e.message;}}
-  async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
+  async function connect(){const d=await api('state');connectedStore=store();revision=d.revision;took(d);status.textContent='Connected. Controls are live.';refreshSetups();sendShedPics(d.pics).catch(()=>{}).then(readyList);loadFacts();return d;}
   host.querySelector('#mana-load').onclick=()=>run(connect);
   // Connect on its own once the dashboard is signed in.
   (function autoConnect(tries){if(connectedStore)return;if(!studioOnScreen()){setTimeout(()=>autoConnect(tries),3000);return;} // waits until you open the Whatnot tab
