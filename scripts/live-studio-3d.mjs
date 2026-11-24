@@ -392,7 +392,7 @@ const BUILD = {
     bar(0.05, 0.24, -0.075, 0); bar(0.055, 0.024, -0.1, 0.1, 0.6); bar(0.11, 0.03, -0.075, -0.11);
     const arc = add(pend, new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.021, 10, 24, Math.PI * 1.25), ice), 0.075, 0.055, 0); arc.rotation.z = -0.79;
     add(pend, new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.027, 8, 24, Math.PI * 1.25), plat), 0.075, 0.055, -0.008).rotation.z = -0.79;
-    bar(0.03, 0.15, 0.077, -0.045, 0.6); bar(0.13, 0.03, 0.085, -0.11);
+    bar(0.03, 0.15, 0.072, -0.047, -0.59); bar(0.13, 0.03, 0.085, -0.11);
     // The arms. His LEFT (our right) wears THE WATCH; his right throws the shaka.
     const arm = (sx) => {
       const sh = new THREE.Group(); sh.position.set(sx * 0.53, 0.22, 0); body.add(sh);
