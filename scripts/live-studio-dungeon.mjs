@@ -86,6 +86,9 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   miniMap: true,       // the mini-map in the green screen's corner, filling in as the crawl walks
   crawlSharp: false,   // the green-screen crawl at 480 pixels across instead of 360 (sharper; harder on the streaming computer)
   crawlWindow: false,  // the first-person crawl as a window over the top camera (off: it's the green-screen background)
+  viewerCardAt: 'tr',  // where it sits: tr, tl, br, bl (corners), or 'mid' (under the top camera)
+  viewerCard: true,    // THE VIEWER CARD (2026-11-24: "I want this type of thing easy to see for the viewers"): floor, boss, the
+                       // flask bar with its chests, $ / goal, and the next chest with the $ to go -- big, top right
   itemCard: false,     // the card top right with the book you're walking past (2026-11-23: "I don't like that card")
   sidePictures: true,  // the books and shed junk you pass slide by at the sides (2026-11-23: "I liked the side pictures")
   triviaMana: 10,      // ByteRider's trivia: mana for everyone when chat gets it right
@@ -98,7 +101,7 @@ export const DUNGEON_DEFAULTS = Object.freeze({
   chestLoad: '',       // LOADED CHESTS (2026-11-17): JSON [{ id, t, f?: floor, i?: { title, image, price } }] -- chests open in this order, each with its own words and book
 });
 export const DUNGEON_LIMITS = { beastsGoal: [5, 1000000], beastsGrowth: [0, 100], secretTaps: [0, 500], lockboxTaps: [0, 100], triviaMana: [0, 1000], giveawayChests: [0, 3], mapX: [0, 900], mapY: [0, 1700], floorBase: [1, 1000000], floorGrowth: [0, 500], bossShare: [1, 500], manaFollow: [0, 1000], manaShare: [0, 1000], manaBookmark: [0, 1000], starsPerFloor: [0, 10], finaleBoost: [0, 500] };
-export const DUNGEON_STRINGS = { gameMode: 12, beastsBattle: 8, beastsTimeOfDay: 8, beastsGfx: 8, beastsEvolveReward: 120, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200, chestLoad: 16000 };
+export const DUNGEON_STRINGS = { viewerCardAt: 3, gameMode: 12, beastsBattle: 8, beastsTimeOfDay: 8, beastsGfx: 8, beastsEvolveReward: 120, beastsMoves: 200, beastsFace: 144, beastsBuddy: 144,  floorRewards: 1200, showUnlocks: 1200, roomRewards: 1200, chestGoals: 1200, chestLoad: 16000 };
 // Where the floor's three treasure chests sit along the walk (0..1). A chest
 // opens when the crawl reaches it -- once chat has hit its goal, if it has one.
 export const CHEST_AT = [0.16, 0.47, 0.8];

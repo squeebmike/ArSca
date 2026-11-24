@@ -24,3 +24,10 @@ console.log('Live Studio mirror: passed');
   assert.ok(w.includes('await followLiveShowInStudio(env, storeId, String(showId))'), 'and the moment Whatnot says a show went live');
   assert.ok(/async function followLiveShowInStudio[\s\S]{0,400}await room\.syncStats\(orders\);/.test(w), 'catches up on the show\'s sales');
   console.log('Studio follows the live show: passed'); }
+// 2026-11-24: "I want this type of thing easy to see for the viewers" -- the viewer card on the overlay.
+{ const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), css = fs.readFileSync('assets/live-studio.css', 'utf8'), D = await import('../scripts/live-studio-dungeon.mjs'), M = await import('../scripts/live-studio-model.mjs');
+  assert.equal(D.DUNGEON_DEFAULTS.viewerCard, true); assert.equal(D.DUNGEON_DEFAULTS.viewerCardAt, 'tr');
+  assert.throws(() => M.validateSettings({ ...M.DEFAULT_STUDIO, viewerCardAt: 'xx' }));
+  assert.ok(ov.includes('function paintViewerCard(d){') && ov.includes('paintMap(d);paintViewerCard(d);') && ov.includes("NEXT CHEST: <b>"));
+  assert.ok(css.includes('#mana-vcard{') && css.includes('#mana-vcard[data-at=mid]'));
+  console.log('Viewer card: passed'); }

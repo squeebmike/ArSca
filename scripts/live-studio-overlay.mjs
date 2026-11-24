@@ -122,7 +122,7 @@ function paintDungeon(d){
   else if(!center&&boss.parentElement===arena)hud.insertBefore(boss,$('mana-dungeon'));
   arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false&&!beastMode()));
   paintCrawl(d,center);paintForeground(d,center);paintBeasts(d);
-  paintMap(d);
+  paintMap(d);paintViewerCard(d);
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
   // LONG BOX BEASTS, its own game (2026-11-13: "they should be totally separate games"): its route, its rival, its badges.
@@ -146,6 +146,27 @@ function paintDungeon(d){
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
+}
+// THE VIEWER CARD (store, 2026-11-24: "I want this type of thing easy to see for the viewers" -- the remote's live card,
+// on stream): floor and shed, the boss, the flask bar with the 3 chests where they open (✓ once opened), $ / goal and
+// % to the boss, the next chest's prize and the $ still to go, the next stretch goal. Big, crisp, top right.
+function paintViewerCard(d){
+  let c=document.getElementById('mana-vcard');
+  const on=!!d&&!beastMode()&&settings.viewerCard!==false&&settings.visible!==false&&settings.gameMode!=='vending';
+  if(!on){if(c)c.hidden=true;return;}
+  if(!c){c=document.createElement('section');c.id='mana-vcard';c.setAttribute('aria-hidden','true');document.body.append(c);}
+  c.hidden=false;c.dataset.at=['tr','tl','br','bl','mid'].includes(settings.viewerCardAt)?settings.viewerCardAt:'tr';
+  const boss=d.phase==='boss',goal=Number(d.goal)||0,mana=Math.min(goal,Number(d.mana)||0),pct=goal?Math.round(mana/goal*100):0,opened=d.opened||[];
+  const at=((d.plan||[])[0]||{}).chestAt||[],esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
+  const marks=at.map((a,k)=>'<i class="vc-mark'+(opened.includes(k)?' open':'')+'" style="left:'+(goal?Math.min(100,a/goal*100):0)+'%">'+(opened.includes(k)?'✓':'🧰')+'</i>').join('');
+  const hp=boss?Math.max(0,Number(d.boss?.hp)||0):0,max=Number(d.boss?.max)||1,next=d.nextChest;
+  const nextLine=boss?'⚔ EVERY SALE HITS THE BOSS!':next?'🧰 NEXT CHEST: <b>'+esc(next.what)+'</b> · <em>'+(next.need>0?usd(next.need)+' TO GO':'OPENS NOW!')+'</em>':opened.length>=3?'🧰 ALL 3 CHESTS OPEN':'';
+  const unlock=d.nextUnlock?'🎯 '+usd(d.nextUnlock.at)+' SHOW GOAL: '+esc(d.nextUnlock.text):'';
+  c.innerHTML='<div class="vc-head">FLOOR '+esc(d.floor)+' · '+esc(d.room?d.room.name:d.shed)+'</div>'
+    +'<div class="vc-boss">'+(boss?'⚔ BOSS OUT: ':'BOSS: ')+esc(d.boss?.name||'')+'</div>'
+    +(boss?'<div class="vc-bar boss"><i style="width:'+Math.round(hp/max*100)+'%"></i></div><div class="vc-nums"><b>BOSS HP '+usd(hp)+' / '+usd(max)+'</b></div>'
+      :'<div class="vc-bar"><i style="width:'+pct+'%"></i>'+marks+'</div><div class="vc-nums"><b>'+usd(mana)+' / '+usd(goal)+'</b><span>'+pct+'% TO THE BOSS</span></div>')
+    +(nextLine?'<div class="vc-next">'+nextLine+'</div>':'')+(unlock?'<div class="vc-goal">'+unlock+'</div>':'');
 }
 // THE SHED CRAWL, first person (2026-11-11: "like doom visuals ... walking
 // through halls, rooms ... looking for and through shit"): scripts/shed-crawl-fp.mjs.
