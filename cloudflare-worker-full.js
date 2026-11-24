@@ -69,6 +69,7 @@ import { handleArticlesRequest, articleSitemapPaths, fetchArticles, sameComic } 
 import { handleArticleStudio, runSubstackArticlesSync } from './scripts/substack-articles.mjs';
 import { settleSoldBundleMembers } from './scripts/bundle-settle.mjs';
 import { handleDungeonSetups } from './scripts/dungeon-setups.mjs';
+import { mirrorLiveStudio } from './scripts/live-studio-mirror.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
@@ -20798,6 +20799,9 @@ async function runScheduledWhatnotSync(env, ctx) {
   // Up to 100 checked items a run (a bulk SELL ON WHATNOT goes out over a few runs).
   try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env), { limit: 100 }); }
   catch (e) { console.error('Whatnot sync failed:', e.message); }
+  // The Live Studio's state, copied where it can be read (scripts/live-studio-mirror.mjs).
+  try { await mirrorLiveStudio(env, whatnotStoreId(env), (path, init) => supabaseAdminFetch(env, path, init)); }
+  catch (e) { console.warn('Live Studio mirror failed:', e.message); }
 }
 // Scheduled Whatnot shows onto the homepage's Pocket Events (see
 // scripts/whatnot-show-events.mjs). Hourly from the 10-minute Whatnot run,
