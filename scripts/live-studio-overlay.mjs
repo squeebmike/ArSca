@@ -163,7 +163,9 @@ const BATTERY_DRAIN_MS=6*60000;
 function batteryNow(d){const last=Math.max(Number(stats.lastSaleAt)||0,Number(d?.lastAt)||0);if(!last)return 1;return Math.max(0.15,Math.min(1,1-(Date.now()+offset-last)/BATTERY_DRAIN_MS));}
 // Item photos for the crawl's walls: NEXT UP's photos through the Worker (CORS).
 let fpPicKey='';
-function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
+// (2026-11-24: "covers show in the dashboard but not in OBS") Our own Worker's pictures (the Lunar covers) load straight
+// from it -- sent through the relay, the Worker would have to fetch itself, which Cloudflare refuses (they came back 404).
+function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;if(w&&new URL(u).origin===w.origin)return u;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
 let shedPics=[];
 function loadPictures(){if(!fp||!fpLib)return;const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;const kinds=urls.map(u=>picKind(u));Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list,kinds));}
 // What each photo is (comic / sealed / card), from the lineup or the shed photos.
@@ -282,6 +284,7 @@ let vendDraw=null,machine=null;
 import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
+let regulars=null;import('./regulars.mjs?v=1').then(m=>{regulars=m.createRegulars(document,{now:()=>Date.now()+offset});}).catch(e=>console.warn('[studio] regulars off:',e?.message||e));
 let flipDraw=null,flipState=null;
 import('./flipbook.mjs?v=8').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 // FOC SHOW MODE (store, 2026-11-19: "the top camera will just be the top camera ... the bottom camera is going to just
@@ -575,6 +578,8 @@ function receiveEffect(e,initial=false) {
   if(initial && e.kind!=='countdown') return;
   if(played.has(e.id)) return;
   played.add(e.id);if(played.size>200) played.delete(played.values().next().value);
+  // THE REGULARS (2026-11-24): a quick cameo, just them -- no burst, no banner.
+  if(e.kind==='seen'||e.kind==='amos'){regulars?.play(e.kind,e.startsAt,e.endsAt);return;}
   // MR FISTER: he rises in, pumping the gauntlet (the line under him is the usual burst).
   if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.mode('goo',e.kind==='fistergoo');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.mode('goo',false);fisterView.stop();},e.kind==='fistergoo'?9600:7600);}
   // A ByteRider reaction or line from the dashboard: just him, no burst.
@@ -627,7 +632,7 @@ function words(e) {
 let lastKind='';
 function draw() {
   const now=Date.now()+offset;
-  if(effect && effect.endsAt>now) {
+  if(effect && effect.endsAt>now && effect.kind!=='seen' && effect.kind!=='amos') {
     if(lastKind!==effect.id){effectEl.className='active k-'+effect.kind+(effect.item?.title&&['chest','found'].includes(effect.kind)?' with-item':'');lastKind=effect.id;
       if(effect.kind==='boss'||effect.kind==='floor'||(effect.kind==='ready'&&settings.showBoss&&!dg()&&settings.gameMode!=='vending')){
         const who=effect.bossCharacter||settings.bossCharacter;

@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.23.6';
+  const STUDIO_V='2026.11.24.2';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -14,6 +14,7 @@
   host.innerHTML=`<h2>Mana Pocket • Live Studio</h2><p id="mana-status" role="status">Connect to load your live sign settings.</p><button id="mana-load">Connect / reload</button>
   <section class="mana-remote" aria-label="Show remote">
   <div class="mana-remote-status"><b id="mana-remote-floor">Tap CONNECT to start</b><span id="mana-remote-score"></span></div>
+  <div id="dg-live" class="dg-live" hidden></div>
   <p id="mana-remote-msg" class="mana-remote-msg" role="status"></p>
   <div class="mana-remote-pick"><div class="mana-row" id="mana-doors-pick"></div><div class="mana-row" id="mana-vote-pick"></div><div class="mana-row mana-trivia-who" hidden><input id="mana-trivia-who" maxlength="30" placeholder="Who got it? (their username, optional)"></div></div>
   <div class="mana-remote-grid">
@@ -165,7 +166,7 @@
   <h3>Quick</h3>
   <div class="mana-row" id="mana-quick"><button type="button" data-toggle="visible" data-key="H">SIGN ON/OFF <kbd>H</kbd></button><button type="button" data-toggle="marqueeOn" data-key="Q">MARQUEE TEXT ON/OFF <kbd>Q</kbd></button><button type="button" data-toggle="finale" data-key="V">FINALE ON/OFF <kbd>V</kbd></button></div>
   <h3>Effects</h3>
-  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER'],['fistergoo','🖤 SYMBIOTE FISTER'],['spotlight','🔦 SPOTLIGHT NOW PLAYING']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
+  <div id="mana-effects">${[['coin','INSERT COIN'],['countdown','COUNTDOWN'],['sold','SOLD'],['jackpot','BIG HIT'],['boss','BOSS DEFEATED'],['giveaway','FREE GIVEAWAY'],['ready','READY'],['gameover','GAME OVER'],['clear','CLEAR'],['fister','✊ MR FISTER'],['fistergoo','🖤 SYMBIOTE FISTER'],['seen','🤫 SEEN BUT NOT HEARD'],['amos','✌ AMOS'],['spotlight','🔦 SPOTLIGHT NOW PLAYING']].map(([k,l])=>`<button type="button" data-effect="${k}">${l}</button>`).join('')}</div>
   <small>FREE GIVEAWAY only shows the banner -- run the giveaway itself in Whatnot's giveaway tool. Its winner shows automatically.</small>
   <h3>📺 Share a screen</h3>
   <div class="mana-row"><label>WHAT IT IS<input id="scr-title" maxlength="40" placeholder="FOC ORDERS -- FOLLOW ALONG"></label><label>WHERE<select id="scr-layout"><option value="corner">CORNER</option><option value="half">RIGHT HALF</option><option value="full">FULL SCREEN</option></select></label><button type="button" id="scr-go">📺 SHARE A SCREEN</button><button type="button" id="scr-stop">STOP SHARING</button></div>
@@ -541,6 +542,24 @@
   // While connected, pick up what happened on stream (doors opening, chests,
   // the floor) every 8 seconds, so the winner buttons are always current.
   setInterval(()=>{if(!connectedStore||!studioOnScreen()||connectedStore!==store())return;api('state').then(d=>{if(form.contains(document.activeElement)||d.revision===revision)took({stats:d.stats,stage:d.stage});else{revision=d.revision;took(d);}}).catch(()=>{});},8000);
+  // THE LIVE DUNGEON CARD (store, 2026-11-24: "a good way to know ... what's in each chest and what each goal is and how
+  // far we're going to the goal ... in real time with my phone ... and up on the computer screen"): the floor, the bar to
+  // its goal with the chests on it, the next chest and the $ to it (or the boss's HP), one tap to the whole plan.
+  function paintLive(){
+    const box=host.querySelector('#dg-live'),d=stats?.dungeon;if(!box)return;
+    if(!connectedStore||!d||!d.on||settings?.gameMode==='beasts'||settings?.gameMode==='vending'){box.hidden=true;return;}
+    box.hidden=false;const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    const boss=d.phase==='boss',goal=Number(d.goal)||0,mana=Math.min(goal,Number(d.mana)||0),pct=goal?Math.round(mana/goal*100):0,opened=d.opened||[];
+    const plan0=(d.plan||[])[0]||{},marks=(plan0.chestAt||[]).map((at,k)=>'<i class="dg-mark'+(opened.includes(k)?' open':'')+'" style="left:'+(goal?Math.min(100,at/goal*100):0)+'%" title="Chest '+(k+1)+' at $'+at+'">'+(opened.includes(k)?'✓':'🧰')+'</i>').join('');
+    const next=d.nextChest,nextLine=next&&!boss?'🧰 NEXT CHEST: <b>'+esc(next.what)+'</b> · '+(next.need>0?'<b class="dg-need">$'+next.need+' to go</b>':'<b class="dg-need">opens now</b>'):opened.length>=3?'🧰 All 3 chests open on this floor':'';
+    const hp=boss?Math.max(0,Number(d.boss?.hp)||0):0,max=Number(d.boss?.max)||1;
+    box.innerHTML='<div class="dg-live-head"><b>FLOOR '+esc(d.floor)+' · '+esc(d.shed)+'</b><span>'+(boss?'⚔ BOSS OUT: ':'Boss: ')+esc(d.boss?.name||'')+'</span></div>'
+      +(boss?'<div class="dg-bar boss"><i style="width:'+Math.round(hp/max*100)+'%"></i></div><div class="dg-live-nums"><b>BOSS HP $'+hp+' / $'+max+'</b><span>every sale hits it</span></div>'
+        :'<div class="dg-bar"><i style="width:'+pct+'%"></i>'+marks+'</div><div class="dg-live-nums"><b>$'+mana+' / $'+goal+'</b><span>'+pct+'% to the boss</span></div>')
+      +(nextLine?'<div class="dg-live-next">'+nextLine+'</div>':'')
+      +'<div class="mana-row"><button type="button" data-click="#dg-plan">🗺 FLOOR PLAN &amp; CHESTS</button></div>';
+  }
+  setInterval(()=>{if(studioOnScreen())paintLive();},1000);
   setInterval(()=>{if(!studioOnScreen())return;const f=host.querySelector('#mana-remote-floor'),sc=host.querySelector('#mana-remote-score');if(!f)return;const d=host.querySelector('#mana-dungeon-status')?.textContent||'';f.textContent=connectedStore?d:'Tap CONNECT to start';sc.textContent=connectedStore?host.querySelector('#mana-score')?.textContent||'':'';},1000);
   try{const all=host.querySelector('#mana-all');all.open=localStorage.getItem('mana-all-open')==='1';all.ontoggle=()=>{try{localStorage.setItem('mana-all-open',all.open?'1':'0');}catch(_){}};}catch(_){}
   host.querySelector('#mana-trivia').onclick=()=>run(async()=>{const q=host.querySelector('#mana-trivia-q').value.trim(),a=host.querySelector('#mana-trivia-a').value.trim();if(q&&!a)throw Error('Type the answer too');const x=await api('trivia',{question:q,answer:a});took(x);host.querySelector('#mana-trivia-q').value='';host.querySelector('#mana-trivia-a').value='';status.textContent='Trivia is on screen'+(x.stats?.vote?.question?': '+x.stats.vote.question:'')+(x.triviaAnswer?' (answer: '+x.triviaAnswer+')':'')+'. Tap CHAT GOT IT when someone does.';});
