@@ -17,3 +17,10 @@ console.log('Live Studio mirror: passed');
 { const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
   assert.ok(ctl.includes("if(!el||unsaved.has(k)||el===document.activeElement)continue;") && ctl.includes("if(path==='settings')unsaved.clear();"));
   console.log('Remote keeps unsaved edits: passed'); }
+// 2026-11-24: "make it switch on its own" -- with automatic on, the studio follows the show that's live on Whatnot.
+{ const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8'), room = fs.readFileSync('scripts/live-studio-room.mjs', 'utf8');
+  assert.ok(room.includes("followShow(showId) {") && room.includes("if (!s.settings.automatic || !/^[0-9a-f-]{36}$/i.test(String(showId || '')) || s.settings.showId === showId) return { changed: false };"));
+  assert.ok(w.includes("const liveShow = (synced?.shows || []).find(x => x.status === 'live')?.showId;") && w.includes('await followLiveShowInStudio(env, whatnotStoreId(env), liveShow)'), 'the 10-minute run');
+  assert.ok(w.includes('await followLiveShowInStudio(env, storeId, String(showId))'), 'and the moment Whatnot says a show went live');
+  assert.ok(/async function followLiveShowInStudio[\s\S]{0,400}await room\.syncStats\(orders\);/.test(w), 'catches up on the show\'s sales');
+  console.log('Studio follows the live show: passed'); }

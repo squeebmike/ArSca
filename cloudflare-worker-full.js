@@ -20794,11 +20794,24 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   }
   return out;
 }
+// The studio switches to the show that's live (when automatic is on) and catches up on that show's sales.
+async function followLiveShowInStudio(env, storeId, showId) {
+  if (!env.MANA_LIVE_STUDIO || !env.WHATNOT_API_KEY) return { skipped: true };
+  const room = env.MANA_LIVE_STUDIO.getByName(storeId), r = await room.followShow(showId);
+  if (!r.changed) return r;
+  const orders = await whatnotShowOrders(whatnotClient(env), showId, new Date(Date.now() - 86400000).toISOString());
+  await room.syncStats(orders);
+  return r;
+}
 async function runScheduledWhatnotSync(env, ctx) {
   if (!env.WHATNOT_API_KEY || !env.LBA_KV || !(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return;
   // Up to 100 checked items a run (a bulk SELL ON WHATNOT goes out over a few runs).
-  try { await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env), { limit: 100 }); }
+  let synced = null;
+  try { synced = await runWhatnotSyncForStore(env, ctx, whatnotStoreId(env), { limit: 100 }); }
   catch (e) { console.error('Whatnot sync failed:', e.message); }
+  // The live show becomes the studio's show (automatic on), and its sales so far go into the dungeon.
+  const liveShow = (synced?.shows || []).find(x => x.status === 'live')?.showId;
+  if (liveShow) await followLiveShowInStudio(env, whatnotStoreId(env), liveShow).catch(e => console.warn('Live Studio follow show:', e.message));
   // The Live Studio's state, copied where it can be read (scripts/live-studio-mirror.mjs).
   try { await mirrorLiveStudio(env, whatnotStoreId(env), (path, init) => supabaseAdminFetch(env, path, init)); }
   catch (e) { console.warn('Live Studio mirror failed:', e.message); }
@@ -20844,6 +20857,8 @@ async function handleWhatnotEventRecord(env, ctx, record) {
     const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
     if (showId) console.log('Whatnot show', JSON.stringify(await refreshWhatnotShow(String(showId), deps)));
     if (showId) await runWhatnotShowEventsSync(env, { force: true }).catch(e => console.error('Whatnot show events:', e.message));
+    // A show just went live: the studio follows it right away.
+    if (showId && /live/i.test(type + ' ' + (data.status || ''))) await followLiveShowInStudio(env, storeId, String(showId)).catch(e => console.warn('Live Studio follow show:', e.message));
   } catch (e) { console.error('Whatnot event not handled yet (the 10-minute run retries):', e.message); }
 }
 // A cancelled or failed Whatnot order: its sales are voided and the stock
