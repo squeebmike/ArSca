@@ -163,7 +163,9 @@ const BATTERY_DRAIN_MS=6*60000;
 function batteryNow(d){const last=Math.max(Number(stats.lastSaleAt)||0,Number(d?.lastAt)||0);if(!last)return 1;return Math.max(0.15,Math.min(1,1-(Date.now()+offset-last)/BATTERY_DRAIN_MS));}
 // Item photos for the crawl's walls: NEXT UP's photos through the Worker (CORS).
 let fpPicKey='';
-function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
+// (2026-11-24: "covers show in the dashboard but not in OBS") Our own Worker's pictures (the Lunar covers) load straight
+// from it -- sent through the relay, the Worker would have to fetch itself, which Cloudflare refuses (they came back 404).
+function studioImg(u){if(!u)return '';try{const w=endpoint?new URL(endpoint):null;if(w&&new URL(u).origin===w.origin)return u;return w?w.origin+'/public/studio-img?u='+encodeURIComponent(u):u;}catch{return u;}}
 let shedPics=[];
 function loadPictures(){if(!fp||!fpLib)return;const urls=[...new Set([stage.now,...(stage.next||[]),...shedPics].filter(x=>x&&x.image).map(x=>x.image))].slice(0,24),key=urls.join('|');if(key===fpPicKey)return;fpPicKey=key;const kinds=urls.map(u=>picKind(u));Promise.all(urls.map(u=>fpLib.loadPicture(studioImg(u)))).then(list=>fp?.setPictures(list,kinds));}
 // What each photo is (comic / sealed / card), from the lineup or the shed photos.

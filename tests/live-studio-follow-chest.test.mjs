@@ -77,7 +77,7 @@ console.log('Live Studio follows the live show; chests stay on screen: passed');
 { const fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
   assert.ok(fp.includes("if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));"));
   assert.ok(fp.includes("s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25)"));
-  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=63')); }
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=64')); }
 console.log('Boss fits on screen: passed');
 // 2026-11-22: "Next chest should tell us what's in it and how much to get to it" / "Get rid of the displayed books off
 // the side of the screen" / "Rat walks backwards".
@@ -131,3 +131,15 @@ console.log('Boss fits on screen: passed');
   assert.ok(ov.includes("if(e.kind==='seen'||e.kind==='amos'){regulars?.play(e.kind,e.startsAt,e.endsAt);return;}") && ov.includes("effect.kind!=='seen' && effect.kind!=='amos'"));
   assert.ok(ctl.includes("['seen','🤫 SEEN BUT NOT HEARD'],['amos','✌ AMOS']"));
   console.log('The regulars: Seen But Not Heard and Amos: passed'); }
+// 2026-11-24: "covers show in the dashboard but not in OBS" -- the Lunar covers live on our own Worker; through the image
+// relay the Worker had to fetch itself, which Cloudflare refuses. They load straight from it now; the relay sends its own.
+{ const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), sb = fs.readFileSync('scripts/shed-background.mjs', 'utf8'), wk = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
+  assert.ok(ov.includes('if(w&&new URL(u).origin===w.origin)return u;'));
+  assert.ok(sb.includes("return new URL(u).origin === o ? u : o + '/public/studio-img?u=' + encodeURIComponent(u);"));
+  assert.ok(wk.includes('if (target.hostname === url.hostname) return Response.redirect(target.href, 302);'));
+  console.log('Lunar covers load in OBS: passed'); }
+// The live dungeon card (2026-11-24): floor, bar to its goal with the chests on it, the next chest and its $, boss HP.
+{ const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), css = fs.readFileSync('assets/live-studio.css', 'utf8');
+  for (const k of ['<div id="dg-live" class="dg-live" hidden></div>', 'function paintLive(){', "'🧰 NEXT CHEST: <b>'+esc(next.what)+'</b> · '", "'<b>BOSS HP $'+hp+' / $'+max+'</b>", "<button type=\"button\" data-click=\"#dg-plan\">🗺 FLOOR PLAN &amp; CHESTS</button>"]) assert.ok(ctl.includes(k), k);
+  assert.ok(css.includes('.mana-controls .dg-live{') && css.includes('@media (max-width:640px){'));
+  console.log('Live dungeon card: passed'); }

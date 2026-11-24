@@ -17230,6 +17230,8 @@ async function routeRequest(request, env, ctx) {
       let target; try { target = new URL(url.searchParams.get('u') || ''); } catch { return new Response('Bad image', { status: 400 }); }
       const okHost = target.protocol === 'https:' && (STUDIO_IMG_HOSTS.has(target.hostname) || target.hostname === url.hostname || /\.supabase\.co$/.test(target.hostname));
       if (!okHost) return new Response('Host not allowed', { status: 403 });
+      // Our own pictures (the Lunar covers): a Worker can't fetch itself (it came back 404), so send the browser there.
+      if (target.hostname === url.hostname) return Response.redirect(target.href, 302);
       const cacheKey = new Request('https://studio-img.cache/' + encodeURIComponent(target.href));
       const hit = await caches.default.match(cacheKey).catch(() => null);
       if (hit) return hit;

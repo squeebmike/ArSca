@@ -219,7 +219,8 @@ if (typeof document !== 'undefined' && document.getElementById('shed')) {
       };
       const bossCanvas = document.createElement('canvas');
       let stats = null, stage = { now: null, next: [] }, shedPics = [], offset = 0, bossId = '', picKey = '';
-      const img = u => { try { return endpoint ? new URL(endpoint).origin + '/public/studio-img?u=' + encodeURIComponent(u) : u; } catch { return u; } };
+      // Our own Worker's pictures (the Lunar covers) straight from it -- through the relay they came back 404 (2026-11-24).
+      const img = u => { try { if (!endpoint) return u; const o = new URL(endpoint).origin; return new URL(u).origin === o ? u : o + '/public/studio-img?u=' + encodeURIComponent(u); } catch { return u; } };
       const paint = () => {
         // VENDING ONLY (2026-11-13): no game behind the hosts -- a plain store backdrop, the machine on it.
         if (settings0.gameMode === 'vending') {

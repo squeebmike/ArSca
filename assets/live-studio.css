@@ -559,3 +559,26 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 .mana-controls .dg-plan .dg-chest.open{opacity:.55}
 .mana-controls .dg-plan .dg-chest i{color:#ff9a9a;font-style:normal}
 .mana-controls .dg-plan select{max-width:100%}
+/* THE LIVE DUNGEON CARD (2026-11-24): readable at a glance on a phone and up on the computer. */
+.mana-controls .dg-live{border:2px solid #9b5de5;border-radius:12px;padding:10px 12px;margin:0 0 12px;background:#140c22}
+.mana-controls .dg-live-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:15px}
+.mana-controls .dg-live-head b{color:#c3ff80}
+.mana-controls .dg-live-head span{color:#d8c8ff;font-weight:700}
+.mana-controls .dg-bar{position:relative;height:26px;margin:14px 0 6px;border-radius:13px;background:#2a2140;overflow:visible}
+.mana-controls .dg-bar>i:first-child{display:block;height:100%;border-radius:13px;background:linear-gradient(90deg,#7be04a,#c3ff80);transition:width .6s}
+.mana-controls .dg-bar.boss>i:first-child{background:linear-gradient(90deg,#ff4d6d,#ff9a3c)}
+.mana-controls .dg-mark{position:absolute;top:-12px;transform:translateX(-50%);font-style:normal;font-size:20px;line-height:1;filter:drop-shadow(0 2px 2px #000)}
+.mana-controls .dg-mark.open{color:#c3ff80;font-weight:900;font-size:18px;top:-10px}
+.mana-controls .dg-live-nums{display:flex;justify-content:space-between;gap:8px;font-size:16px}
+.mana-controls .dg-live-nums b{color:#fff;font-size:20px}
+.mana-controls .dg-live-nums span{color:#a99bc9}
+.mana-controls .dg-live-next{margin:8px 0 2px;font-size:15px;line-height:1.35}
+.mana-controls .dg-live-next .dg-need{color:#ffd166;white-space:nowrap}
+/* The floor plan on a phone: one column, full-width pickers, big enough to tap. */
+@media (max-width:640px){
+  .mana-controls .dg-plan .mana-row{flex-direction:column;align-items:stretch}
+  .mana-controls .dg-plan label{display:flex;flex-direction:column;gap:4px;width:100%}
+  .mana-controls .dg-plan select,.mana-controls .dg-plan input{width:100%;min-height:42px;font-size:16px}
+  .mana-controls .dg-plan .dg-chest{font-size:14px;padding:8px 0}
+  .mana-controls .dg-live-nums b{font-size:18px}
+}
