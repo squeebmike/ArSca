@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.24.4';
+  const STUDIO_V='2026.11.24.5';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -388,10 +388,13 @@
     let id=store();if(body && (!connectedStore || connectedStore!==id)){await connect();id=store();}
     const res=await storeWorkerFetch('/live-studio/'+path+'?store_id='+encodeURIComponent(id),body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{cache:'no-store'});
     const d=await res.json();if(!res.ok||!d.ok)throw Error(d.conflict?'Settings changed in another controller. Reload before saving.':d.error||'Live Studio unavailable');
-    if(store()!==id)throw Error('Store changed. Connect again.');return d;
+    if(store()!==id)throw Error('Store changed. Connect again.');if(path==='settings')unsaved.clear();return d;
   }
   const usd=n=>'$'+(Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{maximumFractionDigits:2});
-  function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(el)el.type==='checkbox'?el.checked=v:el.value=v;}paintMarqueeTemplates();if(!chestDirty)paintChestLoad(true);preview();}
+  // Fields typed in but not saved yet stay as typed (2026-11-24: "while I'm making a template it keeps loading the old one" --
+  // the minute refresh painted the saved settings back over the box being edited).
+  const unsaved=new Set();form.addEventListener('input',e=>{if(e.target?.name)unsaved.add(e.target.name);});
+  function paint(s){settings=s;for(const [k,v] of Object.entries(s)){const el=form.elements.namedItem(k);if(!el||unsaved.has(k)||el===document.activeElement)continue;el.type==='checkbox'?el.checked=v:el.value=v;}paintMarqueeTemplates();if(!chestDirty)paintChestLoad(true);preview();}
   // LOAD THE CHESTS (store, 2026-11-17: "I want to load each chest with what it says and what item shows"): the list
   // is edited here and saved with the studio settings (chestLoad); each chest that opens takes the next one not used.
   let chestRows=null,chestDirty=false;

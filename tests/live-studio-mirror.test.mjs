@@ -13,3 +13,7 @@ assert.ok(r.ok && calls[0][0] === 'live_studio_snapshots?on_conflict=store_id' &
 const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 assert.ok(w.includes("await mirrorLiveStudio(env, whatnotStoreId(env),"), 'runs with the 10-minute Whatnot run');
 console.log('Live Studio mirror: passed');
+// The remote's refresh doesn't paint over a field being edited (a marquee template mid-typing).
+{ const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
+  assert.ok(ctl.includes("if(!el||unsaved.has(k)||el===document.activeElement)continue;") && ctl.includes("if(path==='settings')unsaved.clear();"));
+  console.log('Remote keeps unsaved edits: passed'); }
