@@ -120,9 +120,25 @@ export const BOSSES = {
     `<ellipse cx="32" cy="54" rx="20" ry="9" fill="#0f766e" ${ink}/>` +
     `<path d="M20 50 Q12 36 14 24" fill="none" stroke="#0f766e" stroke-width="7" stroke-linecap="round"/><path d="M32 48 Q32 30 32 18" fill="none" stroke="#0f766e" stroke-width="7" stroke-linecap="round"/><path d="M44 50 Q52 36 50 24" fill="none" stroke="#0f766e" stroke-width="7" stroke-linecap="round"/>` +
     [[14, 16], [32, 8], [50, 16]].map(([x, y]) => `<rect x="${x - 7}" y="${y - 6}" width="14" height="18" rx="2" fill="#e0f2fe" fill-opacity=".8" ${ink}/><rect x="${x - 5}" y="${y - 4}" width="10" height="12" fill="#f43f5e"/>` + `<circle cx="${x - 2}" cy="${y + 1}" r="1.6" fill="#fff"/><circle cx="${x + 2}" cy="${y + 1}" r="1.6" fill="#fff"/>`).join('')) },
+  // ICE BERG (store, 2026-11-24: "I need Ice Berg as a new boss and pop up"): a friend of the shop, drawn from scratch --
+  // backwards navy cap with a teal brim, navy #12 jersey in green and grey, blue eyes, a diamond in each ear, a platinum
+  // chain with an iced-out 12. No team logos.
+  iceberg: { name: 'ICE BERG', taunt: 'TOO ICED OUT TO MELT!', move: 'barrage', svg: svg(
+    `<circle cx="32" cy="30" r="29" fill="#9be7ff" fill-opacity=".18"/>` +
+    `<path d="M10 64 L13 42 Q32 33 51 42 L54 64 Z" fill="#0b2545" ${ink}/>` +
+    `<path d="M13 46 L20 41 M51 46 L44 41" stroke="#a5acaf" stroke-width="3"/><path d="M12 50 L19 45 M52 50 L45 45" stroke="#69be28" stroke-width="2"/>` +
+    `<text x="32" y="62" font-size="15" font-weight="900" font-family="Arial Black,Arial" text-anchor="middle" fill="#a5acaf" stroke="#69be28" stroke-width="1">12</text>` +
+    `<path d="M22 38 Q32 52 42 38" fill="none" stroke="#e9edf3" stroke-width="2"/><rect x="29" y="44" width="6" height="6" rx="1" fill="#e6f7ff" stroke="#fff"/>` +
+    `<ellipse cx="32" cy="27" rx="11" ry="12" fill="#d9a07c" ${ink}/>` +
+    `<path d="M22 30 Q22 40 32 40 Q42 40 42 30 Q38 35 32 35 Q26 35 22 30 Z" fill="#3a2414"/>` +
+    `<path d="M27 33 Q32 36 37 33" fill="#fff" stroke="${K}" stroke-width="1"/>` +
+    `<path d="M20 22 Q20 11 32 11 Q44 11 44 22 Q32 19 20 22 Z" fill="#0c2c56" ${ink}/><path d="M43 21 L52 24" stroke="#00685e" stroke-width="5" stroke-linecap="round"/>` +
+    `<circle cx="27" cy="26" r="2.2" fill="#fff"/><circle cx="37" cy="26" r="2.2" fill="#fff"/><circle cx="27" cy="26" r="1.3" fill="#2f8fe0"/><circle cx="37" cy="26" r="1.3" fill="#2f8fe0"/>` +
+    `<path d="M24 22 L29 23 M35 23 L40 22" stroke="#3a2414" stroke-width="1.8" stroke-linecap="round"/>` +
+    `<path d="M19 29 L20 32 L19 35 L18 32 Z M45 29 L46 32 L45 35 L44 32 Z" fill="#e6f7ff" stroke="#fff" stroke-width=".6"/>`) },
 };
 // Which boss guards which floor: each shed its own, then all of them in turn.
-export const BOSS_ORDER = ['fister', 'mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon', 'hydra', 'scalper', 'flipper', 'grader', 'dinged', 'shipping'];
+export const BOSS_ORDER = ['fister', 'mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon', 'hydra', 'scalper', 'flipper', 'grader', 'dinged', 'shipping', 'iceberg'];
 // What each of the first five does when it gets angry.
 for (const [id, move] of [['scalper', 'snatch'], ['flipper', 'barrage'], ['dinged', 'chomp'], ['grader', 'curse'], ['shipping', 'trash']]) BOSSES[id].move = move;
 export const BOSS_IDS = Object.keys(BOSSES);

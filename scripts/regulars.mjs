@@ -99,7 +99,7 @@ export function drawAmos(g, W, H, t) {
 
 // One canvas over the overlay: play(kind, startedAt, endsAt) runs the cameo on the given clock.
 // SEEN BUT NOT HEARD plays in 3D (scripts/seen-3d.mjs) when WebGL is there; the 2D drawing is the fallback.
-export function createRegulars(doc, { now = () => Date.now(), load3d = () => import('./seen-3d.mjs?v=1') } = {}) {
+export function createRegulars(doc, { now = () => Date.now(), load3d = () => import('./seen-3d.mjs?v=2') } = {}) {
   let seen3d = null, c3 = null;
   if (load3d) Promise.resolve().then(load3d).then(m => {
     c3 = doc.createElement('canvas'); c3.id = 'mana-seen3d'; c3.width = 900; c3.height = 900;
