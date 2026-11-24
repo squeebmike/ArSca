@@ -77,7 +77,7 @@ console.log('Live Studio follows the live show; chests stay on screen: passed');
 { const fp = fs.readFileSync('scripts/shed-crawl-fp.mjs', 'utf8');
   assert.ok(fp.includes("if (s.kind === 'boss') size = Math.max(2, Math.min(size, floorY - Math.floor((s.lift || 0) * VH / tY) - Math.floor(VH * 0.08)));"));
   assert.ok(fp.includes("s.kind === 'boss' ? (map.layout.arena ? 1.6 : 1.25)"));
-  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=65')); }
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./shed-crawl-fp.mjs?v=22')") && fs.readFileSync('shed-background.html', 'utf8').includes('shed-background.mjs?v=66')); }
 console.log('Boss fits on screen: passed');
 // 2026-11-22: "Next chest should tell us what's in it and how much to get to it" / "Get rid of the displayed books off
 // the side of the screen" / "Rat walks backwards".
@@ -171,4 +171,5 @@ console.log('Boss fits on screen: passed');
   assert.ok(ov.includes("if(e.kind==='iceberg'&&fisterView){") && ov.includes("fisterView.set('iceberg')") && ov.includes("case 'iceberg': return ['ICE BERG!'"));
   assert.ok(fs.readFileSync('scripts/live-studio-controls.js', 'utf8').includes("['iceberg','🧊 ICE BERG']"));
   assert.ok(fs.readFileSync('assets/live-studio.css', 'utf8').includes('#mana-fister.ice{'));
+  assert.ok(body.includes('const shimmer = sparkPts(') && body.includes('swarm(pend,') && body.includes('swarm(face,') && body.includes('studs.forEach((d, k) => swarm('), 'the bling: shimmer round him, sparkle swarms on every diamond');
   console.log('Ice Berg: boss and pop-up: passed'); }

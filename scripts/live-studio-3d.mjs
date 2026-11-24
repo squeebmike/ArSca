@@ -432,8 +432,34 @@ const BUILD = {
     for (const [x, y, k] of [[-0.075, 0.08, 0.4], [0.06, 0.09, 2.1], [0.11, -0.11, 3.3], [-0.06, -0.1, 4.6], [0.02, -0.02, 5.4]]) glint(pend, x, y, 0.03, k, 0.12);
     glint(face, 0.05, 0.05, 0.04, 1.7, 0.16); glint(face, -0.06, -0.03, 0.04, 3.9, 0.1);
     for (const [u, k] of [[0.08, 0.9], [0.3, 2.6], [0.7, 4.1], [0.9, 5.8]]) { const p = curve.getPointAt(u); glint(chain, p.x, p.y, p.z + 0.02, k, 0.09); }
+    // THE BLING (2026-11-24: "Ice Berg needs particle effect bling on him and his diamonds"): an icy shimmer drifting
+    // up round him, and a swarm of sparkles orbiting each diamond -- the studs, the 12, the watch. Fixed paths per
+    // particle (no dice), additive star sprites.
+    const fixedI = (k, m) => ((Math.sin(k * 12.9898 + m * 78.233) * 43758.5453) % 1 + 1) % 1;
+    const sparkPts = (n, size, color) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); return new THREE.Points(g, new THREE.PointsMaterial({ color, size, map: doc ? M.glint() : null, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true })); };
+    const shimmer = sparkPts(110, 0.17, 0xbfefff); root.add(shimmer);
+    const dust = sparkPts(60, 0.12, 0xffffff); root.add(dust);
+    const swarms = [];
+    const swarm = (parent, x, y, z, r, n, size, k) => { const p = sparkPts(n, size, 0xffffff); p.position.set(x, y, z); parent.add(p); swarms.push({ p, r, k }); };
+    studs.forEach((d, k) => swarm(d.parent, d.position.x, 0, 0.02, 0.08, 12, 0.24, k * 2.1));
+    swarm(pend, 0.0, 0.0, 0.04, 0.17, 24, 0.3, 5.3);
+    swarm(face, 0, 0, 0.04, 0.11, 16, 0.26, 7.7);
+    swarm(chain, 0, 0.36, 0.2, 0.22, 18, 0.18, 9.1);
     const ease = (a, b, k) => a + (b - a) * (k < 0 ? 0 : k > 1 ? 1 : k * k * (3 - 2 * k));
     return { tick(t) {
+      // The shimmer: rising round him and wrapping back to his feet; the dust twinkles in place round his upper body.
+      const sp = shimmer.geometry.attributes.position;
+      for (let k = 0; k < sp.count; k++) { const life = (t * (0.12 + 0.16 * fixedI(k, 1)) + fixedI(k, 2)) % 1, a = fixedI(k, 3) * Math.PI * 2 + life * 2.2 + t * 0.3, rr = 0.6 + 0.55 * fixedI(k, 4); sp.setXYZ(k, Math.cos(a) * rr, -1.5 + life * 3.3, Math.sin(a) * rr * 0.6); }
+      sp.needsUpdate = true; shimmer.material.opacity = 0.55 + 0.25 * Math.sin(t * 4);
+      const dp = dust.geometry.attributes.position;
+      for (let k = 0; k < dp.count; k++) { const on = Math.sin(t * (3 + fixedI(k, 5) * 4) + k) > 0.6, a = fixedI(k, 6) * Math.PI * 2 + t * 0.2; dp.setXYZ(k, on ? Math.cos(a) * (0.5 + 0.5 * fixedI(k, 7)) : 0, on ? -0.2 + 1.5 * fixedI(k, 8) : -9, on ? 0.2 + 0.35 * fixedI(k, 9) : 0); }
+      dp.needsUpdate = true;
+      // The swarms: tight orbits round each diamond, pulsing bright on their own beat.
+      for (const { p, r, k } of swarms) {
+        const a = p.geometry.attributes.position;
+        for (let j = 0; j < a.count; j++) { const ang = t * (2 + fixedI(j + k, 1) * 3) + j * 2.4, rr = r * (0.5 + 0.6 * fixedI(j + k, 2)), h = (fixedI(j + k, 3) - 0.5) * r * 1.4 + Math.sin(t * 5 + j) * r * 0.15; a.setXYZ(j, Math.cos(ang) * rr, h, Math.sin(ang) * rr * 0.5 + 0.02); }
+        a.needsUpdate = true; p.material.opacity = 0.7 + 0.3 * Math.pow(Math.abs(Math.sin(t * 2.6 + k)), 3);
+      }
       // Nodding to the beat.
       const beat = Math.abs(Math.sin(t * Math.PI * 1.1));
       body.position.y = beat * 0.025; head.rotation.x = -0.04 + Math.sin(t * Math.PI * 2.2) * 0.05; head.rotation.y = Math.sin(t * 0.7) * 0.15;
@@ -446,7 +472,7 @@ const BUILD = {
       R.sh.rotation.set(ease(0, -0.2, s), 0, ease(-0.1, -0.55, s)); R.el.rotation.set(ease(-0.1, -2.3, s), 0, ease(0, -0.3, s));
       R.hand.rotation.set(0, 0, s * Math.sin(t * 14) * 0.35);
       for (const d of studs) d.rotation.y = t * 1.6;
-      for (const g of glints) { const f = Math.pow(Math.max(0, Math.sin(t * 2.3 + g.k * 1.7)), 14), flash = Math.max(f, w * 0.0); g.sp.material.opacity = flash; g.sp.scale.setScalar(g.s * (0.6 + flash)); g.sp.material.rotation = t * 0.8 + g.k; }
+      for (const g of glints) { const f = Math.pow(Math.max(0, Math.sin(t * 2.9 + g.k * 1.7)), 8), flash = Math.max(f, w * 0.0); g.sp.material.opacity = flash; g.sp.scale.setScalar(g.s * 1.8 * (0.6 + flash)); g.sp.material.rotation = t * 0.8 + g.k; }
       const gl = 0.08 * Math.sin(t * 3); ice.emissive.setRGB(0.22 + gl, 0.28 + gl, 0.34 + gl);
     } };
   },
