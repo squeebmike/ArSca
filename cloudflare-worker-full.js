@@ -68,6 +68,7 @@ import { handleAccountRequest, findLinkedCustomer } from './scripts/customer-acc
 import { handleArticlesRequest, articleSitemapPaths, fetchArticles, sameComic } from './scripts/comic-articles.mjs';
 import { handleArticleStudio, runSubstackArticlesSync } from './scripts/substack-articles.mjs';
 import { settleSoldBundleMembers } from './scripts/bundle-settle.mjs';
+import { handleDungeonSetups } from './scripts/dungeon-setups.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
@@ -13823,6 +13824,8 @@ async function routeRequest(request, env, ctx) {
     if (url.pathname === '/whatnot/webhook' && request.method === 'POST') {
       return await handleWhatnotWebhook(request, env, { json, onEvent: record => ctx?.waitUntil?.(handleWhatnotEventRecord(env, ctx, record)), background: p => ctx?.waitUntil?.(p), chestToWhatnot: (storeId, item, showId) => chestItemToWhatnotShow(env, ctx, storeId, item, showId) });
     }
+    // Saved Shed Dungeon setups (scripts/dungeon-setups.mjs): the remote lists and loads them.
+    if (url.pathname === '/store/dungeon-setups') { const r = await handleDungeonSetups(request, env, url, { json, requireStoreUser, db: (path, init) => supabaseAdminFetch(env, path, init) }); if (r) return r; }
     if (url.pathname.startsWith('/live-studio/')) {
       const whatnotFor = storeId => storeId === whatnotStoreId(env) && env.WHATNOT_API_KEY ? whatnotClient(env) : null;
       return await handleLiveStudio(request, env, { json, requireStoreUser, readJsonWithLimit,
