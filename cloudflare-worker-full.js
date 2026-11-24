@@ -20745,9 +20745,37 @@ async function pushWhatnotItemsNow(env, ctx, storeId, itemIds) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   return runWhatnotListingSync(storeId, deps, { onlyIds: ids, allowCreate: false });
 }
+// Items switched to BUY IT NOW (whatnotToBin): off the show's auction and reserve on Whatnot, back in the shop at
+// their own price -- 50 a run (2026-11-24: "I want all BIN items available all the time").
+async function moveMarkedToBuyItNow(env, ctx, storeId, deps) {
+  const s = encodeURIComponent(storeId);
+  const rows = (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>whatnotToBin=eq.true&select=id,data&limit=50`)).data || [];
+  if (rows.length) {
+    // Items in the NEXT show day's shows stay auctions there (2026-11-24: "the 149 comics I have in already for
+    // tomorrow's show should stay as auctions ... just tomorrow's show") -- the flag is dropped and they're left as
+    // they are. Items in today's live show or later shows go to Buy It Now.
+    const active = new Set(), day = t => new Date(t).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+    const upcoming = (await upcomingWhatnotShows(deps.api)).filter(sh => Date.parse(sh.scheduled_start_at) > Date.now());
+    const nextDay = upcoming[0] ? day(upcoming[0].scheduled_start_at) : '';
+    for (const sh of upcoming) if (day(sh.scheduled_start_at) === nextDay) active.add(String(sh.id));
+    const move = [], kept = [];
+    for (const r of rows) {
+      const link = await deps.kvGet(`whatnot-link:${storeId}:${r.id}`), inShow = (link?.shows || []).some(id => active.has(String(id)));
+      const { whatnotToBin, ...rest } = r.data || {};
+      await supabaseAdminFetch(env, `inventory_items?id=eq.${encodeURIComponent(r.id)}&store_id=eq.${s}`, { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ data: inShow ? rest : { ...rest, whatnotShowOnly: false }, updated_at: new Date().toISOString() }) });
+      (inShow ? kept : move).push(r);
+    }
+    const res = move.length ? await backToBuyItNow(move.map(r => r.id), deps) : [];
+    const done = res.filter(x => x.done).map(x => x.id);
+    if (done.length) { try { await pushWhatnotItemsNow(env, ctx, storeId, done); } catch (_) {} }
+    return { done: done.length, keptInShows: kept.length, notListedYet: res.filter(x => x.error === 'Not on Whatnot').length, problems: res.filter(x => x.error && x.error !== 'Not on Whatnot').slice(0, 10) };
+  }
+  return null;
+}
 async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders = true, limit = 150, allowCreate = true } = {}) {
   const deps = { ...whatnotDeps(env, ctx, storeId), listingSettings: await whatnotListingSettings(env, storeId) };
   const out = { at: new Date().toISOString() };
+  try { const tb = await moveMarkedToBuyItNow(env, ctx, storeId, deps); if (tb) out.toBin = tb; } catch (e) { out.toBinError = e.message; }
   try { out.listings = await runWhatnotListingSync(storeId, deps, { force, limit, allowCreate }); }
   catch (e) { out.listingsError = e.message; }
   if (orders) {
@@ -20789,7 +20817,7 @@ async function runWhatnotSyncForStore(env, ctx, storeId, { force = false, orders
   // A run that did something (or hit a problem) is also kept where it can be
   // checked from outside the Worker (server_job_runs).
   const l = out.listings || {};
-  if (l.checked || l.errors?.length || out.fromWhatnot || out.orders?.length || out.bundles || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
+  if (l.checked || l.errors?.length || out.fromWhatnot || out.orders?.length || out.bundles || out.toBin || out.toBinError || out.listingsError || out.ordersError || out.showsError || out.unsold?.length || out.shows?.some(x => x.summary || x.error)) {
     await supabaseAdminFetch(env, 'server_job_runs', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ job: 'whatnot-sync', store_id: storeId, started_at: out.at, finished_at: new Date().toISOString(), result: out }) }).catch(() => {});
   }
   return out;

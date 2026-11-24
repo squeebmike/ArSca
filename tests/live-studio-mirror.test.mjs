@@ -24,3 +24,9 @@ console.log('Live Studio mirror: passed');
   assert.ok(w.includes('await followLiveShowInStudio(env, storeId, String(showId))'), 'and the moment Whatnot says a show went live');
   assert.ok(/async function followLiveShowInStudio[\s\S]{0,400}await room\.syncStats\(orders\);/.test(w), 'catches up on the show\'s sales');
   console.log('Studio follows the live show: passed'); }
+// 2026-11-24: "I want this type of thing easy to see for the viewers ... integrated into the marquee center bar".
+{ const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), css = fs.readFileSync('assets/live-studio.css', 'utf8');
+  assert.ok(ov.includes('function paintCenterBar(d,goal,pct){') && ov.includes('paintCenterBar(d,goal,pct);') && ov.includes("'🧰 NEXT CHEST: <b>'") && ov.includes("MORE TO SUMMON <b>"));
+  assert.ok(ov.includes('Math.floor(Date.now()/5000)%cbarLines.length'), 'the line turns on the clock');
+  assert.ok(css.includes('body.mana-center #mana-sign.cbar #mana-cbar-track{') && !css.includes('#mana-vcard'));
+  console.log('Center bar: chests, $ to go, next chest: passed'); }

@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.24.5-keep-edits';
+const APP_VERSION = '2026.11.24.6-center-bar';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -4548,7 +4548,9 @@ function whatnotSyncSummaryHtml(last, items){
 // (in the Whatnot shop, kept 1:1) or Auction (show only -- never in the
 // shop; sold in the shows it's added to, starting bid from Settings).
 function whatnotModeOf(item = {}){ return item.sellOnWhatnot !== true ? 'off' : item.whatnotShowOnly === true ? 'auction' : 'bin'; }
-function whatnotModePatch(mode){ return { sellOnWhatnot: mode === 'bin' || mode === 'auction', whatnotShowOnly: mode === 'auction' }; }
+// BUY IT NOW from an auction (2026-11-24: "I want all BIN items available all the time"): whatnotToBin asks the server to
+// take it off the show's auction on Whatnot and put it back in the shop at its price (the flag alone left it reserved).
+function whatnotModePatch(mode){ return { sellOnWhatnot: mode === 'bin' || mode === 'auction', whatnotShowOnly: mode === 'auction', ...(mode === 'bin' ? { whatnotToBin: true } : {}) }; }
 function whatnotModeChipHtml(item = {}){
   const mode = whatnotModeOf(item);
   if(mode === 'bin') return ' <span style="color:var(--g);font-size:8px" title="Whatnot: Buy It Now -- in your Whatnot shop, quantity and price kept the same as here">WN BIN</span>';
@@ -15265,6 +15267,7 @@ const BUILT_IN_ITEM_SIMPLE_FIELDS = [
   // SHOW ONLY on Whatnot (FOC comics received into a show): auctions in
   // shows, never Buy It Now -- BACK TO BUY IT NOW turns it off.
   ['whatnotShowOnly', false, 'bool'],
+  ['whatnotToBin', false, 'bool'],
   // The eBay listing an item is on. LIST ON EBAY saved these through this
   // list's write path, but they were never on it -- every listing made from
   // the dashboard was silently forgotten on save (store report: the Goblin

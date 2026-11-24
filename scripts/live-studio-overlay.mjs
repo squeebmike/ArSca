@@ -123,6 +123,7 @@ function paintDungeon(d){
   arena.classList.toggle('mana-hidden',!(center&&d.phase==='boss'&&settings.showBoss!==false&&!beastMode()));
   paintCrawl(d,center);paintForeground(d,center);paintBeasts(d);
   paintMap(d);
+  if(!d||beastMode()){sign.classList.remove('cbar');cbarLines=[];}
   if(!d){$('mana-title-text').textContent='THE MANA POCKET';sign.style.removeProperty('--fill');return;}
   sign.style.setProperty('--fill',String(Math.max(4,Math.min(100,d.pct))));
   // LONG BOX BEASTS, its own game (2026-11-13: "they should be totally separate games"): its route, its rival, its badges.
@@ -140,13 +141,34 @@ function paintDungeon(d){
     return;
   }
   $('mana-title-text').textContent='FLOOR '+d.floor+' · '+(d.room?d.room.name:d.shed);
-  $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp):usd(d.mana)+' / '+usd(d.goal);
-  $('mana-cbar-sub').textContent=d.phase==='boss'?'EVERY SALE HITS THE BOSS!':usd(Math.max(0,d.goal-d.mana))+' MORE TO SUMMON '+d.boss.name+'!';
+  const goal=Number(d.goal)||0,pct=goal?Math.min(100,Math.round((Number(d.mana)||0)/goal*100)):0;
+  $('mana-flask-meter').textContent=d.phase==='boss'?'BOSS HP '+usd(d.boss.hp)+' / '+usd(d.boss.max):usd(d.mana)+' / '+usd(d.goal)+' · '+pct+'%';
+  paintCenterBar(d,goal,pct);
   $('mana-dungeon-floor').textContent='FLOOR '+d.floor;$('mana-dungeon-shed').textContent=d.shed+(d.room?' · '+d.room.icon+' '+d.room.name:'')+(d.finale?' · FINALE':'');
   $('mana-dungeon-stars').textContent=d.stars?'STARS '+d.stars:'';
   const next=[d.reward?'FLOOR REWARD: '+d.reward:'',d.nextUnlock?'NEXT UNLOCK '+usd(d.nextUnlock.at)+': '+d.nextUnlock.text:''].filter(Boolean).join('  •  ');
   $('mana-dungeon-next').textContent=next;
 }
+// THE CENTER BAR, readable (store, 2026-11-24: "I want this type of thing easy to see for the viewers ... integrated into
+// the marquee center bar"): the flask as a bar with the floor's 3 chests where they open (✓ once opened) and the boss
+// at the end; the line under the title turns every 5 s (on the clock) between the $ to the boss, the next chest's prize
+// and the $ to go, and the next show goal.
+let cbarLines=[];
+function paintCenterBar(d,goal,pct){
+  const sign=$('mana-sign');sign.classList.add('cbar');let tr=$('mana-cbar-track');
+  if(!tr){tr=document.createElement('div');tr.id='mana-cbar-track';tr.setAttribute('aria-hidden','true');sign.insertBefore(tr,$('mana-cbar-sub'));}
+  const esc=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch]);
+  const boss=d.phase==='boss',opened=d.opened||[],at=((d.plan||[])[0]||{}).chestAt||[];
+  const fill=boss?Math.round(Math.max(0,Number(d.boss?.hp)||0)/(Number(d.boss?.max)||1)*100):pct;
+  tr.innerHTML='<i style="width:'+fill+'%"></i>'+(boss?'':at.map((a,k)=>'<b class="cb-mark'+(opened.includes(k)?' open':'')+'" style="left:'+(goal?Math.min(100,a/goal*100):0)+'%">'+(opened.includes(k)?'✓':'🧰')+'</b>').join(''))+'<b class="cb-boss">'+(boss?'⚔':'👹')+'</b>';
+  const next=d.nextChest;
+  cbarLines=boss?['EVERY SALE HITS <b>'+esc(d.boss.name)+'</b>!']:[usd(Math.max(0,goal-(Number(d.mana)||0)))+' MORE TO SUMMON <b>'+esc(d.boss.name)+'</b>!'];
+  if(!boss&&next)cbarLines.push('🧰 NEXT CHEST: <b>'+esc(next.what)+'</b> · <em>'+(next.need>0?usd(next.need)+' TO GO':'OPENS NOW!')+'</em>');
+  if(d.nextUnlock)cbarLines.push('🎯 '+usd(d.nextUnlock.at)+' SHOW GOAL: <b>'+esc(d.nextUnlock.text)+'</b>');
+  turnCenterLine();
+}
+function turnCenterLine(){const el=$('mana-cbar-sub');if(!el||!cbarLines.length||el.classList.contains('evo-soon')||beastMode())return;const h=cbarLines[Math.floor(Date.now()/5000)%cbarLines.length];if(el.innerHTML!==h)el.innerHTML=h;}
+setInterval(turnCenterLine,1000);
 // THE SHED CRAWL, first person (2026-11-11: "like doom visuals ... walking
 // through halls, rooms ... looking for and through shit"): scripts/shed-crawl-fp.mjs.
 // Mana walks you down the floor's hallways; it stops to rummage at fixed
