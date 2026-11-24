@@ -110,7 +110,6 @@ export function validateSettings(input) {
   if (!BOSS_IDS.includes(full.bossCharacter)) throw new Error('Invalid bossCharacter');
   if (!['ps1', 'n64'].includes(full.bossStyle)) throw new Error('Invalid bossStyle');
   if (!['dungeon', 'beasts', 'vending'].includes(full.gameMode)) throw new Error('Invalid gameMode');
-  if (!['tr', 'tl', 'br', 'bl', 'mid'].includes(full.viewerCardAt)) throw new Error('Invalid viewerCardAt');
   if (!['overlay', 'green'].includes(full.beastsBattle)) throw new Error('Invalid beastsBattle');
   if (!['', 'day', 'sunset', 'night'].includes(full.beastsTimeOfDay ?? '')) throw new Error('Invalid beastsTimeOfDay');
   if (!['gbc', 'gba', 'nds', '3ds'].includes(full.beastsGfx ?? 'gbc')) throw new Error('Invalid beastsGfx');
