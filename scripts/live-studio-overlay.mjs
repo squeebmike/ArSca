@@ -1,5 +1,5 @@
 import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats, marqueeLines, hypeNow, hypeAfterSale, HYPE_MOOD, HYPE_MAX} from './live-studio-model.mjs';
-import {bossById, drawBoss} from './live-studio-bosses.mjs?v=3';
+import {bossById, drawBoss} from './live-studio-bosses.mjs?v=4';
 import {createByteRider} from './byterider.mjs';
 import {roomById} from './live-studio-dungeon.mjs';
 const $=id=>document.getElementById(id);
@@ -23,7 +23,7 @@ let lastNowTitle=null, soldLine=0, lastPhase='';
 // WebGL or the module isn't there, the flat sprites and CSS coins stay.
 let beasts3d=null, battle3d=false;
 let gl=null, bossView=null, effectBoss=null, coinLayer=null, gl3d=null, fisterView=null, fisterCovers='', fisterFaceShown='';
-import('./live-studio-3d.mjs?v=4').then(m=>{
+import('./live-studio-3d.mjs?v=7').then(m=>{
   gl3d=m;fpBoss='';
   try{
     const ps1=settings.bossStyle!=='n64';
@@ -284,7 +284,7 @@ let vendDraw=null,machine=null;
 import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
-let regulars=null;import('./regulars.mjs?v=1').then(m=>{regulars=m.createRegulars(document,{now:()=>Date.now()+offset});}).catch(e=>console.warn('[studio] regulars off:',e?.message||e));
+let regulars=null;import('./regulars.mjs?v=3').then(m=>{regulars=m.createRegulars(document,{now:()=>Date.now()+offset});}).catch(e=>console.warn('[studio] regulars off:',e?.message||e));
 let flipDraw=null,flipState=null;
 import('./flipbook.mjs?v=8').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 // FOC SHOW MODE (store, 2026-11-19: "the top camera will just be the top camera ... the bottom camera is going to just
@@ -581,7 +581,9 @@ function receiveEffect(e,initial=false) {
   // THE REGULARS (2026-11-24): a quick cameo, just them -- no burst, no banner.
   if(e.kind==='seen'||e.kind==='amos'){regulars?.play(e.kind,e.startsAt,e.endsAt);return;}
   // MR FISTER: he rises in, pumping the gauntlet (the line under him is the usual burst).
-  if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView){const c=$('mana-fister');setGauntlet();fisterView.mode('goo',e.kind==='fistergoo');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.mode('goo',false);fisterView.stop();},e.kind==='fistergoo'?9600:7600);}
+  // ICE BERG (2026-11-24): the same pop-up stage as Mr Fister -- he rises in, flexing the watch, the ice glinting.
+  if(e.kind==='iceberg'&&fisterView){const c=$('mana-fister');fisterView.mode('goo',false);fisterView.set('iceberg');c.classList.add('ice');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on','ice');fisterView.stop();fisterView.set('fister');},7600);}
+  if((e.kind==='fister'||e.kind==='fistergoo')&&fisterView){const c=$('mana-fister');c.classList.remove('ice');fisterView.set('fister');setGauntlet();fisterView.mode('goo',e.kind==='fistergoo');fisterView.enter();fisterView.start();c.classList.remove('on');void c.offsetWidth;c.classList.add('on');clearTimeout(receiveEffect.fx);receiveEffect.fx=setTimeout(()=>{c.classList.remove('on');fisterView.mode('goo',false);fisterView.stop();},e.kind==='fistergoo'?9600:7600);}
   // A ByteRider reaction or line from the dashboard: just him, no burst.
   if(e.kind==='mascot'){mascot?.play(e.mascotState,{text:e.say||'',boot:e.mascotState==='disappearing'});return;}
   // BEASTS: chat picked an attack -- your beast uses it now.
@@ -619,6 +621,7 @@ function words(e) {
     // Beasts' own moments.
     case 'spotlight': return ['','',''];
     case 'fister': return ['MR FISTER!',"IT'S FISTIN' TIME!",'THE GAUNTLET OF GRAILS'];
+    case 'iceberg': return ['ICE BERG!','TOO ICED OUT TO MELT','#12 · BLINGED OUT'];
     case 'fistergoo': return ['SYMBIOTE FISTER!','THE GOO HAS TAKEN HOLD','GOO MODE: ACTIVATED'];
     case 'beast': if(e.beastEvent==='evolve')return ['WHAT?! '+(e.fromName||'YOUR BEAST')+' IS EVOLVING!','IT BECAME '+(e.beastName||'')+'!',e.reward?'FOR EVERYONE WATCHING: '+e.reward:'LV '+(e.level||'')+' -- THANKS FOR HANGING OUT!'];
       if(e.beastEvent==='learn')return [(e.beastName||'YOUR BEAST')+' HIT LV '+(e.level||'')+'!','IT CAN LEARN A NEW ATTACK','CHAT: NAME IT!'];

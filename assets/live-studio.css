@@ -531,6 +531,10 @@ body.mana-shake #mana-stage,body.mana-shake .mana-panel{animation:mana-shake .5s
 #mana-effect.k-fistergoo #mana-effect-word{color:#39ff14}
 @keyframes mana-fister-in{0%{opacity:0;transform:translateY(120px) scale(.6)}10%{opacity:1;transform:translateY(-10px) scale(1.05)}16%{transform:translateY(0) scale(1)}88%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(40px) scale(.9)}}
 #mana-effect.k-fister #mana-effect-art{display:none}
+/* ICE BERG (2026-11-24): the same stage, an icy glow instead of the green. */
+#mana-fister.ice{filter:drop-shadow(0 0 30px #9be7ffaa) drop-shadow(0 14px 14px #000a)}
+#mana-effect.k-iceberg #mana-effect-art{display:none}
+#mana-effect.k-iceberg #mana-effect-word{color:#9be7ff}
 
 /* THE CHASE COUNTDOWN (2026-11-14): over the NEXT STAGE list -- "CHASE IN 3", the item and its price; UP NOW when it's on. */
 #mana-chase{position:absolute;left:40px;top:1240px;z-index:7;max-width:560px;background:linear-gradient(90deg,#ff2a4f,#ff8a00);border:4px solid #0b0612;border-radius:16px;padding:8px 18px;box-shadow:0 0 26px #ff5a2a99;color:#fff;font-family:'Luckiest Guy',Bangers,sans-serif}

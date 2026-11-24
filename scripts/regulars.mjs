@@ -16,13 +16,15 @@ function text(g, s, x, y, size, fill, stroke = '#0b0612', align = 'center') {
 }
 
 // SEEN BUT NOT HEARD: a hooded head and shoulders, big watchful eyes; t = 0..1 through the cameo.
-export function drawSeen(g, W, H, t) {
+// figure=false draws only the words (the 3D guy is on his own canvas underneath).
+export function drawSeen(g, W, H, t, { figure = true } = {}) {
   g.clearRect(0, 0, W, H);
   const up = Math.min(span(t, 0, 0.16), 1 - span(t, 0.8, 1)); // up fast, down slowly
   const cx = W / 2, baseY = H + 20 - up * 430, s = 1;
   // Where he looks: middle, left, middle, right, middle -- then down while the hand comes up.
   const look = t < 0.2 ? 0 : t < 0.34 ? -span(t, 0.2, 0.26) : t < 0.48 ? -1 + 2 * span(t, 0.36, 0.44) : t < 0.58 ? 1 - span(t, 0.5, 0.58) : 0;
   const hand = span(t, 0.58, 0.68) * (1 - span(t, 0.92, 1));
+  if (figure) {
   g.save(); g.translate(cx + look * 14, baseY); g.rotate(look * 0.06); g.scale(s, s); // the head turns a little with the look
   // Shoulders + hoodie.
   g.fillStyle = '#2b2f3a'; g.beginPath(); g.moveTo(-210, 260); g.quadraticCurveTo(-200, 60, 0, 40); g.quadraticCurveTo(200, 60, 210, 260); g.closePath(); g.fill();
@@ -48,9 +50,11 @@ export function drawSeen(g, W, H, t) {
     g.fillStyle = '#2b2f3a'; g.fillRect(-46, hy + 66, 92, 140); // sleeve
   }
   g.restore();
+  }
   // The words, beside him while he's up.
   const a = Math.min(span(t, 0.12, 0.24), 1 - span(t, 0.78, 0.9));
-  if (a > 0) { g.globalAlpha = a; text(g, 'SEEN BUT', cx + 330, H - 330, 62, '#e9e4ff'); text(g, 'NOT HEARD', cx + 330, H - 260, 62, '#c9b6ff'); text(g, '🤫', cx - 330, H - 290, 90, '#fff', 'transparent'); g.globalAlpha = 1; }
+  const ty = figure ? H - 330 : H - 450; // higher beside the 3D guy, clear of his shoulders
+  if (a > 0) { g.globalAlpha = a; text(g, 'SEEN BUT', cx + 330, ty, 62, '#e9e4ff'); text(g, 'NOT HEARD', cx + 330, ty + 70, 62, '#c9b6ff'); text(g, '🤫', cx - 330, ty + 40, 90, '#fff', 'transparent'); g.globalAlpha = 1; }
 }
 
 // AMOS, the hippie: drifts in from the left, peace sign up, flowers and peace signs floating.
@@ -94,7 +98,15 @@ export function drawAmos(g, W, H, t) {
 }
 
 // One canvas over the overlay: play(kind, startedAt, endsAt) runs the cameo on the given clock.
-export function createRegulars(doc, { now = () => Date.now() } = {}) {
+// SEEN BUT NOT HEARD plays in 3D (scripts/seen-3d.mjs) when WebGL is there; the 2D drawing is the fallback.
+export function createRegulars(doc, { now = () => Date.now(), load3d = () => import('./seen-3d.mjs?v=2') } = {}) {
+  let seen3d = null, c3 = null;
+  if (load3d) Promise.resolve().then(load3d).then(m => {
+    c3 = doc.createElement('canvas'); c3.id = 'mana-seen3d'; c3.width = 900; c3.height = 900;
+    c3.style.cssText = 'position:fixed;left:50%;bottom:0;width:900px;height:900px;transform:translateX(-50%);pointer-events:none;z-index:59;display:none';
+    doc.body.appendChild(c3); seen3d = m.createSeen3D(c3, { size: 900 });
+    if (!seen3d) { c3.remove(); c3 = null; }
+  }).catch(e => console.warn('[studio] 3D seen off:', e?.message || e));
   const c = doc.createElement('canvas'); c.id = 'mana-regular'; c.width = 1080; c.height = 900;
   c.style.cssText = 'position:fixed;left:50%;bottom:0;width:1080px;height:900px;transform:translateX(-50%);pointer-events:none;z-index:60;display:none';
   doc.body.appendChild(c); const g = c.getContext('2d');
@@ -102,9 +114,11 @@ export function createRegulars(doc, { now = () => Date.now() } = {}) {
   const frame = () => {
     raf = 0; if (!cur) return;
     const t = (now() - cur.at) / Math.max(1, cur.end - cur.at);
-    if (t >= 1 || t < 0) { cur = null; c.style.display = 'none'; g.clearRect(0, 0, c.width, c.height); return; }
-    (cur.kind === 'amos' ? drawAmos : drawSeen)(g, c.width, c.height, t);
+    if (t >= 1 || t < 0) { cur = null; c.style.display = 'none'; g.clearRect(0, 0, c.width, c.height); if (c3) { seen3d.clear(); c3.style.display = 'none'; } return; }
+    if (cur.kind === 'amos') drawAmos(g, c.width, c.height, t);
+    else if (seen3d) { c3.style.display = 'block'; seen3d.draw(t); drawSeen(g, c.width, c.height, t, { figure: false }); }
+    else drawSeen(g, c.width, c.height, t);
     raf = (doc.defaultView || globalThis).requestAnimationFrame(frame);
   };
-  return { play(kind, at, end) { if (!REGULARS[kind]) return; cur = { kind, at, end }; c.style.display = 'block'; if (!raf) frame(); }, stop() { cur = null; c.style.display = 'none'; } };
+  return { play(kind, at, end) { if (!REGULARS[kind]) return; cur = { kind, at, end }; c.style.display = 'block'; if (!raf) frame(); }, stop() { cur = null; c.style.display = 'none'; if (c3) c3.style.display = 'none'; } };
 }

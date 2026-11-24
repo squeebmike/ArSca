@@ -113,6 +113,29 @@ const fisterMaps = {
     for (let k = 0; k < 9; k++) branch(fixed(k, 30) * w, fixed(k, 31) * h, fixed(k, 32) * Math.PI * 2, 90, 3.2, 0, k + 1); }, [2, 2]),
   emblem: () => paintTex('emblem', 128, 128, (x, w, h) => { x.clearRect(0, 0, w, h); x.fillStyle = '#39ff14'; x.beginPath(); x.arc(64, 64, 58, 0, Math.PI * 2); x.fill(); x.fillStyle = '#0b0f0c'; x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2); x.fill(); x.fillStyle = '#39ff14'; x.fillRect(38, 46, 52, 34); for (let k = 0; k < 4; k++) x.fillRect(40 + k * 13, 34, 10, 14); x.fillRect(46, 80, 30, 22); x.fillStyle = '#0b0f0c'; for (let k = 1; k < 4; k++) x.fillRect(38 + k * 13 - 2, 34, 2, 14); }),
 };
+// ICE BERG's textures: the jersey (navy mesh, green and grey trim, a big 12 front and back -- no team logos), the
+// watch dial (a pilot's chronograph look, no brand), pavé diamonds, a studio to reflect in the platinum, a star glint.
+const icebergMaps = {
+  jersey: () => paintTex('ice-jersey', 1024, 512, (x, w, h) => {
+    x.fillStyle = '#0b2545'; x.fillRect(0, 0, w, h);
+    for (let yy = 0; yy < h; yy += 6) for (let xx = (yy / 6) % 2 * 3; xx < w; xx += 6) { x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(xx, yy, 2, 2); }
+    for (const sx of [w * 0.25, w * 0.75]) { x.fillStyle = '#69be28'; x.fillRect(sx - 7, 0, 14, h); x.fillStyle = '#a5acaf'; x.fillRect(sx - 3, 0, 6, h); } // side panels
+    x.fillStyle = '#05162c'; x.fillRect(0, h - 34, w, 34); // the hem
+    const num = cx => { x.save(); x.translate(cx, h * 0.7); x.font = '900 300px "Arial Black", Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; const k = 170 / x.measureText('12').width; x.scale(k, 1); x.lineJoin = 'round'; x.lineWidth = 30; x.strokeStyle = '#69be28'; x.strokeText('12', 0, 0); x.lineWidth = 12; x.strokeStyle = '#0b2545'; x.strokeText('12', 0, 0); x.fillStyle = '#a5acaf'; x.fillText('12', 0, 0); for (let k2 = 0; k2 < 40; k2++) { x.fillStyle = 'rgba(255,255,255,.08)'; x.fillRect(-90 + (k2 * 37) % 180, -110 + (k2 * 53) % 220, 4, 4); } x.restore(); };
+    num(w / 2); num(0); num(w); // front; the back straddles the seam
+  }),
+  dial: () => paintTex('ice-dial', 256, 256, (x, w, h) => {
+    const g = x.createRadialGradient(110, 100, 10, 128, 128, 128); g.addColorStop(0, '#1d4e9a'); g.addColorStop(1, '#061633'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.translate(128, 128);
+    for (let k = 0; k < 60; k++) { x.save(); x.rotate(k / 60 * Math.PI * 2); x.fillStyle = k % 5 ? '#c9d3e0' : '#ffffff'; x.fillRect(-1.5, -122, k % 5 ? 3 : 6, k % 5 ? 10 : 22); x.restore(); }
+    for (const [sx, sy] of [[-48, 8], [48, 8], [0, 52]]) { x.strokeStyle = '#d8dee8'; x.lineWidth = 4; x.beginPath(); x.arc(sx, sy, 24, 0, Math.PI * 2); x.stroke(); x.fillStyle = '#0a2450'; x.fill(); for (let k = 0; k < 12; k++) { x.save(); x.translate(sx, sy); x.rotate(k / 12 * Math.PI * 2); x.fillStyle = '#d8dee8'; x.fillRect(-1, -22, 2, 6); x.restore(); } x.strokeStyle = '#fff'; x.lineWidth = 2; x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + 14, sy - 10); x.stroke(); }
+    x.strokeStyle = '#eef2f7'; x.lineCap = 'round'; x.lineWidth = 9; x.beginPath(); x.moveTo(0, 0); x.lineTo(-40, -50); x.stroke(); x.lineWidth = 6; x.beginPath(); x.moveTo(0, 0); x.lineTo(70, -70); x.stroke();
+    x.strokeStyle = '#ffcc00'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, 20); x.lineTo(0, -110); x.stroke(); x.fillStyle = '#eef2f7'; x.beginPath(); x.arc(0, 0, 8, 0, Math.PI * 2); x.fill();
+  }),
+  pave: () => paintTex('ice-pave', 128, 128, (x, w, h) => { x.fillStyle = '#9aa6b4'; x.fillRect(0, 0, w, h); for (let yy = 0; yy < 4; yy++) for (let xx = 0; xx < 4; xx++) { const cx = xx * 32 + 16 + (yy % 2) * 8, cy = yy * 32 + 16, g = x.createRadialGradient(cx - 4, cy - 4, 1, cx, cy, 14); g.addColorStop(0, '#ffffff'); g.addColorStop(0.5, '#dff6ff'); g.addColorStop(1, '#7d8a99'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, 13, 0, Math.PI * 2); x.fill(); } }, [3, 3]),
+  env: () => { const t = paintTex('ice-env', 512, 256, (x, w, h) => { const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#2a1450'); g.addColorStop(0.5, '#0b0612'); g.addColorStop(1, '#12301a'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#ffffff'; x.fillRect(60, 40, 120, 30); x.fillRect(320, 50, 90, 22); x.fillRect(0, 118, w, 6); x.fillStyle = '#9be7ff'; x.fillRect(200, 150, 140, 14); x.fillStyle = '#c084fc'; x.fillRect(420, 90, 60, 50); }); t.mapping = THREE.EquirectangularReflectionMapping; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; t.repeat.set(1, 1); return t; },
+  glint: () => paintTex('ice-glint', 64, 64, (x, w, h) => { x.clearRect(0, 0, w, h); const g = x.createRadialGradient(32, 32, 0, 32, 32, 30); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(190,240,255,.6)'); g.addColorStop(1, 'rgba(160,220,255,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); x.fillStyle = '#fff'; x.fillRect(31, 0, 2, 64); x.fillRect(0, 31, 64, 2); }),
+};
 function fisterSkin() { return fisterSkinMat || (fisterSkinMat = mat(0xc4865e, { shininess: 22, specular: 0x332222, map: typeof document === 'undefined' ? null : fisterMaps.skin() })); }
 function fisterFaceMat() {
   if (fisterFaceMatI) return fisterFaceMatI;
@@ -283,6 +306,174 @@ const BUILD = {
       const sw = p >= 0.1 && p < 0.3 ? (p - 0.1) / 0.2 : p >= 0.5 && p < 0.7 ? (p - 0.5) / 0.2 : -1; // a ring with each pump
       ring.material.opacity = sw >= 0 ? 0.8 * (1 - sw) : 0; ring.scale.setScalar(sw >= 0 ? 0.6 + sw * 2.4 : 0.6);
       glowFloor.material.opacity = 0.1 + 0.2 * g;
+    } };
+  },
+
+  iceberg(root) {
+    // ICE BERG (store, 2026-11-24: "I need Ice Berg as a new boss and pop up ... backwards Mariners hat, 12 Seahawks
+    // jersey, a big diamond earring in each ear, blue eyes, a blinged-out Breitling-inspired watch, a big platinum chain
+    // with a 12"): a friend of the shop, built from scratch here. Team colours and the 12 -- no team or brand logos.
+    // Idle: nodding to the beat, flexing the watch at the camera, throwing a shaka; the ice glints on a fixed rhythm.
+    const doc = typeof document !== 'undefined', M = doc ? icebergMaps : null, F = doc ? fisterMaps : null;
+    const env = doc ? M.env() : null;
+    const skin = mat(0xd9a07c, { shininess: 26, specular: 0x332222, map: doc ? F.skin() : null });
+    const jersey = mat(0xffffff, { shininess: 30, specular: 0x2a2a3a, map: doc ? M.jersey() : null });
+    const navy = mat(0x0b2545, { shininess: 25, map: doc ? F.tee() : null }), green = mat(0x69be28, { shininess: 40 }), grey = mat(0xa5acaf, { shininess: 50 });
+    const capM = mat(0x0c2c56, { shininess: 22, map: doc ? F.tee() : null }), teal = mat(0x00685e, { shininess: 45 });
+    const hair = mat(0x3a2414, { shininess: 6, map: doc ? F.hair() : null }), jeans = mat(0x2e3a52, { shininess: 8, map: doc ? F.denim() : null });
+    const shoe = mat(0x15161a, { shininess: 70 }), sole = mat(0xf2f2f2, { shininess: 20 });
+    const plat = new THREE.MeshPhongMaterial({ color: 0xe9edf3, shininess: 240, specular: 0xffffff, envMap: env, reflectivity: 0.75, combine: THREE.MixOperation });
+    const ice = new THREE.MeshPhongMaterial({ color: 0xffffff, emissive: 0x2a3a4a, shininess: 300, specular: 0xffffff, envMap: env, reflectivity: 0.6, combine: THREE.MixOperation, map: doc ? M.pave() : null });
+    const gem = new THREE.MeshPhongMaterial({ color: 0xf2fbff, emissive: 0x203040, shininess: 400, specular: 0xffffff, envMap: env, reflectivity: 0.9, combine: THREE.MixOperation, flatShading: true });
+    const body = new THREE.Group(); root.add(body);
+    // Legs: jeans, white-soled kicks.
+    add(body, cyl(0.39, 0.36, 0.3, jeans, 18), 0, -0.74, 0).scale.set(1, 1, 0.72);
+    for (const sx of [-1, 1]) { const g = new THREE.Group(); g.position.set(sx * 0.19, -0.86, 0); body.add(g); add(g, cyl(0.18, 0.14, 0.36, jeans, 12), 0, -0.18, 0); add(g, cyl(0.14, 0.115, 0.32, jeans, 12), 0, -0.5, 0); add(g, ball(0.13, shoe, 14), 0, -0.66, 0.06).scale.set(1, 0.55, 1.75); add(g, cyl(0.12, 0.12, 0.04, sole, 16), 0, -0.71, 0.07).scale.set(1, 1, 1.6); }
+    // The jersey: a lathe (seam at the back, so the 12 sits square on the front), V collar, sleeves with the stripes.
+    const ys = Array.from({ length: 12 }, (_, j) => -0.6 + j * 0.0955), rs = [0.41, 0.42, 0.43, 0.45, 0.48, 0.52, 0.55, 0.58, 0.59, 0.55, 0.42, 0.0];
+    const torso = add(body, new THREE.Mesh(new THREE.LatheGeometry(ys.map((y, j) => new THREE.Vector2(rs[j], y)), 40, Math.PI, Math.PI * 2), jersey), 0, 0, 0); torso.scale.set(1, 1, 0.66);
+    for (const sx of [-1, 1]) { const v = add(body, box(0.03, 0.2, 0.02, green), sx * 0.06, 0.34, 0.27); v.rotation.z = sx * 0.5; v.rotation.x = -0.35; }
+    add(body, cyl(0.135, 0.15, 0.2, skin, 16), 0, 0.48, 0.01);
+    add(body, new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 8, 24), navy), 0, 0.41, 0.01).rotation.x = Math.PI / 2 - 0.2;
+    // The head: skull, ears (a big diamond stud in each), blue eyes, a grin, a trimmed beard, the cap on backwards.
+    const head = new THREE.Group(); head.position.set(0, 0.82, 0.02); body.add(head);
+    add(head, ball(0.3, skin, 28), 0, 0, 0).scale.set(0.88, 1.08, 0.98);
+    add(head, ball(0.18, skin, 18), 0, -0.13, 0.12).scale.set(1.25, 0.9, 1); // jaw
+    const studs = [];
+    for (const sx of [-1, 1]) {
+      add(head, ball(0.065, skin, 12), sx * 0.262, -0.0, -0.01).scale.set(0.45, 1, 0.8);
+      const st = new THREE.Group(); st.position.set(sx * 0.27, -0.075, 0.03); head.add(st);
+      add(st, new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.008, 6, 16), plat), sx * 0.012, 0, 0).rotation.y = sx * Math.PI / 2;
+      const d = add(st, new THREE.Mesh(new THREE.SphereGeometry(0.036, 8, 4), gem), sx * 0.02, 0, 0); d.scale.set(0.6, 1, 1); studs.push(d); // a big round brilliant, faceted
+    }
+    const white = mat(0xf7f7f2, { shininess: 90 }), iris = mat(0x2f8fe0, { shininess: 160, specular: 0xffffff, emissive: 0x0a2a50 }), dark = mat(0x0b0612, { shininess: 160 });
+    const lids = [];
+    for (const sx of [-1, 1]) {
+      add(head, ball(0.044, white, 14), sx * 0.1, 0.05, 0.25).scale.set(1.3, 0.85, 0.55);
+      add(head, ball(0.025, iris, 14), sx * 0.1, 0.048, 0.268).scale.set(1, 1, 0.5);
+      add(head, ball(0.012, dark, 10), sx * 0.1, 0.048, 0.277).scale.set(1, 1, 0.4);
+      add(head, ball(0.006, new THREE.MeshBasicMaterial({ color: 0xffffff }), 6), sx * 0.1 - 0.008, 0.058, 0.282);
+      lids.push(add(head, ball(0.047, skin, 14, ), sx * 0.1, 0.075, 0.245)); lids.at(-1).scale.set(1.35, 0.45, 0.6);
+      const br = add(head, box(0.12, 0.03, 0.035, hair), sx * 0.1, 0.12, 0.262); br.rotation.z = sx * -0.12;
+    }
+    add(head, cone(0.045, 0.12, skin, 10), 0, -0.02, 0.3).rotation.x = Math.PI / 2;
+    add(head, ball(0.035, skin, 10), 0, -0.055, 0.3).scale.set(1.3, 0.8, 0.9);
+    // The grin: dark mouth, a row of white teeth, lips.
+    const mouth = add(head, new THREE.Mesh(new THREE.SphereGeometry(0.09, 18, 8, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5), mat(0x3a0f12)), 0, -0.14, 0.3); mouth.scale.set(1.1, 0.55, 0.45);
+    add(head, box(0.13, 0.03, 0.02, mat(0xffffff, { shininess: 140 })), 0, -0.15, 0.335);
+    const lip = add(head, new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.012, 6, 20, Math.PI), mat(0xa8605a)), 0, -0.14, 0.325); lip.rotation.z = Math.PI; lip.scale.set(1.05, 0.55, 1);
+    // The beard: short and trimmed, round the jaw; a moustache.
+    const beard = new THREE.Mesh(new THREE.SphereGeometry(0.31, 26, 14, Math.PI / 2 + 0.42, Math.PI * 2 - 0.84, Math.PI * 0.58, Math.PI * 0.32), hair); beard.scale.set(0.92, 1.18, 1.03); beard.position.set(0, -0.02, 0.01); head.add(beard);
+    add(head, ball(0.11, hair, 16), 0, -0.29, 0.19).scale.set(1.15, 0.62, 0.75); // the chin
+    add(head, box(0.05, 0.035, 0.02, hair), 0, -0.2, 0.33); // under the lip
+    const stache = add(head, new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.018, 8, 18, Math.PI), hair), 0, -0.105, 0.33); stache.rotation.z = Math.PI; stache.scale.set(1.15, 0.45, 0.8);
+    // Short hair at the sides under the cap.
+    for (const sx of [-1, 1]) add(head, ball(0.12, hair, 14), sx * 0.2, 0.1, -0.06).scale.set(0.5, 0.8, 1.1);
+    // The cap, BACKWARDS: navy crown, teal piping and button, the teal brim out the back, the snapback gap over the forehead.
+    const crown = new THREE.Mesh(new THREE.SphereGeometry(0.315, 26, 12, 0, Math.PI * 2, 0, Math.PI * 0.5), capM); crown.position.set(0, 0.11, -0.01); crown.scale.set(0.95, 0.92, 1.03); head.add(crown);
+    for (let k = 0; k < 6; k++) { const seam = add(head, new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.004, 4, 24, Math.PI / 2), teal), 0, 0.11, -0.01); seam.rotation.set(0, k / 6 * Math.PI * 2, Math.PI / 2); seam.scale.set(0.95 * 1.03, 0.92, 0.95); }
+    add(head, new THREE.Mesh(new THREE.TorusGeometry(0.297, 0.012, 6, 30), teal), 0, 0.115, -0.01).rotation.x = Math.PI / 2;
+    add(head, ball(0.03, teal, 10), 0, 0.4, -0.01);
+    const brim = add(head, box(0.32, 0.024, 0.26, teal), 0, 0.135, -0.4); brim.rotation.x = -0.18;
+    add(head, box(0.3, 0.005, 0.24, capM), 0, 0.124, -0.4).rotation.x = -0.18;
+    const gap = add(head, new THREE.Mesh(new THREE.CircleGeometry(0.06, 16, 0, Math.PI), hair), 0, 0.12, 0.29); gap.rotation.x = -0.2;
+    add(head, box(0.14, 0.022, 0.02, capM), 0, 0.12, 0.292);
+    for (const sx of [-1, 0, 1]) add(head, ball(0.008, plat, 6), sx * 0.04, 0.12, 0.305);
+    // THE CHAIN: platinum links round his neck and down the chest, the iced-out 12 on the end.
+    const chain = new THREE.Group(); body.add(chain);
+    const half = [[0, 0.46, -0.13], [0.15, 0.45, -0.07], [0.2, 0.41, 0.06], [0.19, 0.36, 0.2], [0.13, 0.3, 0.31], [0.06, 0.26, 0.37], [0, 0.25, 0.38]];
+    const ring = [...half, ...half.slice(1, -1).reverse().map(([x, y, z]) => [-x, y, z])].map(([x, y, z]) => new THREE.Vector3(x, y, z));
+    const curve = new THREE.CatmullRomCurve3(ring, true), link = new THREE.TorusGeometry(0.019, 0.0065, 6, 12), X = new THREE.Vector3(1, 0, 0);
+    const N = 64;
+    for (let k = 0; k < N; k++) { const u = k / N, l = new THREE.Mesh(link, plat); l.position.copy(curve.getPointAt(u)); l.quaternion.setFromUnitVectors(X, curve.getTangentAt(u)); if (k % 2) l.rotateX(Math.PI / 2); l.scale.set(1.45, 1, 1); chain.add(l); }
+    const pend = new THREE.Group(); pend.position.set(0, 0.09, 0.41); pend.scale.setScalar(1.05); chain.add(pend);
+    add(pend, new THREE.Mesh(new THREE.TorusGeometry(0.025, 0.008, 6, 14), plat), 0, 0.165, 0);
+    const bar = (w, h, x, y, r = 0) => { const b = add(pend, box(w, h, 0.032, ice), x, y, 0); b.rotation.z = r; const e = add(pend, box(w + 0.012, h + 0.012, 0.02, plat), x, y, -0.008); e.rotation.z = r; return b; };
+    bar(0.05, 0.24, -0.075, 0); bar(0.055, 0.024, -0.1, 0.1, 0.6); bar(0.11, 0.03, -0.075, -0.11);
+    const arc = add(pend, new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.021, 10, 24, Math.PI * 1.25), ice), 0.075, 0.055, 0); arc.rotation.z = -0.79;
+    add(pend, new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.027, 8, 24, Math.PI * 1.25), plat), 0.075, 0.055, -0.008).rotation.z = -0.79;
+    bar(0.03, 0.15, 0.072, -0.047, -0.59); bar(0.13, 0.03, 0.085, -0.11);
+    // The arms. His LEFT (our right) wears THE WATCH; his right throws the shaka.
+    const arm = (sx) => {
+      const sh = new THREE.Group(); sh.position.set(sx * 0.53, 0.22, 0); body.add(sh);
+      add(sh, ball(0.22, navy, 18), 0, 0, 0).scale.set(1, 0.9, 0.85);
+      add(sh, cyl(0.18, 0.16, 0.34, navy, 16), 0, -0.16, 0);
+      add(sh, new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.018, 6, 20), grey), 0, -0.22, 0).rotation.x = Math.PI / 2;
+      add(sh, new THREE.Mesh(new THREE.TorusGeometry(0.163, 0.012, 6, 20), green), 0, -0.27, 0).rotation.x = Math.PI / 2;
+      add(sh, cyl(0.135, 0.12, 0.2, skin, 14), 0, -0.4, 0);
+      const el = new THREE.Group(); el.position.set(0, -0.52, 0); sh.add(el);
+      add(el, ball(0.115, skin, 12), 0, 0, 0);
+      add(el, cyl(0.115, 0.085, 0.42, skin, 14), 0, -0.21, 0);
+      const hand = new THREE.Group(); hand.position.set(0, -0.46, 0); el.add(hand);
+      add(hand, box(0.15, 0.13, 0.07, skin), 0, -0.02, 0);
+      return { sh, el, hand };
+    };
+    const L = arm(1), R = arm(-1);
+    // The watch: a fat platinum case, a diamond bezel, a blue chronograph dial, a link bracelet.
+    const watch = new THREE.Group(); watch.position.set(0, -0.38, 0); L.el.add(watch);
+    add(watch, new THREE.Mesh(new THREE.TorusGeometry(0.093, 0.024, 8, 22), plat), 0, 0, 0).rotation.x = Math.PI / 2; // the bracelet round the wrist
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; add(watch, box(0.03, 0.05, 0.012, plat), Math.cos(a) * 0.112, 0, Math.sin(a) * 0.112).rotation.y = -a + Math.PI / 2; }
+    const face = new THREE.Group(); face.position.set(0, 0, 0.11); watch.add(face);
+    add(face, cyl(0.078, 0.082, 0.04, plat, 28), 0, 0, 0).rotation.x = Math.PI / 2;
+    add(face, new THREE.Mesh(new THREE.TorusGeometry(0.072, 0.014, 8, 28), ice), 0, 0, 0.022);
+    for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; add(face, new THREE.Mesh(new THREE.OctahedronGeometry(0.011, 0), gem), Math.cos(a) * 0.072, Math.sin(a) * 0.072, 0.034); }
+    add(face, new THREE.Mesh(new THREE.CircleGeometry(0.06, 28), new THREE.MeshBasicMaterial({ map: doc ? M.dial() : null, color: doc ? 0xffffff : 0x0a2450 })), 0, 0, 0.0215);
+    add(face, new THREE.Mesh(new THREE.CircleGeometry(0.06, 28), new THREE.MeshPhongMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, shininess: 300, specular: 0xffffff, envMap: env, combine: THREE.MixOperation, reflectivity: 0.5 })), 0, 0, 0.026);
+    add(face, cyl(0.012, 0.012, 0.03, plat, 10), 0.09, 0, 0).rotation.z = Math.PI / 2; // the crown
+    // The shaka hand: thumb and pinky out, three fingers curled.
+    const thumb = add(R.hand, cyl(0.025, 0.022, 0.11, skin, 8), -0.09, 0.02, 0.01); thumb.rotation.z = -1.1;
+    const pinky = add(R.hand, cyl(0.02, 0.018, 0.1, skin, 8), 0.08, -0.1, 0); pinky.rotation.z = 0.5;
+    for (let k = 0; k < 3; k++) add(R.hand, ball(0.028, skin, 8), -0.045 + k * 0.035, -0.095, 0.025);
+    for (let k = 0; k < 4; k++) add(L.hand, cyl(0.022, 0.02, 0.09, skin, 8), -0.05 + k * 0.033, -0.12, 0);
+    // The glints: star flashes on the ice, each on its own beat (a fixed schedule -- nothing random).
+    const glints = [];
+    const glint = (parent, x, y, z, k, s = 0.14) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: doc ? M.glint() : null, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })); sp.position.set(x, y, z); sp.scale.setScalar(s); parent.add(sp); glints.push({ sp, k, s }); };
+    studs.forEach((d, k) => glint(d.parent, d.position.x * 1.6, 0, 0.03, k * 1.3));
+    for (const [x, y, k] of [[-0.075, 0.08, 0.4], [0.06, 0.09, 2.1], [0.11, -0.11, 3.3], [-0.06, -0.1, 4.6], [0.02, -0.02, 5.4]]) glint(pend, x, y, 0.03, k, 0.12);
+    glint(face, 0.05, 0.05, 0.04, 1.7, 0.16); glint(face, -0.06, -0.03, 0.04, 3.9, 0.1);
+    for (const [u, k] of [[0.08, 0.9], [0.3, 2.6], [0.7, 4.1], [0.9, 5.8]]) { const p = curve.getPointAt(u); glint(chain, p.x, p.y, p.z + 0.02, k, 0.09); }
+    // THE BLING (2026-11-24: "Ice Berg needs particle effect bling on him and his diamonds"): an icy shimmer drifting
+    // up round him, and a swarm of sparkles orbiting each diamond -- the studs, the 12, the watch. Fixed paths per
+    // particle (no dice), additive star sprites.
+    const fixedI = (k, m) => ((Math.sin(k * 12.9898 + m * 78.233) * 43758.5453) % 1 + 1) % 1;
+    const sparkPts = (n, size, color) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); return new THREE.Points(g, new THREE.PointsMaterial({ color, size, map: doc ? M.glint() : null, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true })); };
+    const shimmer = sparkPts(110, 0.17, 0xbfefff); root.add(shimmer);
+    const dust = sparkPts(60, 0.12, 0xffffff); root.add(dust);
+    const swarms = [];
+    const swarm = (parent, x, y, z, r, n, size, k) => { const p = sparkPts(n, size, 0xffffff); p.position.set(x, y, z); parent.add(p); swarms.push({ p, r, k }); };
+    studs.forEach((d, k) => swarm(d.parent, d.position.x, 0, 0.02, 0.08, 12, 0.24, k * 2.1));
+    swarm(pend, 0.0, 0.0, 0.04, 0.17, 24, 0.3, 5.3);
+    swarm(face, 0, 0, 0.04, 0.11, 16, 0.26, 7.7);
+    swarm(chain, 0, 0.36, 0.2, 0.22, 18, 0.18, 9.1);
+    const ease = (a, b, k) => a + (b - a) * (k < 0 ? 0 : k > 1 ? 1 : k * k * (3 - 2 * k));
+    return { tick(t) {
+      // The shimmer: rising round him and wrapping back to his feet; the dust twinkles in place round his upper body.
+      const sp = shimmer.geometry.attributes.position;
+      for (let k = 0; k < sp.count; k++) { const life = (t * (0.12 + 0.16 * fixedI(k, 1)) + fixedI(k, 2)) % 1, a = fixedI(k, 3) * Math.PI * 2 + life * 2.2 + t * 0.3, rr = 0.6 + 0.55 * fixedI(k, 4); sp.setXYZ(k, Math.cos(a) * rr, -1.5 + life * 3.3, Math.sin(a) * rr * 0.6); }
+      sp.needsUpdate = true; shimmer.material.opacity = 0.55 + 0.25 * Math.sin(t * 4);
+      const dp = dust.geometry.attributes.position;
+      for (let k = 0; k < dp.count; k++) { const on = Math.sin(t * (3 + fixedI(k, 5) * 4) + k) > 0.6, a = fixedI(k, 6) * Math.PI * 2 + t * 0.2; dp.setXYZ(k, on ? Math.cos(a) * (0.5 + 0.5 * fixedI(k, 7)) : 0, on ? -0.2 + 1.5 * fixedI(k, 8) : -9, on ? 0.2 + 0.35 * fixedI(k, 9) : 0); }
+      dp.needsUpdate = true;
+      // The swarms: tight orbits round each diamond, pulsing bright on their own beat.
+      for (const { p, r, k } of swarms) {
+        const a = p.geometry.attributes.position;
+        for (let j = 0; j < a.count; j++) { const ang = t * (2 + fixedI(j + k, 1) * 3) + j * 2.4, rr = r * (0.5 + 0.6 * fixedI(j + k, 2)), h = (fixedI(j + k, 3) - 0.5) * r * 1.4 + Math.sin(t * 5 + j) * r * 0.15; a.setXYZ(j, Math.cos(ang) * rr, h, Math.sin(ang) * rr * 0.5 + 0.02); }
+        a.needsUpdate = true; p.material.opacity = 0.7 + 0.3 * Math.pow(Math.abs(Math.sin(t * 2.6 + k)), 3);
+      }
+      // Nodding to the beat.
+      const beat = Math.abs(Math.sin(t * Math.PI * 1.1));
+      body.position.y = beat * 0.025; head.rotation.x = -0.04 + Math.sin(t * Math.PI * 2.2) * 0.05; head.rotation.y = Math.sin(t * 0.7) * 0.15;
+      torso.rotation.y = Math.sin(t * 0.7) * 0.04; chain.rotation.x = Math.sin(t * Math.PI * 2.2) * 0.02;
+      // Every 5 s: the watch comes up to the camera (0.05-0.45), then the shaka (0.5-0.9).
+      const P = 5, p = (t % P) / P;
+      const w = p < 0.05 ? 0 : p < 0.13 ? (p - 0.05) / 0.08 : p < 0.37 ? 1 : p < 0.45 ? 1 - (p - 0.37) / 0.08 : 0;
+      L.sh.rotation.set(ease(0, -0.35, w), 0, ease(0.1, 0.38, w)); L.el.rotation.set(ease(-0.1, -2.5, w), ease(0, Math.PI, w), 0); // up by his face, the wrist turning the dial to the camera
+      const s = p < 0.5 ? 0 : p < 0.57 ? (p - 0.5) / 0.07 : p < 0.83 ? 1 : p < 0.9 ? 1 - (p - 0.83) / 0.07 : 0;
+      R.sh.rotation.set(ease(0, -0.2, s), 0, ease(-0.1, -0.55, s)); R.el.rotation.set(ease(-0.1, -2.3, s), 0, ease(0, -0.3, s));
+      R.hand.rotation.set(0, 0, s * Math.sin(t * 14) * 0.35);
+      for (const d of studs) d.rotation.y = t * 1.6;
+      for (const g of glints) { const f = Math.pow(Math.max(0, Math.sin(t * 2.9 + g.k * 1.7)), 8), flash = Math.max(f, w * 0.0); g.sp.material.opacity = flash; g.sp.scale.setScalar(g.s * 1.8 * (0.6 + flash)); g.sp.material.rotation = t * 0.8 + g.k; }
+      const gl = 0.08 * Math.sin(t * 3); ice.emissive.setRGB(0.22 + gl, 0.28 + gl, 0.34 + gl);
     } };
   },
 
