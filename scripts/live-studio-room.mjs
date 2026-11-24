@@ -293,6 +293,17 @@ export class ManaLiveStudio extends DurableObject {
     return this.publicState(s);
   }
   snapshot() { return this.publicState(); }
+  // FOLLOW THE LIVE SHOW (store, 2026-11-24: "I didn't see us move through the shed when a purchase happened on the 2nd
+  // show" -- the studio was still on the last show, so the new show's sales didn't count). With automatic on, a show
+  // that's live on Whatnot becomes the studio's show by itself.
+  followShow(showId) {
+    const s = this.read();
+    if (!s.settings.automatic || !/^[0-9a-f-]{36}$/i.test(String(showId || '')) || s.settings.showId === showId) return { changed: false };
+    s.settings = { ...s.settings, showId }; s.revision++;
+    this.write(s);
+    this.broadcast({ type:'state', ...this.publicState(s) });
+    return { changed: true };
+  }
   update(settings, revision) {
     const s = this.read();
     if (revision !== s.revision) return { conflict:true, ...this.publicState(s) };
