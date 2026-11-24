@@ -284,7 +284,7 @@ let vendDraw=null,machine=null;
 import('./vending.mjs?v=7').then(v=>{vendDraw=v.createVending(document,{img:studioImg,where:'overlay'});if(machine)paintMachine(machine);}).catch(e=>console.warn('[studio] machine off:',e?.message||e));
 function paintMachine(m){if(!m)return;machine=m;vendDraw?.(m,{theme:beastMode()?'gb':''});}
 // THE FOC FLIPBOOK (2026-11-14): this week's books flipping by themselves, on the studio's clock (scripts/flipbook.mjs).
-let regulars=null;import('./regulars.mjs?v=1').then(m=>{regulars=m.createRegulars(document,{now:()=>Date.now()+offset});}).catch(e=>console.warn('[studio] regulars off:',e?.message||e));
+let regulars=null;import('./regulars.mjs?v=2').then(m=>{regulars=m.createRegulars(document,{now:()=>Date.now()+offset});}).catch(e=>console.warn('[studio] regulars off:',e?.message||e));
 let flipDraw=null,flipState=null;
 import('./flipbook.mjs?v=8').then(f=>{flipDraw=f.createFlipbook(document,{img:studioImg});if(flipState)paintFlip(flipState);}).catch(e=>console.warn('[studio] flipbook off:',e?.message||e));
 // FOC SHOW MODE (store, 2026-11-19: "the top camera will just be the top camera ... the bottom camera is going to just

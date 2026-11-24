@@ -131,6 +131,20 @@ console.log('Boss fits on screen: passed');
   assert.ok(ov.includes("if(e.kind==='seen'||e.kind==='amos'){regulars?.play(e.kind,e.startsAt,e.endsAt);return;}") && ov.includes("effect.kind!=='seen' && effect.kind!=='amos'"));
   assert.ok(ctl.includes("['seen','🤫 SEEN BUT NOT HEARD'],['amos','✌ AMOS']"));
   console.log('The regulars: Seen But Not Heard and Amos: passed'); }
+// 2026-11-24: "I want seen but not heard as a 3d cameo. No timers. I got buttons when people come in" -- the same button,
+// now a 3D guy (three.js, like Mr Fister); the 2D drawing stays as the fallback when WebGL isn't there.
+{ const S = await import('../scripts/seen-3d.mjs'), R = await import('../scripts/regulars.mjs');
+  assert.equal(S.seenPose(0).up, 0); assert.equal(S.seenPose(1).up, 0); assert.equal(S.seenPose(0.5).up, 1);
+  assert.equal(S.seenPose(0.3).look, -1); assert.equal(S.seenPose(0.46).look, 1); assert.equal(S.seenPose(0.75).hand, 1); assert.equal(S.seenPose(0.3).hand, 0);
+  const three = await import('../assets/vendor/three-0.160.0.module.min.js'), root = new three.Group(), m = S.buildSeen(root);
+  assert.ok(m.head && m.arm && m.pupils.length === 2 && root.children.length > 3, 'built from shapes');
+  const calls = []; const g = new Proxy({}, { get: (_, k) => typeof k === 'string' && !['font', 'textAlign', 'lineJoin', 'lineWidth', 'strokeStyle', 'fillStyle', 'globalAlpha', 'lineCap'].includes(k) ? (...a) => { calls.push(k); } : undefined, set: () => true });
+  R.drawSeen(g, 1080, 900, 0.5, { figure: false }); assert.ok(calls.includes('fillText') && !calls.includes('ellipse'), 'only the words over the 3D guy');
+  const src = fs.readFileSync('scripts/regulars.mjs', 'utf8'), s3 = fs.readFileSync('scripts/seen-3d.mjs', 'utf8');
+  assert.ok(src.includes("import('./seen-3d.mjs?v=1')") && src.includes('else drawSeen(g, c.width, c.height, t);'), '3D when it loads, 2D otherwise');
+  assert.ok(!/Math\.random|setInterval/.test(s3), 'nothing random, no timers: it plays on the button');
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("import('./regulars.mjs?v=2')"));
+  console.log('Seen But Not Heard in 3D: passed'); }
 // 2026-11-24: "covers show in the dashboard but not in OBS" -- the Lunar covers live on our own Worker; through the image
 // relay the Worker had to fetch itself, which Cloudflare refuses. They load straight from it now; the relay sends its own.
 { const ov = fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8'), sb = fs.readFileSync('scripts/shed-background.mjs', 'utf8'), wk = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
