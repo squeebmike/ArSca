@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.25.3-foc-find';
+const APP_VERSION = '2026.11.25.4-connect-bundles';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -17982,6 +17982,8 @@ function inventoryMatchesListing(i, listing){
   if(listing === 'on_whatnot') return i.sellOnWhatnot === true;
   if(listing === 'whatnot_bin') return whatnotModeOf(i) === 'bin';
   if(listing === 'whatnot_auction') return whatnotModeOf(i) === 'auction';
+  // (2026-11-25: "what's the easiest way to see all connectors in inventory?")
+  if(listing === 'connecting') return isConnectingCover(i) && (i.status || 'in_stock') === 'in_stock';
   if(listing === 'not_on_whatnot') return i.sellOnWhatnot !== true && !i.whatnotListedAt;
   return listing === 'listed_online' ? inventoryIsListed(i) : !inventoryIsListed(i);
 }
@@ -27826,6 +27828,105 @@ function bundleSelectedItems(){
   if(bundleDraftTotalCopies([...bundleDraftIds].map(id => all.find(i => i.id === id)).filter(Boolean)) < 2){ toast_dash('Pick at least 2 books for a bundle'); return; }
   openBundleBuilderModal();
 }
+// 🧩 CONNECTING SET BUNDLES (store, 2026-11-25: "build the one tap bundle maker. I want to select what goes in each
+// bundle ... mostly for connecting sets"): every in-stock connecting cover, grouped into its set (the same artist's
+// connecting covers across titles, or one title's left / middle / right). Each set shows its pieces, ticked; untick
+// what shouldn't go in, set how many bundles, the name and the price, then MAKE. Each bundle takes one copy of every
+// ticked piece (a row with more copies gives one up), the same as BUILD BUNDLE: pieces out of stock (Whatnot follows),
+// cost = the pieces' costs, the books marked sold when the bundle sells.
+function isConnectingCover(i){ return !!i && !i.isBundle && /connect|interlock/i.test(String(i.name || '') + ' ' + String(i.variant || '')); }
+function connectingSetKey(i){
+  let s = String(i.name || '').toUpperCase();
+  const dash = s.indexOf(' -- '); if(dash > 0) s = s.slice(0, dash);
+  // Drop the series/issue (everything up to the cover letter), the cover letter, positions and filler words.
+  s = s.replace(/^.*?\b(?:CVR|COVER)\s+[A-Z]{1,2}\b/, '').replace(/^.*?#\d+\s*/, '');
+  s = s.replace(/\b(LEFT|MIDDLE|CENTER|RIGHT|PART\s*\d+|INC|VAR|VARIANT|CARD\s*STOCK|FULL\s*ART|\[[A-Z]+\]|LEGACY)\b/g, ' ').replace(/[()\-,:]/g, ' ').replace(/\s+/g, ' ').trim();
+  return s || String(i.name || '').toUpperCase();
+}
+function connectingSetParts(rows){ const m = rows.map(r => String(r.name || '').match(/(\d+)\s*-\s*PART/i)).find(Boolean); return m ? Number(m[1]) : 0; }
+function connectingSetGroups(){
+  const by = new Map();
+  for(const i of (typeof all !== 'undefined' ? all : [])){
+    if(!isConnectingCover(i) || !inventoryItemBundleEligible(i)) continue;
+    const k = connectingSetKey(i); if(!by.has(k)) by.set(k, []); by.get(k).push(i);
+  }
+  return [...by.entries()].map(([key, list]) => {
+    let rows = list;
+    // One row per piece (two rows of the same cover: the one with more copies).
+    const byName = new Map(); for(const r of rows){ const n = String(r.name || '').split(' -- ')[0].trim().toUpperCase(), had = byName.get(n); if(!had || inventoryAvailableQuantity(r) > inventoryAvailableQuantity(had)) byName.set(n, r); }
+    rows = [...byName.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    // How many parts: "3-PART" in the name; else left/middle/right (3); else covers across different titles (all of
+    // them). One series' different issues with no part count is a run we can't size -- left unticked.
+    const known = connectingSetParts(rows), seriesOf = r => String(r.name || '').split('#')[0].trim().toUpperCase();
+    const lmr = rows.some(r => /\b(LEFT|MIDDLE|RIGHT)\b/i.test(r.name));
+    const oneSeries = new Set(rows.map(seriesOf)).size === 1;
+    const parts = known || (lmr ? 3 : rows.length);
+    const sizeKnown = !!known || lmr || !oneSeries;
+    return { key, rows, parts, complete: sizeKnown && rows.length >= parts && rows.length >= 2, sizeKnown };
+  }).sort((a, b) => Number(b.complete) - Number(a.complete) || a.key.localeCompare(b.key));
+}
+function openConnectingBundleMaker(){
+  const groups = connectingSetGroups();
+  if(!groups.length){ toast_dash('No in-stock connecting covers found'); return; }
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  const old = document.getElementById('connect-bundle-maker'); if(old && old.parentNode) old.parentNode.removeChild(old);
+  const box = document.createElement('div'); box.id = 'connect-bundle-maker';
+  box.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.72);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 10px';
+  const card = (g, gi) => {
+    const max = Math.min(...g.rows.map(r => inventoryAvailableQuantity(r)));
+    const price = g.rows.reduce((t, r) => t + (Number(r.market || r.salePrice || 0) || 0), 0);
+    const title = String(g.rows[0].name || '').split(' -- ')[0].replace(/\s*#\d+.*$/, '').trim();
+    const name = (g.rows.length > 1 && new Set(g.rows.map(r => String(r.name).split('#')[0].trim())).size > 1 ? g.key : title + ' ' + g.key).replace(/\s+/g, ' ').trim() + ' -- ' + (g.parts || g.rows.length) + '-PART CONNECTING SET';
+    return `<div class="cb-group" data-g="${gi}" style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;${g.complete ? '' : 'opacity:.8'}">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><b style="color:${g.complete ? 'var(--g)' : 'var(--gold)'};font-size:11px">${g.complete ? '✓ COMPLETE SET' : g.sizeKnown ? '⚠ ' + g.rows.length + ' OF ' + g.parts + ' PARTS IN STOCK' : '⚠ ' + g.rows.length + ' PIECES -- SET SIZE UNKNOWN'}</b><label style="font-size:10px"><input type="checkbox" class="cb-on" ${g.complete ? 'checked' : ''}> MAKE THESE</label></div>
+      ${g.rows.map(r => `<label style="display:flex;gap:8px;align-items:center;padding:4px 0;font-size:11px"><input type="checkbox" class="cb-piece" value="${esc(r.id)}" checked>${r.image ? `<img src="${esc(typeof prhCover === 'function' ? prhCover(r.image, 'small') : r.image)}" alt="" style="width:26px;height:39px;object-fit:cover;border-radius:3px">` : ''}<span style="flex:1;min-width:0">${esc(r.name)}</span><span style="color:var(--dim)">×${inventoryAvailableQuantity(r)} · $${(Number(r.market || r.salePrice || 0) || 0).toFixed(2)}</span></label>`).join('')}
+      <div style="display:grid;grid-template-columns:1fr 90px 90px;gap:6px;margin-top:6px;font-size:10px">
+        <label>NAME<input class="cb-name tsi" value="${esc(name)}" maxlength="120" style="width:100%"></label>
+        <label>HOW MANY<input class="cb-count tsi" type="number" min="1" max="${max}" value="${max}" style="width:100%"></label>
+        <label>PRICE EACH<input class="cb-price tsi" type="number" min="0.01" step="0.01" value="${price.toFixed(2)}" style="width:100%"></label>
+      </div></div>`;
+  };
+  box.innerHTML = `<div style="background:var(--surf);border:1px solid var(--g);border-radius:12px;max-width:760px;width:100%;padding:16px;font-family:var(--font-mono)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-family:'Orbitron',monospace;color:var(--g)">🧩 CONNECTING SET BUNDLES</b><button class="hbtn" id="cb-close">✕</button></div>
+    <div style="font-size:10px;color:var(--dim);margin-bottom:10px">Complete sets are ticked. Untick a piece to leave it out, set how many bundles and the price (it starts at the pieces' prices added up), then MAKE. Each bundle takes one copy of every ticked piece. The pieces leave stock (Whatnot follows); put the bundles on Whatnot from the bulk bar after.</div>
+    ${groups.map(card).join('')}
+    <button class="hbtn" id="cb-make" style="width:100%;padding:12px;color:var(--g);font-weight:800">🧩 MAKE THE TICKED BUNDLES</button></div>`;
+  document.body.appendChild(box);
+  box.querySelector('#cb-close').onclick = () => { if(box.parentNode) box.parentNode.removeChild(box); };
+  box.querySelector('#cb-make').onclick = async () => {
+    const jobs = [];
+    box.querySelectorAll('.cb-group').forEach(el => {
+      if(!el.querySelector('.cb-on').checked) return;
+      const ids = [...el.querySelectorAll('.cb-piece:checked')].map(x => x.value);
+      const n = Math.max(0, Math.floor(Number(el.querySelector('.cb-count').value) || 0)), price = Math.round((Number(el.querySelector('.cb-price').value) || 0) * 100) / 100, name = el.querySelector('.cb-name').value.trim();
+      if(ids.length >= 2 && n > 0 && price > 0 && name) jobs.push({ ids, n, price, name });
+    });
+    if(!jobs.length){ toast_dash('Tick at least one set with 2+ pieces, a count, a name and a price'); return; }
+    const total = jobs.reduce((t, j) => t + j.n, 0);
+    if(!confirm('Make ' + total + ' bundle' + (total === 1 ? '' : 's') + '?\n\n' + jobs.map(j => j.n + ' × ' + j.name + ' ($' + j.price.toFixed(2) + ')').join('\n'))) return;
+    const btn = box.querySelector('#cb-make'); btn.disabled = true;
+    let made = 0; const problems = [];
+    for(const j of jobs){
+      for(let k = 0; k < j.n; k++){
+        btn.textContent = 'Making ' + (made + 1) + ' of ' + total + '...';
+        try {
+          const items = [];
+          for(const id of j.ids){
+            const it = all.find(x => x.id === id);
+            if(!it || !inventoryItemBundleEligible(it)) throw new Error('a piece ran out: ' + (it ? it.name : id));
+            if(inventoryAvailableQuantity(it) === 1) items.push(it); else items.push(...await splitInventoryCopies(it, 1));
+          }
+          await createInventoryBundle(items, j.name, j.price); made++;
+        } catch(e) { problems.push(j.name + ': ' + (e.message || e)); break; }
+      }
+    }
+    if(box.parentNode) box.parentNode.removeChild(box);
+    if(typeof renderAll === 'function') renderAll();
+    toast_dash(made + ' bundle' + (made === 1 ? '' : 's') + ' made' + (problems.length ? ' -- ' + problems.slice(0, 2).join(' / ') : '') + '. Set them to Whatnot BUY IT NOW from the bulk bar to list them.');
+  };
+}
+window.openConnectingBundleMaker = openConnectingBundleMaker;
+
 function toggleBundleDraft(id){
   ensureBundleDraftBar();
   const item = all.find(i => i.id === id);

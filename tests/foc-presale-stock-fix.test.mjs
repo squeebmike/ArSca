@@ -109,7 +109,8 @@ const worker = fs.readFileSync('cloudflare-worker-full.js', 'utf8');
 const convert = worker.slice(worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock')"), worker.indexOf("if (url.pathname === '/foc/ebay/convert-to-instock')") + 6000);
 assert.match(convert, /const arrived = d => !!d\.focReceivedAt \|\| receivedSkuIds\.has\(d\.focSkuId\);/);
 assert.match(convert, /Number\(d\.qty \?\? d\.quantity \?\? 0\) > 0 && arrived\(d\);/);
-assert.match(convert, /if \(!live\.length \|\| !live\.every\(r => arrived\(r\.data\)\)\) tradingGroups\.delete\(listingId\);/);
+// The listing still switches only once every cover is in (2026-11-25: the ones that came in go on the shelf meanwhile).
+assert.match(convert, /if \(!live\.length \|\| !live\.every\(r => arrived\(r\.data\)\)\) \{\s*tradingGroups\.delete\(listingId\);/);
 assert.match(worker, /revertEbayPresaleListing: revertEbayRestListingToPresale,/);
 assert.match(worker, /if \(!policy\.id \|\| policy\.usedFallback\) throw new Error/, 'never reverts onto the wrong shipping policy');
 const ui = fs.readFileSync('scripts/foc-dashboard.js', 'utf8');

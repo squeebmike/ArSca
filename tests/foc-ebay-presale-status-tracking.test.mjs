@@ -86,7 +86,7 @@ const ebaySync = worker.slice(worker.indexOf('async function syncEbayOrdersForSt
 // The sale itself is applied by the shared applyEbaySaleToRow, which holds the presale-balance rule.
 const applySale = worker.slice(worker.indexOf('async function applyEbaySaleToRow('), worker.indexOf('async function syncEbayOrdersForStore('));
 assert.match(ebaySync, /applyEbaySaleToRow\(/);
-assert.match(applySale, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true;/,
+assert.match(applySale, /const preservePresale = !depleted && \(invRow\.status === 'presale' \|\| d\.source === 'foc_presale'\) && d\.ebayPresaleConverted !== true && d\.focArrivedInStock !== true;/,
   'automatic eBay order sync must preserve the remaining FOC presale balance');
 assert.match(applySale, /const nextStatus = depleted \? 'sold' : preservePresale \? 'presale' : 'in_stock';/,
   'automatic eBay order sync must not expose a partial presale as in-stock');

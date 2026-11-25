@@ -4020,7 +4020,9 @@ async function applyEbaySaleToRow(env, storeId, invRow, quantitySold, salePrice,
   // books arrived. The explicit receive/convert workflow marks a
   // received presale with ebayPresaleConverted; only that state is
   // allowed to become in_stock while quantity remains.
-  const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true;
+  // (2026-11-25) A cover that arrived while its multi-cover eBay listing waits on a later cover (focArrivedInStock) is
+  // shelf stock already -- a sale doesn't put it back to presale.
+  const preservePresale = !depleted && (invRow.status === 'presale' || d.source === 'foc_presale') && d.ebayPresaleConverted !== true && d.focArrivedInStock !== true;
   const nextStatus = depleted ? 'sold' : preservePresale ? 'presale' : 'in_stock';
   const nextData = { ...d, status: nextStatus, lifecycle: nextStatus, qty: remaining, quantity: remaining, salePrice, profit, channel: 'eBay', soldAt: depleted ? soldAt : '' };
   // eBay sold more than the presale row had left: the extra copies count as
@@ -7689,7 +7691,7 @@ async function routeRequest(request, env, ctx) {
       if (!cycleId) return json({ ok: false, error: 'cycleId required' }, 400);
 
       let candidates = [];
-      const tradingGroups = new Map();
+      const tradingGroups = new Map(), arrivedAhead = [];
       try {
         const { data } = await supabaseAdminFetchAll(env, `inventory_items?store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale&data->>source=in.(foc_presale,foc_presale_bundle)&select=id,data&order=id.asc`);
         // Store report: receiving a slip with some of a week's books switched
@@ -7717,11 +7719,24 @@ async function routeRequest(request, env, ctx) {
         for (const [listingId, rows] of tradingGroups) {
           const live = rows.filter(r => r.data.source === 'foc_presale' && Number(r.data.qty ?? r.data.quantity ?? 0) > 0);
           // One listing for every cover: it switches once they've all arrived.
-          if (!live.length || !live.every(r => arrived(r.data))) tradingGroups.delete(listingId);
+          if (!live.length || !live.every(r => arrived(r.data))) {
+            tradingGroups.delete(listingId);
+            // (store, 2026-11-25: "Robin Hood won't load in inventory from FOC. Says 0 added" -- its blind bag comes out
+            // 12/9, so the one eBay listing for every cover waited, and the covers that came in stayed presale.) The
+            // covers that arrived go on the shelf now; the eBay listing keeps its presale handling until the rest come.
+            for (const r of live) if (arrived(r.data)) arrivedAhead.push(r);
+          }
         }
       } catch (e) { return json({ ok: false, error: 'Could not load presale listings: ' + e.message }, 500); }
 
-      if (!candidates.length && !tradingGroups.size) return json({ ok: true, converted: 0, failed: [] });
+      // Arrived covers from a listing still waiting on others: in stock here (no eBay change).
+      let inStockAhead = 0;
+      for (const row of arrivedAhead) {
+        const d = row.data || {};
+        await supabaseAdminFetch(env, `inventory_items?id=eq.${row.id}&store_id=eq.${encodeURIComponent(storeId)}&status=eq.presale`, { method: 'PATCH', headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'in_stock', data: { ...d, name: stripPresaleSuffix(d.name) || d.name, status: 'in_stock', focArrivedInStock: true, focArrivedAt: new Date().toISOString() } }) }).then(() => { inStockAhead++; }).catch(() => {});
+      }
+      if (!candidates.length && !tradingGroups.size) return json({ ok: true, converted: 0, inStockAhead, failed: [] });
 
       let ebayToken = '';
       try { ebayToken = await getEbayUserAccessToken(env); }
@@ -7791,7 +7806,7 @@ async function routeRequest(request, env, ctx) {
         }
       }
       return json({
-        ok: true, converted, failed,
+        ok: true, converted, inStockAhead, failed,
         shippingPolicyWarning: normalFulfillmentPolicyId ? '' : 'No normal-handling shipping policy is configured -- converted listings may still show the long presale handling time. Set one in Settings -> Vendor Info -> EBAY LISTING SETTINGS.',
       });
     }
