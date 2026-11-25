@@ -29,3 +29,8 @@ console.log('Bundles: books sold with the bundle on every channel; BUNDLE THESE:
   assert.ok(app.includes("whatnotShowOnly: mode === 'auction', ...(mode === 'bin' ? { whatnotToBin: true } : {}) }"));
   assert.ok(w.includes("data->>whatnotToBin=eq.true&select=id,data&limit=50") && w.includes('const res = move.length ? await backToBuyItNow(move.map(r => r.id), deps) : [];') && w.includes('(inShow ? kept : move).push(r);'), 'the 10-minute run puts them back in the shop');
   console.log('Auction items back to Buy It Now: passed'); }
+// 2026-11-25: "add the per-show item list so we can see the gap".
+{ const w = fs.readFileSync('cloudflare-worker-full.js', 'utf8'), app = fs.readFileSync('scripts/dashboard-app.js', 'utf8'), html = fs.readFileSync('dashboard.html', 'utf8');
+  assert.ok(w.includes("if (url.pathname === '/whatnot/show-items' && request.method === 'GET') {") && w.includes('switched: listed.has(r.id) && !sold && d.whatnotShowOnly !== true'));
+  assert.ok(html.includes('onclick="openWhatnotShowItems()"') && app.includes('async function openWhatnotShowItems(){') && app.includes("'/whatnot/show-only?store_id='"));
+  console.log("What's in each show: passed"); }

@@ -13985,6 +13985,32 @@ async function routeRequest(request, env, ctx) {
       try { return json({ ok: true, ...(await runWhatnotShowEventsSync(env, { force: true })) }); }
       catch (e) { return json({ ok: false, error: e.message }, 502); }
     }
+    // GET /whatnot/show-items?showId= -- WHAT'S IN THIS SHOW (store, 2026-11-25: "add the per-show item list so we can see
+    // the gap"): every item the dashboard put in the show (auctions and Buy It Now), with what it is now -- still an
+    // auction, switched to Buy It Now, sold -- so a book that fell out of the show's auction is easy to see.
+    if (url.pathname === '/whatnot/show-items' && request.method === 'GET') {
+      const storeId = requestStoreId(request, url);
+      const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);
+      if (auth.error) return auth.error;
+      if (storeId !== whatnotStoreId(env) || !env.WHATNOT_API_KEY) return json({ ok: false, error: 'Whatnot is not connected to this store' }, 403);
+      const showId = String(url.searchParams.get('showId') || '');
+      if (!/^[0-9a-f-]{36}$/i.test(showId)) return json({ ok: false, error: 'showId is required' }, 400);
+      const s = encodeURIComponent(storeId);
+      const listed = new Set((await env.LBA_KV.get(`whatnot-show-items:${storeId}:${showId}`, 'json').catch(() => null)) || []);
+      const rows = (await supabaseAdminFetch(env, `inventory_items?store_id=eq.${s}&data->>sellOnWhatnot=eq.true&status=in.(in_stock,sold,sold_pending_shipment,sold_pending_pickup)&select=id,status,data&limit=3000`)).data || [];
+      const items = [];
+      for (const r of rows) {
+        const link = await env.LBA_KV.get(`whatnot-link:${storeId}:${r.id}`, 'json').catch(() => null);
+        const inShow = (link?.shows || []).map(String).includes(showId);
+        if (!inShow && !listed.has(r.id)) continue;
+        const d = r.data || {}, sold = r.status !== 'in_stock';
+        const now = sold ? 'sold' : d.whatnotShowOnly === true ? 'auction' : 'buy it now';
+        items.push({ id: r.id, name: String(d.name || d.title || 'Item').slice(0, 160), image: String(d.image || d.imageUrl || ''), price: Number(d.salePrice ?? d.market ?? 0) || 0, qty: Number(d.quantity ?? d.qty ?? 1) || 0,
+          now, wasAuction: listed.has(r.id), switched: listed.has(r.id) && !sold && d.whatnotShowOnly !== true });
+      }
+      items.sort((a, b) => Number(b.switched) - Number(a.switched) || a.name.localeCompare(b.name));
+      return json({ ok: true, showId, items, counts: { total: items.length, auctions: items.filter(i => i.now === 'auction').length, switched: items.filter(i => i.switched).length, sold: items.filter(i => i.now === 'sold').length } });
+    }
     if (url.pathname === '/whatnot/shows/upcoming' && request.method === 'GET') {
       const storeId = requestStoreId(request, url);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin','manager']);

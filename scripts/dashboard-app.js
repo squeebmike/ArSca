@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.24.6-center-bar';
+const APP_VERSION = '2026.11.25.2-room-names';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -18297,6 +18297,54 @@ function toggleInvBulkSelectAllPage(checked){
 // not just what's on the current page -- for a staffer who filtered down to
 // exactly what they want (e.g. Category=Pokemon, In Stock) and just wants
 // all of it, without paging through and checking each page by hand.
+// 📋 WHAT'S IN EACH SHOW (store, 2026-11-25: "add the per-show item list so we can see the gap"): pick a scheduled show,
+// see every item put in it and what it is now. Books that were auctions in it but got switched to Buy It Now are at the
+// top, ticked: PUT BACK AS AUCTIONS returns them to the show's auction (the store's starting-bid rule).
+async function openWhatnotShowItems(){
+  const store = getActiveStoreId(), esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  let shows = [];
+  try { const r = await storeWorkerFetch(WORKER + '/whatnot/shows/upcoming?store_id=' + encodeURIComponent(store), { cache:'no-store' }); const d = await r.json().catch(() => ({})); if(!r.ok || !d.ok) throw new Error(d.error || 'Could not reach Whatnot'); shows = d.shows || []; }
+  catch(e){ toast_dash(e.message || String(e)); return; }
+  if(!shows.length){ toast_dash('No scheduled Whatnot shows'); return; }
+  const old = document.getElementById('wn-show-items'); if(old) old.parentNode.removeChild(old);
+  const box = document.createElement('div'); box.id = 'wn-show-items';
+  box.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px 10px';
+  box.innerHTML = `<div style="background:var(--surf);border:1px solid var(--gold);border-radius:12px;max-width:720px;width:100%;padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-family:'Orbitron',monospace;color:var(--gold)">📋 WHAT'S IN EACH SHOW</b><button class="hbtn" id="wn-si-close">✕</button></div>
+    <select id="wn-si-show" style="width:100%;margin-bottom:10px">${shows.map(sh => `<option value="${esc(sh.id)}">${esc(new Date(sh.startsAt).toLocaleString([], { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }))} · ${esc(sh.title || 'Show')}</option>`).join('')}</select>
+    <div id="wn-si-body" style="font-family:var(--font-mono);font-size:11px">Loading...</div></div>`;
+  document.body.appendChild(box);
+  box.querySelector('#wn-si-close').onclick = () => { if(box.parentNode) box.parentNode.removeChild(box); };
+  const load = async () => {
+    const body = box.querySelector('#wn-si-body'), showId = box.querySelector('#wn-si-show').value; body.textContent = 'Loading...';
+    try {
+      const r = await storeWorkerFetch(WORKER + '/whatnot/show-items?store_id=' + encodeURIComponent(store) + '&showId=' + encodeURIComponent(showId), { cache:'no-store' });
+      const d = await r.json().catch(() => ({})); if(!r.ok || !d.ok) throw new Error(d.error || 'Could not load the show');
+      const c = d.counts || {}, items = d.items || [];
+      const tag = i => i.switched ? '<b style="color:#ff4d6d">⚠ SWITCHED TO BUY IT NOW</b>' : i.now === 'sold' ? '<span style="color:var(--dim)">SOLD</span>' : i.now === 'buy it now' ? '<span style="color:var(--g)">BUY IT NOW</span>' : '<span style="color:var(--purple)">AUCTION</span>';
+      body.innerHTML = `<div style="margin-bottom:8px">${c.total || 0} items · ${c.auctions || 0} auctions · <b style="color:#ff4d6d">${c.switched || 0} switched to Buy It Now</b> · ${c.sold || 0} sold</div>`
+        + (c.switched ? `<button class="hbtn" id="wn-si-back" style="width:100%;margin-bottom:8px;color:var(--purple)">↩ PUT THE ${c.switched} SWITCHED BACK AS AUCTIONS IN THIS SHOW</button>` : '')
+        + (items.length ? items.map(i => `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">${i.switched ? `<input type="checkbox" class="wn-si-pick" value="${esc(i.id)}" checked>` : '<span style="width:13px"></span>'}${i.image ? `<img src="${esc(typeof prhCover === 'function' ? prhCover(i.image, 'small') : i.image)}" alt="" style="width:28px;height:42px;object-fit:cover;border-radius:3px">` : ''}<span style="flex:1;min-width:0">${esc(i.name)}</span><span>$${Number(i.price || 0).toFixed(2)}</span>${tag(i)}</div>`).join('') : '<div style="color:var(--dim)">Nothing from the dashboard is in this show yet.</div>');
+      const back = body.querySelector('#wn-si-back');
+      if(back) back.onclick = async () => {
+        const ids = [...body.querySelectorAll('.wn-si-pick:checked')].map(x => x.value); if(!ids.length) return;
+        if(!confirm('Put ' + ids.length + ' book' + (ids.length === 1 ? '' : 's') + ' back in this show as auctions (show only, out of the Buy It Now shop)?')) return;
+        let added = 0; const problems = [];
+        for(let i = 0; i < ids.length; i += 25){
+          back.textContent = 'Working... ' + i + ' of ' + ids.length;
+          const r2 = await storeWorkerFetch(WORKER + '/whatnot/show-only?store_id=' + encodeURIComponent(store), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:ids.slice(i, i + 25), showId }) });
+          const d2 = await r2.json().catch(() => ({})); if(!r2.ok || !d2.ok){ problems.push(d2.error || 'failed'); continue; }
+          added += Number(d2.added || 0); problems.push(...(d2.results || []).filter(x => x.error).map(x => (x.name || x.id) + ': ' + x.error));
+        }
+        toast_dash(added + ' back in the show as auctions' + (problems.length ? ' -- ' + problems.length + ' problem' + (problems.length === 1 ? '' : 's') + ': ' + problems.slice(0, 2).join(' / ') : ''));
+        if(typeof loadInventory === 'function'){ try { await loadInventory(); } catch(e) {} }
+        load();
+      };
+    } catch(e){ body.textContent = e.message || String(e); }
+  };
+  box.querySelector('#wn-si-show').onchange = load; load();
+}
+window.openWhatnotShowItems = openWhatnotShowItems;
 // ONE TAP: unsold books from Whatnot shows that are over -> back in the shop as Buy It Now, at dashboard prices.
 async function endedAuctionsToBin(){
   try {
