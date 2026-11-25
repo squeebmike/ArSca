@@ -1,5 +1,5 @@
 import {DEFAULT_STUDIO, COMBO_WINDOW_MS, EFFECT_LABELS, publicStats, emptyStats, marqueeLines, hypeNow, hypeAfterSale, HYPE_MOOD, HYPE_MAX} from './live-studio-model.mjs';
-import {bossById, drawBoss} from './live-studio-bosses.mjs?v=4';
+import {bossById, drawBoss} from './live-studio-bosses.mjs?v=5';
 import {createByteRider} from './byterider.mjs';
 import {roomById} from './live-studio-dungeon.mjs';
 const $=id=>document.getElementById(id);

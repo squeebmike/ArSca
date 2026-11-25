@@ -95,6 +95,6 @@ console.log('Loaded chests: passed');
   assert.ok(room.includes("else if (input.boss !== undefined) s.dungeon = adjustDungeon(s.dungeon, { boss: input.boss, at: input.at }, now);") && room.includes("s.dungeon = adjustDungeon(s.dungeon, { summon: true, settings: s.settings }, now);"));
   assert.ok(api.includes("...(typeof body.boss==='string'?{boss:body.boss.slice(0,20)}:{}),") && api.includes("...(body.summon===true?{summon:true}:{})"));
   assert.ok(ctl.includes('id="mana-boss-pick"') && ctl.includes('⚔ SUMMON THE BOSS NOW') && ctl.includes("api('dungeon-adjust',{summon:true})"));
-  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("from './live-studio-bosses.mjs?v=4';"), 'the overlay loads the new catchphrase, not a cached one');
+  assert.ok(fs.readFileSync('scripts/live-studio-overlay.mjs', 'utf8').includes("from './live-studio-bosses.mjs?v=5';"), 'the overlay loads the new catchphrase, not a cached one');
   console.log('Pick and summon the boss: passed');
 }

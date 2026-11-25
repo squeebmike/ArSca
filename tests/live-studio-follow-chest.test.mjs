@@ -161,7 +161,7 @@ console.log('Boss fits on screen: passed');
 // 2026-11-24: "I need Ice Berg as a new boss and pop up ... backwards Mariners hat, 12 Seahawks jersey, a big diamond
 // earring in each ear, blue eyes, a blinged-out watch, a big platinum chain with a 12". Team colours and the 12; no logos.
 { const B = await import('../scripts/live-studio-bosses.mjs'), M = await import('../scripts/live-studio-model.mjs');
-  assert.ok(B.BOSS_IDS.includes('iceberg') && B.BOSS_ORDER.at(-1) === 'iceberg', 'a boss, last in the order (pick him per floor)');
+  assert.ok(B.BOSS_IDS.includes('iceberg') && B.BOSS_ORDER[1] === 'iceberg', 'a boss, floor 2 in the order (2026-11-25)');
   assert.equal(B.BOSSES.iceberg.name, 'ICE BERG');
   assert.ok(M.EFFECTS.includes('iceberg')); assert.equal(M.makeEffect('iceberg', M.DEFAULT_STUDIO, 0).endsAt, 7500);
   const src = fs.readFileSync('scripts/live-studio-3d.mjs', 'utf8'), body = src.slice(src.indexOf('\n  iceberg(root) {'), src.indexOf('\n  scalper(root) {'));

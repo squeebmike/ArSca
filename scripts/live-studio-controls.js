@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.25.1';
+  const STUDIO_V='2026.11.25.2';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -831,8 +831,8 @@
   let demoRun=0;const runBtn=host.querySelector('#mana-demo-run');
   runBtn.onclick=()=>{if(demoRun){clearInterval(demoRun);demoRun=0;runBtn.textContent='⏩ PLAY THROUGH THE DUNGEON (preview only)';status.textContent='Play-through stopped.';return;}
     const step=()=>{try{demoSale();}catch(e){clearInterval(demoRun);demoRun=0;runBtn.textContent='⏩ PLAY THROUGH THE DUNGEON (preview only)';status.textContent='Demo: '+(e?.message||e);}};
-    runBtn.textContent='⏸ STOP THE PLAY-THROUGH';demoRun=setInterval(step,3500);step();};
-  const demoSale=()=>{const v=values(),amount=v.gameMode==='beasts'?[4,3,5,4,6][demo%5]:[12,45,8,150,25][demo%5]; demo++; // beasts: small steps, so the demo walks into the tall grass and fights
+    runBtn.textContent='⏸ STOP THE PLAY-THROUGH';demoRun=setInterval(step,6000);step();};
+  const demoSale=()=>{const v=values(),amount=v.gameMode==='beasts'?[4,3,5,4,6][demo%5]:[12,25,8,40,15][demo%5]; demo++; // (2026-11-25) no $150 jump: every boss gets a fight // beasts: small steps, so the demo walks into the tall grass and fights
     if(demo===1){demoGross=stats?.gross||0;demoBig=stats?.biggest||0;}
     const wasAlive=demoGross<v.bossGoal;demoGross+=amount;demoBig=Math.max(demoBig,amount);const hp=Math.max(0,v.bossGoal-demoGross);
     const fake={gross:demoGross,sold:(stats?.sold||0)+demo,biggest:demoBig,combo:demo,lastSaleAt:Date.now(),giveaways:0,boss:{name:v.bossName,goal:v.bossGoal,hp,pct:hp/v.bossGoal*100,defeated:hp<=0,reward:v.bossReward}};
@@ -852,7 +852,11 @@
       // The chests open in the demo too, each with what's loaded in it for that floor (chat's tap goals count as met here).
       let chest=null;if(!boss&&!fl){const c=dungeonLib.chestsToOpen(demoDungeon,{...v,chestGoals:''})[0];if(c){demoDungeon=dungeonLib.openChest(demoDungeon,c.k);const ld=dungeonLib.nextChestLoad(v,demoDungeon);if(ld)demoDungeon=dungeonLib.useChestLoad(demoDungeon,ld.id);
         chest={chestText:ld?ld.t:(c.k<(Number(v.giveawayChests??2)||0)?'FREE GIVEAWAY':'THE NEXT BOOK UP'),chestGoal:'CHEST '+(c.k+1)+' OF 3',...(ld?.i?{item:ld.i}:{})};fake.dungeon=dungeonLib.publicDungeon(demoDungeon,v,demoGross);}}
-      if(boss){kind='boss';extra={dungeon:true,...boss};}else if(fl){kind='floor';extra=fl;}else if(chest){kind='chest';extra=chest;}else if(un){kind='unlock';extra={unlockText:un.text,unlockAt:un.n};}
+      // EVERY STEP, IN ORDER (2026-11-25: "it didn't do Fister when I ran the demo" -- one big sale filled the flask AND
+      // beat the boss, and only the last step showed): the boss coming out, then going down, then the chest, each its turn.
+      const steps=[];for(const ev of r.events){if(ev.kind==='floor')steps.push(['floor',ev]);else if(ev.kind==='boss')steps.push(['boss',{dungeon:true,...ev}]);}
+      if(chest)steps.push(['chest',chest]);if(un)steps.push(['unlock',{unlockText:un.text,unlockAt:un.n}]);
+      if(steps.length){[kind,extra]=steps[0];steps.slice(1).forEach(([k,x],n)=>setTimeout(()=>preview({id:'demo-'+Date.now()+'-'+n,kind:k,startsAt:Date.now(),endsAt:Date.now()+5000,amount:0,combo:demo,reward:v.bossReward,bossName:v.bossName,...x},fake),5200*(n+1)));}
       if(demoRun)status.textContent='Preview: floor '+fake.dungeon.floor+' · '+fake.dungeon.shed+(fake.dungeon.phase==='boss'?' · BOSS: '+fake.dungeon.boss.name:'')+(chest?' · chest: '+chest.chestText:'');
     }
     demoFake=fake;demoUntil=Date.now()+120000;

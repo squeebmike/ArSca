@@ -138,7 +138,9 @@ export const BOSSES = {
     `<path d="M19 29 L20 32 L19 35 L18 32 Z M45 29 L46 32 L45 35 L44 32 Z" fill="#e6f7ff" stroke="#fff" stroke-width=".6"/>`) },
 };
 // Which boss guards which floor: each shed its own, then all of them in turn.
-export const BOSS_ORDER = ['fister', 'mimic', 'golem', 'kraken', 'lich', 'raccoonking', 'lowballer', 'dragon', 'hydra', 'scalper', 'flipper', 'grader', 'dinged', 'shipping', 'iceberg'];
+// (2026-11-25: "put in Ice Berg as floor number 2 boss") -- the week's order: Fister, Ice Berg, the Golem, the Kraken,
+// the Raccoon King, then the rest. A floor's boss can still be picked by hand (DUNGEON PLAN) or from a saved setup.
+export const BOSS_ORDER = ['fister', 'iceberg', 'golem', 'kraken', 'raccoonking', 'mimic', 'lich', 'lowballer', 'dragon', 'hydra', 'scalper', 'flipper', 'grader', 'dinged', 'shipping'];
 // What each of the first five does when it gets angry.
 for (const [id, move] of [['scalper', 'snatch'], ['flipper', 'barrage'], ['dinged', 'chomp'], ['grader', 'curse'], ['shipping', 'trash']]) BOSSES[id].move = move;
 export const BOSS_IDS = Object.keys(BOSSES);
