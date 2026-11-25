@@ -41,3 +41,10 @@ assert.ok(ctl.includes("dungeonLib.chestsToOpen(demoDungeon,{...v,chestGoals:''}
 const demoBody = ctl.slice(ctl.indexOf('const demoSale=()=>{'), ctl.indexOf("host.querySelector('#mana-link')"));
 assert.ok(!/api\(/.test(demoBody), 'the demo never calls the studio');
 console.log('Saved dungeon setups: passed');
+// 2026-11-25: "it keeps blowing out what's loaded ... I regularly have a phone open" -- LOAD reads the latest first and
+// sends only the setup's own fields (the studio merges them into what it has), retrying on a change from another screen.
+{ const c = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), room = fs.readFileSync('scripts/live-studio-room.mjs', 'utf8');
+  assert.ok(c.includes("const fresh=await api('state');revision=fresh.revision;") && c.includes("d=await api('settings',{settings:set,revision});"));
+  assert.ok(!/loadSetup[\s\S]{0,1500}settings:values\(\),revision/.test(c.slice(c.indexOf('async function loadSetup(su){'), c.indexOf('async function loadSetup(su){') + 1600)), 'LOAD never sends the whole screen');
+  assert.ok(room.includes('s.settings = {...s.settings, ...validateSettings({...s.settings,...settings})};'), 'the studio merges a partial save');
+  console.log('LOAD is safe with a phone open: passed'); }
