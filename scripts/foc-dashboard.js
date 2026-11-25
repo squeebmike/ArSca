@@ -107,11 +107,49 @@ function distributorTabs(){
   }).join('')+'</div>';
 }
 
+// 🔎 FIND A BOOK IN ANY FOC WEEK (store, 2026-11-25): one search across every week from the last month on. Each hit
+// shows its FOC and on-sale dates and what's ordered; the quantity saves right there, OPEN WEEK goes to its cover wall.
+var focFindTimer=0;
+function focFindBooks(q){
+  clearTimeout(focFindTimer);var box=document.getElementById('foc-find-results');if(!box)return;
+  q=String(q||'').trim();if(q.length<2){box.innerHTML='';return;}
+  focFindTimer=setTimeout(async function(){
+    box.innerHTML='<div style="font:10px var(--font-mono);color:var(--dim);padding:6px">Searching every FOC week…</div>';
+    try{
+      var d=await api('/foc/admin/find-books?store_id='+encodeURIComponent(getActiveStoreId())+'&q='+encodeURIComponent(q));
+      var books=d.books||[],today=new Date().toISOString().slice(0,10);
+      if(!books.length){box.innerHTML='<div style="font:10px var(--font-mono);color:var(--dim);padding:6px">Nothing in any FOC week matches "'+esc(q)+'".</div>';return;}
+      box.innerHTML='<div style="font:10px var(--font-mono);color:var(--dim);padding:4px 0">'+books.length+' cover'+(books.length===1?'':'s')+' · soonest FOC first</div>'+books.map(function(b){
+        var passed=b.focDate&&b.focDate<today,img=b.image?(typeof window.prhCover==='function'?window.prhCover(b.image,'small'):b.image):'';
+        return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">'
+          +(img?'<img src="'+esc(img)+'" alt="" loading="lazy" style="width:42px;height:63px;object-fit:cover;border-radius:4px;flex:none">':'<span style="width:42px;flex:none"></span>')
+          +'<div style="flex:1;min-width:0;font:11px/1.45 var(--font-mono)"><b style="color:var(--text)">'+esc(b.title)+'</b>'+(b.variant?'<br><span style="color:var(--gold)">'+esc(b.variant)+'</span>':'')
+          +'<br><span style="color:var(--dim)">'+esc(b.distributor)+' · FOC '+esc(b.focDate||'?')+(passed?' <b style="color:#ff4d6d">(PASSED)</b>':'')+' · on sale '+esc(b.onSale||'?')+(b.price?' · $'+b.price.toFixed(2):'')+'</span></div>'
+          +'<label style="font:9px var(--font-mono);color:var(--dim);text-align:center">ORDER<br><input type="number" min="0" step="1" value="'+b.ordered+'" style="width:56px" onchange="focFindSetQty(\''+esc(b.id)+'\',this)"></label>'
+          +'<button class="hbtn" style="font-size:9px;min-height:30px" onclick="focFindOpenWeek(\''+esc(b.cycleId)+'\',\''+esc(b.distributor)+'\')">OPEN WEEK</button></div>';
+      }).join('');
+    }catch(e){box.innerHTML='<div style="color:var(--red);font:10px var(--font-mono);padding:6px">'+esc(e.message||String(e))+'</div>';}
+  },300);
+}
+async function focFindSetQty(skuId,input){
+  var n=Math.max(0,Math.floor(Number(input.value)||0));input.value=n;
+  try{await api('/foc/admin/sku',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({storeId:getActiveStoreId(),skuId:skuId,storeQuantity:n})});toast_dash('Order set: '+n);}
+  catch(e){toast_dash('Could not save: '+e.message);}
+}
+async function focFindOpenWeek(cycleId,distributor){
+  var q=(document.getElementById('foc-find-q')||{}).value||'';
+  if(distributor&&state.distributor!==distributor&&typeof switchFocDistributor==='function'){try{await switchFocDistributor(distributor);}catch(e){}}
+  await openCycle(cycleId);
+  var s=document.getElementById('foc-admin-search');if(s&&q){s.value=q;if(typeof window.filterFocAdmin==='function')window.filterFocAdmin(q);}
+}
+window.focFindBooks=focFindBooks;window.focFindSetQty=focFindSetQty;window.focFindOpenWeek=focFindOpenWeek;
+
 function renderCycles(){
   var host=panel();if(!host)return;
   var isLunar=state.distributor==='Lunar';
   var visibleCycles=state.cycles.filter(function(c){return (c.distributor||'PRH')===state.distributor;});
   host.innerHTML='<section class="foc-hero"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap"><div><div style="font:900 22px/1.1 \'Orbitron\',monospace;color:var(--text)">THE FOC WALL</div><div style="font:10px/1.65 var(--font-mono);color:var(--dim);max-width:720px;margin-top:6px">'+(isLunar?'Upload Lunar\'s weekly comics FOC file, review exact covers, set shelf quantities, and export the clean order.':'Upload Monday\'s PRH metadata file, review exact covers, set shelf quantities, secure incentives, and export the clean UPC order.')+'</div>'+distributorTabs()+'</div><div class="foc-toolbar"><input type="file" id="foc-import-file" accept=".csv,.xlsx,.xls" hidden onchange="'+(isLunar?'handleLunarFocImportFile(event)':'handleFocImportFile(event)')+'"><button class="hbtn" onclick="document.getElementById(\'foc-import-file\').click()">'+(isLunar?'IMPORT LUNAR FOC':'IMPORT PRH FOC')+'</button><button class="hbtn" onclick="loadFocCycles(true)">REFRESH</button><button class="hbtn" style="color:var(--purple)" title="Track connecting-cover sets across titles: bought, missed and upcoming" onclick="openConnectingCovers()">CONNECTING COVERS</button><button class="hbtn" style="color:var(--g)" title="Which series sell out and which comics sit on the shelf" onclick="openComicSellThrough()">📈 SELL-THROUGH</button><button class="hbtn" style="color:var(--g)" title="Photograph the packing slip and receive the books into stock" onclick="openPackingSlipScan()">📷 SCAN PACKING SLIP</button><button class="hbtn" style="color:var(--red)" title="Scans every past FOC cycle (not just the one you have open) for eBay presale listings nothing was actually ordered for" onclick="openOrphanedEbayScan()">FIND ORPHANED EBAY LISTINGS</button><button class="hbtn" style="color:var(--red)" title="Presales switched to in stock before their books came in, and covers counted twice" onclick="openPresaleStockCheck()">🩺 PRESALE STOCK CHECK</button><button class="hbtn" style="color:var(--blue)" title="Every live listing on your eBay account, checked against the dashboard" onclick="openEbayListingsCheck()">📋 EBAY LISTINGS CHECK</button><button class="hbtn" style="color:var(--g)" title="Edit the price and quantity of any live eBay listing" onclick="openEbayEditor()">✏️ ALL EBAY LISTINGS</button><button class="hbtn" style="color:var(--gold)" title="Paid website preorder copies set aside for their customers" onclick="openFocHolds()">📌 ON HOLD</button></div></div><div id="foc-import-status" class="foc-import-report" style="display:none"></div></section>'+
+    '<section class="panel" style="margin-bottom:14px"><div style="font-family:\'Orbitron\',monospace;color:var(--gold);font-size:11px;margin-bottom:6px">🔎 FIND A BOOK IN ANY FOC WEEK</div><input id="foc-find-q" class="tsi" type="search" placeholder="Title, cover, artist or writer -- e.g. robin hood 1:10" oninput="focFindBooks(this.value)" style="width:100%"><div id="foc-find-results"></div></section>'+
     '<details class="panel" style="margin-bottom:14px"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">REAL SHIPPING SETUP</summary><div id="foc-shipping-settings" style="padding-top:12px"><button class="hbtn" onclick="loadFocShippingSettings()">LOAD SHIPPING SETTINGS</button></div></details>'+
     (isLunar?
       '<details class="panel" style="margin-bottom:14px" ontoggle="if(this.open)loadLunarDiscountSettings()"><summary style="cursor:pointer;font-family:\'Orbitron\',monospace;color:var(--purple);font-size:11px">LUNAR COST ESTIMATE SETTINGS</summary><div style="padding-top:12px;font:10px/1.6 var(--font-mono);color:var(--dim)">A staff-only estimate shown on each cover below -- never shown to customers, and not a substitute for your actual Lunar invoice. Every other publisher uses a fixed default discount; DC and Image are tiered by trailing spend and change over time, so those two stay editable here.<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-top:8px"><label style="font:8px var(--font-mono);color:var(--dim)">DC DISCOUNT %<input id="foc-lunar-dc" class="tsi" type="number" min="0" max="90" value="'+lunarDcDiscount+'" style="width:80px"></label><label style="font:8px var(--font-mono);color:var(--dim)">IMAGE DISCOUNT %<input id="foc-lunar-image" class="tsi" type="number" min="0" max="90" value="'+lunarImageDiscount+'" style="width:80px"></label><button class="hbtn" onclick="saveLunarDiscountSettings()">SAVE</button></div></div></details>'

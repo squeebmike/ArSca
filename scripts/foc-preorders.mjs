@@ -2071,6 +2071,20 @@ function focIntelTitlesRelated(a,b){
 }
 const FOC_INTEL_ACTION_ORDER={ORDER:0,SPEC:1,REDUCE:2,SKIP:3};
 const CONNECTING_SKU_SELECT='id,cycle_id,family_id,distributor,title,subtitle,variant_label,cover_artist,cover_image_url,publisher,description,foc_date,on_sale_date,store_quantity,secured_quantity,is_incentive,ratio_threshold,upc,customer_price_cents';
+// FIND A BOOK IN ANY FOC WEEK (store, 2026-11-25: "search for books across each FOC ... so I can find them and add
+// them easier than looking through FOC weeks"): title, cover, artist or writer across every week from the last month
+// on, soonest FOC first, with what's ordered -- the dashboard sets the quantity right there.
+export async function adminFindBooks(request,env,deps,url){
+  const storeId=text(url.searchParams.get('store_id'),80);
+  const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
+  const q=text(url.searchParams.get('q'),80).replace(/[(),*]/g,' ').replace(/\s+/g,' ').trim();
+  if(q.length<2)return deps.json({ok:true,books:[]});
+  const db=(path,options)=>deps.supabaseAdminFetch(env,path,options),since=new Date(Date.now()-31*86400000).toISOString().slice(0,10);
+  // Every word has to match somewhere (title, cover, artist, writer): "robin hood 1:10" finds the 1:10s of Robin Hood.
+  const words=q.split(' ').filter(Boolean).slice(0,5),field=w=>`or(title.ilike.${encodeURIComponent('*'+w+'*')},variant_label.ilike.${encodeURIComponent('*'+w+'*')},cover_artist.ilike.${encodeURIComponent('*'+w+'*')},writer.ilike.${encodeURIComponent('*'+w+'*')})`;
+  const {data}=await db(`comic_skus?store_id=eq.${encodeURIComponent(storeId)}&foc_date=gte.${since}&and=(${words.map(field).join(',')})&select=id,cycle_id,distributor,title,variant_label,cover_artist,cover_image_url,publisher,foc_date,on_sale_date,store_quantity,secured_quantity,is_incentive,ratio_threshold,customer_price_cents,msrp_cents&order=foc_date.asc,title.asc,variant_label.asc&limit=80`);
+  return deps.json({ok:true,books:(data||[]).map(s=>({id:s.id,cycleId:s.cycle_id,distributor:s.distributor||'PRH',title:s.title||'',variant:s.variant_label||'',artist:s.cover_artist||'',image:s.cover_image_url||'',publisher:s.publisher||'',focDate:s.foc_date,onSale:s.on_sale_date,ordered:Number(s.store_quantity)||0,secured:Number(s.secured_quantity)||0,ratio:s.ratio_threshold||null,price:(Number(s.customer_price_cents)||Number(s.msrp_cents)||0)/100}))});
+}
 async function adminConnectingCovers(request,env,deps,url){
   const storeId=text(url.searchParams.get('store_id'),80);
   const auth=await deps.requireStoreUser(request,env,storeId,['owner','admin','manager','employee']);if(auth.error)return auth.error;
@@ -4785,6 +4799,7 @@ export async function handleFocRequest(request, env, url, deps) {
   if(path==='/foc/admin/orphaned-ebay-listings/end'&&request.method==='POST')return adminEndOrphanedEbayListings(request,env,deps);
   if(path==='/foc/admin/export'&&request.method==='GET')return exportPrh(env,deps,url,request);
   if(path==='/foc/admin/intelligence'&&request.method==='GET')return focIntelligence(request,env,deps,url);
+  if(path==='/foc/admin/find-books'&&request.method==='GET')return adminFindBooks(request,env,deps,url);
   if(path==='/foc/admin/connecting-covers'&&request.method==='GET')return adminConnectingCovers(request,env,deps,url);
   if(path==='/foc/admin/comic-sell-through'&&request.method==='GET')return adminComicSellThrough(request,env,deps,url);
   if(path==='/foc/admin/comic-demand'&&request.method==='GET')return adminComicDemand(request,env,deps,url);
