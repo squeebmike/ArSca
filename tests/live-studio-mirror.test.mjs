@@ -30,3 +30,9 @@ console.log('Live Studio mirror: passed');
   assert.ok(ov.includes('Math.floor(Date.now()/5000)%cbarLines.length'), 'the line turns on the clock');
   assert.ok(css.includes('body.mana-center #mana-sign.cbar #mana-cbar-track{') && !css.includes('#mana-vcard'));
   console.log('Center bar: chests, $ to go, next chest: passed'); }
+// 2026-11-25: the demo shows every step of a big sale (boss out, boss down, chest), and Ice Berg is floor 2's boss.
+{ const ctl = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), css = fs.readFileSync('assets/live-studio.css', 'utf8'), D = await import('../scripts/live-studio-dungeon.mjs');
+  assert.ok(ctl.includes("for(const ev of r.events){if(ev.kind==='floor')steps.push(['floor',ev]);else if(ev.kind==='boss')steps.push(['boss',{dungeon:true,...ev}]);}") && ctl.includes('[12,25,8,40,15]'));
+  assert.equal(D.bossForFloor(1), 'fister'); assert.equal(D.bossForFloor(2), 'iceberg');
+  assert.ok(css.includes('body.mana-center #mana-crawl.bar{display:none!important}'), 'the yellow strip is off with the center bar');
+  console.log('Demo shows every step; Ice Berg on floor 2; no yellow strip: passed'); }

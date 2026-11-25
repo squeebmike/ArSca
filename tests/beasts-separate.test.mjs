@@ -39,7 +39,7 @@ assert.ok(ctl.indexOf('<h3>👾 Beasts settings</h3>') < ctl.indexOf('name="beas
 // 6. (2026-11-13: "the pokemon doesn't respond to demo sale... still has old graphics. Why no chibi?")
 // The demo counts each sale (it sat in a comment, so the Beasts demo crashed on its empty start); the remote's
 // game modules are versioned (a phone kept an old beasts.mjs); the route always draws the chibi walkers.
-assert.ok(/amount=v\.gameMode==='beasts'\?\[4,3,5,4,6\]\[demo%5\]:\[12,45,8,150,25\]\[demo%5\];demo\+\+;/.test(ctl.replace(/ /g, '')), 'the demo counts its sales');
+assert.ok(/amount=v\.gameMode==='beasts'\?\[4,3,5,4,6\]\[demo%5\]:\[12,25,8,40,15\]\[demo%5\];demo\+\+;/.test(ctl.replace(/ /g, '')), 'the demo counts its sales');
 assert.ok(!/fightsdemo\+\+/.test(ctl));
 assert.ok(ctl.includes("const STUDIO_V='") && !/import\('\.\/(beasts|vending|live-studio-dungeon)\.mjs'\)/.test(ctl), 'versioned imports');
 assert.ok(ctl.includes("try{demoSale();}catch(e){status.textContent='Demo: '"), 'a failing demo says so');

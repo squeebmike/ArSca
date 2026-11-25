@@ -600,3 +600,10 @@ body.mana-center #mana-sign.cbar #mana-cbar-track{display:block;position:relativ
 body.mana-center #mana-sign.cbar{height:248px!important}
 #mana-cbar-sub b{color:#fff;font-weight:400}
 #mana-cbar-sub em{font-style:normal;color:#c8ff3d}
+/* (2026-11-25: "I want the top part of that bar, all the yellow, off ... the scrolling marquee gets cut off by the
+   $100 more to summon") -- with the center bar on, the old pixel strip above it is gone (the bar says it all now),
+   and the turning line sits clear of the marquee. */
+body.mana-center #mana-crawl.bar{display:none!important}
+body.mana-center #mana-sign.cbar{height:254px!important}
+body.mana-center #mana-sign.cbar #mana-cbar-sub{line-height:1.15;margin:4px 0 10px}
+body.mana-center #mana-sign.cbar .mana-track{margin-top:0;line-height:1.3}
