@@ -29,8 +29,9 @@ export const TAP_KINDS = ['follow', 'share', 'bookmark'];
 export const ROOMS = [
   { id: 'vault', name: 'TREASURE VAULT', icon: '💰', blurb: '$1 starts glitter in the dark' },
   { id: 'library', name: 'BACK ISSUE LIBRARY', icon: '📚', blurb: 'long boxes, stacked to the ceiling' },
-  { id: 'armory', name: 'SLAB ARMORY', icon: '🛡️', blurb: 'graded slabs on every wall' },
-  { id: 'forge', name: 'PACK FORGE', icon: '🔥', blurb: 'sealed wax, still warm' },
+  // (2026-11-25: "We don't have slabs ... it's comics") -- every room is about comics now.
+  { id: 'armory', name: 'KEY ISSUE ARMORY', icon: '🔑', blurb: 'first appearances on every wall' },
+  { id: 'forge', name: 'NEW RELEASE FORGE', icon: '🔥', blurb: 'this week\'s books, still warm off the truck' },
   { id: 'crypt', name: 'DOLLAR BIN CRYPT', icon: '🕯️', blurb: 'forgotten gems in the bins' },
   { id: 'lab', name: 'VARIANT LAB', icon: '🧪', blurb: 'covers you have never seen' },
 ];
