@@ -2,7 +2,7 @@
   'use strict';
   const host=document.getElementById('mana-live-studio');if(!host)return;
   // The game modules the remote loads, versioned (2026-11-13: a phone kept an old beasts.mjs, so the Beasts demo did nothing). Bump with each change to them.
-  const STUDIO_V='2026.11.25.2';
+  const STUDIO_V='2026.11.25.3';
   host.className='mana-controls';
   // ByteRider_97's reactions and their keyboard shortcuts (store: "how to control him?").
   const MASCOT_KEYS=[['happy','HAPPY','1'],['smug','SMUG','2'],['wink','WINK','3'],['laughing','LAUGH','4'],['love','LOVE','5'],['surprised','SURPRISED','6'],['angry','ANGRY','7'],['dizzy','DIZZY','8'],['sad','SAD','9'],['thinking','THINK','0'],
@@ -452,8 +452,15 @@
       chestLoad:JSON.stringify(fl.flatMap(f=>(f.chests||[]).map((c,k)=>({id:tag+'f'+f.floor+'c'+(k+1),t:c.t,f:f.floor,...(c.i?{i:c.i}:{})}))))};
     if(set.chestLoad==='[]')set.chestLoad='';
     if(typeof p.chestGoals==='string')set.chestGoals=p.chestGoals;if(Number.isInteger(p.giveawayChests))set.giveawayChests=p.giveawayChests;
-    for(const [k,v] of Object.entries(set)){const e=form.elements.namedItem(k);if(e)e.value=v;}
-    const d=await api('settings',{settings:values(),revision});revision=d.revision;chestDirty=false;took(d);
+    // (2026-11-25: "it keeps blowing out what's loaded. I regularly have a phone open with the controls") -- LOAD reads
+    // the studio's latest first and sends ONLY the setup's own fields, so nothing stale from this screen goes with it,
+    // and a change from the phone in between just means read again and retry.
+    let d=null;
+    for(let tries=0;tries<3&&!d;tries++){
+      const fresh=await api('state');revision=fresh.revision;
+      try{d=await api('settings',{settings:set,revision});}catch(e){if(!/another controller/i.test(e.message)||tries===2)throw e;}
+    }
+    revision=d.revision;chestDirty=false;unsaved.clear();took(d);
     const skipped=[];
     for(const f of fl){
       if(f.boss)try{took(await api('dungeon-adjust',{boss:f.boss,at:f.floor}));}catch(e){skipped.push('floor '+f.floor+' boss ('+e.message+')');}
