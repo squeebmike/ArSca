@@ -16,9 +16,10 @@ export async function handleLiveStudio(request,env,deps,url) {
     try { return deps.json({ok:true,show:await deps.currentShow(storeId)}); } catch { return deps.json({ok:false,error:'Could not reach Whatnot'},502); }
   }
   if (request.method!=='POST') return deps.json({ok:false,error:'Not found'},404);
-  // A prepped show's whole lineup (up to 60) fits.
+  // A prepped show's whole lineup (up to 60) fits. The settings too (2026-11-26: a 7-floor dungeon's chests, with
+  // the marquee templates, ran past 8 KB and every save after loading it was turned away as too large).
   // A whole FOC week in the flipbook (every book, every cover, the synopses) is the big one.
-  const parsed=await deps.readJsonWithLimit(request,url.pathname==='/live-studio/flip'?800*1024:['/live-studio/stage','/live-studio/pics','/live-studio/machine','/live-studio/fister-face'].includes(url.pathname)?65536:8192);
+  const parsed=await deps.readJsonWithLimit(request,url.pathname==='/live-studio/flip'?800*1024:['/live-studio/stage','/live-studio/pics','/live-studio/machine','/live-studio/fister-face','/live-studio/settings'].includes(url.pathname)?65536:8192);
   if (parsed.error) return parsed.error;
   const body=parsed.data || {};
   // A chest that opened: its item goes into the Whatnot show as a $1-start

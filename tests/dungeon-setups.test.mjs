@@ -48,3 +48,8 @@ console.log('Saved dungeon setups: passed');
   assert.ok(!/loadSetup[\s\S]{0,1500}settings:values\(\),revision/.test(c.slice(c.indexOf('async function loadSetup(su){'), c.indexOf('async function loadSetup(su){') + 1600)), 'LOAD never sends the whole screen');
   assert.ok(room.includes('s.settings = {...s.settings, ...validateSettings({...s.settings,...settings})};'), 'the studio merges a partial save');
   console.log('LOAD is safe with a phone open: passed'); }
+// 2026-11-26: a 7-floor setup (21 chests with covers) plus the marquee templates is bigger than 8 KB -- settings saves
+// take up to 64 KB, like the lineup.
+{ const api = fs.readFileSync('scripts/live-studio-api.mjs', 'utf8');
+  assert.ok(api.includes("'/live-studio/fister-face','/live-studio/settings'].includes(url.pathname)?65536:8192"));
+  console.log('Big dungeon setups save: passed'); }
