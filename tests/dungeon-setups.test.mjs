@@ -53,3 +53,10 @@ console.log('Saved dungeon setups: passed');
 { const api = fs.readFileSync('scripts/live-studio-api.mjs', 'utf8');
   assert.ok(api.includes("'/live-studio/fister-face','/live-studio/settings'].includes(url.pathname)?65536:8192"));
   console.log('Big dungeon setups save: passed'); }
+// 2026-11-27: the loaded dungeon kept going back to the old chests -- every save sends only what that screen changed
+// (an older copy elsewhere can't undo a LOAD), and LOAD checks the studio kept the chests and says so in a pop-up.
+{ const c = fs.readFileSync('scripts/live-studio-controls.js', 'utf8');
+  assert.ok(!c.includes('settings:values(),revision'), 'no save sends the whole screen');
+  assert.ok(c.includes("function changed(){const v=values(),out={};for(const k of Object.keys(v)){if(!settings||!(k in settings)||JSON.stringify(v[k])!==JSON.stringify(settings[k]))out[k]=v[k];}return out;}"));
+  assert.ok(c.includes("if(landed!==want)throw Error('The studio did not keep the chests") && c.includes("alert('LOAD did not finish: '+e.message)"));
+  console.log('Saves send only what changed; LOAD checks itself: passed'); }

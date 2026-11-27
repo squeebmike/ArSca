@@ -231,17 +231,17 @@
     const sr=host.querySelector('#mana-show-ready');if(sr)sr.onclick=()=>{if(confirm('Load the dungeon from your comics in stock? It replaces the chest, floor and room rewards'+((stage.next||[]).length<5?' and fills NEXT UP':'')+'.'))run(showReady);};
     // LONG BOX BEASTS: your face and Champ's from a photo (12 x 12, four greens -- kept in the settings, no upload);
     // chat's new attack goes in as the 4th.
-    const faceIn=(fileId,field,viewId)=>{const inp=host.querySelector(fileId);if(!inp||inp.dataset.on)return;inp.dataset.on=1;inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;run(async()=>{const B=await import('./beasts.mjs?v='+STUDIO_V);const url=URL.createObjectURL(f);const im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(Error('Could not read that photo'));im.src=url;});form.elements.namedItem(field).value=B.faceFromImage(im);URL.revokeObjectURL(url);drawFace(viewId,field);const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Face saved -- it walks the route now.';});};};
+    const faceIn=(fileId,field,viewId)=>{const inp=host.querySelector(fileId);if(!inp||inp.dataset.on)return;inp.dataset.on=1;inp.onchange=()=>{const f=inp.files?.[0];if(!f)return;run(async()=>{const B=await import('./beasts.mjs?v='+STUDIO_V);const url=URL.createObjectURL(f);const im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=()=>no(Error('Could not read that photo'));im.src=url;});form.elements.namedItem(field).value=B.faceFromImage(im);URL.revokeObjectURL(url);drawFace(viewId,field);const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent='Face saved -- it walks the route now.';});};};
     // Mr Fister's face: the middle of the photo (head and beard), 112 x 128, as a small JPEG to the studio.
     const ff=host.querySelector('#fister-face-file');if(ff&&!ff.dataset.on){ff.dataset.on=1;ff.onchange=()=>{const f=ff.files?.[0];if(!f)return;const im=new Image();im.onload=()=>run(async()=>{const c=document.createElement('canvas');c.width=112;c.height=128;const x=c.getContext('2d'),w=im.naturalWidth,h=im.naturalHeight,s=Math.min(w,h*0.875)*0.62,cx=w/2,cy=h*0.42;x.drawImage(im,cx-s/2,cy-s*0.5714,s,s*1.1428,0,0,112,128);const face=c.toDataURL('image/jpeg',0.82);URL.revokeObjectURL(im.src);const v=host.querySelector('#fister-face-view');if(v)v.src=face;if(!connectedStore){status.textContent='Mr Fister\'s face is ready -- connect to send it to the show.';return;}await api('fister-face',{face});status.textContent='Mr Fister\'s face is on his 3D head.';});im.src=URL.createObjectURL(f);};}
     const fc=host.querySelector('#fister-face-clear');if(fc&&!fc.dataset.on){fc.dataset.on=1;fc.onclick=()=>run(async()=>{const v=host.querySelector('#fister-face-view');if(v)v.removeAttribute('src');if(connectedStore)await api('fister-face',{face:''});status.textContent='Mr Fister\'s face cleared.';});}
     faceIn('#beast-face-file','beastsFace','#beast-face-view');faceIn('#beast-buddy-file','beastsBuddy','#beast-buddy-view');
-    const addMove=host.querySelector('#beast-add-move');if(addMove)addMove.onclick=()=>run(async()=>{const nm=String(host.querySelector('#beast-new-move').value||'').trim().toUpperCase().slice(0,16);if(!nm)throw Error('Type the attack chat came up with');const el=form.elements.namedItem('beastsMoves');const cur=String(el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const base=cur.length?cur:['LOWBALL','PRICE CHECK','SLEEVE UP','BENT CORNER'];el.value=[...base.slice(0,3),nm].join('\n');const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);host.querySelector('#beast-new-move').value='';status.textContent='New attack: '+nm+' (slot 4).';});
+    const addMove=host.querySelector('#beast-add-move');if(addMove)addMove.onclick=()=>run(async()=>{const nm=String(host.querySelector('#beast-new-move').value||'').trim().toUpperCase().slice(0,16);if(!nm)throw Error('Type the attack chat came up with');const el=form.elements.namedItem('beastsMoves');const cur=String(el.value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);const base=cur.length?cur:['LOWBALL','PRICE CHECK','SLEEVE UP','BENT CORNER'];el.value=[...base.slice(0,3),nm].join('\n');const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);host.querySelector('#beast-new-move').value='';status.textContent='New attack: '+nm+' (slot 4).';});
     // THE GAME, in one tap (the setting is saved and the screens switch).
-    const gameBtn=(id,mode,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value=mode;preview();const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;paintGame();});};
+    const gameBtn=(id,mode,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value=mode;preview();const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent=msg;paintGame();});};
     gameBtn('#game-dungeon','dungeon','The Shed Dungeon is on.');
     // VENDING ONLY (2026-11-13): no game; the machine full screen behind you, stocked from the lineup if it's empty.
-    const gv=host.querySelector('#game-vending');if(gv)gv.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value='vending';preview();if(connectedStore){const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);}paintGame();await machineDo({...(!(machineCtl.items||[]).length&&(stage?.now||stage?.next?.length)?{load:'stage'}:{}),on:true,mode:'full'});status.textContent='Vending only: the machine is up, full screen behind you.'+((machineCtl.items||[]).length?'':' It is empty -- load NOW + NEXT UP or make spots.');});gameBtn('#game-beasts','beasts','Long Box Beasts is on.');
+    const gv=host.querySelector('#game-vending');if(gv)gv.onclick=()=>run(async()=>{form.elements.namedItem('gameMode').value='vending';preview();if(connectedStore){const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);}paintGame();await machineDo({...(!(machineCtl.items||[]).length&&(stage?.now||stage?.next?.length)?{load:'stage'}:{}),on:true,mode:'full'});status.textContent='Vending only: the machine is up, full screen behind you.'+((machineCtl.items||[]).length?'':' It is empty -- load NOW + NEXT UP or make spots.');});gameBtn('#game-beasts','beasts','Long Box Beasts is on.');
     // BEASTS' OWN BUTTONS (its section): taps, + $, the route, start over -- the server sends them to Beasts while it's on.
     host.querySelectorAll('[data-beast-tap]').forEach(b=>{b.onclick=()=>host.querySelector('#mana-taps [data-tap="'+b.dataset.beastTap+'"]')?.click();});
     const ba=host.querySelector('#beast-add-go');if(ba)ba.onclick=()=>{host.querySelector('#mana-add-mana').value=host.querySelector('#beast-add').value;host.querySelector('#beast-add').value='';host.querySelector('#mana-add-mana-go').click();};
@@ -250,7 +250,7 @@
     const br=host.querySelector('#beast-route');if(br)br.onclick=()=>host.querySelector('#quick-floor')?.click();
     const bz=host.querySelector('#beast-reset');if(bz)bz.onclick=()=>host.querySelector('#mana-reset-week')?.click();
     // Where the battle shows: over the hosts (the overlay) or behind them (the green screen).
-    const whereBtn=(id,v,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('beastsBattle').value=v;preview();paintGame();if(!connectedStore){status.textContent=msg+' (preview)';return;}const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;});};
+    const whereBtn=(id,v,msg)=>{const b=host.querySelector(id);if(b)b.onclick=()=>run(async()=>{form.elements.namedItem('beastsBattle').value=v;preview();paintGame();if(!connectedStore){status.textContent=msg+' (preview)';return;}const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent=msg;});};
     whereBtn('#battle-front','overlay','The battle shows in front of you.');whereBtn('#battle-green','green','The battle shows on the green screen, behind you.');
     // Reset the preview's demo (its floor, mana and sales go back to the show's), and set the floor in one tap.
     const dr=host.querySelector('#demo-reset');if(dr)dr.onclick=()=>{demo=0;demoGross=0;demoBig=0;demoDungeon=null;demoBeasts=null;demoFake=null;demoUntil=0;demoMove=null;preview();paintMoves();status.textContent='Preview demo reset.';};
@@ -439,7 +439,7 @@
       const lines=el('div',{className:'dg-setup-lines',style:'font-size:11px;line-height:1.5'});
       for(const f of p.floors||[])lines.append(el('div',{textContent:'FLOOR '+f.floor+(f.boss?' · '+(BOSS_NAMES[f.boss]||f.boss.toUpperCase()):'')+(f.room?' · '+f.room.toUpperCase():'')+(f.reward?' · 🏆 '+f.reward:'')+((f.chests||[]).length?' · 🧰 '+(f.chests||[]).map((c,k)=>(k+1)+') '+c.t+(c.i?.title?' ['+c.i.title+']':'')).join('  '):'')}));
       for(const x of p.stretch||[])lines.append(el('div',{textContent:'🎯 $'+x.at+': '+x.text}));
-      const load=el('button',{type:'button',textContent:'▶ LOAD INTO THE STUDIO',style:'font-weight:800'});load.onclick=()=>run(()=>loadSetup(su));
+      const load=el('button',{type:'button',textContent:'▶ LOAD INTO THE STUDIO',style:'font-weight:800'});load.onclick=()=>run(()=>loadSetup(su).catch(e=>{alert('LOAD did not finish: '+e.message);throw e;}));
       const del=el('button',{type:'button',textContent:'✕ DELETE'});del.onclick=()=>run(async()=>{if(!confirm('Delete the setup "'+su.name+'"?'))return;await setupsCall('DELETE','&id='+encodeURIComponent(su.id));await refreshSetups();status.textContent='Setup deleted.';});
       return el('div',{className:'chest-row'},head,lines,el('div',{style:'display:flex;gap:6px;flex-wrap:wrap'},load,del));}));
   }
@@ -467,13 +467,18 @@
       if(f.room)try{took(await api('dungeon-adjust',{room:f.room,at:f.floor}));}catch(e){skipped.push('floor '+f.floor+' room ('+e.message+')');}
     }
     paintChestLoad(true);setTimeout(paintPlan,0);
-    status.textContent='Loaded "'+su.name+'".'+(skipped.length?' Not set: '+skipped.join('; '):'');
+    // Checked from the studio itself: the chests it has now are the ones just loaded.
+    const after=await api('state');let have=[];try{have=JSON.parse(after.settings?.chestLoad||'[]');}catch{}
+    const want=set.chestLoad?JSON.parse(set.chestLoad).length:0,landed=have.filter(c=>String(c.id||'').startsWith(tag)).length;
+    if(landed!==want)throw Error('The studio did not keep the chests ('+landed+' of '+want+'). Tap LOAD again -- if it keeps happening, close the controls on your other screens first.');
+    status.textContent='Loaded "'+su.name+'": '+want+' chests, '+(p.stretch||[]).length+' stretch goals.'+(skipped.length?' Not set: '+skipped.join('; '):'');
+    alert(status.textContent);
   }
   async function saveChestLoad(){
     const list=(chestRows||[]).map(c=>({id:c.id||chestId(),t:String(c.t||'').trim().slice(0,120),...(c.f?{f:c.f}:{}),...(c.i?{i:c.i}:{})}));
     if(list.some(c=>!c.t))throw Error('Every chest needs words -- what it says on screen (or take it out).');
     const hid=form.elements.namedItem('chestLoad'),before=hid.value;hid.value=list.length?JSON.stringify(list):'';
-    try{const d=await api('settings',{settings:values(),revision});revision=d.revision;chestDirty=false;took(d);}catch(e){hid.value=before;throw e;}
+    try{const d=await api('settings',{settings:changed(),revision});revision=d.revision;chestDirty=false;took(d);}catch(e){hid.value=before;throw e;}
     paintChestLoad(true);status.textContent=list.length?'Chests loaded: '+list.length+' -- they open in this order.':'Loaded chests cleared -- chests work as before.';
   }
   // MARQUEE TEMPLATES (store, 2026-11-15: "a couple templates and being able to save them for the marquee sign"): a few
@@ -489,7 +494,7 @@
   function paintMarqueeTemplates(){const sel=host.querySelector('#mq-tpl');if(!sel)return;const keep=sel.value,mine=savedMarqueeTemplates();
     sel.replaceChildren(...MQ_BUILTIN.map((t,i)=>new Option('★ '+t.n,'b'+i)),...mine.map((t,i)=>new Option(t.n,'m'+i)));if([...sel.options].some(o=>o.value===keep))sel.value=keep;}
   const pickedMarquee=()=>{const v=host.querySelector('#mq-tpl')?.value||'',i=Number(v.slice(1));return v[0]==='b'?{t:MQ_BUILTIN[i],mine:false}:v[0]==='m'?{t:savedMarqueeTemplates()[i],i,mine:true}:null;};
-  const saveSettings=async msg=>{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=msg;};
+  const saveSettings=async msg=>{const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent=msg;};
   {const b=host.querySelector('#mq-use');if(b)b.onclick=()=>run(async()=>{const p=pickedMarquee();if(!p?.t)throw Error('Pick a template first.');const ta=form.elements.namedItem('message');ta.value=p.t.t;preview();await saveSettings('Marquee: '+p.t.n+' is on the sign.');});}
   {const b=host.querySelector('#mq-save');if(b)b.onclick=()=>run(async()=>{const text=String(form.elements.namedItem('message').value||'').trim();if(!text)throw Error('Type a marquee message first, then save it.');
     // (store, 2026-11-16) One of your saved templates picked: its name is filled in, so OK updates it in its place.
@@ -532,7 +537,7 @@
     box.querySelectorAll('[data-plan-room]').forEach(s=>s.onchange=()=>run(async()=>{const d=await api('dungeon-adjust',{room:s.value,at:Number(s.dataset.planRoom)});took(d);status.textContent='Floor '+s.dataset.planRoom+' room: '+(s.value?s.options[s.selectedIndex].text.split(' -- ')[0]:'chat picks at the doors')+'.';}));
     box.querySelectorAll('[data-plan-reward]').forEach(inp=>inp.onchange=()=>run(async()=>{const f=Number(inp.dataset.planReward),el=form.elements.namedItem('floorRewards');
       const lines=String(el?.value||'').split('\n').filter(l=>l.trim()&&!new RegExp('^\\s*'+f+'\\s*:').test(l));const v=inp.value.trim();if(v)lines.push(f+': '+v);
-      lines.sort((a,b)=>parseInt(a,10)-parseInt(b,10));if(el)el.value=lines.join('\n');const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Floor '+f+' reward '+(v?'saved.':'cleared (the room\'s reward, if any).');}));
+      lines.sort((a,b)=>parseInt(a,10)-parseInt(b,10));if(el)el.value=lines.join('\n');const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent='Floor '+f+' reward '+(v?'saved.':'cleared (the room\'s reward, if any).');}));
     const ed=box.querySelector('#dg-plan-edit');if(ed)ed.onclick=()=>{const c=host.querySelector('#chest-load');const det=c?.closest('details');if(det)det.open=true;c?.scrollIntoView({behavior:'smooth',block:'start'});};
   }
   function took(d){setTimeout(paintPlan,0);if(d.chestLoaded)status.textContent='Chest opened: '+d.chestLoaded+' -- run it in Whatnot.';if(d.stats&&!chestDirty&&!host.querySelector('#chest-load')?.contains(document.activeElement))setTimeout(()=>paintChestLoad(false),0);if(d.chestGiveaway)status.textContent='Chest opened: FREE GIVEAWAY! Start a giveaway in the Whatnot app (free for everyone watching).';if(d.chestItem)status.textContent='Chest opened: '+d.chestItem.title+' is NOW PLAYING'+(d.chestWhatnot?.added?' and in your Whatnot show as a $1 start -- tap start in the app.':d.chestWhatnot?.error?' (Whatnot: '+d.chestWhatnot.error+')':'.');if(Array.isArray(d.pics))shedPicsCtl=d.pics;if(d.settings)paint(d.settings);if(d.stats){stats=d.stats;host.querySelector('#mana-score').textContent=usd(stats.gross)+' · '+stats.sold+' sold · biggest '+usd(stats.biggest)+(stats.boss&&!stats.dungeon?.on?' · boss '+(stats.boss.defeated?'DEFEATED':'HP '+usd(stats.boss.hp)):'');paintDungeon();}if(d.stage){stage=d.stage;paintStage();}if(d.machine){machineCtl=d.machine;paintMachine();}preview();readyList();paintGame();paintMoves();drawFace('#beast-face-view','beastsFace');drawFace('#beast-buddy-view','beastsBuddy');}
@@ -556,6 +561,10 @@
       b.onclick=()=>run(async()=>{const x=await api('dungeon-adjust',{door:i});took(x);if(x.effect)preview(x.effect);status.textContent='Chat picked '+r.name+'.';});pick.append(b);});
     el.textContent=(d.on?'':'(off) ')+'Floor '+d.floor+' · '+d.shed+(d.room?' · '+d.room.name:'')+' · '+(d.phase==='boss'?d.boss.name+' HP '+usd(d.boss.hp)+' / '+usd(d.boss.max):usd(d.mana)+' / '+usd(d.goal)+' mana')+' · ★ '+d.stars+' · relics '+(d.relics?.length||0)+(d.doors?' · DOOR VOTE OPEN':'')+(d.finale?' · FINALE':'')+' · resets Wed '+d.resets+(d.lastWeek?' · last week: floor '+d.lastWeek.floor+', ★ '+d.lastWeek.stars:'');
   }
+  // ONLY WHAT CHANGED (store, 2026-11-27: the loaded dungeon kept going back to the old chests): a save sends just the
+  // fields this screen changed from the studio's latest, and the studio merges them in -- an older copy of a field on
+  // this screen (a phone left open, another tab) can never put back what LOAD or another screen just saved.
+  function changed(){const v=values(),out={};for(const k of Object.keys(v)){if(!settings||!(k in settings)||JSON.stringify(v[k])!==JSON.stringify(settings[k]))out[k]=v[k];}return out;}
   function values(){const out={};for(const el of form.elements){if(!el.name)continue;out[el.name]=el.type==='checkbox'?el.checked:el.type==='number'?Number(el.value):el.value;}return out;}
   // The green-screen shed sits behind the top camera in the preview too (2026-11-11).
   function preview(effect,demoStats){const msg={type:'mana-preview',settings:values(),stage,pics:shedPicsCtl,stats:withMove(demoStats||(Date.now()<demoUntil?demoFake:null)||stats||undefined),machine:values().showBuyerNames?machineCtl:{...machineCtl,items:(machineCtl.items||[]).map(({buyer,...it})=>it)},flip:flipCtl,effect};frame.contentWindow?.postMessage(msg,location.origin);host.querySelector('.mana-preview-bg')?.contentWindow?.postMessage(msg,location.origin);}
@@ -575,8 +584,8 @@
   // sometimes"): flip the setting and save it live in one tap.
   host.querySelector('#mana-quick').onclick=e=>{const b=e.target.closest('[data-toggle]');if(!b)return;
     const box=form.elements.namedItem(b.dataset.toggle);box.checked=!box.checked;
-    void run(async()=>{try{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent=({visible:'Sign ',marqueeOn:'Marquee text ',finale:'Finale '}[b.dataset.toggle]||'')+(box.checked?'on':'off');}catch(err){box.checked=!box.checked;throw err;}});};
-  form.onsubmit=e=>{e.preventDefault();void run(async()=>{const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);status.textContent='Live settings saved.';});};
+    void run(async()=>{try{const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent=({visible:'Sign ',marqueeOn:'Marquee text ',finale:'Finale '}[b.dataset.toggle]||'')+(box.checked?'on':'off');}catch(err){box.checked=!box.checked;throw err;}});};
+  form.onsubmit=e=>{e.preventDefault();void run(async()=>{const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);status.textContent='Live settings saved.';});};
   form.oninput=e=>{
     // Picking a boss gives it its name, unless the store typed its own.
     if(e.target.name==='bossCharacter'){const nm=form.elements.namedItem('bossName');if(!nm.value||Object.values(BOSS_NAMES).includes(nm.value))nm.value=BOSS_NAMES[e.target.value]||nm.value;}
@@ -682,7 +691,7 @@
   });
   host.querySelector('#mana-show').onclick=()=>run(async()=>{const d=await api('current-show');if(!d.show)throw Error('No live or scheduled Whatnot show found');form.elements.namedItem('showId').value=d.show.id;host.querySelector('#mana-show-name').textContent=(d.show.live?'LIVE: ':'NEXT: ')+(d.show.title||d.show.id);preview();
     // 2026-11-18: picking the show used to need a second tap (Save) -- missed, the dungeon kept the old show and ignored the sales. One tap now.
-    const s=await api('settings',{settings:values(),revision});revision=s.revision;took(s);status.textContent='Following this show -- its sales fill the dungeon.';});
+    const s=await api('settings',{settings:changed(),revision});revision=s.revision;took(s);status.textContent='Following this show -- its sales fill the dungeon.';});
   host.querySelector('#mana-sync').onclick=()=>run(async()=>{const d=await api('stats-sync',{});took(d);status.textContent='Totals synced from Whatnot.'+(d.filled>0?' +'+usd(d.filled)+' of missed sales went into the dungeon.':' The dungeon already had every sale.');});
   // AUTO SYNC (2026-11-19: live sales weren't reaching the dungeon): while this remote is connected and following a
   // show, it checks Whatnot's order list once a minute, so a sale Whatnot never told us about still counts.
@@ -808,7 +817,7 @@
     f.namedItem('floorRewards').value=[1,2,3,4,5,6,7].map(n=>n+': '+(n%2?'Free giveaway for everyone -- '+g(n+1):'Low start on '+top(n>>1))).join('\n');
     f.namedItem('roomRewards').value=['vault: Low start on '+top(1),'library: Free giveaway for everyone -- '+g(5),'armory: Low start on '+top(2),'forge: Free giveaway for everyone -- '+g(6),'crypt: Free giveaway for everyone -- '+g(7),'lab: Low start on '+top(3)].join('\n');
     if(f.namedItem('dungeonComics'))f.namedItem('dungeonComics').checked=true;
-    const d=await api('settings',{settings:values(),revision});revision=d.revision;took(d);
+    const d=await api('settings',{settings:changed(),revision});revision=d.revision;took(d);
     if(fill)await saveStage({now:stage.now||next[0]||null,next:stage.now?next:next.slice(1)});
     await sendShedPics(null);
     readyList();
