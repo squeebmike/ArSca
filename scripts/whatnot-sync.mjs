@@ -476,7 +476,7 @@ export async function refreshWhatnotShow(showOrId, deps, { withSummary = true } 
   if (!status) return { showId: show.id, skipped: show.status };
   const finalKey = `whatnot-show-final:${deps.storeId}:${show.id}`;
   const row = { whatnot_show_id: show.id, platform: 'whatnot', title: String(show.title || 'Whatnot show').slice(0, 200), status, started_at: show.scheduled_start_at || show.created_at || null, ended_at: show.ended_at || null };
-  if (status !== 'ended' || !withSummary || await deps.kvGet(finalKey)) { await deps.upsertShow(row); return { showId: show.id, status }; }
+  if (status !== 'ended' || !withSummary || await deps.kvGet(finalKey)) { await deps.upsertShow(row); return { showId: show.id, status, title: row.title }; }
   const ana = await deps.api('GET', `/analytics/shows/${encodeURIComponent(show.id)}`);
   const analytics = ana.ok ? ana.data : null;
   if (analytics?.start_time) row.started_at = analytics.start_time;
@@ -486,7 +486,7 @@ export async function refreshWhatnotShow(showOrId, deps, { withSummary = true } 
   row.report_summary = summarizeWhatnotShow({ orders, analytics, costs, feeSettings: deps.feeSettings });
   await deps.upsertShow(row);
   if (row.report_summary.final || analytics?.calculation_status === 'WILL_NOT_BE_CALCULATED') await deps.kvPut(finalKey, 1);
-  return { showId: show.id, status, summary: row.report_summary };
+  return { showId: show.id, status, title: row.title, summary: row.report_summary };
 }
 
 // Recent shows: kept up to date, and an ended show's numbers refreshed
