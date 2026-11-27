@@ -307,7 +307,10 @@ export class ManaLiveStudio extends DurableObject {
   update(settings, revision) {
     const s = this.read();
     if (revision !== s.revision) return { conflict:true, ...this.publicState(s) };
-    s.settings = {...s.settings, ...validateSettings({...s.settings,...settings})};
+    // A setting a past version saved and this one dropped (2026-11-27: propsInFront, gone since #825) is left out --
+    // kept, it made every save fail with "Unknown setting" and LOAD never landed.
+    const kept = Object.fromEntries(Object.entries(s.settings || {}).filter(([k]) => k in DEFAULT_STUDIO));
+    s.settings = {...kept, ...validateSettings({...kept,...settings})};
     s.revision++;
     this.write(s);
     this.broadcast({ type:'state', ...this.publicState(s) });

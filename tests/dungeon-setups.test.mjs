@@ -46,7 +46,7 @@ console.log('Saved dungeon setups: passed');
 { const c = fs.readFileSync('scripts/live-studio-controls.js', 'utf8'), room = fs.readFileSync('scripts/live-studio-room.mjs', 'utf8');
   assert.ok(c.includes("const fresh=await api('state');revision=fresh.revision;") && c.includes("d=await api('settings',{settings:set,revision});"));
   assert.ok(!/loadSetup[\s\S]{0,1500}settings:values\(\),revision/.test(c.slice(c.indexOf('async function loadSetup(su){'), c.indexOf('async function loadSetup(su){') + 1600)), 'LOAD never sends the whole screen');
-  assert.ok(room.includes('s.settings = {...s.settings, ...validateSettings({...s.settings,...settings})};'), 'the studio merges a partial save');
+  assert.ok(room.includes('s.settings = {...kept, ...validateSettings({...kept,...settings})};'), 'the studio merges a partial save');
   console.log('LOAD is safe with a phone open: passed'); }
 // 2026-11-26: a 7-floor setup (21 chests with covers) plus the marquee templates is bigger than 8 KB -- settings saves
 // take up to 64 KB, like the lineup.
@@ -60,3 +60,12 @@ console.log('Saved dungeon setups: passed');
   assert.ok(c.includes("function changed(){const v=values(),out={};for(const k of Object.keys(v)){if(!settings||!(k in settings)||JSON.stringify(v[k])!==JSON.stringify(settings[k]))out[k]=v[k];}return out;}"));
   assert.ok(c.includes("if(landed!==want)throw Error('The studio did not keep the chests") && c.includes("alert('LOAD did not finish: '+e.message)"));
   console.log('Saves send only what changed; LOAD checks itself: passed'); }
+// 2026-11-27: "LOAD did not finish: Unknown setting: propsInFront" -- a setting an older version saved (dropped in #825)
+// failed every save. The studio leaves settings it no longer knows out of the merge.
+{ const room = fs.readFileSync('scripts/live-studio-room.mjs', 'utf8');
+  assert.ok(room.includes('const kept = Object.fromEntries(Object.entries(s.settings || {}).filter(([k]) => k in DEFAULT_STUDIO));'));
+  const stored = { ...M.DEFAULT_STUDIO, propsInFront: false }, change = { chestLoad: set.chestLoad };
+  assert.throws(() => M.validateSettings({ ...stored, ...change }), /Unknown setting: propsInFront/);
+  const kept = Object.fromEntries(Object.entries(stored).filter(([k]) => k in M.DEFAULT_STUDIO));
+  assert.doesNotThrow(() => M.validateSettings({ ...kept, ...change }));
+  console.log('An old saved setting no longer blocks saves: passed'); }
