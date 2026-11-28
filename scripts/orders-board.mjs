@@ -138,12 +138,19 @@ export function buildOrdersBoard({
 
   // Website: shop checkouts and comic preorders.
   const website = [];
+  // The order's total: its lines, plus shipping only when the sale has no Shipping line of its own (2026-11-28: a
+  // $4.99 book + $6.71 shipping showed $18.41 -- the Shipping line and the order's shipping fee were both counted).
+  const sfOrderTotal = (lines, feeCents) => {
+    const sum = lines.reduce((n, l) => n + Number(l.unit_price || 0) * Math.max(1, Number(l.quantity || 1)), 0);
+    const hasShipLine = lines.some(l => !l.item_id && /^shipping$/i.test(String(l.title || '').trim()));
+    return Math.round((sum + (hasShipLine ? 0 : Number(feeCents || 0) / 100)) * 100) / 100;
+  };
   const sfLinesBySale = new Map();
   for (const l of storefrontLines) { const list = sfLinesBySale.get(l.sale_id) || []; list.push(l); sfLinesBySale.set(l.sale_id, list); }
   for (const s of storefrontOrders) {
     website.push(finish({
       channel: 'website', kind: 'shop', id: s.id, number: s.confirmation_number || s.id.slice(0, 8), buyer: text(s.customer_name, 80),
-      createdAt: s.created_at, total: (sfLinesBySale.get(s.sale_id) || []).reduce((n, l) => n + Number(l.unit_price || 0) * Math.max(1, Number(l.quantity || 1)), 0) + Number(s.shipping_fee_cents || 0) / 100,
+      createdAt: s.created_at, total: sfOrderTotal(sfLinesBySale.get(s.sale_id) || [], s.shipping_fee_cents),
       method: s.fulfillment_method || '', pickup: /pickup/i.test(s.fulfillment_method || ''), items: (sfLinesBySale.get(s.sale_id) || []).map(itemFromLine),
       shipped: s.fulfillment_status === 'fulfilled', shippedBy: s.fulfillment_method && /pickup/i.test(s.fulfillment_method) ? 'picked up' : 'fulfilled',
     }));
