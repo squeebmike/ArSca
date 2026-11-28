@@ -70,6 +70,7 @@ import { handleArticleStudio, runSubstackArticlesSync } from './scripts/substack
 import { settleSoldBundleMembers } from './scripts/bundle-settle.mjs';
 import { handleDungeonSetups } from './scripts/dungeon-setups.mjs';
 import { mirrorLiveStudio } from './scripts/live-studio-mirror.mjs';
+import { noteLiveNow, pickLiveShow, publicLiveNow, liveNowKey, eventsWithLiveNow } from './scripts/live-now.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
@@ -1192,9 +1193,12 @@ async function loadPublicEvents(env) {
 }
 async function handlePublicEvents(env) {
   if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
-  const events = await loadPublicEvents(env);
-  if (!events) return json({ ok:false, error:'Event schedule unavailable' }, 502);
-  return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+  const loaded = await loadPublicEvents(env);
+  if (!loaded) return json({ ok:false, error:'Event schedule unavailable' }, 502);
+  // A Whatnot show is live on the homepage only while Whatnot says so (scripts/live-now.mjs).
+  const liveRec = env.LBA_KV ? await env.LBA_KV.get(liveNowKey(whatnotStoreId(env)), 'json').catch(() => null) : null;
+  const events = eventsWithLiveNow(loaded, liveRec);
+  return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=60' });
 }
 
 function supabaseAdminConfig(env) {
@@ -9160,6 +9164,16 @@ async function routeRequest(request, env, ctx) {
         return Response.redirect('https://www.themanapocket.com/item/' + encodeURIComponent(id), 301);
       }
       return fetch(request);
+    }
+    // Is a Whatnot show live right now? For the website's LIVE banner (scripts/live-now.mjs). KV only, edge-cached.
+    if (url.pathname === '/public/live-now' && request.method === 'GET') {
+      const key = new Request('https://internal.themanapocket.com/__cache/live-now');
+      const cached = await caches.default.match(key);
+      if (cached) { const r = new Response(cached.body, cached); Object.entries(CORS).forEach(([k, v]) => r.headers.set(k, v)); return r; }
+      const rec = env.LBA_KV ? await env.LBA_KV.get(liveNowKey(whatnotStoreId(env)), 'json').catch(() => null) : null;
+      const response = json(publicLiveNow(rec), 200, { 'Cache-Control': 'public, max-age=30' });
+      ctx.waitUntil(caches.default.put(key, response.clone()));
+      return response;
     }
     if ((url.pathname === '/bcw' || url.pathname === '/public/bcw') && request.method === 'GET') {
       if (!(env.SUPABASE_URL && (env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SERVICE_KEY))) return new Response('Storefront service unavailable',{status:503});
@@ -20885,6 +20899,8 @@ async function runScheduledWhatnotSync(env, ctx) {
   catch (e) { console.error('Whatnot sync failed:', e.message); }
   // The live show becomes the studio's show (automatic on), and its sales so far go into the dungeon.
   const liveShow = (synced?.shows || []).find(x => x.status === 'live')?.showId;
+  // The website's LIVE ON WHATNOT banner (scripts/live-now.mjs): set while a show is live, cleared after.
+  if (Array.isArray(synced?.shows) && !synced.showsError) await noteLiveNow(env.LBA_KV, whatnotStoreId(env), pickLiveShow(synced.shows)).catch(e => console.warn('Live now:', e.message));
   if (liveShow) await followLiveShowInStudio(env, whatnotStoreId(env), liveShow).catch(e => console.warn('Live Studio follow show:', e.message));
   // The Live Studio's state, copied where it can be read (scripts/live-studio-mirror.mjs).
   try { await mirrorLiveStudio(env, whatnotStoreId(env), (path, init) => supabaseAdminFetch(env, path, init)); }
@@ -20929,7 +20945,11 @@ async function handleWhatnotEventRecord(env, ctx, record) {
     // A label printed, a tracking code added: the orders board updates now.
     if (type.startsWith('shipments.')) console.log('Whatnot shipments', JSON.stringify(await syncWhatnotShipments(deps, { pages: 1 })));
     const showId = type.startsWith('shows.') ? (data.show_id || data.id) : '';
-    if (showId) console.log('Whatnot show', JSON.stringify(await refreshWhatnotShow(String(showId), deps)));
+    const shown = showId ? await refreshWhatnotShow(String(showId), deps) : null;
+    if (shown) console.log('Whatnot show', JSON.stringify(shown));
+    // The website's LIVE ON WHATNOT banner turns on (or off) right away.
+    if (shown?.status === 'live') await noteLiveNow(env.LBA_KV, storeId, pickLiveShow([shown])).catch(e => console.warn('Live now:', e.message));
+    if (shown?.status === 'ended') await noteLiveNow(env.LBA_KV, storeId, null, { onlyIfShowId: String(shown.showId) }).catch(e => console.warn('Live now:', e.message));
     if (showId) await runWhatnotShowEventsSync(env, { force: true }).catch(e => console.error('Whatnot show events:', e.message));
     // A show just went live: the studio follows it right away.
     if (showId && /live/i.test(type + ' ' + (data.status || ''))) await followLiveShowInStudio(env, storeId, String(showId)).catch(e => console.warn('Live Studio follow show:', e.message));
