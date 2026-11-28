@@ -2,7 +2,7 @@
 // ── Walk-Off Sports Cards — Webflow config ────────────────────
 const RUNTIME_CONFIG = window.WALKOFF_CONFIG || {};
 const WORKER      = RUNTIME_CONFIG.workerUrl || 'https://still-resonance-4f87.swarnerauto.workers.dev';
-const APP_VERSION = '2026.11.27.1-only-changed';
+const APP_VERSION = '2026.11.28.1-byterider-photos';
 window.APP_VERSION = APP_VERSION;
 
 // ── Global busy indicator + double-tap guard ──────────────────────────────
@@ -50921,33 +50921,79 @@ function openStaffByteRider(){
   const log = document.createElement('div');
   log.style.cssText = 'flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px';
   const say = (text, who) => { const b = document.createElement('div'); b.style.cssText = 'white-space:pre-wrap;padding:7px 9px;border-radius:9px;max-width:92%;' + (who === 'me' ? 'align-self:flex-end;background:#2c1a44' : 'align-self:flex-start;background:#17304a'); b.textContent = text; log.append(b); log.scrollTop = log.scrollHeight; return b; };
-  say('Yo! Ask me about sales by channel, profit, stale stock, FOC preorders, shows, the cash bag, expenses, or any item. Try: "What sold best this week?"', 'him');
+  say('Yo! Ask me about sales, orders, stock, FOC, shows, the cash bag or expenses. 📷 Snap up to 10 photos of books or an order and I\'ll find them -- then tap a button to put them in a new cart. Nothing changes until you tap.', 'him');
+  // PHOTOS (2026-11-28): up to 10, shrunk on the phone (longest side 1568 px, JPEG) before they go.
+  let pics = [];
+  const shrink = file => new Promise((ok, bad) => { const img = new Image(), u = URL.createObjectURL(file); img.onload = () => { const k = Math.min(1, 1568 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok({ media_type:'image/jpeg', data:c.toDataURL('image/jpeg', 0.75).split(',')[1] }); }; img.onerror = () => { URL.revokeObjectURL(u); bad(new Error('Could not read ' + file.name)); }; img.src = u; });
+  const picRow = document.createElement('div');
+  picRow.style.cssText = 'display:none;align-items:center;gap:6px;padding:4px 8px;font-size:12px;border-top:1px solid #3a2550';
+  const paintPics = () => { picRow.style.display = pics.length ? 'flex' : 'none'; picRow.textContent = '📷 ' + pics.length + ' photo' + (pics.length === 1 ? '' : 's') + ' ready '; if(pics.length){ const c = document.createElement('button'); c.type = 'button'; c.textContent = 'clear'; c.style.cssText = 'background:none;border:1px solid #3a2550;color:#fff6d8;border-radius:6px;padding:2px 6px;cursor:pointer'; c.onclick = () => { pics = []; paintPics(); }; picRow.append(c); } };
+  const file = document.createElement('input'); file.type = 'file'; file.accept = 'image/*'; file.multiple = true; file.style.display = 'none';
+  file.onchange = async () => { const fs = [...(file.files || [])].slice(0, 10 - pics.length); file.value = ''; for(const f of fs){ try { pics.push(await shrink(f)); } catch(e){ say('⚠ ' + e.message, 'him'); } } paintPics(); };
+  // The buttons he offers: each does one thing, only when tapped.
+  const doAction = async (a, btn) => {
+    btn.disabled = true; const was = btn.textContent; btn.textContent = 'Working…';
+    try {
+      if(a.kind === 'cart'){
+        if(!confirm('Start a new empty cart with ' + a.itemIds.length + ' item' + (a.itemIds.length === 1 ? '' : 's') + '?')) { btn.disabled = false; btn.textContent = was; return; }
+        startNewSaleCart(); const missing = [];
+        for(const id of a.itemIds){ if(all.find(i => i.id === id)) dashAddToCart(id); else missing.push(id); }
+        btn.textContent = '✓ In a new cart' + (missing.length ? ' (' + missing.length + ' not loaded here -- refresh inventory)' : '');
+      } else if(a.kind === 'show'){
+        const cur = await (await storeWorkerFetch('/live-studio/current-show?store_id=' + encodeURIComponent(getActiveStoreId()), { cache:'no-store' })).json().catch(() => ({}));
+        if(!cur.ok || !cur.show?.id) throw new Error(cur.error || 'No live or scheduled Whatnot show found');
+        if(!confirm('Add ' + a.itemIds.length + ' item' + (a.itemIds.length === 1 ? '' : 's') + ' to "' + (cur.show.title || 'the next show') + '" as show-only auctions?')) { btn.disabled = false; btn.textContent = was; return; }
+        const r = await storeWorkerFetch(WORKER + '/whatnot/show-only?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ itemIds:a.itemIds, showId:cur.show.id }) });
+        const d = await r.json().catch(() => ({})); if(!r.ok || !d.ok) throw new Error(d.error || 'Could not add to the show');
+        btn.textContent = '✓ Added to ' + (cur.show.title || 'the show');
+      } else if(a.kind === 'shipped'){
+        const r = await storeWorkerFetch('/orders/mark-shipped', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ storeId:getActiveStoreId(), channel:a.channel, orderId:a.orderId, shipped:true }) });
+        const d = await r.json().catch(() => ({})); if(!r.ok || !d.ok) throw new Error(d.error || 'Could not mark it shipped');
+        btn.textContent = '✓ Marked shipped';
+      } else if(a.kind === 'dungeon'){
+        const r = await storeWorkerFetch('/store/dungeon-setups?store_id=' + encodeURIComponent(getActiveStoreId()), { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ name:a.setup.name, plan:a.setup.plan }) });
+        const d = await r.json().catch(() => ({})); if(!r.ok || !d.ok) throw new Error(d.error || 'Could not save the setup');
+        btn.textContent = '✓ Saved -- LOAD it from 🏰 SAVED DUNGEON SETUPS';
+      }
+    } catch(err){ btn.disabled = false; btn.textContent = was; say('⚠ ' + (err.message || err), 'him'); }
+  };
+  const showActions = actions => { if(!actions?.length) return; const row = document.createElement('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;align-self:flex-start'; for(const a of actions){ const b = document.createElement('button'); b.type = 'button'; b.textContent = '▶ ' + a.label; b.style.cssText = 'padding:7px 10px;border-radius:8px;border:1px solid #ff4fd8;background:#2c1a44;color:#fff6d8;font-weight:700;cursor:pointer'; b.onclick = () => doAction(a, b); row.append(b); } log.append(row); log.scrollTop = log.scrollHeight; };
   const form = document.createElement('form');
   form.style.cssText = 'display:flex;gap:6px;padding:8px;border-top:1px solid #3a2550';
   const input = document.createElement('input'); input.type = 'text'; input.maxLength = 600; input.placeholder = 'Ask ByteRider…';
   input.style.cssText = 'flex:1;min-width:0;padding:8px;border-radius:8px;border:1px solid #3a2550;background:#140c20;color:#fff6d8;font-size:16px';
   const send = document.createElement('button'); send.type = 'submit'; send.textContent = 'ASK';
   send.style.cssText = 'padding:8px 12px;border-radius:8px;border:0;background:#ff4fd8;color:#0b0612;font-weight:700;cursor:pointer';
-  form.append(input, send);
+  const cam = document.createElement('button'); cam.type = 'button'; cam.textContent = '📷'; cam.title = 'Add photos (up to 10)';
+  cam.style.cssText = 'padding:8px 10px;border-radius:8px;border:1px solid #3a2550;background:#140c20;color:#fff6d8;cursor:pointer';
+  cam.onclick = () => { if(pics.length >= 10) { say('That\'s 10 photos -- send these first.', 'him'); return; } file.click(); };
+  form.append(cam, input, send, file);
+  const quick = document.createElement('div');
+  quick.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;padding:6px 8px 0';
+  for(const [t, q] of [['☀️ Daily brief', 'Give me my daily brief.'], ['📦 Orders to ship', 'Which orders are ready to ship, and which are waiting on books?'], ['🏰 Draft a dungeon', 'Draft a 7-floor dungeon setup for the next show from comics in stock (new releases first), and offer the button to save it.']]){
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.style.cssText = 'padding:4px 8px;border-radius:999px;border:1px solid #3a2550;background:#140c20;color:#fff6d8;font-size:12px;cursor:pointer';
+    b.onclick = () => { input.value = q; form.requestSubmit(); }; quick.append(b);
+  }
   let busy = false;
   form.onsubmit = async e => {
     e.preventDefault();
-    const q = input.value.trim();
-    if(!q || busy) return;
-    busy = true; send.disabled = true; input.value = '';
-    say(q, 'me');
-    const wait = say('…looking it up', 'him');
+    const q = input.value.trim(), images = pics;
+    if((!q && !images.length) || busy) return;
+    busy = true; send.disabled = true; input.value = ''; pics = []; paintPics();
+    say((images.length ? '📷 ' + images.length + ' photo' + (images.length === 1 ? '' : 's') + (q ? ' · ' : '') : '') + q, 'me');
+    const wait = say(images.length ? '…reading the photos' : '…looking it up', 'him');
     try {
-      const res = await storeWorkerFetch('/staff/byterider/ask', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ question:q, history:staffByteRiderChat.slice(-8) }) });
+      const res = await storeWorkerFetch('/staff/byterider/ask', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ question:q, images, history:staffByteRiderChat.slice(-8) }) });
       const d = await res.json().catch(() => ({}));
       if(!res.ok || !d.ok) throw new Error(d.error || ('HTTP ' + res.status));
       wait.textContent = d.answer;
-      staffByteRiderChat.push({ role:'user', content:q }, { role:'assistant', content:d.answer });
+      showActions(d.actions);
+      staffByteRiderChat.push({ role:'user', content:(images.length ? '[' + images.length + ' photo(s)] ' : '') + (q || 'What is in these photos?') }, { role:'assistant', content:d.answer + (d.actions?.length ? '\n[Buttons offered: ' + d.actions.map(a => a.label).join('; ') + ']' : '') });
       window.byteRiderDash?.play('talking', { text:'DATA ACQUIRED.' });
     } catch(err) { wait.textContent = '⚠ ' + (err.message || err); }
     busy = false; send.disabled = false; input.focus();
   };
-  box.append(head, log, form);
+  box.append(head, log, quick, picRow, form);
   document.body.append(box);
   input.focus();
 }

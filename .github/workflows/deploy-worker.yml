@@ -184,6 +184,7 @@ on:
       - scripts/byterider-ask.mjs
       - scripts/byterider-lookup.mjs
       - scripts/byterider-staff.mjs
+      - scripts/byterider-staff-local.mjs
       - scripts/byterider.mjs
       - scripts/live-studio-api.mjs
       - scripts/live-studio-room.mjs

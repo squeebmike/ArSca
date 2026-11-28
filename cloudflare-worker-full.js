@@ -90,6 +90,7 @@ import { catalogInventoryHtml, catalogSetInventoryHtml, catalogShoppingLinksHtml
 import { handlePokemonCatalog, pokemonCardPath } from './scripts/pokemon-catalog-pages.mjs';
 import { sportsByCode, pokemonBySlash } from './scripts/byterider-lookup.mjs';
 import { runStaffAsk, STAFF_LIMITS as BYTERIDER_STAFF_LIMITS, STAFF_MONTHLY_CAP_USD as BYTERIDER_STAFF_CAP_USD } from './scripts/byterider-staff.mjs';
+import { byteriderStaffLocal } from './scripts/byterider-staff-local.mjs';
 import { handleBaseballCatalog } from './scripts/baseball-catalog-pages.mjs';
 import { handleFootballCatalog } from './scripts/football-catalog-pages.mjs';
 import { handleSecretLairPages } from './scripts/secret-lair-pages.mjs';
@@ -17443,7 +17444,8 @@ async function routeRequest(request, env, ctx) {
     // own data through the read-only byterider_staff_data lookup. Its own
     // monthly spend cap, separate from the website's.
     if (url.pathname === '/staff/byterider/ask' && request.method === 'POST') {
-      const parsed = await readJsonWithLimit(request, 32768);
+      // Up to 10 photos (resized on the phone first) ride along with the question.
+      const parsed = await readJsonWithLimit(request, 7 * 1024 * 1024);
       if (parsed.error) return parsed.error;
       const storeId = requestStoreId(request, url, parsed.data);
       const auth = await requireStoreUser(request, env, storeId, ['owner','admin']);
@@ -17460,11 +17462,14 @@ async function routeRequest(request, env, ctx) {
       await env.LBA_KV.put(userKey, String(count + 1), { expirationTtl: 3700 });
       let total = spend;
       try {
-        const out = await runStaffAsk({ question: parsed.data?.question, history: parsed.data?.history, today: now.toISOString().slice(0, 10) }, {
+        const out = await runStaffAsk({ question: parsed.data?.question, history: parsed.data?.history, images: parsed.data?.images, today: now.toISOString().slice(0, 10) }, {
           data: async (tool, args) => (await supabaseAdminFetch(env, 'rpc/byterider_staff_data', { method: 'POST', body: JSON.stringify({ p_store: storeId, p_tool: tool, p_args: args || {} }) })).data,
+          // find_items / orders (scripts/byterider-staff-local.mjs): read-only, this store only.
+          local: (tool, args) => byteriderStaffLocal(tool, args, { storeId, db: path => supabaseAdminFetch(env, path),
+            board: async () => { const r = await handleOrdersBoard(new Request('https://w/orders/board?store_id=' + encodeURIComponent(storeId), { headers: request.headers }), env, { requireStoreUser, supabaseAdminFetch, json }, new URL('https://w/orders/board?store_id=' + encodeURIComponent(storeId))); return r.json(); } }),
           claude: async body => {
             const ask = model => fetch(`${ANTHROPIC_BASE}/messages`, { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-              body: JSON.stringify({ model, max_tokens: 700, temperature: 0.2, ...body }) });
+              body: JSON.stringify({ model, max_tokens: 1500, ...body }) });
             let res = await ask('claude-haiku-5-5');
             if (!res.ok && [400, 403, 404].includes(res.status)) res = await ask('claude-haiku-4-5-20251001');
             const d = await res.json().catch(() => null);
