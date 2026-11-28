@@ -70,7 +70,7 @@ import { handleArticleStudio, runSubstackArticlesSync } from './scripts/substack
 import { settleSoldBundleMembers } from './scripts/bundle-settle.mjs';
 import { handleDungeonSetups } from './scripts/dungeon-setups.mjs';
 import { mirrorLiveStudio } from './scripts/live-studio-mirror.mjs';
-import { noteLiveNow, pickLiveShow, publicLiveNow, liveNowKey } from './scripts/live-now.mjs';
+import { noteLiveNow, pickLiveShow, publicLiveNow, liveNowKey, eventsWithLiveNow } from './scripts/live-now.mjs';
 import { pullListPageBody } from './scripts/pull-list-page.mjs';
 import { COVER_COMING_SOON_JPEG_BASE64 } from './scripts/cover-coming-soon.mjs';
 import { buildRestockList } from './scripts/restock.mjs';
@@ -1193,9 +1193,12 @@ async function loadPublicEvents(env) {
 }
 async function handlePublicEvents(env) {
   if (!env.WEBFLOW_TOKEN) return json({ ok:false, error:'Event schedule unavailable' }, 503);
-  const events = await loadPublicEvents(env);
-  if (!events) return json({ ok:false, error:'Event schedule unavailable' }, 502);
-  return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=300' });
+  const loaded = await loadPublicEvents(env);
+  if (!loaded) return json({ ok:false, error:'Event schedule unavailable' }, 502);
+  // A Whatnot show is live on the homepage only while Whatnot says so (scripts/live-now.mjs).
+  const liveRec = env.LBA_KV ? await env.LBA_KV.get(liveNowKey(whatnotStoreId(env)), 'json').catch(() => null) : null;
+  const events = eventsWithLiveNow(loaded, liveRec);
+  return json({ ok:true, events, appearances:[] }, 200, { 'Cache-Control':'public, max-age=60, stale-while-revalidate=60' });
 }
 
 function supabaseAdminConfig(env) {

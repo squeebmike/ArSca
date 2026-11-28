@@ -36,3 +36,25 @@ export function publicLiveNow(rec, now = Date.now()) {
   if (!rec?.showId || !(now - Date.parse(rec.since) < MAX_SHOW_MS)) return { live: false };
   return { live: true, title: rec.title || 'Live on Whatnot', url: liveShowUrl(rec.showId), since: rec.since };
 }
+
+// THE HOMEPAGE'S LIVE CARD (store, 2026-11-28: "we're not live. The show had ended. So how do we get this off the
+// website when there isn't a live show? ... if there is a live show, ... that link that takes you right to the show").
+// The homepage called a Whatnot show live for its whole scheduled window. Now a Whatnot show on the schedule is live
+// only while Whatnot says so: not live -> its window is over (the card goes back to off air and the next show);
+// live -> it runs now, linked straight to the show (one that isn't on the schedule gets its own entry).
+const WHATNOT_LIVE = /^https:\/\/(www\.)?whatnot\.com\/live\/([0-9a-f-]{36})/i;
+export function eventsWithLiveNow(events = [], rec, now = Date.now()) {
+  const live = publicLiveNow(rec, now), liveId = live.live ? String(rec.showId).toLowerCase() : '';
+  const soon = new Date(now + 15 * 60000).toISOString(), past = new Date(now - 1000).toISOString();
+  let matched = false;
+  const out = (events || []).map(e => {
+    const id = (String(e?.href || '').match(WHATNOT_LIVE) || [])[2]?.toLowerCase();
+    if (!id) return e;
+    if (id === liveId) { matched = true; return { ...e, start: Date.parse(e.start) < now ? e.start : new Date(now - 60000).toISOString(), end: soon, href: live.url, live: true }; }
+    const start = Date.parse(e.start), end = Date.parse(e.end);
+    return start <= now && now <= end ? { ...e, end: past } : e;
+  });
+  if (live.live && !matched) out.push({ id: 'whatnot-live-now', date: new Date(now).toISOString().slice(0, 10), start: new Date(now - 60000).toISOString(), end: soon, allDay: false,
+    kicker: 'Online live show', type: 'Online Live Show', title: live.title, location: 'Whatnot', copy: 'Live on Whatnot now: ' + live.title, href: live.url, mapsUrl: '', videoOrientation: 'portrait', online: true, live: true });
+  return out.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
+}
